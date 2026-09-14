@@ -1,0 +1,48 @@
+# Unreal-generated directories. Build/ can contain source resources: keep it tracked.
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Generated IDE files and local editor state
+.vs/
+.idea/
+.vscode/
+*.sln
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.csproj.user
+
+# Native builds, local tools, scratch work, and installers
+/build/
+/cmake-build-*/
+/.local/
+/.cache/
+/work/
+*.obj
+*.o
+*.pdb
+*.ilk
+*.dmp
+*.exe
+*.msi
+
+# Machine-local secrets
+.env
+.env.*
+!.env.example
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local Python diagnostic tooling
+__pycache__/
+*.py[cod]
