@@ -1,6 +1,6 @@
 # Latest recovery implementation status
 
-The latest destination correction is recorded in `RECOVERY_DESTINATION_FIX.md`. Current simulation source is `f2424236795f5531`; layout 5 is **3/3 strict passes** on Linux and Windows. The full Linux matrix is **5/9**, below the 8/9 target. The broader recovery plan remains incomplete, and normal gameplay does not enable this policy. The preceding `d220f8cc8bfa343b` gate repair is preserved in `RECOVERY_GATE_RESULTS.md`.
+The latest corrected Cause A–E experiment is documented in `RECOVERY_THIRD_PASS_RESULTS.md`. Source `5f53cb886967bd16` scores **2/9 on Linux and Windows**, regressing from the preceding 5/9. The requested mechanisms are implemented and tested, but the candidate is **not accepted** and remains fixture-only. The earlier destination correction and its 3/3 layout-5 result are historical; see `RECOVERY_DESTINATION_FIX.md`.
 
 The report below is the historical status of the preceding `d28f86681c7988cb` implementation. Its 0/3 result and earlier reproduction paths describe that preceding revision.
 

@@ -7,6 +7,7 @@ struct PendingReaction {
     int subject=-1;
     Vec3 position{};
     Vec3 velocity{};
+    SupportSector supportSector;
     FireArea fireArea;
     FireDelivery delivery;
     MoveFailure failedMove;

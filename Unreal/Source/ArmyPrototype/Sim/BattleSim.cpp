@@ -255,10 +255,21 @@ FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
     FireSolution best;float score=1e9f;
     const bool support=s.assignment.task==Task::Overwatch||s.assignment.task==Task::BoundCover||(s.machineGun&&s.assignment.task==Task::RearGuard);
     const Vec3 muzzle{s.position.x,s.position.y,s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f)};
+    const bool sectorCurrent=s.assignment.id&&time>=s.supportSector.observedAt&&time-s.supportSector.observedAt<=8;
+    std::vector<int> priorities;
+    if(support&&sectorCurrent&&!s.supportSector.lifted)for(const auto& threat:s.supportSector.threats){
+        if(threat.enemy<0||threat.enemy>=UnitCount)continue;
+        Contact ct=s.contacts[threat.enemy];
+        if(s.reports[threat.enemy].known&&(!ct.known||s.reports[threat.enemy].observedAt>ct.observedAt))ct=s.reports[threat.enemy];
+        if(ct.known&&time-ct.observedAt<=6&&Distance(s.position,ct.position)<=100&&
+            ClearLine3D(map,muzzle,{ct.position.x+ct.aimOffset.x,ct.position.y+ct.aimOffset.y,ct.aimHeight}))priorities.push_back(threat.enemy);
+    }
+    const int preferred=priorities.empty()?-1:priorities[(s.rounds/6)%priorities.size()];
     for(int i=0;i<UnitCount;++i) {
         Contact ct=s.contacts[i];
         if(support&&s.reports[i].known&&(!ct.known||s.reports[i].observedAt>ct.observedAt))ct=s.reports[i];
         if(!ct.known)continue;
+        if(support&&sectorCurrent&&s.supportSector.lifted&&std::any_of(s.supportSector.threats.begin(),s.supportSector.threats.end(),[&](const SupportThreat& threat){return threat.enemy==i;}))continue;
         if(s.assignment.id&&s.assignment.teamPlan.liftFire&&Distance(ct.position,s.assignment.teamPlan.liftedSector)<12&&Distance(ct.position,s.position)>15)continue;
         if(support) {if(time-ct.observedAt>6)continue;}
         else if(time-ct.observedAt>(ct.visible?ReactionSeconds(s,ReactionKind::Sight)+.4f:2.f))continue;
@@ -277,6 +288,8 @@ FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
             if(!ClearLine3D(map,muzzle,{muzzle.x+direction.x*2,muzzle.y+direction.y*2,muzzle.z}))continue;
         }
         float value=distance+(ct.visible?0.f:12.f)+(i==s.aimTarget?-10.f:0.f);
+        if(std::find(priorities.begin(),priorities.end(),i)!=priorities.end())value-=80;
+        if(i==preferred)value-=30;
         if(ShouldHoldFire(s,FriendlyFireRisk(s,map,target,time)))value+=1000;
         if(value<score) {score=value;best={i,target,ct.observedAt,support||!ct.visible};}
     }

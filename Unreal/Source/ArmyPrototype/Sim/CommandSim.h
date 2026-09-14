@@ -7,10 +7,11 @@
 namespace army {
 constexpr float MessageDelay = 0.75f;
 struct CommandMessage {
-    enum class Kind { Order, Contact, Ready, Wound, Fire, Lane, Movement, Delivery, TaskStatus };
+    enum class Kind { Order, Contact, Ready, Wound, Fire, Lane, Movement, Delivery, TaskStatus, SupportSector };
     Kind kind = Kind::Order;
     int sender = -1, recipient = -1, enemy = -1;
     int subject = -1;
+    SupportSector supportSector;
     FireArea fireArea;
     FireDelivery delivery;
     MoveFailure failedMove;
@@ -31,7 +32,7 @@ struct CommandRuntime {
     PlatoonRuntime platoon;
     std::vector<CommandMessage> messages;
     std::array<float, UnitCount> nextReport{}, nextNco{};
-    std::array<float, SquadCount> nextPlan{}, startedAt{}, lastPlanAt{};
+    std::array<float, SquadCount> nextPlan{}, startedAt{}, lastPlanAt{}, nextSupportSector{};
     std::array<uint64_t,SquadCount> plannedKnowledge{};
     int fixedDefender=-1;
     std::array<int,SquadCount> taskLeaders{};

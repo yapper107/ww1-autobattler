@@ -9,7 +9,7 @@ float ReactionSeconds(const Soldier& s,ReactionKind kind) {
     return s.reactionBase*factor*(1+s.suppression*1.5f)*(s.health<55?1.3f:1.f);
 }
 const char* ReactionName(ReactionKind k) {
-    const char* names[]={"SIGHTING","ORDER","REPORT","READINESS","UNDER FIRE","INJURY REPORT","FIRE REPORT","FRIENDLY","BLOCKED LANE","SQUAD REPORT","PLATOON ORDER","MOVEMENT BLOCKED","COVERING FIRE REPORT","TASK STATUS"};return names[int(k)];
+    const char* names[]={"SIGHTING","ORDER","REPORT","READINESS","UNDER FIRE","INJURY REPORT","FIRE REPORT","FRIENDLY","BLOCKED LANE","SQUAD REPORT","PLATOON ORDER","MOVEMENT BLOCKED","COVERING FIRE REPORT","TASK STATUS","SUPPORT SECTOR"};return names[int(k)];
 }
 void QueueReaction(const Soldier& s,PendingReaction reaction,float time,ReactionRuntime& rt) {
     reaction.recipient=s.id;reaction.receivedAt=time;reaction.readyAt=time+ReactionSeconds(s,reaction.kind);
@@ -73,6 +73,14 @@ void ProcessReactions(Frame& f,ReactionRuntime& rt,std::vector<Event>& events) {
             if(p.contact.observedAt>ct.observedAt)ct=p.contact;
             ct.clearedAt=cleared;ct.known=ct.observedAt>cleared;ct.visible=false;ct.registeredAt=f.time;ct.reportSource=p.source;
             if(fresh)events.push_back({f.time,EventKind::Report,p.source,s.id,std::string(Name(s.id))+" processes report about "+Name(p.enemy)});
+        } else if(p.kind==ReactionKind::SupportSector) {
+            if(!rt.recoveryFixture||p.supportSector.observedAt<=s.supportSector.observedAt||f.time-p.supportSector.observedAt>8)continue;
+            s.supportSector=p.supportSector;
+            for(const auto& threat:s.supportSector.threats)if(threat.enemy>=0&&threat.enemy<UnitCount){
+                auto& report=s.reports[threat.enemy];
+                if(threat.contact.observedAt>report.observedAt&&threat.contact.observedAt>report.clearedAt){report=threat.contact;report.visible=false;report.registeredAt=f.time;report.reportSource=p.source;}
+            }
+            if(rt.diagnostics&&rt.diagnostics->options.enabled){TraceEntry e;e.id=rt.diagnostics->nextId++;e.time=f.time;e.soldier=s.id;e.squad=s.squad;e.issuer=p.source;e.kind="support_sector_received";e.routeId=s.supportSector.route;e.geometry=s.assignment.geometry;e.reason=s.supportSector.lifted?"received assault-sector fire lift":"received priority sector; rotate between executable reported threats";rt.diagnostics->entries.push_back(e);}
         } else if(p.kind==ReactionKind::DeliveryReport) {
             if(f.time-p.delivery.observedAt<=(rt.recoveryFixture?10.f:6.f))RememberDelivery(s,p.delivery);
         } else if(p.kind==ReactionKind::TaskReport) {

@@ -356,7 +356,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         if(message.arrives>f.time){++i;continue;}
         rt.messages.erase(rt.messages.begin()+i);
         auto& recipient=f.soldiers[message.recipient];const auto& sender=f.soldiers[message.sender];
-        if(!recipient.Active()||(!sender.Active()&&message.kind!=CommandMessage::Kind::TaskStatus)||sender.team!=recipient.team||(sender.squad!=recipient.squad&&message.kind!=CommandMessage::Kind::Lane&&message.kind!=CommandMessage::Kind::Delivery))continue;
+        if(!recipient.Active()||(!sender.Active()&&message.kind!=CommandMessage::Kind::TaskStatus)||sender.team!=recipient.team||(sender.squad!=recipient.squad&&message.kind!=CommandMessage::Kind::Lane&&message.kind!=CommandMessage::Kind::Delivery&&message.kind!=CommandMessage::Kind::SupportSector))continue;
         if(message.kind==CommandMessage::Kind::Order) {
             const auto& cmd=f.command[recipient.squad];
             bool authorised=(IsPlatoonStaff(recipient)&&IsPlatoonStaff(sender))||sender.id==cmd.leader||(sender.role==Role::Corporal&&cmd.leader>=0&&sender.id!=recipient.id);
@@ -364,6 +364,11 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             PendingReaction reaction;reaction.kind=ReactionKind::Order;reaction.source=sender.id;reaction.order=message.assignment;
             QueueReaction(recipient,reaction,f.time,rt.reactions);
             log(EventKind::OrderReceived,sender.id,recipient.id,std::string(Name(recipient.id))+" hears "+TaskName(message.assignment.task)+" from "+Name(sender.id));
+        } else if(message.kind==CommandMessage::Kind::SupportSector) {
+            if(!config.recoveryFixture||sender.team!=recipient.team||sender.id!=f.command[sender.squad].leader||
+                f.command[sender.squad].support!=recipient.id)continue;
+            PendingReaction reaction;reaction.kind=ReactionKind::SupportSector;reaction.source=sender.id;reaction.supportSector=message.supportSector;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
         } else if(message.kind==CommandMessage::Kind::Contact) {
             auto& report=recipient.reports[message.enemy];
             if(f.time-std::max(message.contact.observedAt,message.contact.clearedAt)>120||
@@ -506,6 +511,13 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
                 send(cmd.leader,order.recipient,order.task,order.position,order.sector,order.teamPlan,order.hasSlot?&order.slot:nullptr);
                 cmd.drill.expected[order.recipient%SquadSize]=rt.lastSent[order.recipient].id;
                 cmd.drill.issuedSlots[order.recipient%SquadSize]=rt.lastSent[order.recipient].position;
+            }
+            if(cmd.drill.selected&&cmd.route&&cmd.support>=0&&f.time>=rt.nextSupportSector[team]){
+                rt.nextSupportSector[team]=f.time+2;
+                CommandMessage message;message.kind=CommandMessage::Kind::SupportSector;message.sender=cmd.leader;message.recipient=cmd.support;
+                message.arrives=f.time+MessageDelay;message.supportSector=AssaultSupportSector(f.soldiers[cmd.leader],cmd,knownMap,f.time);
+                rt.messages.push_back(message);
+                TraceProposal(rt.diagnostics,f.soldiers[cmd.leader],cmd,knownMap,f.time,"support_sector_sent",std::string(message.supportSector.lifted?"lift sector: ":"prioritize threats overlooking assault slots: ")+std::to_string(message.supportSector.threats.size())+" known tracks");
             }
             continue; // This controller owns destinations; no legacy maneuver or corporal formation refresh.
         }

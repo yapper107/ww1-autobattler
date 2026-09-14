@@ -115,7 +115,7 @@ struct Assignment {
     float issuedAt = 0, receivedAt = 0, activatedAt = 0;
     TeamPlan teamPlan;
 };
-enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport };
+enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector };
 enum class Action { Advance, Cover, Fire, Retreat, Hold, Wounded, Killed };
 enum class Reason { Search, Contact, Suppressed, Injury, ClearShot, Watching, LostContact, Down,
     Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition };
@@ -148,6 +148,8 @@ struct Contact {
     bool automaticWeapon=false;
     float clearedAt=-100, emptySince=-1, passedAt=-1, lastFireAt=-100;
 };
+struct SupportThreat {int enemy=-1;Contact contact;};
+struct SupportSector {uint64_t route=0;float observedAt=-100;bool lifted=false;std::vector<SupportThreat> threats;};
 struct FireArea { Vec3 position{}; float intensity=0, observedAt=-100; };
 struct FireLane { Vec3 origin{}, target{}; float spread=0.06f, observedAt=-100; };
 enum class PlatoonTask { None, Support, FlankNorth, FlankSouth, Consolidate, Reserve };
@@ -177,6 +179,7 @@ struct DeliveredRound {float at=0;Vec3 target{};};
 struct FireDelivery { int shooter=-1, enemy=-1, rounds=0; Vec3 origin{}, target{}; float firstAt=-100, observedAt=-100; std::array<float,8> times{{-100,-100,-100,-100,-100,-100,-100,-100}}; std::vector<DeliveredRound> history; };
 struct MoveFailure { int soldier=-1, order=0; Vec3 destination{}; float observedAt=-100; };
 struct Soldier {
+    SupportSector supportSector;
     std::array<TaskReceipt,SquadSize> taskReports{};
     std::vector<TaskReceipt> taskOutbox;
     bool taskLossReported=false;

@@ -48,8 +48,10 @@ void UpdateTaskReports(Frame& f,CommandRuntime& rt){
 }
 void PrepareTaskExecution(const Soldier& s,Tactics& memory,float time){
     bool moving=s.assignment.task==Task::BoundMove||s.assignment.task==Task::Flank||s.assignment.task==Task::PullBack||s.assignment.task==Task::Rally||s.assignment.task==Task::BoundCover||s.assignment.task==Task::Overwatch;
-    if(s.assignment.hasSlot&&Distance(s.position,s.assignment.position)<1.5f&&(!memory.assigned||(!memory.emergency&&Distance(memory.shelter,s.assignment.slot.shelter)>.04f))){
-        const auto& slot=s.assignment.slot;memory.assigned=true;memory.coverId=slot.id;memory.geometryRevision=s.assignment.geometry;memory.shelter=slot.shelter;memory.peek=slot.peek;memory.halfCover=slot.crouch;memory.expires=time+180;memory.lastProgress=time;
+    if(s.assignment.hasSlot&&Distance(s.position,s.assignment.position)<1.5f&&(!memory.assigned||memory.emergency||Distance(memory.shelter,s.assignment.slot.shelter)>.04f)){
+        // Emergency arrival at the assigned shelter resumes the same task.
+        // Completion still requires the existing firing-position predicate.
+        const auto& slot=s.assignment.slot;memory.emergency=false;memory.assigned=true;memory.coverId=slot.id;memory.geometryRevision=s.assignment.geometry;memory.shelter=slot.shelter;memory.peek=slot.peek;memory.halfCover=slot.crouch;memory.expires=time+180;memory.lastProgress=time;
     }
     if(moving&&memory.assigned&&Distance(memory.shelter,s.assignment.position)>2&&
         (!memory.emergency||s.suppression<.08f)&&s.suppression<.35f&&s.reloadUntil<=time)memory={};

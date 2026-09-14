@@ -118,3 +118,7 @@ See `RECOVERY_GATE_RESULTS.md` for source `d220f8cc8bfa343b`: pinned fixture rol
 ## Recovery destination correction
 
 See `RECOVERY_DESTINATION_FIX.md` for source `f2424236795f5531`: route objectives use assigned firing-peek centroids while navigation retains shelters. Layout 5 now passes 3/3 on Linux and Windows with identical prior gameplay frames and an unchanged evaluator. The full Linux matrix passes 5/9, below its 8/9 target. The recovery controller remains fixture-only.
+
+## Third recovery pass: rejected behavior result
+
+See `RECOVERY_THIRD_PASS_RESULTS.md` for the staged Cause A–E measurements. The combined candidate passes 2/9, below the preceding 5/9; it remains fixture-only. `tools/run_recovery_pass.py --out DIR --layouts 5 6 7` runs every requested case and saves gate audits without early stopping, so regressions remain measurable. This investigation runner does not change the evaluator or the separate acceptance gate.
