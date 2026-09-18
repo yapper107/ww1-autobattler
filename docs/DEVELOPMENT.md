@@ -1,3 +1,16 @@
+## Current AI default — 16 September 2026
+
+New battles use legacy while the drills controller is built. Use `--cognition`
+in the CLI or `-ArmyCognition` in Unreal for preserved candidate90;
+`--legacy-ai` / `-ArmyLegacy` remain explicit legacy selectors. `-ArmyTrenches`
+selects Trenches. Recorded-manifest reruns preserve controller and duration.
+The rejected crowding hotfix remains archived; see [the decision](AI_MAIN_BUILD.md).
+
+Candidate90 supports encounters 0–43. Later research encounters 44–59 and their
+contracts belong to the [candidate141 archive](../experiments/candidate141/README.md).
+The [main-build report](AI_MAIN_BUILD.md) supersedes older opt-in status notes below.
+No additional Visual Studio or Unreal downloads are needed on this machine.
+
 # Development environment
 
 ## Verified setup
@@ -32,7 +45,7 @@ Install `g++` and `rsync` in WSL. Configure the Windows build destination once i
 ```bash
 mkdir -p .local
 cat > .local/paths.env <<'EOF'
-ARMY_ENGINE_DIR='/mnt/c/Program Files/Epic Games/UE_5.4'
+ARMY_ENGINE_DIR='/mnt/c/Program Files/Epic Games/UE_5.8'
 ARMY_WINDOWS_BUILD_DIR='/mnt/c/Users/YOUR_USER/Documents/Codex/ArmyPrototype'
 EOF
 ```
@@ -266,3 +279,117 @@ Delivered simulation build `3679481d18031c1f` preserves the preceding `1e94efaf1
 Retained changes reuse exact directed regional-edge costs per actor assessment, compact the revision-valid visibility cache, skip provably non-contributing visibility queries, and capture pauses raised during fireteam coordination. Ten archived full battles reproduced their authoritative digests under the performance-only changes. Final tracing-off seed 107, the unchanged nine-scenario controlled matrix, full/focused C++ regressions, 21 Python tests, Windows native/module builds and main/trench Unreal checks passed. Source/config contents match the Windows mirror.
 
 Twenty-four serialized Windows native runs (seeds 107–109, first/repeated process runs, trace on/off) measured median simulation 16.57s → 12.29s and simulation plus export 17.97s → 13.70s. The reductions are 25.8% and 23.8%; total narrowly misses the 25% target. Peak process working set increased about 80 MiB. First/repeated is not true OS-cache-cold testing. A separate uncontended seed-107 Unreal Run Battle check measured 15.48s including export. The new `investigate_engagement.py`, stricter seed-set matching, observer hold metrics, and `verify_gameplay_parity.py` make subsequent changes reviewable against archived evidence.
+
+## Home host / UE 5.8 verification (2026-09-14)
+
+This host now has a working Windows toolchain. The earlier UE 5.4/MSVC 14.38
+entries describe the other machine and its historical checks.
+
+| Component | Verified installation |
+| --- | --- |
+| Engine | `C:\Program Files\Epic Games\UE_5.8` |
+| IDE installation | Visual Studio Community 2026, 18.10.12201.205 |
+| Compiler used by Unreal | MSVC 14.51.36257, toolchain directory 14.51.36231 |
+| Windows SDK | 10.0.26100.0 |
+| Build runtime | Engine-bundled .NET 10 |
+| Windows build mirror | `C:\Users\Jordan Chan\Documents\Codex\ArmyPrototype` |
+
+Visual Studio registration reports a complete, launchable installation. Unreal
+warns that MSVC 14.51 is newer than its preferred compiler, but the editor module
+compiled and linked successfully with it. No additional download was needed for
+these builds. This does not verify optional Visual Studio debugger integration.
+
+The project now declares UE 5.8, build settings V7 and the UE 5.8 include order.
+The engine selects its own .NET runtime. `build.sh` writes a quoted batch file in
+the Windows mirror to avoid WSL UNC working-directory and nested-quote failures.
+A shadowed local in `RecoverySim.cpp` was renamed for the stricter compiler;
+simulation source ID changed from `59fbe5635ddb36bf` to `bdebee7423944a54` without
+changing that function's behavior. The main directional light also gets explicit
+forward-shading priority, resolving the warning displayed over the interface.
+
+Native Windows CLI and focused/foundations C++ checks passed. Foundations seed
+107 at 90 seconds reproduced digest `11921550369815342934` with tracing on and
+off. These are Windows repeatability checks; Linux and Windows digests differ.
+The prior Linux full-suite and ten-seed isolation results remain attributed to
+their original source revision in [AI_FOUNDATIONS_RESULTS.md](AI_FOUNDATIONS_RESULTS.md).
+
+Local build/test logs are in `.local/windows-validation/`. Machine paths remain
+in ignored `.local/paths.env`; generated binaries and traces stay outside Git.
+`Unreal/.vsconfig` remains an importable component selection for new machines.
+
+Unreal main-map smoke seed 108 passed preparation, battle playback, stairs,
+both-floor firing, command displays, result/restart and replay-cache checks.
+Trench smoke seed 108 passed terrain, below-ground movement and replay checks,
+including a repeat after the lighting fix. Captured preparation and battle screens
+were inspected; the repeated trench capture no longer displays the lighting
+warning. This verifies those integration paths, not tactical quality or final art.
+Source and Config contents match the Windows build mirror.
+
+
+## Cognition upgrade verification (2026-09-14)
+
+Prior experimental simulation identity `c8bac9e44840cd47`. UE5.8 and native Windows
+CLI builds pass with the toolchain above; no additional Visual Studio component,
+planner, ML runtime or Unreal plugin was required. Use `./scripts/launch.sh
+-ArmyCognition -ArmyScenario=8 -ArmyBattleSeconds=70` for the 70-second experimental inspector fixture.
+Scenarios 9 and 10 are also selectable. Authoritative feature testing runs in the
+standalone C++ lab without launching Unreal.
+
+Linux and Windows cognition scenarios pass, including front/rear/blocked vision,
+stale memory, delayed reporting, support-gated methods, officer profiles, real
+geometry obstruction, and the clear-but-out-of-range viewpoint case. The preceding
+`a28f1c8d7f6aa7ff` candidate passed the full Linux regression suite (254.929 seconds),
+recovery/foundations checks, 27 Python tests, exact normal-game parity on ten
+six-minute seeds, native focused tests and main/trench/cognition Unreal smoke
+checks. The final cognition-only range correction passed its affected Linux and
+Windows suite and cognition Unreal replay check. The strict tactical result remains
+**0/9**, so no default promotion occurred. See
+[AI_COGNITION_IMPLEMENTATION.md](AI_COGNITION_IMPLEMENTATION.md) for attribution,
+causal traces, exact source distinctions and unresolved coordination behavior.
+
+## Decision-to-action loop
+
+Current implementation and gate status are in [AI_DECISION_LOOP_RESULTS.md](AI_DECISION_LOOP_RESULTS.md).
+Source `228617a248e8f17b` builds with the existing UE5.8 / Visual Studio toolchain;
+no new downloads are needed. Cognition remains opt-in at 7/9 on both platforms.
+
+`./scripts/test-sim-windows.sh --decision-loop` synchronizes the standalone source,
+builds native C++ scenario tests and runs them. The source-stamped test executable
+is placed in the Windows mirror's ignored `Saved/BattleLab` folder. Other test
+selectors are `--cognition`, `--normal-cognition` and `--foundations`.
+
+Preparation now offers a 1–10 minute slider in 30-second steps, default six minutes.
+Normal and experimental battles use that selection; `-ArmyBattleSeconds=` provides
+an exact fixture override. To check full normal-map replay and seeking:
+
+```sh
+./scripts/launch.sh -ArmyCognition -ArmyScenario=0 -ArmyBattleSeconds=600 -ArmySeed=108 -ArmySmokeTest -unattended
+./scripts/launch.sh -ArmyCognition -ArmyTrenches -ArmyScenario=0 -ArmyBattleSeconds=600 -ArmySeed=108 -ArmySmokeTest -unattended
+```
+
+Run these sequentially. They check preparation duration bounds/rounding, simulate,
+seek backward/forward and to the end, verify recorded knowledge/execution state,
+capture the inspector, and exit. `-ArmyLegacy` explicitly selects legacy behavior.
+
+## Generated CLI scenarios
+
+Phase 1 supports `--generated F1 --gen-seed N` with explicit `--legacy-ai` or
+`--cognition` (default remains legacy). Generation is independent of `--seed`.
+Generated maps cannot be combined with an authored encounter, `--terrain 1`, or
+recovery fixtures. F2/F3 and the drills controller are not selectable yet.
+Use `--evaluate` for schema-2 observer frames; shot records and scenario metadata
+are exported with the battle. See [family baseline commands](BATTLE_LAB.md#generated-family-baselines-plan-014-phase-1).
+
+### Experimental Phase 2 drills controller
+
+New battles still default to legacy. `--drills` selects the experimental battle-drill
+controller; `--cognition` selects preserved candidate90. The last explicit CLI
+controller flag wins. For Unreal use `-ArmyDrills` (`-ArmyLegacy` overrides it).
+Generated F1 preparation/playback accepts `-ArmyGenerated=F1 -ArmyGenSeed=N`.
+Native verification of these new flags remains with the architect.
+
+Run position/template checks with `./scripts/test-sim.sh --drills positions`;
+mechanism pairs are individually selectable as `--drills D01`, D02, D03, D04,
+D05 and D17. `--drills` alone runs them in assertion order, stopping on failure.
+This candidate has failing mechanism and per-run exit criteria; see
+[the Phase 2 report](../.local/handoffs/014-phase2-report.md).

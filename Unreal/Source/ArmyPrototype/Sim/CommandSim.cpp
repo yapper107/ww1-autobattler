@@ -1,4 +1,9 @@
 #include "CommandSim.h"
+#include "TacticalRouteSim.h"
+#include "CognitiveSim.h"
+#include "DrillSim.h"
+#include "PerceptionSim.h"
+#include "BeliefSim.h"
 #include "TaskSim.h"
 #include "RecoverySim.h"
 #include "CoordinationSim.h"
@@ -135,7 +140,7 @@ void ObserveEmptyTracks(Soldier& s,const Map& map,float time) {
         bool empty=Distance(s.position,ct.position)+radius<SightRange(s);
         Vec3 eye=s.position+Vec3{0,0,s.stance==Stance::Crouched?.82f:1.7f};
         for(Vec3 delta:{Vec3{},Vec3{radius,0},Vec3{-radius,0},Vec3{0,radius},Vec3{0,-radius}})
-            empty=empty&&ClearLine3D(map,eye,ct.position+delta+Vec3{0,0,.55f});
+            empty=empty&&InVisualField(s,ct.position+delta,SightRange(s))&&ClearLine3D(map,eye,ct.position+delta+Vec3{0,0,.55f});
         for(const auto& seen:s.contacts)if(seen.visible&&time-seen.observedAt<2&&Distance(seen.position,ct.position)<radius+2)empty=false;
         if(!empty)ct.emptySince=-1;
         else if(ct.emptySince<0)ct.emptySince=time;
@@ -215,8 +220,15 @@ static Vec3 UsefulFiringPosition(const Soldier& leader,const Soldier& s,const Ma
     return result;
 }
 std::vector<PlannedOrder> PlanSquad(const Soldier& officer,const std::vector<Soldier>& friends,
-    const Map& map,const Config&,const SquadCommand& command,float time) {
+    const Map& map,const Config& config,const SquadCommand& command,float time) {
+    if(config.drills)return DrillOrders(officer,friends,command,time);
+    if(config.cognition)return CognitiveOrders(officer,friends,command,time);
     std::vector<PlannedOrder> orders;
+    if(config.foundations&&command.platoonTask==PlatoonTask::Observe){
+        for(const auto& unit:friends)if(unit.Active()&&!IsPlatoonStaff(unit))
+            orders.push_back({unit.id,Task::Hold,unit.position,officer.platoonOrder.sector,{},false,{}});
+        return orders;
+    }
     const Soldier leader=WithTracks(officer,time);
     bool freshContact=false,healthyMember=false;
     for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<=120)freshContact=true;
@@ -356,7 +368,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         if(message.arrives>f.time){++i;continue;}
         rt.messages.erase(rt.messages.begin()+i);
         auto& recipient=f.soldiers[message.recipient];const auto& sender=f.soldiers[message.sender];
-        if(!recipient.Active()||(!sender.Active()&&message.kind!=CommandMessage::Kind::TaskStatus)||sender.team!=recipient.team||(sender.squad!=recipient.squad&&message.kind!=CommandMessage::Kind::Lane&&message.kind!=CommandMessage::Kind::Delivery&&message.kind!=CommandMessage::Kind::SupportSector))continue;
+        if(!recipient.Active()||(!sender.Active()&&message.kind!=CommandMessage::Kind::TaskStatus)||sender.team!=recipient.team||(sender.squad!=recipient.squad&&message.kind!=CommandMessage::Kind::Lane&&message.kind!=CommandMessage::Kind::Delivery&&message.kind!=CommandMessage::Kind::SupportSector&&message.kind!=CommandMessage::Kind::SupportProgress))continue;
         if(message.kind==CommandMessage::Kind::Order) {
             const auto& cmd=f.command[recipient.squad];
             bool authorised=(IsPlatoonStaff(recipient)&&IsPlatoonStaff(sender))||sender.id==cmd.leader||(sender.role==Role::Corporal&&cmd.leader>=0&&sender.id!=recipient.id);
@@ -365,9 +377,20 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             QueueReaction(recipient,reaction,f.time,rt.reactions);
             log(EventKind::OrderReceived,sender.id,recipient.id,std::string(Name(recipient.id))+" hears "+TaskName(message.assignment.task)+" from "+Name(sender.id));
         } else if(message.kind==CommandMessage::Kind::SupportSector) {
-            if(!config.recoveryFixture||sender.team!=recipient.team||sender.id!=f.command[sender.squad].leader||
-                f.command[sender.squad].support!=recipient.id)continue;
+            if((!config.recoveryFixture&&!TypedController(config))||sender.team!=recipient.team||sender.id!=f.command[sender.squad].leader||
+                (TypedController(config)?(CommandSupport(f.command[sender.squad],true)!=recipient.id&&
+                    (CommandSupport(f.command[sender.squad],true)<0||f.command[CommandSupport(f.command[sender.squad],true)/SquadSize].leader!=recipient.id)):f.command[sender.squad].support!=recipient.id))continue;
             PendingReaction reaction;reaction.kind=ReactionKind::SupportSector;reaction.source=sender.id;reaction.supportSector=message.supportSector;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::SupportProgress) {
+            const auto& progress=message.supportProgress;
+            const bool ownerLoss=progress.status==TaskStatus::Failed&&progress.cause==TaskCause::Casualty&&
+                progress.shooter>=0&&progress.shooter<UnitCount&&progress.shooter/SquadSize==sender.squad&&
+                sender.id==f.command[sender.squad].leader;
+            if(!config.cognition||recipient.id!=f.command[recipient.squad].leader||
+                progress.shooter!=f.command[recipient.squad].accepted.support||
+                (!ownerLoss&&(sender.id!=progress.shooter)))continue;
+            PendingReaction reaction;reaction.kind=ReactionKind::SupportProgress;reaction.source=sender.id;reaction.supportProgress=message.supportProgress;
             QueueReaction(recipient,reaction,f.time,rt.reactions);
         } else if(message.kind==CommandMessage::Kind::Contact) {
             auto& report=recipient.reports[message.enemy];
@@ -401,11 +424,21 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
     }
     ProcessReactions(f,rt.reactions,events);
     rt.platoon.geometryViews=rt.geometryViews;UpdatePlatoon(f,map,config,rt.platoon,rt.reactions,events);
-    auto send=[&](int sender,int recipient,Task task,Vec3 position,Vec3 sector,const TeamPlan& plan=TeamPlan{},const CoverPosition* slot=nullptr) {
-        const bool recovery=config.recoveryFixture&&f.soldiers[recipient].team!=rt.fixedDefender;
+    auto send=[&](int sender,int recipient,Task task,Vec3 position,Vec3 sector,const TeamPlan& plan=TeamPlan{},const CoverPosition* slot=nullptr,ExecutionContract execution=ExecutionContract{}) {
+        const bool recovery=(config.recoveryFixture||config.foundations)&&f.soldiers[recipient].team!=rt.fixedDefender;
+        GoalIntent intent;
+        if(config.foundations){
+            const auto& issuer=f.soldiers[sender];
+            if(issuer.platoonOrder.intent.id&&f.time<issuer.platoonOrder.expiresAt)intent=issuer.platoonOrder.intent;
+            else if(issuer.assignment.intent.id&&f.time<issuer.assignment.intent.expiresAt)intent=issuer.assignment.intent;
+        }
+        if(config.cognition){const auto& accepted=f.command[f.soldiers[sender].squad].accepted;intent=f.time<accepted.intent.expiresAt?accepted.intent:GoalIntent{};}
+        if(config.drills){const auto& plan=f.command[f.soldiers[sender].squad].battleDrill;intent=plan.intent;}
         const Vec3 requested=position;
-        if(recovery&&EquivalentTask(rt.lastSent[recipient],task,position,sector,plan.targetEnemy)&&rt.lastSent[recipient].teamPlan.liftFire==plan.liftFire&&rt.lastSent[recipient].hasSlot==(slot!=nullptr)&&
-            (!slot||(rt.lastSent[recipient].slot.id==slot->id&&Distance(rt.lastSent[recipient].slot.shelter,slot->shelter)<.05f&&Distance(rt.lastSent[recipient].slot.peek,slot->peek)<.05f)))return;
+        const bool drillPauseAmendment=config.drills&&rt.lastSent[recipient].drillInstance>0&&rt.lastSent[recipient].execution.paused!=execution.paused;
+        const bool retainedTask=recovery&&rt.lastSent[recipient].intent.id==intent.id&&rt.lastSent[recipient].execution.method==execution.method&&rt.lastSent[recipient].execution.stage==execution.stage&&rt.lastSent[recipient].execution.generation==execution.generation&&rt.lastSent[recipient].execution.completion==execution.completion&&rt.lastSent[recipient].execution.unavailable==execution.unavailable&&rt.lastSent[recipient].execution.rifleSupport==execution.rifleSupport&&rt.lastSent[recipient].execution.supportThreat==execution.supportThreat&&EquivalentTask(rt.lastSent[recipient],task,position,sector,plan.targetEnemy)&&rt.lastSent[recipient].teamPlan.liftFire==plan.liftFire&&rt.lastSent[recipient].teamPlan.assaultAreaFire==plan.assaultAreaFire&&(drillPauseAmendment||(rt.lastSent[recipient].hasSlot==(slot!=nullptr)&&
+            (!slot||(rt.lastSent[recipient].slot.id==slot->id&&Distance(rt.lastSent[recipient].slot.shelter,slot->shelter)<.05f&&Distance(rt.lastSent[recipient].slot.peek,slot->peek)<.05f))));
+        if(retainedTask&&rt.lastSent[recipient].execution.paused==execution.paused&&rt.lastSent[recipient].execution.arrivalCheck==execution.arrivalCheck)return;
         const Map& orderMap=recovery&&rt.geometryViews?(*rt.geometryViews)[sender]:map;
         if(!ResolveOrderPosition(orderMap,f.soldiers[recipient].position,requested,position)) {
             log(EventKind::Decision,sender,recipient,std::string(Name(sender))+": no reachable waypoint for "+Name(recipient));return;
@@ -419,8 +452,10 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             unit.understoodSuppression<0.52f&&Distance(unit.position,last.position)>1.5f&&
             Distance(last.position,position)>2&&!FindPath(map,unit.position,last.position).empty())return;
         if(!recovery&&last.issuer==sender&&last.task==task&&Distance(last.position,position)<2&&Distance(last.sector,sector)<6&&last.teamPlan.serial==plan.serial)return;
-        Assignment order;order.geometry=orderMap.revision;order.target=plan.targetEnemy;order.task=task;order.issuer=sender;order.serial=rt.nextSerial++;
-        order.position=position;order.sector=sector;if(slot){order.hasSlot=true;order.slot=*slot;}if(recovery){order.id=uint64_t(order.serial);order.statusAt=f.time;}order.teamPlan=plan;order.issuedAt=f.time;last=order;
+        Assignment order;
+        if(config.drills){const auto& p=f.command[f.soldiers[sender].squad].battleDrill;order.drillInstance=p.instance;order.element=p.elements[recipient%SquadSize];order.baseOfFire=order.element>=0&&!p.movers[recipient%SquadSize];order.areaMin=p.areaMin;order.areaMax=p.areaMax;order.areaRoute=p.platoonArea?p.acceptedDirective.corridor:nullptr;order.areaRouteRadius=p.platoonArea?p.acceptedDirective.areaRouteRadius:0;order.areaDiscCenter=p.action.objective;order.areaDiscRadius=(!p.platoonArea&&(p.kind==BattleDrill::SupportByFire||p.kind==BattleDrill::SquadAttack||p.action.closureFallback))?60.f:0.f;if(p.platoonArea&&p.acceptedDirective.areaRouteRadius>0){order.areaDiscCenter=p.acceptedDirective.areaDiscCenter;order.areaDiscRadius=60;}}
+        order.execution=execution;order.intent=intent;order.geometry=orderMap.revision;order.target=plan.targetEnemy;order.task=task;order.issuer=sender;order.serial=rt.nextSerial++;
+        order.position=position;order.sector=sector;if(slot){order.hasSlot=true;order.slot=*slot;}if(recovery){order.id=TypedController(config)&&retainedTask?last.id:uint64_t(order.serial);order.statusAt=f.time;}order.teamPlan=plan;order.issuedAt=f.time;last=order;
         TraceOrder(rt.diagnostics,f.soldiers[recipient],order,f.time,"order_issued");
         log(EventKind::OrderIssued,sender,recipient,std::string(Name(sender))+" orders "+Name(recipient)+": "+TaskName(task));
         if(Distance(requested,position)>0.1f)log(EventKind::Decision,sender,recipient,std::string(Name(sender))+": adjusts blocked waypoint for "+Name(recipient));
@@ -428,9 +463,38 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             PendingReaction reaction;reaction.kind=ReactionKind::Order;reaction.order=order;reaction.source=sender;
             QueueReaction(f.soldiers[recipient],reaction,f.time,rt.reactions);return;
         }
-        CommandMessage message;message.sender=sender;message.recipient=recipient;message.arrives=f.time+MessageDelay;message.assignment=order;
+        CommandMessage message;message.sender=sender;message.recipient=recipient;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);message.assignment=order;
         rt.messages.push_back(message);
     };
+    // A gun reports its own live assignment in response to a received request.
+    // Deployment reports never count as delivered fire and retain the task deadline.
+    if(config.cognition)for(const auto& gun:f.soldiers){
+        const auto& request=gun.supportSector;const auto& task=gun.assignment;
+        if(!gun.Active()||request.shooter!=gun.id||request.requester<0||!request.route||
+            f.time-request.observedAt>8||task.execution.completion!=Completion::Support||!task.id||
+            Distance(task.sector,request.focus)>6||f.time<rt.nextSupportProgress[gun.id])continue;
+        rt.nextSupportProgress[gun.id]=f.time+1;
+        CommandMessage message;message.kind=CommandMessage::Kind::SupportProgress;message.sender=gun.id;message.recipient=request.requester;
+        message.arrives=f.time+config.reportDelay;auto& report=message.supportProgress;
+        report.shooter=gun.id;report.assignment=task.id;report.route=request.route;report.stage=request.stage;
+        report.position=gun.position;report.sector=task.sector;report.observedAt=f.time;report.statusAt=task.statusAt;
+        report.deadline=task.execution.deadline;report.status=task.status;report.cause=task.cause;
+        rt.messages.push_back(message);
+    }
+    // Relay received casualty evidence through the living support squad leader.
+    // The casualty timestamp remains the original receipt time, even on retries.
+    if(config.cognition)for(int squad=0;squad<SquadCount;++squad){
+        const int id=f.command[squad].leader;if(id<0)continue;const auto& leader=f.soldiers[id];const auto& request=leader.supportSector;
+        if(!leader.Active()||request.shooter<0||request.shooter/SquadSize!=squad||request.requester<0||!request.route||
+            f.time-request.observedAt>8||f.time<rt.nextSupportProgress[id])continue;
+        const auto& receipt=leader.taskReports[request.shooter%SquadSize];
+        if(receipt.soldier!=request.shooter||receipt.active||receipt.status!=TaskStatus::Failed||receipt.cause!=TaskCause::Casualty)continue;
+        rt.nextSupportProgress[id]=f.time+1;
+        CommandMessage message;message.kind=CommandMessage::Kind::SupportProgress;message.sender=id;message.recipient=request.requester;message.arrives=f.time+config.reportDelay;
+        auto& report=message.supportProgress;report.shooter=request.shooter;report.assignment=receipt.id;report.route=request.route;report.stage=request.stage;
+        report.position=receipt.position;report.sector=request.focus;report.observedAt=report.statusAt=receipt.at;report.status=TaskStatus::Failed;report.cause=TaskCause::Casualty;
+        rt.messages.push_back(message);
+    }
     // Attached command staff follow their host squad, fight and seek cover, but
     // are not included in its assault formation or subordinate command chain.
     for(auto& s:f.soldiers)if(s.Active()&&IsPlatoonStaff(s)&&f.time>=rt.nextNco[s.id]) {
@@ -439,16 +503,38 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         if(count){anchor=anchor*(1.f/count);Vec3 pos=anchor+Vec3{s.team?7.f:-7.f,s.role==Role::Lieutenant?-3.f:3.f};
             send(s.id,s.id,Task::Hold,pos,anchor+Vec3{s.team?-30.f:30.f,0});}
     }
+    // Useful-fire dependencies need prompt change reports, independently of the
+    // periodic situation summary. Every hop still pays transport and reaction delay.
+    if(TypedController(config))for(const auto& s:f.soldiers)if(s.Active()&&!IsPlatoonStaff(s)&&f.time>=rt.nextDeliveryReport[s.id]){
+        rt.nextDeliveryReport[s.id]=f.time+.5f;
+        const auto& cmd=f.command[s.squad];const int nco=s.squad*SquadSize+1;
+        const int parent=(s.id==nco||s.id==cmd.support||(config.cognition&&s.id==cmd.accepted.localSupport)||!f.soldiers[nco].Active()||cmd.leader==nco)?cmd.leader:nco;
+        for(const auto& evidence:s.deliveries)if(evidence.shooter>=0&&evidence.shooter<UnitCount&&f.time-evidence.observedAt<6){
+            auto& sent=rt.sentTargetDeliveryAt[(uint64_t(s.id)*UnitCount+evidence.shooter)*(UnitCount+1)+uint64_t(evidence.enemy+1)];
+            if(evidence.observedAt<=sent)continue;
+            auto relay=[&](int receiver){if(receiver<0||receiver==s.id||!f.soldiers[receiver].Active())return;
+                CommandMessage message;message.kind=CommandMessage::Kind::Delivery;message.sender=s.id;message.recipient=receiver;message.arrives=f.time+config.reportDelay;message.delivery=evidence;rt.messages.push_back(message);};
+            if(s.id==cmd.leader){relay(nco);for(int other=0;other<SquadCount;++other)if(other!=s.squad&&other/SquadsPerTeam==s.team)relay(f.command[other].leader);}
+            else relay(parent);
+            // Reply to the maneuver's explicit request over the same delayed
+            // channel as deployment status. Preserve the projectile timestamp.
+            const auto& request=s.supportSector;
+            if(evidence.shooter==s.id&&request.shooter==s.id&&request.requester>=0&&
+                f.time-request.observedAt<=8&&request.requester!=parent&&(Distance(evidence.target,request.focus)<18||
+                    std::any_of(request.threats.begin(),request.threats.end(),[&](const SupportThreat& t){return t.enemy==evidence.enemy;})))relay(request.requester);
+            sent=evidence.observedAt;
+        }
+    }
     for(auto& s:f.soldiers)if(s.Active()&&!IsPlatoonStaff(s)&&f.time>=rt.nextReport[s.id]) {
         rt.nextReport[s.id]=f.time+2;
         auto& cmd=f.command[s.squad];int nco=s.squad*SquadSize+1;
-        int parent=(s.id==nco||s.id==cmd.support||!f.soldiers[nco].Active()||cmd.leader==nco)?cmd.leader:nco;
-        if(!config.recoveryFixture&&cmd.leader>=0&&s.id!=cmd.leader&&
+        int parent=(s.id==nco||s.id==cmd.support||(config.cognition&&s.id==cmd.accepted.localSupport)||!f.soldiers[nco].Active()||cmd.leader==nco)?cmd.leader:nco;
+        if(!config.recoveryFixture&&!config.foundations&&cmd.leader>=0&&s.id!=cmd.leader&&
             (s.assignment.task==Task::Advance||s.assignment.task==Task::Flank||s.assignment.task==Task::BoundMove)&&
             (s.reason==Reason::EmergencyCover||s.reason==Reason::ProtectedHold||s.reason==Reason::Suppressed)&&
             Distance(s.position,s.assignment.position)>3) {
             CommandMessage message;message.kind=CommandMessage::Kind::Movement;message.sender=s.id;message.recipient=cmd.leader;
-            message.failedMove={s.id,s.assignment.serial,s.assignment.position,f.time};message.arrives=f.time+MessageDelay;rt.messages.push_back(message);
+            message.failedMove={s.id,s.assignment.serial,s.assignment.position,f.time};message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
         }
         if(s.blockedSeconds>=1&&(s.holdingFire||f.time-s.lastBlockedAt<4))
             s.blockedLanes[s.id]={s.position,s.aimPoint,ShotSpread(s),f.time};
@@ -458,35 +544,35 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
                 const auto& lane=s.blockedLanes[shooter];
                 if(f.time-lane.observedAt>8||lane.observedAt<=f.soldiers[receiver].blockedLanes[shooter].observedAt)continue;
                 CommandMessage message;message.kind=CommandMessage::Kind::Lane;message.sender=s.id;message.recipient=receiver;
-                message.subject=shooter;message.fireLane=lane;message.arrives=f.time+MessageDelay;rt.messages.push_back(message);
+                message.subject=shooter;message.fireLane=lane;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
             }
         };
         if(s.id==cmd.leader) {
             relayLanes(nco);
             for(int other=0;other<SquadCount;++other)if(other!=s.squad&&other/SquadsPerTeam==s.team)relayLanes(f.command[other].leader);
         } else relayLanes(parent);
-        auto relayFire=[&](int receiver){if(receiver<0||receiver==s.id)return;for(const auto& e:s.deliveries)if(e.shooter>=0&&f.time-e.observedAt<(config.recoveryFixture?10.f:6.f)){CommandMessage m;m.kind=CommandMessage::Kind::Delivery;m.sender=s.id;m.recipient=receiver;m.arrives=f.time+MessageDelay;m.delivery=e;rt.messages.push_back(m);}};
-        if(s.id==cmd.leader){relayFire(nco);for(int other=0;other<SquadCount;++other)if(other!=s.squad&&other/SquadsPerTeam==s.team)relayFire(f.command[other].leader);}
-        else relayFire(parent);
+        auto relayFire=[&](int receiver){if(receiver<0||receiver==s.id)return;for(const auto& e:s.deliveries)if(e.shooter>=0&&f.time-e.observedAt<(config.recoveryFixture?10.f:6.f)){CommandMessage m;m.kind=CommandMessage::Kind::Delivery;m.sender=s.id;m.recipient=receiver;m.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);m.delivery=e;rt.messages.push_back(m);}};
+        if(!TypedController(config)){if(s.id==cmd.leader){relayFire(nco);for(int other=0;other<SquadCount;++other)if(other!=s.squad&&other/SquadsPerTeam==s.team)relayFire(f.command[other].leader);}
+        else relayFire(parent);}
         if(s.id==cmd.leader||parent<0||parent==s.id)continue;
         for(const auto& area:s.fireAreas)if(area.intensity>0&&f.time-area.observedAt<=18) {
             CommandMessage message;message.kind=CommandMessage::Kind::Fire;message.sender=s.id;message.recipient=parent;
-            message.fireArea=area;message.arrives=f.time+MessageDelay;rt.messages.push_back(message);
+            message.fireArea=area;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
         }
         for(const auto& friendUnit:f.soldiers)if(friendUnit.squad==s.squad&&KnowsWounded(s,friendUnit)&&!f.soldiers[parent].knownWounded[friendUnit.id]) {
             CommandMessage message;message.kind=CommandMessage::Kind::Wound;message.sender=s.id;message.recipient=parent;
-            message.subject=friendUnit.id;message.arrives=f.time+MessageDelay;rt.messages.push_back(message);
+            message.subject=friendUnit.id;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
         }
         const auto knowledge=WithTracks(s,f.time);
         for(int enemy=0;enemy<UnitCount;++enemy) {
             const auto& ct=knowledge.contacts[enemy];
             if((!ct.known&&ct.clearedAt<=-100)||f.time-std::max(ct.observedAt,ct.clearedAt)>120)continue;
             CommandMessage message;message.kind=CommandMessage::Kind::Contact;message.sender=s.id;message.recipient=parent;
-            message.enemy=enemy;message.contact=ct;message.contact.visible=false;message.arrives=f.time+MessageDelay;rt.messages.push_back(message);
+            message.enemy=enemy;message.contact=ct;message.contact.visible=false;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
         }
         if(s.id==cmd.support&&cmd.leader>=0) {
             CommandMessage message;message.kind=CommandMessage::Kind::Ready;message.sender=s.id;message.recipient=cmd.leader;
-            message.arrives=f.time+MessageDelay;
+            message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);
             // Local shelter/peek corrections can move a deployed gun away from its
             // original coordinate. Report actual deployment; the officer verifies the angle.
             message.ready=(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard||s.assignment.task==Task::Hold)&&
@@ -515,16 +601,37 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             if(cmd.drill.selected&&cmd.route&&cmd.support>=0&&f.time>=rt.nextSupportSector[team]){
                 rt.nextSupportSector[team]=f.time+2;
                 CommandMessage message;message.kind=CommandMessage::Kind::SupportSector;message.sender=cmd.leader;message.recipient=cmd.support;
-                message.arrives=f.time+MessageDelay;message.supportSector=AssaultSupportSector(f.soldiers[cmd.leader],cmd,knownMap,f.time);
+                message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);message.supportSector=AssaultSupportSector(f.soldiers[cmd.leader],cmd,knownMap,f.time);
                 rt.messages.push_back(message);
                 TraceProposal(rt.diagnostics,f.soldiers[cmd.leader],cmd,knownMap,f.time,"support_sector_sent",std::string(message.supportSector.lifted?"lift sector: ":"prioritize threats overlooking assault slots: ")+std::to_string(message.supportSector.threats.size())+" known tracks");
             }
             continue; // This controller owns destinations; no legacy maneuver or corporal formation refresh.
         }
         const bool changedKnowledge=rt.plannedKnowledge[team]!=f.soldiers[cmd.leader].knowledgeRevision;
-        if(f.time>=rt.nextPlan[team]||(changedKnowledge&&f.time-rt.lastPlanAt[team]>=1)) {
+        uint64_t taskRevision=0;
+        if(TypedController(config)){const auto& officer=f.soldiers[cmd.leader];
+            for(const auto& receipt:officer.taskReports){
+                // Positional progress informs an injury capability check, but is
+                // not a new completion or failure. Do not let ordinary movement
+                // heartbeats postpone the regular execution assessment cadence.
+                const bool capability=receipt.soldier>=0&&receipt.soldier<UnitCount&&KnowsWounded(officer,f.soldiers[receipt.soldier]);
+                taskRevision=taskRevision*131+receipt.serial*31+int(receipt.status)*17+int(receipt.cause)*7+(capability?receipt.sequence:0);
+            }
+        }
+        const bool changedTask=TypedController(config)&&taskRevision!=rt.plannedTasks[team];
+        const auto& receivedDirective=f.soldiers[cmd.leader].platoonOrder;
+        const bool changedFireControl=config.drills&&receivedDirective.serial>cmd.platoonOrderSerial&&f.time<receivedDirective.expiresAt&&
+            (receivedDirective.liftFire!=cmd.battleDrill.platoonLift||(receivedDirective.liftFire&&Distance(receivedDirective.assaultLane.target,cmd.battleDrill.acceptedDirective.assaultLane.target)>.01f));
+        bool lateralLift=false;
+        if(config.drills&&!cmd.battleDrill.action.lifted)for(const auto& radio:f.soldiers[cmd.leader].squadRadio)
+            lateralLift|=radio.kind==SquadBroadcastKind::PhaseLine&&radio.squad==cmd.battleDrill.radioLeadSquad&&
+                Distance(radio.objective,cmd.battleDrill.action.objective)<40;
+        // A received safety permission wakes the squad; it still traverses the
+        // normal member-order transport and reaction pipeline.
+        if(changedFireControl||lateralLift||f.time+(TypedController(config)?.001f:0.f)>=rt.nextPlan[team]||(changedKnowledge&&f.time-rt.lastPlanAt[team]>=1)||(changedTask&&f.time-rt.lastPlanAt[team]>=.25f)) {
+            rt.plannedTasks[team]=taskRevision;
             rt.lastPlanAt[team]=f.time;rt.plannedKnowledge[team]=f.soldiers[cmd.leader].knowledgeRevision;
-            rt.nextPlan[team]=f.time+(cmd.opportunitySince>=0?1.f:cmd.hasWaypoint?2.f:8.f);
+            rt.nextPlan[team]=f.time+(TypedController(config)?1.f:cmd.opportunitySince>=0?1.f:cmd.hasWaypoint?2.f:8.f);
             if(team/SquadsPerTeam==rt.fixedDefender){
                 cmd.advancing=false;cmd.hasWaypoint=false;cmd.teamPlan={};cmd.phase=SquadPhase::HoldSuppress;
                 for(const auto& s:f.soldiers)if(s.squad==team&&s.Active()&&!IsPlatoonStaff(s))send(cmd.leader,s.id,s.machineGun?Task::Overwatch:Task::Hold,s.position,s.position+Vec3{-30,0});
@@ -537,10 +644,33 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             std::vector<int> claimed;
             for(int other=0;other<SquadCount;++other)if(other!=team&&other/SquadsPerTeam==team/SquadsPerTeam&&f.command[other].building>=0)claimed.push_back(f.command[other].building);
             UpdateSquadPlan(f.soldiers[cmd.leader],friends,knownMap,config,approaches,claimed,cmd,rt.progress[team],rt.diagnostics,f.time);
-            rt.nextPlan[team]=f.time+(cmd.opportunitySince>=0?1.f:cmd.hasWaypoint?2.f:8.f);
-            for(const auto& order:PlanSquad(f.soldiers[cmd.leader],friends,knownMap,config,cmd,f.time))
-                send(cmd.leader,order.recipient,order.task,order.position,order.sector,order.teamPlan);
+            rt.nextPlan[team]=f.time+(TypedController(config)?1.f:cmd.opportunitySince>=0?1.f:cmd.hasWaypoint?2.f:8.f);
+            for(const auto& order:PlanSquad(f.soldiers[cmd.leader],friends,knownMap,config,cmd,f.time)){
+                send(cmd.leader,order.recipient,order.task,order.position,order.sector,order.teamPlan,order.hasSlot?&order.slot:nullptr,order.execution);
+                if(config.drills)cmd.battleDrill.expected[order.recipient%SquadSize]=rt.lastSent[order.recipient].id;
+                if(config.cognition)cmd.accepted.expected[order.recipient%SquadSize]=rt.lastSent[order.recipient].id;
+            }
         }
+        if(config.cognition&&(cmd.accepted.requiresSupport||cmd.accepted.method==CognitiveMethod::SupportedAdvance||cmd.accepted.method==CognitiveMethod::AlternateApproach)&&cmd.accepted.support>=0&&f.time>=rt.nextSupportSector[team]){
+            rt.nextSupportSector[team]=f.time+1;
+            CommandMessage message;message.kind=CommandMessage::Kind::SupportSector;message.sender=cmd.leader;message.recipient=cmd.accepted.support;
+            message.arrives=f.time+config.reportDelay;message.supportSector.requester=cmd.leader;message.supportSector.stage=cmd.accepted.routeStage;message.supportSector.shooter=cmd.accepted.support;message.supportSector.focus=SupportDeploymentSector(cmd.accepted,f.soldiers[cmd.leader],f.time);message.supportSector.route=cmd.accepted.route?cmd.accepted.route->id:0;message.supportSector.observedAt=f.time;
+            auto knowledge=WithTracks(f.soldiers[cmd.leader],f.time);
+            for(int id=0;id<UnitCount;++id)if(knowledge.contacts[id].known&&
+                (id==cmd.accepted.requestedThreat||id==cmd.accepted.supportThreat||Distance(knowledge.contacts[id].position,cmd.accepted.sector)<(cmd.accepted.supportThreat>=0?4.f:18.f)))message.supportSector.threats.push_back({id,knowledge.contacts[id]});
+            // The leader communicates friendly formation state and accepted intent.
+            // The gun receives this after transport; it never reads the moving squad.
+            for(const auto& member:f.soldiers)if(member.squad==team&&member.Active()&&(cmd.accepted.movers[member.id%SquadSize]||member.id==cmd.accepted.localSupport)){
+                int index=member.id%SquadSize;
+                message.supportSector.friendlies.push_back({member.id,member.position,member.id==cmd.accepted.localSupport?cmd.accepted.localPosition:cmd.accepted.hasSlot[index]?cmd.accepted.slots[index].peek:cmd.accepted.positions[index],f.time});
+            }
+            rt.messages.push_back(message);
+            int supportLeader=f.command[cmd.accepted.support/SquadSize].leader;
+            if(supportLeader>=0&&supportLeader!=cmd.leader&&supportLeader!=cmd.accepted.support){message.recipient=supportLeader;rt.messages.push_back(message);}
+        }
+        // Foundations goals are assigned to every member by PlanSquad. The old
+        // periodic corporal formation writer must not replace those destinations.
+        if(config.foundations)continue;
         int nco=team*SquadSize+1;auto& sergeant=f.soldiers[nco];
         if(nco==cmd.leader||!sergeant.Active()||sergeant.assignment.task==Task::None||f.time<rt.nextNco[nco])continue;
         rt.nextNco[nco]=f.time+2;

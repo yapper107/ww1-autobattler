@@ -744,7 +744,24 @@ static void CoordinationTests() {
 #include "route_tests.h"
 #include "recovery_tests.h"
 #include "recovery_gate_tests.h"
+#include "foundations_tests.h"
+#include "cognition_tests.h"
+#include "decision_loop_tests.h"
+#include "reliability_tests.h"
+#include "scenario_gen_tests.h"
+#include "drills_tests.h"
+#include "platoon_tests.h"
+#include "leader_tests.h"
 int main(int argc,char** argv) {
+    if(argc>1&&std::string(argv[1])=="--leaders"){LeaderTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--platoon"){PlatoonTests(argc>2?argv[2]:"all");return 0;}
+    if(argc>1&&std::string(argv[1])=="--drills"){DrillsTests(argc>2?argv[2]:"all");return 0;}
+    if(argc>1&&std::string(argv[1])=="--generated"){ScenarioGeneratorTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--reliability"){ReliabilityTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--normal-cognition"){NormalMapScenarios();return 0;}
+    if(argc>1&&std::string(argv[1])=="--decision-loop"){DecisionLoopTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--cognition"){CognitionTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--foundations"){FoundationsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--recovery"){RecoveryTests();RecoveryGateTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--routes"){RouteTests();return 0;}
     RouteTests();
@@ -753,6 +770,7 @@ int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--encounters"){MGEncounterTests();return 0;}
     Config original;
     assert(SameConfig(original,original));
+    {auto changed=original;changed.drills=true;assert(!SameConfig(original,changed));changed=original;changed.family=ScenarioFamily::F1;assert(!SameConfig(original,changed));changed=original;++changed.genSeed;assert(!SameConfig(original,changed));}
     for(int field=0;field<6;++field){Config changed=original;
         switch(field){case 0:++changed.seed;break;case 1:changed.doctrine=Doctrine::Cautious;break;case 2:changed.approach=Approach::North;break;case 3:changed.supportWeapon=false;break;case 4:changed.maxSeconds=60;break;case 5:changed.terrain=Terrain::Trenches;break;}
         assert(!SameConfig(original,changed));

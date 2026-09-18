@@ -13,7 +13,14 @@ import sys,subprocess
 from pathlib import Path
 root=Path(sys.argv[1]);win=subprocess.check_output(['wslpath','-w',str(root)],text=True).strip()
 (root/'build.cmd').write_bytes(('''@echo off
-call "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Auxiliary\\Build\\vcvars64.bat" -vcvars_ver=14.38
+setlocal
+if not exist "%ProgramFiles(x86)%\\Microsoft Visual Studio\\Installer\\vswhere.exe" (
+  echo Visual Studio C++ tools are missing. See docs/DEVELOPMENT.md.
+  exit /b 1
+)
+for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\\Microsoft Visual Studio\\Installer\\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "ARMY_VS_INSTALL=%%i"
+if not defined ARMY_VS_INSTALL exit /b 1
+call "%ARMY_VS_INSTALL%\\VC\\Auxiliary\\Build\\vcvars64.bat"
 if errorlevel 1 exit /b 1
 cd /d "'''+win+'''"
 cl /nologo /std:c++17 /EHsc /O2 /DNOMINMAX /I . /I Sim /FIbuild_stamp.h Sim\\*.cpp battle_cli.cpp /Fe:battle-lab.exe /link /STACK:33554432

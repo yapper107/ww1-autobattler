@@ -1,4 +1,5 @@
 #include "ManeuverSim.h"
+#include "BeliefSim.h"
 #include "CommandSim.h"
 #include "CoordinationSim.h"
 #include "TacticalRouteSim.h"
@@ -10,7 +11,7 @@ namespace army {
 void RememberDelivery(Soldier& soldier,const FireDelivery& report) {
     if(report.shooter<0)return;
     auto* slot=&soldier.deliveries[0];
-    for(auto& e:soldier.deliveries){if(e.shooter==report.shooter){if(report.observedAt>e.observedAt)e=report;return;}if(e.observedAt<slot->observedAt)slot=&e;}
+    for(auto& e:soldier.deliveries){if(e.shooter==report.shooter&&(!soldier.cognition||e.enemy==report.enemy)){if(report.observedAt>e.observedAt)e=report;return;}if(e.observedAt<slot->observedAt)slot=&e;}
     *slot=report;
 }
 static bool Overlooks(const Contact& ct,Vec3 p,const Map& map){return Distance(ct.position,p)<100&&ClearLine3D(map,ct.position+Vec3{0,0,1.5f},p+Vec3{0,0,1.3f});}
@@ -177,6 +178,7 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
     }
     if(enemy>=0)for(const auto& ct:knowledge.contacts)if(ct.known&&Distance(ct.position,knowledge.contacts[enemy].position)<24&&Distance(origin,ct.position)<85)
         cmd.enemyStrength+=1.25f*TrackConfidence(ct,time);
+    if(config.foundations&&enemy>=0)cmd.enemyStrength=BelievedStrength(leader,knowledge.contacts[enemy].position,24,time);
     for(const auto& s:squad)if(s.Active()&&!IsPlatoonStaff(s)) {
         cmd.friendlyStrength+=(s.machineGun?1.6f:1.f)*(KnowsWounded(leader,s)?.55f:1.f)*(1-.65f*s.understoodSuppression);
         if(!KnowsWounded(leader,s))++mobile;

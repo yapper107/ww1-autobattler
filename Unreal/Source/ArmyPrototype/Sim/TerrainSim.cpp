@@ -32,5 +32,5 @@ Map MakeTrenchMap(){
     for(float sign:{-1.f,1.f})for(float y:{-44.f,0.f,44.f})m.obstacles.push_back({{sign*7,y},{.6f,1},false,true,1.15f});
     PrepareGeometry(m);return m;
 }
-Map MakeBattleMap(const Config& c){return c.terrain==Terrain::Trenches?MakeTrenchMap():MakeSkirmishMap();}
+Map MakeBattleMap(const Config& c){if(c.battlefield)return c.battlefield->map;return c.terrain==Terrain::Trenches?MakeTrenchMap():MakeSkirmishMap();}
 }

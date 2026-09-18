@@ -33,12 +33,14 @@ struct NavigationCache;
 struct RouteGraph;
 struct TacticalVisibilityCache;
 struct SpatialIndex;
-struct QueryProfile { double tacticalSeconds=0,corridorSeconds=0;uint64_t tacticalQueries=0,tacticalExpanded=0; double navigationSeconds=0; uint64_t paths=0,sight=0,collision=0;int depth=0; };
+struct SegmentMemo; // Exact-argument memo of line queries for one geometry revision (SpatialSim.cpp).
+struct QueryProfile { double tacticalSeconds=0,corridorSeconds=0;uint64_t tacticalQueries=0,tacticalExpanded=0; double navigationSeconds=0; uint64_t paths=0,sight=0,collision=0,memoLookups=0,memoHits=0;int depth=0; };
 struct GroundSurface {uint64_t id=0;Vec3 center{},half{},slope{};};
 struct SurfaceLink {uint64_t id=0;Vec3 from{},to{};};
 bool InsideSurface(const GroundSurface& surface,Vec3 p);
 float SurfaceHeight(const GroundSurface& surface,Vec3 p);
 struct Map {
+    bool linkedSurfaceRouting=false; // Imported layouts only; authored routing is unchanged.
     float groundBase=0;
     std::vector<GroundSurface> surfaces;std::vector<SurfaceLink> surfaceLinks;
     std::shared_ptr<QueryProfile> queryProfile;
@@ -46,6 +48,7 @@ struct Map {
     bool prepared=false;
     mutable uint64_t coverRevision=0;
     mutable std::shared_ptr<const SpatialIndex> spatial;
+    mutable std::shared_ptr<SegmentMemo> segments;
     mutable std::shared_ptr<const std::vector<CoverPosition>> coverCatalog;
     float halfWidth = 170, halfHeight = 150;
     std::vector<Obstacle> obstacles;
@@ -54,6 +57,16 @@ struct Map {
     mutable std::shared_ptr<NavigationCache> navigation;
     mutable std::shared_ptr<RouteGraph> routeGraph;
     mutable std::shared_ptr<TacticalVisibilityCache> tacticalVisibility;
+};
+struct MapDecoration { Vec3 center{},half{}; int kind=0; }; // road, yard, floor, roof, damaged floor
+struct ImportedBattlefield {
+    Map map;
+    std::array<Vec3,UnitCount> positions{},goals{};
+    std::vector<MapDecoration> decorations;
+    std::vector<Vec3> coverFacing;
+    std::string name,kind,source;
+    uint32_t seed=0;
+    uint64_t digest=0;
 };
 Map MakeSkirmishMap();
 Map MakeTrenchMap();
@@ -70,6 +83,10 @@ float SegmentBox(Vec3 a, Vec3 b, const Obstacle& box, float padding = 0);
 float ObstacleHeight(const Obstacle& box);
 float SegmentObstacle(Vec3 a, Vec3 b, const Obstacle& box);
 float IndexedContact(const Map& map,Vec3 from,Vec3 to,bool any,float padding=-1);
+// Memoises compute(map,a,b,pad) by the exact bits of its arguments for the map's
+// current revision. kind separates callers whose semantics differ for equal
+// arguments. Results are identical to calling compute directly.
+bool MemoisedSegment(const Map& map,Vec3 a,Vec3 b,float pad,int kind,bool (*compute)(const Map&,Vec3,Vec3,float));
 float MapContact(const Map& map, Vec3 a, Vec3 b);
 float SegmentSoldier(Vec3 a, Vec3 b, Vec3 from, Vec3 to, float height = 1.85f);
 bool ClearLine3D(const Map& map, Vec3 from, Vec3 to);
@@ -86,7 +103,10 @@ enum class Role { Sergeant, Corporal, Rifleman, MachineGunner, Lieutenant, Plato
 enum class Task { None, Overwatch, Advance, Hold, Rally, RearGuard, ClearLane, Flank, PullBack, BoundMove, BoundCover, Window };
 struct TacticalRoute;
 struct ManeuverAssessment;
+struct FireLane { Vec3 origin{}, target{}; float spread=0.06f, observedAt=-100; };
 struct TeamPlan {
+    std::vector<FireLane> friendlyAssaultLanes;
+    bool assaultAreaFire=false;Vec3 assaultFireArea{};int assaultFireEnemy=-1;
     bool liftFire=false;Vec3 liftedSector{};int targetEnemy=-1;
     std::shared_ptr<const TacticalRoute> route;
     bool bounding=false, released=false;
@@ -97,34 +117,140 @@ struct TeamPlan {
     std::array<Vec3,2> windows{};
 };
 enum class TaskStatus { Issued, Received, Executing, Interrupted, Blocked, Done, Failed, Superseded };
-enum class TaskCause { None, Shelter, Passage, Reload, Wounded, Fire, Unreachable, Arrived, Casualty, Replaced, Geometry, BattleEnded };
+enum class GoalPurpose { None, Seize, Support, Observe, Withdraw };
+struct GoalIntent {
+    int id=0, parent=0;
+    GoalPurpose purpose=GoalPurpose::None;
+    Vec3 objective{};
+    float radius=8;
+    float expiresAt=0;
+};
+enum class TaskCause { None, Shelter, Passage, Reload, Wounded, Fire, Unreachable, Arrived, Casualty, Replaced, Geometry, BattleEnded, Observed, Support, Timeout, NoObservation, AwaitSupport, InsufficientStrength, LocalSupport };
+enum class Completion { Legacy, Transit, Occupy, Observe, Support };
+struct ExecutionContract {
+    Completion completion=Completion::Legacy;
+    int method=0,stage=0,generation=0;
+    float deadline=0;
+    bool paused=false;
+    bool unavailable=false;
+    bool rifleSupport=false;int supportThreat=-1;
+    bool arrivalCheck=false; // Drills: stage-clock expiry requests a physical arrival receipt.
+    float rushSeconds=0; // Drills only: bounded movement permission after activation.
+};
+struct ObservationCoverage {
+    int observer=-1,method=0,stage=0,generation=0;
+    Vec3 position{},sector{};
+    float observedAt=-100,receivedAt=-100;
+    unsigned samples=0; // Nine tested sight lines; never a claim that the region is safe.
+};
 struct TaskReceipt {
+    ExecutionContract execution;
+    ObservationCoverage coverage;
+    int goalId=0;
     uint64_t id=0; int soldier=-1, serial=0, sequence=0;bool active=true;
     TaskStatus status=TaskStatus::Issued; TaskCause cause=TaskCause::None;
     float at=-100; Vec3 position{},goal{};uint64_t route=0,geometry=1;int target=-1;
+    float remaining=-1;
 };
 struct Assignment {
+    ExecutionContract execution;
+    GoalIntent intent;
     uint64_t id=0,geometry=1; int target=-1;
     bool hasSlot=false;CoverPosition slot;
     TaskStatus status=TaskStatus::Issued; TaskCause cause=TaskCause::None;
-    int statusSequence=0; float statusAt=0;
+    int statusSequence=0; float statusAt=0; Vec3 statusPosition{};
 
     Task task = Task::None;
     int issuer = -1, serial = 0;
     Vec3 position{}, sector{};
     float issuedAt = 0, receivedAt = 0, activatedAt = 0;
     TeamPlan teamPlan;
+    std::shared_ptr<const TacticalRoute> areaRoute;float areaRouteRadius=0;
+    int drillInstance=0,element=-1;bool baseOfFire=false;Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaDiscRadius=0;
+    float drillRushPausedAt=0,drillRushPausedSeconds=0;
 };
-enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector };
+enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector, Coverage, SupportProgress, SquadRadio };
 enum class Action { Advance, Cover, Fire, Retreat, Hold, Wounded, Killed };
 enum class Reason { Search, Contact, Suppressed, Injury, ClearShot, Watching, LostContact, Down,
     Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition };
 enum class EventKind { Contact, Decision, Shot, Hit, Casualty, Result, OrderIssued, OrderReceived, Report, Succession, Reaction };
 enum class Terrain { FracturedWorks, Trenches };
+struct OfficerProfile { float judgment=.7f, risk=.5f, adaptability=.7f, communication=.7f; };
+inline bool SameProfile(const OfficerProfile& a,const OfficerProfile& b){return a.judgment==b.judgment&&a.risk==b.risk&&a.adaptability==b.adaptability&&a.communication==b.communication;}
+enum class CognitiveMethod { None, Observe, SupportedAdvance, AlternateApproach, Hold, Withdraw };
+enum class MethodStage { Assess, Prepare, Execute, Complete, Blocked };
+struct FailedAttempt {
+    CognitiveMethod method=CognitiveMethod::None;
+    Vec3 objective{},destination{};
+    uint64_t geometry=0,threats=0;
+    float at=0;
+    TaskCause cause=TaskCause::None;
+};
+struct SupportFailure {int soldier=-1;float observedAt=-100;TaskCause cause=TaskCause::None;};
+struct InjuryAssessment {
+    int generation=-1;
+    float deadline=0,remaining=-1,evidenceAt=-100,updatedAt=0,pauseSince=-1;
+    bool pathMetric=false;
+    bool operator==(const InjuryAssessment& b)const{return generation==b.generation&&deadline==b.deadline&&remaining==b.remaining&&evidenceAt==b.evidenceAt&&updatedAt==b.updatedAt&&pauseSince==b.pauseSince&&pathMetric==b.pathMetric;}
+};
+struct AcceptedPlan {
+    GoalIntent mission;
+    std::array<CoverPosition,SquadSize> slots{};
+    std::array<bool,SquadSize> hasSlot{};
+    std::array<bool,SquadSize> unavailable{},holders{},scouts{};
+    bool scouted=false;float scoutDeadline=0;
+    std::array<float,SquadSize> holderDeadline{};
+    std::array<InjuryAssessment,SquadSize> injuries{};
+    std::array<int,SquadSize> slotRetries{};
+    std::array<Vec3,SquadSize> rejectedPositions{};
+    std::array<uint64_t,SquadSize> expected{};
+    std::array<int,SquadSize> generations{};
+    std::vector<FailedAttempt> attempts;
+    std::vector<SupportFailure> supportFailures;
+    float prepareDeadline=0;
+    int support=-1,supportSquad=-1,requiredOccupants=2,supportThreat=-1,requestedThreat=-1;
+    int localSupport=-1,localThreat=-1;Vec3 localPosition{},localSector{};
+    float localAssignedAt=0,localDeadline=0;bool localUseful=false;
+    uint64_t awaitedSupportAssignment=0;
+    float supportWaitStarted=-1;
+    bool supportRetargeted=false;
+    bool supportDeployed=false,supportUseful=false,informationGained=false;
+    uint64_t inspectedGeometry=0,inspectedThreats=0;Vec3 inspectedSector{};
+    float stageStarted=0,lastProgress=0,safetySince=-1,executionDeadline=0;
+    uint64_t geometry=0,threats=0;
+    GoalIntent intent;
+    CognitiveMethod method=CognitiveMethod::None;
+    MethodStage stage=MethodStage::Assess;
+    int revision=0, directive=0, routeStage=0, executionGeneration=0;
+    std::shared_ptr<const TacticalRoute> route;
+    std::array<Vec3,SquadSize> positions{},holds{};
+    std::array<bool,SquadSize> movers{};
+    int failedMethods=0;
+    Vec3 failedDestination{};
+    Vec3 destination{}, sector{};
+    float started=0, committedUntil=0, supportSince=-1, reconsiderAt=0;
+    bool safetyOverride=false, requiresSupport=false, exhausted=false;
+    float riskAtCommit=0;
+    uint64_t knowledge=0;
+    std::string reason;
+};
+enum class ScenarioFamily { None, F1, F2, F3 };
 struct Config {
+    bool cognition=false, fullVision=false;
+    float reportDelay=.75f;
+    OfficerProfile officer;
+    bool leaderEffects=false, equalTroops=false; // Explicit leader comparison; historical configurations unchanged.
+    std::array<OfficerProfile,2> platoonProfiles{};
+
+    bool foundations=false; // Opt-in perception/belief experiment; legacy baseline remains reproducible.
+    float estimateBias=0; // Interpretation only: -1 underestimates, +1 overestimates.
     bool recoveryFixture=false; // Experimental policy: controlled encounters only until acceptance.
 
+    bool drills=false;
+    ScenarioFamily family=ScenarioFamily::None;
+    uint32_t genSeed=1;
     Terrain terrain=Terrain::FracturedWorks;
+    std::shared_ptr<const ImportedBattlefield> battlefield;
     uint32_t seed = 107;
     Doctrine doctrine = Doctrine::Balanced;
     Doctrine emberDoctrine = Doctrine::Balanced;
@@ -133,9 +259,11 @@ struct Config {
     float maxSeconds = 360;
 };
 inline bool SameConfig(const Config& a,const Config& b) {
-    return a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+    if(bool(a.battlefield)!=bool(b.battlefield)||(a.battlefield&&a.battlefield->digest!=b.battlefield->digest))return false;
+    return a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
+inline bool TypedController(const Config& c){return c.cognition||c.drills;}
 Map MakeBattleMap(const Config& config);
 struct Contact {
     bool known = false, visible = false;
@@ -143,17 +271,43 @@ struct Contact {
     float observedAt = -100;
     float aimHeight = 1.45f;
     Vec3 aimOffset{};
+    float detectionDelay=0; // Sensory exposure/distance cost, never used by legacy policy.
     float registeredAt = -100;
     int reportSource=-1;
+    int originalObserver=-1; // Preserved across relays; never refreshed by forwarding.
     bool automaticWeapon=false;
     float clearedAt=-100, emptySince=-1, passedAt=-1, lastFireAt=-100;
 };
 struct SupportThreat {int enemy=-1;Contact contact;};
-struct SupportSector {uint64_t route=0;float observedAt=-100;bool lifted=false;std::vector<SupportThreat> threats;};
+struct FriendlyIntent {int soldier=-1;Vec3 position{},destination{};float observedAt=-100;};
+struct SupportSector {int shooter=-1,requester=-1,stage=0;Vec3 focus{};uint64_t route=0;float observedAt=-100;bool lifted=false;std::vector<SupportThreat> threats;std::vector<FriendlyIntent> friendlies;};
+struct SupportProgress {
+    int shooter=-1,stage=0;uint64_t assignment=0,route=0;
+    Vec3 position{},sector{};float observedAt=-100,statusAt=-100,deadline=0;
+    TaskStatus status=TaskStatus::Issued;TaskCause cause=TaskCause::None;
+};
 struct FireArea { Vec3 position{}; float intensity=0, observedAt=-100; };
-struct FireLane { Vec3 origin{}, target{}; float spread=0.06f, observedAt=-100; };
-enum class PlatoonTask { None, Support, FlankNorth, FlankSouth, Consolidate, Reserve };
+struct ReportedContact { int track=-1; Contact contact; };
+struct RegionEstimate {
+    int x=0,y=0,observations=0,automaticWeapons=0;
+    float low=0,high=0,estimate=0,observedAt=-100,confidence=0;
+    float unseen=0, uncertainty=0;
+};
+enum class PlatoonTask { None, Support, FlankNorth, FlankSouth, Consolidate, Reserve, Observe, Withdraw, Advance, Merge, FightHere, RetreatThere, HelpSquad };
+struct FireDelivery;
 struct SquadSituation {
+    std::vector<ObservationCoverage> coverage;
+    std::vector<FailedAttempt> attempts;
+    CognitiveMethod method=CognitiveMethod::None;
+    int supportSoldier=-1;
+    float lastProgress=-100;
+    Vec3 goalObjective{};
+    GoalPurpose goalPurpose=GoalPurpose::None;
+    bool observationComplete=false;
+    std::vector<FireDelivery> deliveries;
+    std::vector<ReportedContact> observations;
+    int goalId=0,directive=0;
+    TaskStatus goalStatus=TaskStatus::Executing;
     int squad=-1, leader=-1, active=0, enemy=-1;
     Vec3 position{};
     bool engaged=false, supportUseful=false, movementBlocked=false;
@@ -161,25 +315,68 @@ struct SquadSituation {
     float suppression=0;
     float danger=0, observedAt=-100;
     Contact contact;
+    int drillInstance=0,drillKind=0;
+    TaskCause drillCause=TaskCause::None;
+    bool drillSuperiority=false;bool drillRecovering=false;std::string drillNote;
+    float phaseLineAt=-1,completedAssaultLineAt=-1;Vec3 assaultObjective{},assaultOrigin{};
+    std::vector<Vec3> drillMemberPositions;
+};
+enum class SquadBroadcastKind { Fixing, Assaulting, NeedSupport, PhaseLine, Done };
+struct SquadBroadcast {
+    int serial=0,sender=-1,squad=-1,enemy=-1,side=0;
+    SquadBroadcastKind kind=SquadBroadcastKind::Fixing;
+    float sentAt=0,receivedAt=0;Vec3 position{},objective{};Contact contact;
 };
 struct PlatoonDirective {
+    bool initiativeAllowed=true; // Command climate carried by own intent; never read another actor's hidden knowledge.
+    int taskNode=0,mergeInto=-1,helpSquad=-1;bool hasArea=false,liftFire=false,fireMovement=false;
+    Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaRouteRadius=0,areaDiscRadius=0;FireLane assaultLane;
+    std::shared_ptr<const TacticalRoute> corridor;
+    int supportSoldier=-1,supportSquad=-1,committedStrength=0;
+    bool supportWithdrawn=false;
+    GoalIntent intent;
+    bool hasAlternative=false;
+    PlatoonTask alternativeTask=PlatoonTask::None;
+    Vec3 alternativePosition{};
     PlatoonTask task=PlatoonTask::None;
     int issuer=-1, serial=0, enemy=-1;
     Vec3 position{}, sector{};
     Contact contact;
     float issuedAt=0, receivedAt=0, activatedAt=0, expiresAt=0;
 };
+// Intent persistence and reported advance progress; no platoon roles or corridor claims.
+struct PlatoonTaskState {
+    int revision=0,commander=-1;float nextAssessment=0;
+    std::array<PlatoonDirective,SquadsPerTeam> assigned{};
+    std::array<Vec3,SquadsPerTeam> advanceDoneObjectives{};
+    std::array<bool,SquadsPerTeam> advanceDoneSeen{},advanceExhausted{};
+    float observeStarted=-1;Vec3 observeObjective{};
+    bool withdrawing=false;float believedRatio=1;
+    std::array<float,SquadsPerTeam> needSince{{-1,-1,-1,-1}};
+};
 struct PlatoonCommand {
     int leader=-1, sergeant=-1, supportSquad=-1, flankSquad=-1, mainEffortSquad=-1, reserveSquad=-1, plans=0;
     float disruptedUntil=0, nextPlanAt=0;
     PlatoonTask maneuver=PlatoonTask::None;
     Vec3 sector{};
+    PlatoonTaskState tasks;
 };
 struct DeliveredRound {float at=0;Vec3 target{};};
-struct FireDelivery { int shooter=-1, enemy=-1, rounds=0; Vec3 origin{}, target{}; float firstAt=-100, observedAt=-100; std::array<float,8> times{{-100,-100,-100,-100,-100,-100,-100,-100}}; std::vector<DeliveredRound> history; };
+struct FireDelivery { bool supportWeapon=false; int shooter=-1, enemy=-1, rounds=0; Vec3 origin{}, target{}; float firstAt=-100, observedAt=-100; std::array<float,8> times{{-100,-100,-100,-100,-100,-100,-100,-100}}; std::vector<DeliveredRound> history; };
 struct MoveFailure { int soldier=-1, order=0; Vec3 destination{}; float observedAt=-100; };
 struct Soldier {
+    std::array<ObservationCoverage,8> coverage{};
+    bool cognition=false;
+    OfficerProfile officer;
+    bool leaderEffects=false, initiativeAllowed=true;
+    float attentionUntil=0;
+    int attentionTrack=-1;
+
+    bool directionalSight=false;
+    Vec3 look{1,0}; // Head/attention direction; independent of locomotion and weapon facing.
+    float estimateBias=0;
     SupportSector supportSector;
+    SupportProgress supportProgress;
     std::array<TaskReceipt,SquadSize> taskReports{};
     std::vector<TaskReceipt> taskOutbox;
     bool taskLossReported=false;
@@ -228,6 +425,8 @@ struct Soldier {
     std::array<FireLane, UnitCount> blockedLanes{};
     std::array<SquadSituation,SquadsPerTeam> platoonReports{};
     PlatoonDirective platoonOrder;
+    int organisation=1; // Section; only the drills controller uses organisation templates.
+    std::vector<SquadBroadcast> squadRadio;
     bool Active() const { return health > 0; }
 };
 inline bool IsPlatoonStaff(const Soldier& s){return s.role==Role::Lieutenant||s.role==Role::PlatoonSergeant;}
@@ -265,7 +464,84 @@ struct DrillState {
     float currentExposure=0;bool screeningBlocked=false;
     float nextAssessment=0,opportunity=-1;uint64_t knowledge=0,geometry=0;
 };
+enum class BattleDrill { None, MoveTactically, ReactToContact, SupportByFire, SquadAttack, BreakContact, Occupy, Observe, Withdraw };
+enum class MovementTechnique { Traveling, TravelingOverwatch, BoundingOverwatch };
+struct KnownSquadMember {bool known=false;Vec3 position{};float health=0,suppression=0,observedAt=-100;Role role=Role::Rifleman;bool machineGun=false;};
+enum class DrillStage { None, Travel, BoundSetup, Bound, ContactCover, ContactHold, Reorganise, BoundCover, SupportPrepare, SupportHold, AttackMove, AssaultLine, Assault, Consolidate, Retire, Occupation, Observation };
+struct SquadActionState {
+    int boundSupportThreat=-1;bool supportPositionReady=false,supportSearchTried=false,supportSearchExhausted=false;
+    bool areaFireOrdered=false,assaultRushRecovered=false;
+    float assaultFireSince=-1;
+    std::array<bool,SquadSize> assaultRoster{},baseRoster{};
+    bool helping=false;bool coveringBound=false,coveringAttempted=false;
+    bool closureFallback=false;
+    std::array<CoverPosition,SquadSize> pauseSlots{};
+    std::array<bool,SquadSize> pauseHasSlot{},resumeMovers{};
+    bool active=false,established=false,everEstablished=false,lifted=false,paused=false,attack=false,completed=false;
+    float acceptedAt=0,lastEvidence=-100,lostAt=-1,phaseLineAt=-1,clearSince=-1,angle=0;
+    Vec3 objective{},base{},assault{},rally{};
+    int buddy=0,alternates=0,initialStrength=0;
+    size_t routeStep=0;
+    TaskCause cause=TaskCause::None;
+    std::shared_ptr<const TacticalRoute> route;
+    std::array<bool,UnitCount> threats{};
+    std::array<bool,SquadSize> pausedOrders{},liftOrders{},supportOrders{},rushOrders{};
+    std::array<Task,SquadSize> tasks{};
+    std::array<Completion,SquadSize> completions{};
+};
+struct DrillPlan {
+    PlatoonDirective acceptedDirective;bool directiveBoundary=true;
+    std::vector<SquadBroadcast> broadcasts;
+    bool helpApproach=false;Vec3 helpObjective{};
+    int radioLaneRevision=0;
+    int radioSequence=0,radioAttackInstance=0,radioSupportSquad=-1,radioLeadSquad=-1;
+    std::array<std::array<int,UnitCount>,5> radioConsumed{};
+    bool arrivalCheckPending=false;
+    float radioFireSince=-1,radioPhaseAt=-1,radioDoneAt=-1;bool radioFixing=false,radioNeed=false;
+    Vec3 radioObjective{},radioSupportPosition{};
+    bool platoonArea=false,platoonLift=false;int platoonTaskNode=0;float directiveUntil=0;
+    SquadActionState action;
+    float believedEnemy=0;
+    GoalIntent intent;
+    BattleDrill kind=BattleDrill::None;
+    MovementTechnique technique=MovementTechnique::Traveling;
+    int instance=0,generation=0,leg=0,movingElement=0,target=-1,support=-1;
+    float started=0,deadline=0,nextStage=0,lastProgress=0;
+    bool initialized=false,blocked=false,paused=false,exhausted=false;
+    int localRetries=0;std::string lastRejection;float completedAssaultLineAt=-1;
+    Vec3 deployment{},destination{},sector{},center{},areaMin{},areaMax{};
+    std::array<int,SquadSize> elements{{-1,-1,-1,-1,-1,-1,-1,-1}};
+    std::array<Vec3,SquadSize> positions{};
+    std::array<CoverPosition,SquadSize> slots{};
+    std::array<bool,SquadSize> hasSlot{},movers{};
+    std::array<uint64_t,SquadSize> expected{};
+    std::array<KnownSquadMember,SquadSize> members{};
+    std::array<std::shared_ptr<const TacticalRoute>,2> routes{};
+    std::array<std::shared_ptr<const TacticalRoute>,SquadSize> memberRoutes{};
+    std::vector<FailedAttempt> attempts;
+    bool retreat=false,assessed=false,closing=false;
+    float assessmentAt=0,interval=10;
+    DrillStage stage=DrillStage::None;
+    std::array<bool,SquadSize> issue{},waiting{},arrivals{};
+    std::array<int,SquadSize> orderMethods{},orderGenerations{};
+    std::array<uint64_t,SquadSize> slotGeometry{};
+    std::array<bool,UnitCount> contactInside{};
+    std::array<float,UnitCount> contactLastKnown{};
+    std::array<int,2> strength{};
+    float arrivalQuorumAt=-1,contactLostAt=-1,fireCandidateAt=0,superiorityCandidateAt=0;
+    bool arrivalConsumed=false,coverComplete=false,closeAfterCover=false;
+    bool effectiveFire=false,fireCandidate=false,superiority=false,superiorityCandidate=false;
+    // deadline is a budget of eligible moving seconds, never a wall-clock expiry.
+    float stageElapsed=0,clockAt=0;
+    int stalledExpiries=0;
+    Vec3 expiryPosition{};
+    bool forceColumn=false,noProgressBlocked=false;
+    std::array<bool,SquadSize> slotWaiting{},memberWasActive{};
+    std::array<float,SquadSize> lossTimes{};
+
+};
 struct SquadCommand {
+    AcceptedPlan accepted;
     DrillState drill;
 
     std::shared_ptr<const TacticalRoute> route;
@@ -312,6 +588,7 @@ struct SquadCommand {
     PlatoonTask platoonTask=PlatoonTask::None;
     float platoonUntil=0, platoonReadySince=-1;
     int preparedPlatoonSerial=0;
+    DrillPlan battleDrill;
 };
 float AimSeconds(const Soldier& soldier);
 float ShotSpread(const Soldier& soldier);
@@ -366,7 +643,26 @@ struct DiagnosticOptions { bool enabled=true, detailed=false; int soldier=-1,squ
 struct Diagnostics;
 struct GeometryEdit { float time=0; uint64_t obstacle=0; bool remove=true; Obstacle replacement; };
 struct GeometryVersion { float time=0; Map map; std::string reason; };
+struct GeneratedScenario {
+    ScenarioFamily family=ScenarioFamily::None;
+    uint32_t genSeed=1;
+    Map map;
+    std::array<Vec3,2> deployment{};
+    Vec3 objective{};float objectiveRadius=0;
+    std::array<uint8_t,SquadCount> squads{};
+    std::array<bool,2> machineGun{};
+    std::array<Vec3,UnitCount> positions{};
+    int corridors=0,screenPieces=0,lowCover=0,tallCover=0;
+    float corridorWidth=0;
+    std::string description;
+};
+const char* ScenarioFamilyName(ScenarioFamily family);
+GeneratedScenario GenerateScenario(ScenarioFamily family,uint32_t genSeed);
+bool ValidateScenario(const GeneratedScenario& scenario,std::string& error);
+void ApplyScenario(const GeneratedScenario& scenario,const Config& config,Map& map,Frame& frame);
+uint64_t ScenarioDigest(const GeneratedScenario& scenario);
 struct Record {
+    std::shared_ptr<const GeneratedScenario> generated;
     std::vector<GeometryVersion> geometryVersions;
     std::shared_ptr<Diagnostics> diagnostics;
     Config config;
@@ -383,6 +679,7 @@ struct Record {
 bool ResolveDeathmatch(Record& record, const Frame& frame, bool projectilesPending, bool timeLimit);
 Frame InitialFrame(const Config& config);
 // Investigation layouts use the same authoritative simulation and start without enemy knowledge.
+void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& frame);
 void MakeMGEncounter(const Config& config,int variant,Map& map,Frame& frame);
 Record Simulate(const Config& config,const DiagnosticOptions& diagnostics={},const std::vector<GeometryEdit>& geometry={},int encounter=0);
 const Map& GeometryAt(const Record& record,float time);

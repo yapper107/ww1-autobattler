@@ -13,7 +13,7 @@ void PrepareGeometry(Map& m){
         if(!w.source){float best=1e9f;for(const auto& o:m.obstacles)if(o.building&&std::abs(o.height-1.05f)<.01f&&std::abs(o.center.z-w.shelter.z)<.01f){float d=Distance(o.center,w.shelter);if(d<best){best=d;w.source=o.id;}}}}
     m.prepared=true;
 }
-void InvalidateGeometry(Map& m){++m.revision;m.tacticalVisibility.reset();m.routeGraph.reset();m.spatial.reset();m.navigation.reset();m.coverCatalog.reset();m.coverRevision=0;PrepareGeometry(m);}
+void InvalidateGeometry(Map& m){++m.revision;m.tacticalVisibility.reset();m.routeGraph.reset();m.spatial.reset();m.segments.reset();m.navigation.reset();m.coverCatalog.reset();m.coverRevision=0;PrepareGeometry(m);}
 bool RemoveObstacle(Map& m,uint64_t id){
     auto it=std::find_if(m.obstacles.begin(),m.obstacles.end(),[&](const Obstacle&o){return o.id==id;});if(it==m.obstacles.end())return false;
     size_t at=size_t(it-m.obstacles.begin());m.obstacles.erase(it);
@@ -25,7 +25,20 @@ bool ReplaceObstacle(Map& m,uint64_t id,Obstacle replacement){for(auto& o:m.obst
 bool CoverExists(const Map& m,uint64_t id){if(!id)return false;for(const auto& c:CoverPositions(m))if(c.id==id)return true;return false;}
 const Map& GeometryAt(const Record& r,float time){const Map* map=&r.map;for(const auto& version:r.geometryVersions){if(version.time>time)break;map=&version.map;}return *map;}
 
+struct FloorRouteKey {
+    std::array<float,6> p;
+    bool operator==(const FloorRouteKey& other)const{return p==other.p;}
+};
+struct FloorRouteHash {size_t operator()(const FloorRouteKey& key)const{
+    size_t h=0;for(float v:key.p)h^=std::hash<float>{}(v)+0x9e3779b9+(h<<6)+(h>>2);return h;
+}};
 struct NavigationCache {
+    std::vector<int> flatComponents;
+    std::vector<std::vector<size_t>> surfaceBins;
+    std::unordered_map<int,std::vector<int>> endpointParents;
+    std::unordered_map<FloorRouteKey,std::vector<Vec3>,FloorRouteHash> importedFloorRoutes;
+    bool surfaceReady=false;
+    std::vector<std::vector<Vec3>> surfacePaths;
     uint64_t key=0;
     std::unordered_map<int,std::vector<int8_t>> nodes,edges;
     std::vector<float> costs;std::vector<int> parent;std::vector<uint32_t> visited;uint32_t search=0;
@@ -122,6 +135,39 @@ const std::vector<CoverPosition>& CoverPositions(const Map& m) {
     if(m.coverCatalog&&m.coverRevision==key)return *m.coverCatalog;
     auto positions=m.windows;
     for(auto& w:positions)w.id=w.id? w.id:0;
+    if(m.linkedSurfaceRouting){
+        // Sample physical faces, not just authored markers or rectangle centres.
+        // Internal earth seams and inaccessible wall faces fail the same walkability
+        // and six-body-ray protection checks used by soldiers. Cache once/revision.
+        for(const auto& o:m.obstacles)if(o.blocksMovement||o.halfCover){
+            uint64_t slot=0;
+            for(int axis=0;axis<2;++axis)for(float sign:{-1.f,1.f}){
+                const float extent=axis?o.half.x:o.half.y,across=axis?o.half.y:o.half.x;
+                const int count=std::max(1,int(std::ceil(extent*2/3.f)));
+                Vec3 normal=axis?Vec3{0,sign,0}:Vec3{sign,0,0};
+                for(int i=0;i<count;++i){
+                    const uint64_t id=2000000+o.id*2048+(slot++);
+                    const float along=-extent+(i+.5f)*extent*2/count;
+                    Vec3 p=o.center+normal*(across+.65f)+(axis?Vec3{along,0,0}:Vec3{0,along,0});
+                    if(!Walkable(m,p))continue;
+                    const Vec3 threat=p-normal*4;
+                    bool crouch=o.height<1.86f;
+                    if(!ProtectedAt(m,p,threat,crouch?Stance::Crouched:Stance::Standing)){
+                        if(crouch||!ProtectedAt(m,p,threat,Stance::Crouched))continue;
+                        crouch=true;
+                    }
+                    Vec3 peek=p;
+                    if(!o.halfCover){
+                        const float corner=(along>=0?1.f:-1.f)*(extent+.65f);
+                        Vec3 candidate=o.center+normal*(across+.65f)+(axis?Vec3{corner,0,0}:Vec3{0,corner,0});
+                        if(Walkable(m,candidate)&&ClearLine(m,p,candidate,.48f))peek=candidate;
+                    }
+                    positions.push_back({p,peek,crouch,false,id,o.id});
+                }
+            }
+        }
+        m.coverRevision=key;m.coverCatalog=std::make_shared<const std::vector<CoverPosition>>(std::move(positions));return *m.coverCatalog;
+    }
     for(const auto& o:m.obstacles)if(!o.building&&(o.blocksMovement||(o.halfCover&&o.center.z<0))) {
         if(o.halfCover)for(float side:{-1.f,1.f})for(float along:{-0.55f,0.f,0.55f}) {
             Vec3 p=o.center+(o.half.y>o.half.x?Vec3{side*(o.half.x+0.6f),along*o.half.y}:Vec3{along*o.half.x,side*(o.half.y+0.6f)});
@@ -134,14 +180,33 @@ const std::vector<CoverPosition>& CoverPositions(const Map& m) {
     m.coverRevision=key;m.coverCatalog=std::make_shared<const std::vector<CoverPosition>>(std::move(positions));return *m.coverCatalog;
 }
 static bool Supported(const Map& m,Vec3 p) {
-    for(const auto& s:m.surfaces)if(InsideSurface(s,p))return std::abs(p.z-SurfaceHeight(s,p))<.03f;
+    if(m.linkedSurfaceRouting&&m.prepared){
+        if(!m.navigation||m.navigation->key!=m.revision){m.navigation=std::make_shared<NavigationCache>();m.navigation->key=m.revision;}
+        const int width=int(std::ceil(m.halfWidth*2/8))+1,height=int(std::ceil(m.halfHeight*2/8))+1;
+        auto cellX=[&](float x){return std::clamp(int(std::floor((x+m.halfWidth)/8)),0,width-1);};
+        auto cellY=[&](float y){return std::clamp(int(std::floor((y+m.halfHeight)/8)),0,height-1);};
+        auto& bins=m.navigation->surfaceBins;
+        if(bins.empty()){
+            bins.resize(size_t(width*height));
+            for(size_t i=0;i<m.surfaces.size();++i){const auto& s=m.surfaces[i];
+                for(int y=cellY(s.center.y-s.half.y-.001f);y<=cellY(s.center.y+s.half.y+.001f);++y)
+                    for(int x=cellX(s.center.x-s.half.x-.001f);x<=cellX(s.center.x+s.half.x+.001f);++x)bins[size_t(y*width+x)].push_back(i);
+            }
+        }
+        for(size_t i:bins[size_t(cellY(p.y)*width+cellX(p.x))]){const auto& s=m.surfaces[i];if(InsideSurface(s,p))return std::abs(p.z-SurfaceHeight(s,p))<.03f;}
+    }else for(const auto& s:m.surfaces)if(InsideSurface(s,p))return std::abs(p.z-SurfaceHeight(s,p))<.03f;
     for(const auto& b:m.buildings)if(StairFootprint(b,p))return OnStairs(m,p);
     if(std::abs(p.z)<0.02f)return true;
     if(std::abs(p.z-UpperFloor)>0.02f)return false;
     for(const auto& b:m.buildings)if(std::abs(p.x-b.center.x)<4.8f&&std::abs(p.y-b.center.y)<3.8f)return true;
     return false;
 }
+static bool ClearLineCompute(const Map& m,Vec3 a,Vec3 b,float pad);
 bool ClearLine(const Map& m,Vec3 a,Vec3 b,float pad) {
+    if(m.prepared)return MemoisedSegment(m,a,b,pad,1,ClearLineCompute);
+    return ClearLineCompute(m,a,b,pad);
+}
+static bool ClearLineCompute(const Map& m,Vec3 a,Vec3 b,float pad) {
     size_t building=0;
     if(m.prepared&&IndexedContact(m,a,b,true,pad)>=0)return false;
     for(size_t i=0;!m.prepared&&i<m.obstacles.size();++i) {
@@ -256,12 +321,130 @@ std::vector<Vec3> FindCostPath(const Map& m,Vec3 from,Vec3 to,const std::functio
     if(!Walkable(m,from)||!Walkable(m,to))return {};
     return FindFloorPath(m,from,to,&cost,budget,&expanded,&status);
 }
+// A trench exit is queried against many candidate destinations. One Dijkstra
+// field per exit answers all of those queries, rather than rerunning A* per slot.
+static bool ImportedEndpointPath(const Map& m,Vec3 from,Vec3 to,std::vector<Vec3>& result){
+    int endpoint=-1;bool reverse=false;Vec3 origin{},target{};
+    for(size_t i=0;i<m.surfaceLinks.size()*2;++i){Vec3 e=i%2?m.surfaceLinks[i/2].to:m.surfaceLinks[i/2].from;
+        if(Distance(from,e)<.0001f){endpoint=int(i);origin=e;target=to;break;}
+        if(Distance(to,e)<.0001f){endpoint=int(i);origin=e;target=from;reverse=true;break;}}
+    if(endpoint<0||std::abs(origin.z-target.z)>.001f||std::abs(origin.x-std::round(origin.x))>.0001f||std::abs(origin.y-std::round(origin.y))>.0001f)return false;
+    if(!Walkable(m,target))return true;
+    if(ClearLine(m,from,to,.48f)){result={to};return true;}
+    const int X=int(std::ceil(m.halfWidth)),Y=int(std::ceil(m.halfHeight)),W=X*2+1,H=Y*2+1,N=W*H;
+    auto position=[&](int i){return Vec3{float(i%W-X),float(i/W-Y),origin.z};};
+    auto index=[&](Vec3 p){return int(Clamp(std::round(p.y)+Y,0,H-1))*W+int(Clamp(std::round(p.x)+X,0,W-1));};
+    const int start=index(origin);int goal=index(target);auto& cache=*m.navigation;
+    if(!Walkable(m,position(goal))||!ClearLine(m,position(goal),target,.48f)){
+        float best=100;for(int y=-2;y<=2;++y)for(int x=-2;x<=2;++x){int n=index(target+Vec3{float(x),float(y)});Vec3 p=position(n);
+            if(Walkable(m,p)&&ClearLine(m,p,target,.48f)&&Distance(p,target)<best){best=Distance(p,target);goal=n;}}
+        if(best==100)return true;
+    }
+    auto found=cache.endpointParents.find(endpoint);
+    if(found==cache.endpointParents.end()){
+        auto& nodes=cache.nodes[int(std::lround(origin.z*1000))];auto& edges=cache.edges[int(std::lround(origin.z*1000))];
+        if(nodes.empty()){nodes.assign(N,-1);edges.assign(N*9,-1);}
+        std::vector<int> parent(size_t(N),-1);std::vector<float> cost(size_t(N),1e30f);parent[size_t(start)]=start;cost[size_t(start)]=0;
+        using Entry=std::pair<float,int>;std::priority_queue<Entry,std::vector<Entry>,std::greater<Entry>> open;open.push({0,start});
+        while(!open.empty()){
+            auto entry=open.top();open.pop();const int a=entry.second;if(entry.first>cost[size_t(a)]+.001f)continue;Vec3 p=position(a);
+            for(int y=-1;y<=1;++y)for(int x=-1;x<=1;++x){if(!x&&!y)continue;const int nx=a%W+x,ny=a/W+y;if(nx<0||nx>=W||ny<0||ny>=H)continue;
+                const int b=ny*W+nx;Vec3 q=position(b);if(nodes[size_t(b)]<0)nodes[size_t(b)]=Walkable(m,q);if(!nodes[size_t(b)])continue;
+                auto& edge=edges[size_t(a*9+(y+1)*3+x+1)];if(edge<0)edge=ClearLine(m,p,q,.48f);if(!edge)continue;
+                const float candidate=cost[size_t(a)]+((x&&y)?1.41421356f:1.f);
+                if(candidate+.001f<cost[size_t(b)]){cost[size_t(b)]=candidate;parent[size_t(b)]=a;open.push({candidate,b});}
+            }
+        }
+        found=cache.endpointParents.emplace(endpoint,std::move(parent)).first;
+    }
+    const auto& parent=found->second;if(parent[size_t(goal)]<0)return true;
+    std::vector<Vec3> path{target};for(int n=goal;n!=start;n=parent[size_t(n)])path.push_back(position(n));path.push_back(origin);
+    if(!reverse)std::reverse(path.begin(),path.end());
+    Vec3 previous=from;
+    for(size_t i=0;i<path.size();){size_t last=i;
+        for(size_t j=i;j<path.size();++j){if(!ClearLine(m,previous,path[j],.48f))break;last=j;}
+        if(!ClearLine(m,previous,path[last],.48f)){result.clear();return true;}
+        result.push_back(path[last]);previous=path[last];i=last+1;
+    }
+    return true;
+}
+// Reuse geometric work across the thousands of cover evaluations in a command pass.
+// Exact coordinates and revision ownership retain the same clearance/path semantics.
+static std::vector<Vec3> ImportedFloorPath(const Map& m,Vec3 from,Vec3 to){
+    auto& cache=*m.navigation;
+    if(cache.flatComponents.empty()){
+        const int n=int(m.surfaces.size());cache.flatComponents.resize(size_t(n));
+        for(int i=0;i<n;++i)cache.flatComponents[size_t(i)]=i;
+        auto root=[&](int i){while(cache.flatComponents[size_t(i)]!=i)i=cache.flatComponents[size_t(i)];return i;};
+        for(int i=0;i<n;++i){const auto& a=m.surfaces[size_t(i)];if(std::abs(a.slope.x)+std::abs(a.slope.y)>.001f)continue;
+            for(int j=0;j<i;++j){const auto& b=m.surfaces[size_t(j)];
+                if(std::abs(b.slope.x)+std::abs(b.slope.y)>.001f||std::abs(a.center.z-b.center.z)>.001f)continue;
+                if(std::abs(a.center.x-b.center.x)<=a.half.x+b.half.x+.001f&&std::abs(a.center.y-b.center.y)<=a.half.y+b.half.y+.001f)
+                    cache.flatComponents[size_t(root(i))]=root(j);
+            }
+        }
+        for(int i=0;i<n;++i)cache.flatComponents[size_t(i)]=root(i);
+    }
+    auto component=[&](Vec3 p){for(size_t i=0;i<m.surfaces.size();++i){const auto& s=m.surfaces[i];
+        if(std::abs(s.slope.x)+std::abs(s.slope.y)<.001f&&std::abs(s.center.z-p.z)<.001f&&InsideSurface(s,p))return cache.flatComponents[i];}return -1;};
+    // Grade is implicit and unbounded by the explicit floor rectangles. Only reject
+    // disconnected below-grade flat networks; ramps remain graph edges.
+    if(from.z<-.03f&&to.z<-.03f){const int a=component(from),b=component(to);if(a>=0&&b>=0&&a!=b)return {};}
+    FloorRouteKey key{{from.x,from.y,from.z,to.x,to.y,to.z}};
+    auto found=cache.importedFloorRoutes.find(key);if(found!=cache.importedFloorRoutes.end())return found->second;
+    std::vector<Vec3> path;if(!ImportedEndpointPath(m,from,to,path))path=FindFloorPath(m,from,to);
+    if(cache.importedFloorRoutes.size()<16384)cache.importedFloorRoutes.emplace(key,path);
+    return path;
+}
+// Imported networks may require floor -> ramp -> grade -> ramp -> floor.
+// Cache endpoint routes with the same revision-owned cache as ordinary navigation.
+static std::vector<Vec3> FindLinkedSurfacePath(const Map& m,Vec3 from,Vec3 to){
+    const uint64_t key=m.prepared?m.revision:GeometryKey(m);
+    if(!m.navigation||m.navigation->key!=key){m.navigation=std::make_shared<NavigationCache>();m.navigation->key=key;}
+    if(std::abs(from.z-to.z)<.03f){auto direct=ImportedFloorPath(m,from,to);if(!direct.empty())return direct;}
+    const auto cache=m.navigation;
+    std::vector<Vec3> ends;for(const auto& l:m.surfaceLinks){ends.push_back(l.from);ends.push_back(l.to);}
+    const int count=int(ends.size());
+    if(!cache->surfaceReady){
+        cache->surfacePaths.resize(size_t(count*count));
+        for(int i=0;i<count;++i)for(int j=0;j<count;++j)if(i!=j){
+            auto& path=cache->surfacePaths[size_t(i*count+j)];
+            if(i/2==j/2&&ClearLine(m,ends[i],ends[j],.48f))path={ends[j]};
+            else if(std::abs(ends[i].z-ends[j].z)<.03f)path=ImportedFloorPath(m,ends[i],ends[j]);
+        }
+        cache->surfaceReady=true;
+    }
+    auto attach=[&](Vec3 a,Vec3 b){
+        if(std::abs(a.z-b.z)<.03f)return ImportedFloorPath(m,a,b);
+        for(const auto& l:m.surfaceLinks){
+            const auto s=std::find_if(m.surfaces.begin(),m.surfaces.end(),[&](const GroundSurface& surface){return surface.id==l.id;});
+            if(s!=m.surfaces.end()&&InsideSurface(*s,a)&&InsideSurface(*s,b)&&ClearLine(m,a,b,.48f))return std::vector<Vec3>{b};
+        }
+        return std::vector<Vec3>{};
+    };
+    std::vector<Vec3> points{from,to};points.insert(points.end(),ends.begin(),ends.end());
+    const int n=int(points.size());std::vector<std::vector<Vec3>> paths(size_t(n*n));
+    for(int i=0;i<count;++i){paths[size_t(i+2)]=attach(from,ends[i]);paths[size_t((i+2)*n+1)]=attach(ends[i],to);
+        for(int j=0;j<count;++j)paths[size_t((i+2)*n+j+2)]=cache->surfacePaths[size_t(i*count+j)];}
+    std::vector<float> distance(size_t(n),1e30f);std::vector<int> parent(size_t(n),-1);std::vector<bool> visited(size_t(n),false);distance[0]=0;
+    for(int pass=0;pass<n;++pass){int u=-1;for(int i=0;i<n;++i)if(!visited[size_t(i)]&&(u<0||distance[size_t(i)]<distance[size_t(u)]))u=i;
+        if(u<0||distance[size_t(u)]>=1e29f)break;
+        if(u==1)break;
+        visited[size_t(u)]=true;
+        for(int v=0;v<n;++v){const auto& path=paths[size_t(u*n+v)];if(path.empty())continue;float length=0;Vec3 previous=points[size_t(u)];
+            for(auto p:path){length+=Distance(previous,p);previous=p;}if(distance[size_t(u)]+length<distance[size_t(v)]){distance[size_t(v)]=distance[size_t(u)]+length;parent[size_t(v)]=u;}}
+    }
+    if(parent[1]<0)return {};
+    std::vector<int> chain;for(int node=1;node!=0;node=parent[size_t(node)])chain.push_back(node);std::reverse(chain.begin(),chain.end());
+    std::vector<Vec3> result;int previous=0;for(int node:chain){const auto& path=paths[size_t(previous*n+node)];result.insert(result.end(),path.begin(),path.end());previous=node;}return result;
+}
 std::vector<Vec3> FindPath(const Map& m,Vec3 from,Vec3 to) {
     struct Measure {QueryProfile* p;std::chrono::steady_clock::time_point start;
         explicit Measure(QueryProfile* q):p(q){if(p){++p->paths;if(p->depth++==0)start=std::chrono::steady_clock::now();}}
         ~Measure(){if(p&&--p->depth==0)p->navigationSeconds+=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();}
     } measure(m.queryProfile.get());
     if(!Walkable(m,from)||!Walkable(m,to))return {};
+    if(m.linkedSurfaceRouting&&!m.surfaceLinks.empty())return FindLinkedSurfacePath(m,from,to);
     // Ramps connect explicit terrain surfaces. Finish a ramp before selecting another layer.
     for(const auto& surface:m.surfaces)if(InsideSurface(surface,from)&&(std::abs(surface.slope.x)+std::abs(surface.slope.y))>.01f&&std::abs(from.z)>.03f&&std::abs(from.z+1.4f)>.03f){
         for(const auto& link:m.surfaceLinks)if(link.id==surface.id){Vec3 end=std::abs(to.z-link.to.z)<std::abs(to.z-link.from.z)?link.to:link.from;auto rest=FindPath(m,end,to);if(rest.empty())return {};rest.insert(rest.begin(),end);return rest;}

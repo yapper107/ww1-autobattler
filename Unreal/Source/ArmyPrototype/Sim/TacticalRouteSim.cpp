@@ -142,6 +142,19 @@ TacticalRoute TacticalRoutePlanner::Evaluate(Vec3 from,Vec3 to,int budget){
     return r;
 }
 float CorridorDistance(const TacticalRoute& route,Vec3 p){float best=std::numeric_limits<float>::infinity();Vec3 a=route.start;for(Vec3 b:route.points){best=std::min(best,SegmentDistance(p,a,b));a=b;}return best;}
+std::vector<Vec3> FollowFinalApproach(const Map& map,const TacticalRoute& route,Vec3 from,Vec3 to){
+    if(route.geometry!=map.revision||Distance(to,route.destination)>10)return {};
+    // Inside the bounded final area, a clear local approach does not need to
+    // funnel every member through the same route centre before reaching cover.
+    if(Distance(from,route.destination)<=12&&ClearLine(map,from,to,.48f))return {to};
+    auto direct=FollowCorridor(map,route,from,to);if(!direct.empty())return direct;
+    int expanded=0;RouteStatus status;
+    return FindCostPath(map,from,to,[&](Vec3 p){
+        const float lane=CorridorDistance(route,p);
+        if(lane>4&&Distance(p,from)>4&&Distance(p,route.destination)>12)return std::numeric_limits<float>::infinity();
+        return 1+lane*.2f;
+    },6000,expanded,status);
+}
 std::vector<Vec3> FollowCorridor(const Map& map,const TacticalRoute& route,Vec3 from,Vec3 to){
     struct Timer {QueryProfile* p;std::chrono::steady_clock::time_point start;~Timer(){if(p)p->corridorSeconds+=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();}}timer{map.queryProfile.get(),std::chrono::steady_clock::now()};
     // Join and leave near the ordered lane; no unrestricted replan may cut across its interior.

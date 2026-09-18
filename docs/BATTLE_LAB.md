@@ -1,5 +1,66 @@
 # Battle laboratory
 
+## Cognition experiment
+
+The implemented upgrade and its scenario evidence are recorded in
+[AI_COGNITION_IMPLEMENTATION.md](AI_COGNITION_IMPLEMENTATION.md).
+`--cognition` implies foundations. It supports the normal maps (encounter 0) and experimental encounters 5–17.
+Use 8 for integration, 9 for delayed platoon knowledge, and 10 for a physical
+route obstruction applied through geometry invalidation. Encounters 5–7 retain
+the existing strict tactical layouts and unchanged evaluator.
+
+```bash
+./scripts/test-sim.sh --cognition
+./scripts/battle-lab.sh --cognition --encounter 10 --seed 107 --seconds 70 --out .local/cognition-obstruction
+python3 tools/investigate_cognition.py .local/cognition-obstruction/latest.json --check-obstruction
+python3 tools/run_route_matrix.py --cognition --out .local/cognition-matrix --check
+./scripts/launch.sh -ArmyCognition -ArmyScenario=8
+```
+
+Paired configurations can set `--report-delay`, `--full-vision`, `--judgment`,
+`--risk`, `--adaptability` and `--estimate-bias`. Manifests and exact reruns preserve
+them. Profile knobs set bases; stored actor profiles include deterministic variation.
+`method_candidate`, `method_accepted`, `method_stage`, `method_stage_advanced`,
+`method_safety_override`, `method_resume`, `method_reconsidered` and
+`method_exhausted` expose the accepted method lifecycle. Parent goals and method
+instances have distinct IDs. Mental-map regions separate unseen-force allowance
+from the count supported by sightings. A stale report never gains a fresh timestamp
+just because another commander forwards it.
+
+The overlay reads recorded actor frames. Cyan marks field limits (occlusion still
+applies); amber outlines remembered uncertainty. Visible world units remain
+explicitly labeled observer truth. This mode is not promoted to normal gameplay.
+
+## AI foundations experiment (2026-09-14)
+
+`./scripts/battle-lab.sh --foundations --encounter 8 --seed 107 --seconds 90 --out .local/foundations`
+runs the first perception/belief/goal slice. It is opt-in, mutually exclusive with
+recovery, and rejected outside encounter 8. The scenario reuses the controlled MG
+terrain/deployment. `--estimate-bias -1` or `1` shifts the seeded actor judgments
+toward under/overestimation without changing observations. Exact reruns restore
+both parameters from the manifest.
+
+`./scripts/test-sim.sh --foundations` tests component boundaries, real command
+transport, changed goal orders, and integrated simulation/trace determinism.
+`python3 tools/investigate_foundations.py .local/foundations/latest.json --soldier 5 --time 30`
+prints the latest recorded mental-map snapshot at or before that time and the
+selected actor's goal changes. A missing snapshot means no recorded evidence,
+not an empty battlefield. Mental-map snapshots are sampled every five seconds;
+the decision code derives the map from current local memory when needed.
+
+`mental_map` records structured `look`, `estimate_bias`, and `regions`, including
+raw observation count, remembered MG count, heuristic low/high estimate,
+interpreted strength, confidence and original observation time. Missing regions
+are unknown. `goal_feedback_sent`, `goal_feedback_received`,
+`goal_feedback_ignored`, `goal_alternative_applied`, and `goal_observe` connect
+received task status with the parent's subsequent order. `goal_intent` records
+identity, parent, purpose, objective, expiry, status and feedback observation time
+where applicable. Observer truth never supplies these belief fields.
+
+The existing strict flanking evaluator is unchanged. Foundations tests are not
+a new 8/9 tactical pass. See [AI_FOUNDATIONS_PLAN.md](AI_FOUNDATIONS_PLAN.md) for
+scope, assumptions, attributed reviews and deferred work.
+
 The simulator exports evidence for offline AI investigation. Use the analyzer before interpreting movement counts or proposing tactical changes. Visual review is still useful for animation and presentation; it is not required to inspect tactical causes.
 
 ## Run and investigate
@@ -122,3 +183,114 @@ See `RECOVERY_DESTINATION_FIX.md` for source `f2424236795f5531`: route objective
 ## Third recovery pass: rejected behavior result
 
 See `RECOVERY_THIRD_PASS_RESULTS.md` for the staged Cause A–E measurements. The combined candidate passes 2/9, below the preceding 5/9; it remains fixture-only. `tools/run_recovery_pass.py --out DIR --layouts 5 6 7` runs every requested case and saves gate audits without early stopping, so regressions remain measurable. This investigation runner does not change the evaluator or the separate acceptance gate.
+
+## Decision-to-action contracts and acceptance
+
+See [AI_DECISION_LOOP_RESULTS.md](AI_DECISION_LOOP_RESULTS.md) for current source,
+physical scenarios and the unaccepted 7/9 result on Linux and native Windows.
+Cognition remains an explicit `--cognition` / `-ArmyCognition` choice.
+
+`completion`, `execution_method`, `execution_stage`, `execution_generation`,
+`execution_deadline` and `execution_paused` describe the actual task contract.
+`peek`, `sector`, `coverage`, `support`, `support_squad`, `support_deployed`,
+`support_useful`, `movers` and `failed_attempts` expose the accepted method's
+viewpoint, bounded inspection evidence, dependency and failure history.
+An occupied position does not certify observation or useful fire. Support can
+transition out of Done when its delivered-fire evidence expires. Pausing a route
+preserves its assignment ID; a replacement member receives a new generation.
+
+`python3 tools/run_ai_acceptance.py --out DIR` runs all nine frozen 360-second cases
+and returns failure below 8/9. It checks the original evaluator's hash. Its
+`--binary` option accepts the native Windows executable from WSL. The separate
+held-out mode refuses to run until the exact build has a passing development gate.
+Held-out seeds 110–119 remain untested. Never treat elimination alone as a passed flank.
+
+`--seconds` is an exact fixture limit; normal preparation uses the duration slider.
+Manifests include the limit and controller. `tools/rerun_battle.py` resets controller
+selection before restoring recorded flags, preserving old legacy configurations.
+
+## Nine-case completion follow-up
+
+[Current results](AI_NINE_GATE_RESULTS.md): source `8a5b385e04c22185` passes the
+unchanged original matrix 9/9 on Linux and Windows. Held-out seeds 110–119 score
+10/10, 7/10 and 5/10 per layout on both platforms, so cognition remains opt-in.
+
+Encounter 17 isolates cross-squad support deployment behind a long obstruction:
+
+```sh
+./scripts/battle-lab.sh --cognition --encounter 17 --seed 107 --seconds 70 --out .local/support-deployment
+./scripts/test-sim.sh --decision-loop
+```
+
+Its durable passive target prevents early elimination from replacing the
+coordination test. Navigation, firing, delivery, communication and completion use
+production code. The trace's `support_progress` object records the reporting gun,
+assignment, route, stage, original status time, report time and deadline.
+`support_wait_deadline` is the accepting leader's bounded wait. Deployment status
+does not count as useful fire. `method_support_deploying` identifies an accepted
+wait; `method_support_sector_changed` explains an updated final-approach request.
+
+## Generated family baselines (plan 014 Phase 1)
+
+`F1` generates a defended position from a separate splitmix64 stream. Geometry,
+masked deployments and support-weapon choices depend only on `(F1, genSeed)`;
+`--seed` controls battle reactions and dice. The initial armies have no mutual
+line of sight, defenders occupy local cover, and validation checks connected
+paths to the objective, clear corners, masks and bounds. Scenario identities
+remain separate from encounter IDs. F2/F3 are reserved, not implemented yet.
+
+```bash
+./scripts/battle-lab.sh --legacy-ai --generated F1 --gen-seed 1 --seed 107 --seconds 360 --evaluate --out .local/family-example
+python3 tools/run_family.py --family F1 --gen-seeds 1-30 --seeds 107-109 --controllers legacy candidate90 --jobs 2 --out .local/f1-dev
+python3 tools/report_family.py .local/f1-dev/family.json --out .local/f1-report.json --markdown .local/f1-report.md
+./scripts/test-sim.sh --generated
+```
+
+The runner uses a process pool capped by available memory (1.5 GiB budget per
+worker, at most four), saves `family.json` after every completed or failed case,
+and resumes an identical build/draw/metric configuration without rerunning its
+recorded cases. Failures remain visible and yield a failing exit; use a new output
+root for a corrected build. Partial reports show actual counts rather than treating
+missing cases as successes. Each case has its own export directory and exact argv.
+
+Development draws are genSeeds 1–30 crossed with battle seeds 107–109. For a future
+candidate validation pass, `--validation-salt TEXT` draws 20 distinct keys from
+SHA-256 of source fingerprint (without platform suffix), family, salt and index. Record the salt, run that candidate once,
+and use a new candidate-derived draw next time. This does not open the frozen
+historical authored-map validation seeds.
+
+`evaluation.jsonl` schema 2 adds explicit identity, stance, health, suppression,
+sector, order serial/issue time and platoon order fields. Elements, roles and areas
+are null for legacy/candidate90 because neither controller has drill elements.
+`shots.jsonl` schema 1 records emitted and impact times, shooter, aim, endpoints,
+impact/hit, target, suppression and support-weapon identity. These are post-battle
+observer exports, never policy inputs. `scenario.json` records the generator's
+parameters, masks, positions, obstacles and independent scenario digest. Manifests
+and `rerun_battle.py` preserve family and generator seed.
+
+`family_metrics.py` reuses the accepted Phase 0 spatial/exposure denominators,
+adds actual shot counts, gun-silence episodes and frame-based command statistics.
+A missing drill metric or missing eligible episode is null with a reason, not zero.
+The report gives count, mean, median and a 95% percentile interval for the mean
+from 2000 fixed-RNG bootstrap resamples. It resamples generated-map clusters,
+keeping repeated battle seeds together, and pairs deltas only on identical
+`(family, genSeed, seed)` keys. The JSON retains every run, failure and unavailable
+reason. Fighting intensity on both playable maps still gates later controller
+changes; family baselines alone do not promote a controller.
+
+### Phase 2 drills measurements
+
+Use `tools/run_family.py --controllers drills` with the same F1 development draws,
+then pass both its `family.json` and the Phase 1 baseline `family.json` to
+`tools/report_family.py`. Paired keys remain `(family, genSeed, seed)`. The runner
+now checkpoints an engagement guard: three zero-shot results in any fixed ten-draw
+block per controller stop new scheduling; active workers finish and are disclosed.
+Pending cases are not scored or silently omitted. Controller selection is recorded
+as `drills_policy` and preserved by `rerun_battle.py`.
+
+Drills evaluation rows include received element/area assignments, the current drill
+instance/start, movement flag, squad leader and whether its sector names a known
+threat. Offline area compliance and contact latency consume those fields. Shot
+roles use the shooter's recorded assignment at shot time. They are diagnostic
+observer exports, never actor policy inputs. Phase 3 conformance metrics remain
+unavailable until those drills exist.

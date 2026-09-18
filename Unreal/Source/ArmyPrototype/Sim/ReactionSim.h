@@ -2,12 +2,15 @@
 #include "BattleSim.h"
 namespace army {
 struct PendingReaction {
+    ObservationCoverage coverage;
+    SquadBroadcast broadcast;
     ReactionKind kind=ReactionKind::Sight;
     int recipient=-1, source=-1, enemy=-1;
     int subject=-1;
     Vec3 position{};
     Vec3 velocity{};
     SupportSector supportSector;
+    SupportProgress supportProgress;
     FireArea fireArea;
     FireDelivery delivery;
     MoveFailure failedMove;

@@ -3,15 +3,17 @@
 #include "ReactionSim.h"
 #include "ManeuverSim.h"
 #include "PlatoonSim.h"
+#include <unordered_map>
 
 namespace army {
 constexpr float MessageDelay = 0.75f;
 struct CommandMessage {
-    enum class Kind { Order, Contact, Ready, Wound, Fire, Lane, Movement, Delivery, TaskStatus, SupportSector };
+    enum class Kind { Order, Contact, Ready, Wound, Fire, Lane, Movement, Delivery, TaskStatus, SupportSector, SupportProgress };
     Kind kind = Kind::Order;
     int sender = -1, recipient = -1, enemy = -1;
     int subject = -1;
     SupportSector supportSector;
+    SupportProgress supportProgress;
     FireArea fireArea;
     FireDelivery delivery;
     MoveFailure failedMove;
@@ -26,21 +28,27 @@ struct CommandMessage {
     Vec3 supportPosition{};
 };
 struct CommandRuntime {
+    float reportDelay=MessageDelay;
     const std::array<Map,UnitCount>* geometryViews=nullptr;
     Diagnostics* diagnostics=nullptr;
     ReactionRuntime reactions;
     PlatoonRuntime platoon;
     std::vector<CommandMessage> messages;
     std::array<float, UnitCount> nextReport{}, nextNco{};
+    std::array<float, UnitCount> nextDeliveryReport{};
+    std::array<float, UnitCount> nextSupportProgress{},taskProgressAt{},taskRemaining{};
+    std::array<Vec3,UnitCount> taskProgressPosition{};
+    std::array<uint64_t,UnitCount> taskProgressAssignment{};
+    std::unordered_map<uint64_t,float> sentTargetDeliveryAt;
     std::array<float, SquadCount> nextPlan{}, startedAt{}, lastPlanAt{}, nextSupportSector{};
-    std::array<uint64_t,SquadCount> plannedKnowledge{};
+    std::array<uint64_t,SquadCount> plannedKnowledge{}, plannedTasks{};
     int fixedDefender=-1;
     std::array<int,SquadCount> taskLeaders{};
     std::array<Assignment, UnitCount> lastSent{};
     int nextSerial = 1;
     std::array<ProgressRuntime,SquadCount> progress{};
 };
-struct PlannedOrder { int recipient; Task task; Vec3 position, sector; TeamPlan teamPlan; bool hasSlot=false;CoverPosition slot; };
+struct PlannedOrder { int recipient; Task task; Vec3 position, sector; TeamPlan teamPlan; bool hasSlot=false;CoverPosition slot; ExecutionContract execution{}; };
 bool ResolveOrderPosition(const Map& map,Vec3 from,Vec3 requested,Vec3& resolved);
 bool KnowsWounded(const Soldier& commander, const Soldier& soldier);
 Vec3 RearPosition(const Soldier& commander, const Soldier& soldier, const std::vector<Soldier>& squad,

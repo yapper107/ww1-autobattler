@@ -1,0 +1,148 @@
+{
+  "version": "v1",
+  "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. Each guard records where it came from so a user verdict is traceable to the metric it became. Generated town and trench maps (town-*, trench-*) are symmetric battles and carry guards only, like the authored maps, until a mixed-controller sparring battle exists.",
+  "guards": [
+    {
+      "name": "build",
+      "kind": "external",
+      "provenance": "harness: the lab binary must build and report the source fingerprint"
+    },
+    {
+      "name": "selectors",
+      "kind": "external",
+      "provenance": "plan 014/015: every mechanism selector passes"
+    },
+    {
+      "name": "python_tests",
+      "kind": "external",
+      "provenance": "harness: tools and metric tests pass"
+    },
+    {
+      "name": "protected_files",
+      "kind": "external",
+      "provenance": "plan 014: frozen evaluator, acceptance cases, validation seeds and TerrainSim untouched"
+    },
+    {
+      "name": "static_check",
+      "kind": "external",
+      "provenance": "plan 014 s11: policy code never reads hidden enemy state"
+    },
+    {
+      "name": "parity",
+      "kind": "external",
+      "provenance": "plan 014: legacy and cognition digests unchanged by the candidate"
+    },
+    {
+      "name": "zero_shot",
+      "kind": "battle",
+      "sets": [
+        "works",
+        "trenches",
+        "f1-dev",
+        "f1-val",
+        "town-dev",
+        "town-val",
+        "trench-dev",
+        "trench-val"
+      ],
+      "metric": "shots",
+      "rule": "gt",
+      "value": 0,
+      "provenance": "user replay 16 Sep 2026: hotfix rejected for passivity; Phase 4d zero-shot battles"
+    },
+    {
+      "name": "firing_squads",
+      "kind": "battle",
+      "sets": [
+        "works",
+        "trenches",
+        "town-dev",
+        "town-val",
+        "trench-dev",
+        "trench-val"
+      ],
+      "field": "firing_squads",
+      "rule": "min_ge",
+      "value": 3,
+      "provenance": "user replay 16 Sep 2026: only one or two soldiers shooting"
+    },
+    {
+      "name": "under_2m",
+      "kind": "paired",
+      "sets": [
+        "works",
+        "trenches",
+        "f1-dev",
+        "town-dev",
+        "trench-dev"
+      ],
+      "metric": "under_2m",
+      "baseline": "legacy",
+      "rule": "ci_lower_le_0",
+      "provenance": "user report 16 Sep 2026: squads bunching; plan 015 step C4/C5 interval rule"
+    },
+    {
+      "name": "orders_azure_per_minute",
+      "kind": "paired",
+      "sets": [
+        "works",
+        "trenches",
+        "f1-dev",
+        "town-dev",
+        "trench-dev"
+      ],
+      "metric": "orders_azure_per_minute",
+      "baseline": "legacy",
+      "rule": "ci_lower_le_0",
+      "provenance": "plan 015 step C review: churn paired against legacy"
+    },
+    {
+      "name": "orders_ember_per_minute",
+      "kind": "paired",
+      "sets": [
+        "works",
+        "trenches",
+        "f1-dev",
+        "town-dev",
+        "trench-dev"
+      ],
+      "metric": "orders_ember_per_minute",
+      "baseline": "legacy",
+      "rule": "ci_lower_le_0",
+      "provenance": "plan 015 step C review: churn paired against legacy"
+    },
+    {
+      "name": "friendly_fire",
+      "kind": "paired",
+      "sets": [
+        "works",
+        "trenches",
+        "f1-dev",
+        "town-dev",
+        "trench-dev"
+      ],
+      "metric": "friendly_hits_per_100_soldier_minutes",
+      "baseline": "legacy",
+      "rule": "ci_lower_le_0",
+      "provenance": "plan 014 metrics: friendly-fire hits bounded"
+    }
+  ],
+  "objective": {
+    "baselines": [
+      "legacy",
+      "candidate90"
+    ],
+    "ranking_set": "f1-val",
+    "reported_sets": [
+      "f1-dev",
+      "f1-val"
+    ],
+    "result_weight": 1.0,
+    "exchange_weight": 0.25,
+    "exchange_clip_log2": 3,
+    "note": "Per set and baseline: paired delta of attacker result (win 1, draw 0.5, loss 0) and of clipped log2 casualty exchange, cluster bootstrap on the generated map. The optimiser ranks by the lower interval bound on the validation set."
+  },
+  "information": [
+    "squad-only"
+  ]
+}

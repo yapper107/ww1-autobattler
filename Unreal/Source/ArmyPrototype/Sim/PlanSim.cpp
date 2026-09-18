@@ -1,4 +1,6 @@
 #include "PlanSim.h"
+#include "CognitiveSim.h"
+#include "DrillSim.h"
 #include "CommandSim.h"
 #include "CoordinationSim.h"
 #include "PlatoonSim.h"
@@ -8,6 +10,8 @@ namespace army {
 const char* SquadPhaseName(SquadPhase p){const char* names[]={"SEARCH","ESTABLISH FIRE","HOLD / SUPPRESS","PREPARE MOVEMENT","BOUND","WITHDRAW","REGROUP","BLOCKED / HOLD"};return names[int(p)];}
 void UpdateSquadPlan(const Soldier& leader,const std::vector<Soldier>& squad,const Map& map,const Config& config,
     const std::vector<Vec3>& approaches,const std::vector<int>& claimed,SquadCommand& cmd,ProgressRuntime& progress,Diagnostics* diagnostics,float time){
+    if(config.drills){UpdateDrillPlan(leader,squad,map,config,approaches,claimed,cmd,diagnostics,time);return;}
+    if(config.cognition){UpdateCognitivePlan(leader,squad,map,config,cmd,diagnostics,time);return;}
     const auto old=cmd;
     // Higher orders describe intent. The same squad candidate comparison decides execution.
     if(leader.platoonOrder.serial>cmd.platoonOrderSerial&&time<leader.platoonOrder.expiresAt){
@@ -15,6 +19,12 @@ void UpdateSquadPlan(const Soldier& leader,const std::vector<Soldier>& squad,con
         TraceProposal(diagnostics,leader,cmd,map,time,"directive_received","platoon intent enters squad candidate comparison");
     }
     if(time>=cmd.platoonUntil)cmd.platoonTask=PlatoonTask::None;
+    if(config.foundations&&cmd.platoonTask==PlatoonTask::Observe){
+        cmd.hasWaypoint=false;cmd.teamPlan={};cmd.searching=false;cmd.phase=SquadPhase::HoldSuppress;
+        cmd.planReason="observe assigned sector before committing; judged resistance or reported obstruction";
+        if(old.platoonOrderSerial!=cmd.platoonOrderSerial)TraceProposal(diagnostics,leader,cmd,map,time,"goal_observe",cmd.planReason);
+        return;
+    }
     UpdateManeuver(leader,squad,map,config,approaches,cmd,time,diagnostics);
     bool stageAdvanced=cmd.route&&old.route&&cmd.route->id==old.route->id&&cmd.routeStage!=old.routeStage;
     bool changed=!stageAdvanced&&cmd.hasWaypoint&&(!old.hasWaypoint||Distance(cmd.waypoint,old.waypoint)>3||old.maneuver!=cmd.maneuver);

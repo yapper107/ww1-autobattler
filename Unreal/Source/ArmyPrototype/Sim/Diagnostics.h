@@ -11,6 +11,27 @@ struct Alternative { Vec3 position{}; float score=0; std::string reason; };
 struct DecisionAlternatives { std::vector<Alternative> choices; void Add(Vec3 p,float score,const char* reason); };
 struct TraceContact { int id=-1; bool personal=false; Contact contact; };
 struct TraceEntry {
+    ExecutionContract execution;
+    Vec3 peek{},sector{};
+    int support=-1,supportSquad=-1;
+    bool supportDeployed=false,supportUseful=false;
+    SupportProgress supportProgress;
+    float supportDeadline=0;
+    float stageDeadline=0;
+    std::array<InjuryAssessment,SquadSize> injuries{};
+    float taskRemaining=-1;
+    int supportThreat=-1,localSupport=-1,localThreat=-1;bool localUseful=false;float localDeadline=0;Vec3 localSector{},localPosition{};
+    std::vector<FriendlyIntent> friendlyIntent;
+    std::vector<ObservationCoverage> coverage;
+    std::vector<FailedAttempt> attempts;
+    std::vector<int> movers,holders,scouts;
+    float scoutDeadline=0,prepareDeadline=0;
+    std::vector<SupportFailure> supportFailures;
+    bool foundations=false;
+    Vec3 look{};float estimateBias=0;
+    std::vector<RegionEstimate> regions;
+    GoalIntent intent;
+    int goalStatus=-1;float goalObservedAt=-100;
     uint64_t taskId=0;int taskStatus=0,taskCause=0,taskSequence=0,taskSubject=-1,taskTarget=-1;float taskObservedAt=0;
     uint64_t id=0,parent=0,geometry=1,planDecision=0;
     float time=0; int soldier=-1,squad=-1,order=0,issuer=-1,plan=0;
@@ -50,7 +71,9 @@ void TraceSoldier(Diagnostics& data,const Soldier& soldier,const SquadCommand& c
 void TraceProposal(Diagnostics* data,const Soldier& leader,const SquadCommand& command,const Map& map,float time,const char* kind,const std::string& reason);
 void TraceOrder(Diagnostics* diagnostics,const Soldier& recipient,const Assignment& order,float time,const char* kind);
 void TracePath(Diagnostics* data,const Soldier& soldier,const Map& map,float time,const std::vector<Vec3>& path,const char* kind,uint64_t route=0);
-std::string ExportBattle(const Record& record,const std::string& root,const std::string& build="development");
+// digest: a GameplayDigest already computed for this record, or 0 to compute it here.
+// The digest walks every recorded frame, so callers that also print it pass it in.
+std::string ExportBattle(const Record& record,const std::string& root,const std::string& build="development",uint64_t digest=0);
 std::string TraceJson(const TraceEntry& entry);
 void ExportEvaluation(const Record& record,const std::string& directory);
 uint64_t GameplayDigest(const Record& record);

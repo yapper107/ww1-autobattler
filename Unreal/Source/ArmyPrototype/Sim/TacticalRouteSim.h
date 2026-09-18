@@ -34,5 +34,12 @@ public:
 };
 std::vector<Vec3> FindCostPath(const Map& map,Vec3 from,Vec3 to,const std::function<float(Vec3)>& cost,int budget,int& expanded,RouteStatus& status);
 float CorridorDistance(const TacticalRoute& route,Vec3 p);
+// Shared policy/execution area: route buffer union objective disc; rectangle only without a route.
+inline bool InOperationArea(Vec3 p,Vec3 lo,Vec3 hi,const std::shared_ptr<const TacticalRoute>& route,float width,Vec3 objective,float radius){
+    return (route&&width>0?CorridorDistance(*route,p)<=width:(p.x>=lo.x&&p.x<=hi.x&&p.y>=lo.y&&p.y<=hi.y))||(radius>0&&Distance(p,objective)<=radius);
+}
 std::vector<Vec3> FollowCorridor(const Map& map,const TacticalRoute& route,Vec3 from,Vec3 to);
+// Final occupation may leave the lane only in the bounded destination area.
+// Planning and physical execution use this same clearance and search contract.
+std::vector<Vec3> FollowFinalApproach(const Map& map,const TacticalRoute& route,Vec3 from,Vec3 to);
 }

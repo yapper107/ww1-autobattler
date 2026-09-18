@@ -1,6 +1,7 @@
 #include "BattleSim.h"
 #include <algorithm>
 #include <numeric>
+#include <cstring>
 namespace army {
 struct SpatialIndex {
     struct Node { Vec3 low{},high{};int left=-1,right=-1;size_t begin=0,end=0; };
@@ -33,6 +34,28 @@ struct SpatialIndex {
         return first;
     }
 };
+#ifndef SEGMENT_MEMO_BITS
+#define SEGMENT_MEMO_BITS 21
+#endif
+struct SegmentMemo {
+    // Direct-mapped, 32-byte entries: seven argument words and a state word
+    // (bits 0-1: 1 clear, 2 blocked; bits 2+: kind). A collision evicts and the
+    // query is recomputed exactly, so the table size only affects speed.
+    struct Entry { uint32_t key[7]; uint32_t state; };
+    uint64_t revision=0; std::vector<Entry> entries;
+    explicit SegmentMemo(size_t n):entries(n){}
+};
+bool MemoisedSegment(const Map& m,Vec3 a,Vec3 b,float pad,int kind,bool (*compute)(const Map&,Vec3,Vec3,float)){
+    if(!m.segments||m.segments->revision!=m.revision){m.segments=std::make_shared<SegmentMemo>(size_t(1)<<SEGMENT_MEMO_BITS);m.segments->revision=m.revision;}
+    uint32_t key[7];const float words[7]={a.x,a.y,a.z,b.x,b.y,b.z,pad};std::memcpy(key,words,sizeof key);
+    uint64_t h=1469598103934665603ull;for(uint32_t k:key)h=(h^k)*1099511628211ull;h=(h^uint64_t(kind))*1099511628211ull;
+    h^=h>>32;h*=0x9e3779b97f4a7c15ull;h^=h>>29;
+    auto& e=m.segments->entries[h&(m.segments->entries.size()-1)];
+    if(m.queryProfile)++m.queryProfile->memoLookups;
+    if((e.state&3)&&(e.state>>2)==uint32_t(kind)&&std::memcmp(e.key,key,sizeof key)==0){if(m.queryProfile)++m.queryProfile->memoHits;return (e.state&3)==1;}
+    const bool clear=compute(m,a,b,pad);
+    std::memcpy(e.key,key,sizeof key);e.state=(uint32_t(kind)<<2)|(clear?1u:2u);return clear;
+}
 float IndexedContact(const Map& m,Vec3 a,Vec3 b,bool any,float padding){
     if(m.obstacles.empty())return -1;
     if(!m.spatial||m.spatial->revision!=m.revision){auto cache=std::make_shared<SpatialIndex>();cache->revision=m.revision;cache->items.resize(m.obstacles.size());std::iota(cache->items.begin(),cache->items.end(),0);cache->Build(m,0,cache->items.size());m.spatial=cache;}

@@ -3,6 +3,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/HUD.h"
 #include "Sim/BattleSim.h"
+#include "HAL/PlatformProcess.h"
 #include "BattleGameMode.generated.h"
 
 class ACameraActor;
@@ -17,8 +18,10 @@ public:
     ABattleGameMode();
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
+    virtual void EndPlay(const EEndPlayReason::Type Reason) override;
     void Command(FName Name);
     void Seek(float Seconds);
+    void SetBattleDuration(float Seconds);
     const army::Frame& Frame() const;
     FVector UnitPosition(int Id) const;
     bool IsFinished() const;
@@ -33,8 +36,16 @@ public:
     float ReplayTime = 0;
     float ReplaySpeed = 1;
     int Selected = 0;
+    int CognitiveScenario = 0;
     FString Notice;
+    int MapSelection=0;
 private:
+    bool SelectMap(int Index);
+    void GenerateMap();
+    FProcHandle GeneratorProcess;
+    int GeneratorSelection=2;
+    double GeneratorStartedAt=0;
+    void RefreshPreparation();
     void BuildScene();
     void ShowUnits();
     void RunBattle();
@@ -53,6 +64,7 @@ private:
     float RealSeconds = 0;
     int SmokeStage = 0;
     bool bSmoke = false;
+    bool bDurationSmokeChecked = false;
     bool bCapture = false;
 };
 
@@ -69,4 +81,6 @@ private:
     void Button(FName Id, const FString& Text, float X, float Y, float W, float H, bool Primary = false);
     float Wrapped(const FString& Text, float X, float Y, int Columns = 33);
     float UiScale = 1;
+    FVector2D CachedCanvasSize = FVector2D::ZeroVector;
+    bool bDraggingDuration = false;
 };

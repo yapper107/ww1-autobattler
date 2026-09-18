@@ -374,9 +374,9 @@ std::vector<PlannedOrder> UpdateRecoveryDrill(const Soldier& leader,const std::v
         while(finalBegin>0&&Distance(route.points[finalBegin-1],route.destination)<12)--finalBegin;
         for(size_t i=0;i<stages.size();++i)if(stages[i].begin<finalBegin&&finalBegin<stages[i].end){
             RouteStage final=stages[i];final.begin=finalBegin;final.seconds=0;final.exposedSeconds=0;
-            Vec3 previous=route.points[finalBegin-1];std::vector<Vec3> finalPath(route.points.begin()+finalBegin,route.points.begin()+final.end);
-            auto cost=planner.Measure(previous,finalPath,&final.exposedSeconds);final.seconds=cost.travel;
-            stages[i].end=finalBegin;stages[i].destination=previous;stages[i].seconds-=final.seconds;stages[i].exposedSeconds=std::max(0.f,stages[i].exposedSeconds-final.exposedSeconds);
+            Vec3 finalStart=route.points[finalBegin-1];std::vector<Vec3> finalPath(route.points.begin()+finalBegin,route.points.begin()+final.end);
+            auto cost=planner.Measure(finalStart,finalPath,&final.exposedSeconds);final.seconds=cost.travel;
+            stages[i].end=finalBegin;stages[i].destination=finalStart;stages[i].seconds-=final.seconds;stages[i].exposedSeconds=std::max(0.f,stages[i].exposedSeconds-final.exposedSeconds);
             stages.insert(stages.begin()+i+1,final);break;
         }
         route.stages=stages;

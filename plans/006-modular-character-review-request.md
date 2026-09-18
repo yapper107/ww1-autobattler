@@ -1,0 +1,23 @@
+# Bounded modular character production consultation
+
+Objective: review a practical staged modular low-poly character production plan, not implement it. User wants to go system by system: a couple male/female body types, concept faces and hair, personal body details, then separate interchangeable equipment. User is open to suggestions. Recommend compatibility boundaries that avoid a combinatorial asset burden. No code edits or recursive consultation.
+
+Source: HEAD 3ebd263e79b098155004b62119baef0dca502722, heavily modified working checkout (current cognition changes belong to separate ongoing work). Relevant files: AGENTS.md, CLAUDE.md, docs/DESIGN_VISION.md sections 9 and 19–20, docs/DEVELOPMENT.md current UE5.8/home-host sections, Unreal/Source/ArmyPrototype/BattleGameMode.cpp and .h. Soldier presentation currently uses primitive shapes. No authored character mesh files found in source.
+
+Required actual visual references to inspect with Read:
+- /mnt/c/Users/Jordan Chan/AppData/Local/Temp/codex-clipboard-6153d2ee-1fdd-4dc9-b91f-779c9cb26fe5.png (user reference screenshot: sparse faces, broad geometry)
+- /mnt/c/Users/Jordan Chan/.codex/visualizations/2026/09/16/01a0a7b1-2adf-70c0-a2d4-b42fa4ff1bf7/04-simplified-soldiers.png (user says 'A lot better'; preferred level of simplicity, equipment designs still exploratory)
+
+Astra's proposed approach to critique:
+1. Agree silhouette/proportion sheets for standard and broad/sturdy male/female human bodies; make one male and one female reference soldier through modeling, rigging, export and Unreal motion validation before broadening to four bodies. One compatible humanoid skeleton family with fixed initial bone lengths/reference pose; same height initially, width/silhouette variation chiefly in meshes.
+2. Heads are a separate library with a shared neck interface, curated compatibility where aesthetically needed rather than every face hard-locked to a body. Facial features are tiny flat color shapes/minimal geometry; no full facial rig needed initially.
+3. Hair attaches to head/scalp-fit family, not body build. Standardize scalp envelopes; author headgear-compatible hair variants or hide only covered regions. Head/hair compatibility must be explicit where needed.
+4. Separate underlying proportions, clothed body silhouette, and loadout. Fitted coats/trousers need body-specific variants; rigid helmets/packs/weapons use sockets/fit offsets. Hide covered skin and hair sections. Do not promise arbitrary one-size-fits-all garments or arbitrary runtime sliders.
+5. A few meaningful personal features (hair/color/skin palettes, freckles or scars, rolled sleeves, veteran repairs). Limb/prosthetic variants later with validated rig and attachment boundaries. Cosmetics do not change simulation collision/statistics unless deliberately introduced as a separate design feature.
+6. Store stable appearance asset IDs/version, explicit combination, fit family and variation on persistent soldier identity; replay snapshots preserve resolved appearance. No frame-dependent rerandomization or tactical hidden-state coupling.
+7. Author modularly, start with a small practical component set for character preview, measure population cost before choosing cached assembled meshes. Shared skeleton animation does not remove draw calls; material palette/section count matters. No mandatory mass rendering framework or runtime merging complexity for the first slice.
+8. Source models in Blender with Python assisting repeatable setup/export, intentional manual-style mesh design/deformation review by Astra; image generator is reference only, does not deliver production-ready rigs/topology. Existing paid services are not required. Confirm/install tooling and Git LFS before binary sources. Current host Blender executable not found at PATH or usual Windows folder; not definitive inventory.
+
+Constraints: original industrial fantasy, hundreds of soldiers, minimal faces, deliberate low geometry, clear silhouettes, persistent identity, simulation separate from presentation. No changes to cognition, tactical evaluators or held-out seeds. Planning only. Scope/art decisions remain Jordan's. Subscription only, exact model claude-fable-5-1.
+
+Acceptance: return a concise actionable review (ideally under 1000 words), architectural findings ordered by severity, minimum first asset list, staged go/no-go checks, important unresolved design decisions. State which images you actually inspected; do not assert visual quality if image access fails. Discuss hidden body/neck seams, headgear, garment deformation and shared-skeleton limits. Recommend only complexity justified by this phase.
