@@ -33,6 +33,20 @@ static float Clamp(float v,float lo,float hi) { return std::max(lo,std::min(hi,v
 Vec3 BallisticPosition(Vec3 p,Vec3 v,float t) {
     return {p.x+v.x*t,p.y+v.y*t,p.z+v.z*t-4.905f*t*t};
 }
+constexpr float BodyAbsorption=2000,ExitEnergy=300,EnergyPerHealth=35;
+float FlightTime(float distance,float muzzleVelocity,float dragK) {
+    if(muzzleVelocity<=0)return 0;
+    return dragK>0?(std::exp(dragK*distance)-1)/(dragK*muzzleVelocity):distance/muzzleVelocity;
+}
+// Deposit is continuous, so damage rises with impact energy and saturates as a
+// round over-penetrates. A remainder below the exit threshold cannot leave the
+// body, so the round stops and gives up everything it carried.
+float DepositedEnergy(float impactEnergy) {
+    const float deposit=impactEnergy*(1-std::exp(-BodyAbsorption/std::max(impactEnergy,1e-4f)));
+    return impactEnergy-deposit<ExitEnergy?impactEnergy:deposit;
+}
+float HitSeverity(float roll) {return roll<.80f?1.f:roll<.90f?.5f:roll<.975f?1.5f:2.f;}
+float HitDamage(float impactEnergy,float severity) {return DepositedEnergy(impactEnergy)/EnergyPerHealth*severity;}
 float ObstacleHeight(const Obstacle& o) { return o.height>0?o.height:o.building?3.34f:o.halfCover?1.15f:2.2f; }
 static float SegmentBounds(Vec3 a,Vec3 b,Vec3 low,Vec3 high) {
     float lo=0,hi=1;
@@ -293,7 +307,7 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
         const auto& ct=s.allies[id];float age=time-ct.observedAt;
         if(id==s.id||!ct.known||age<0||age>1.5f)continue;
         for(float ahead:{0.f,automatic?0.7f:0.25f}) {
-            Vec3 p=ct.position+s.allyVelocity[id]*std::min(1.5f,age+ahead+Distance(s.position,ct.position)/s.gun.muzzleVelocity);
+            Vec3 p=ct.position+s.allyVelocity[id]*std::min(1.5f,age+ahead+FlightTime(Distance(s.position,ct.position),s.gun.muzzleVelocity,s.gun.dragK));
             Vec3 offset=p-s.position;float along=offset.x*direction.x+offset.y*direction.y;
             if(along<0||along>std::min(110.f,range+25))continue;
             // Solid terrain protects a friendly hidden beyond it. This uses only
@@ -443,7 +457,7 @@ std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,co
     return FindPath(map,s.position,goal);
 }
 struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999}; };
-struct Projectile { Vec3 p,velocity;int owner;size_t shot;std::array<bool,UnitCount> suppressed{}; bool delivered=false; };
+struct Projectile { Vec3 p,velocity;int owner;size_t shot;float mass=0,dragK=0;std::array<bool,UnitCount> suppressed{},struck{}; bool delivered=false; };
 // Decision code receives only self/remembered contacts and friendly positions.
 // It has no authoritative enemy roster or hidden enemy positions.
 static bool UsefulCover(const Soldier& s,const Map& map,const Tactics& memory,float time) {
@@ -991,64 +1005,83 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         constexpr float Step=TickSeconds/Substeps;
         for(int sub=0;sub<Substeps;++sub) for(size_t i=0;i<bullets.size();) {
             auto& b=bullets[i];auto& shot=r.shots[b.shot];
-            const float startTime=shot.impactTime;
             if(shot.time>=f.time) {++i;continue;}
-            const float dt=std::max(0.f,std::min(f.time,(tick-1)*TickSeconds+(sub+1)*Step)-startTime);
-            if(dt<=0){++i;continue;}
-            Vec3 next=BallisticPosition(b.p,b.velocity,dt);
-            float first=1;int hit=-1;Shot::Impact impact=Shot::Impact::None;
-            float terrainHit=MapContact(r.map,b.p,next);
-            if(terrainHit>=0&&terrainHit<=first){first=terrainHit;impact=Shot::Impact::Cover;}
-            if(next.z<=r.map.groundBase) {float t=(b.p.z-r.map.groundBase)/(b.p.z-next.z);if(t<=first){first=t;impact=Shot::Impact::Ground;}}
-            for(const auto& s:f.soldiers) if(s.Active()&&s.id!=b.owner) {
-                const Vec3 delta=s.position-beforeMovement[s.id].position;
-                Vec3 from=beforeMovement[s.id].position+delta*(float(sub)/Substeps);
-                Vec3 to=beforeMovement[s.id].position+delta*(float(sub+1)/Substeps);
-                float t=SegmentSoldier(b.p,next,from,to,BodyHeight(s.stance));
-                if(t>=0&&t<first){first=t;hit=s.id;impact=Shot::Impact::Soldier;}
-            }
-            Vec3 end{b.p.x+(next.x-b.p.x)*first,b.p.y+(next.y-b.p.y)*first,b.p.z+(next.z-b.p.z)*first};
-            const float endTime=std::min(f.time,startTime+dt*first);
-            for(auto& s:f.soldiers) if(s.Active()&&s.team!=f.soldiers[b.owner].team&&!b.suppressed[s.id]) {
-                // A round can suppress each soldier once; shelter occludes near misses.
-                Vec3 ep{end.x,end.y,end.z};
-                if(SegmentDistance(b.p,ep,s.position+Vec3{0,0,BodyHeight(s.stance)*0.7f})<2.2f&&ClearLine3D(r.map,end,{s.position.x,s.position.y,s.position.z+BodyHeight(s.stance)*0.7f})) {
-                    s.suppression=Clamp(s.suppression+0.23f/StatScale(s.stats.Get(Stat::Composure)),0,1);b.suppressed[s.id]=true;
+            // A round that over-penetrates re-runs the rest of the substep from where it
+            // left the body; segBegin keeps the soldier sweep interpolated from that point.
+            float segBegin=float(sub)/Substeps;
+            for(bool flying=true;flying;) {
+                const float startTime=shot.impactTime;
+                const float dt=std::max(0.f,std::min(f.time,(tick-1)*TickSeconds+(sub+1)*Step)-startTime);
+                if(dt<=0){++i;break;}
+                Vec3 next=BallisticPosition(b.p,b.velocity,dt);
+                float first=1;int hit=-1;Shot::Impact impact=Shot::Impact::None;
+                float terrainHit=MapContact(r.map,b.p,next);
+                if(terrainHit>=0&&terrainHit<=first){first=terrainHit;impact=Shot::Impact::Cover;}
+                if(next.z<=r.map.groundBase) {float t=(b.p.z-r.map.groundBase)/(b.p.z-next.z);if(t<=first){first=t;impact=Shot::Impact::Ground;}}
+                // The struck guard is load-bearing: SegmentSoldier returns 0 for a segment that
+                // starts inside a body, so a re-run would strike the same victim forever.
+                for(const auto& s:f.soldiers) if(s.Active()&&s.id!=b.owner&&!b.struck[s.id]) {
+                    const Vec3 delta=s.position-beforeMovement[s.id].position;
+                    Vec3 from=beforeMovement[s.id].position+delta*segBegin;
+                    Vec3 to=beforeMovement[s.id].position+delta*(float(sub+1)/Substeps);
+                    float t=SegmentSoldier(b.p,next,from,to,BodyHeight(s.stance));
+                    if(t>=0&&t<first){first=t;hit=s.id;impact=Shot::Impact::Soldier;}
                 }
-            }
-            shot.end=end;shot.impactTime=endTime;shot.flight.push_back({endTime,end});
-            if(hit>=0) {
-                auto& victim=f.soldiers[hit];float damage=32+rng.Next()*25;
-                victim.health=std::max(0.f,victim.health-damage);victim.suppression=Clamp(victim.suppression+0.3f/StatScale(victim.stats.Get(Stat::Composure)),0,1);
-                shot.hit=true;shot.target=hit;
-                event(EventKind::Hit,b.owner,hit,std::string(Name(b.owner))+" hit "+Name(hit));r.events.back().time=endTime;
-                if(!victim.Active()) {
-                    victim.action=rng.Next()<0.55f?Action::Wounded:Action::Killed;victim.reason=Reason::Down;victim.aim=0;victim.aimTarget=-1;
-                    run[hit].tactics.assigned=false;
-                    for(auto& contact:victim.contacts) contact.visible=false;
-                    event(EventKind::Casualty,hit,b.owner,std::string(Name(hit))+(victim.action==Action::Killed?" killed in action":" incapacitated"));
-                    r.events.back().time=endTime;
+                Vec3 end{b.p.x+(next.x-b.p.x)*first,b.p.y+(next.y-b.p.y)*first,b.p.z+(next.z-b.p.z)*first};
+                const float endTime=std::min(f.time,startTime+dt*first);
+                for(auto& s:f.soldiers) if(s.Active()&&s.team!=f.soldiers[b.owner].team&&!b.suppressed[s.id]) {
+                    // A round can suppress each soldier once; shelter occludes near misses.
+                    Vec3 ep{end.x,end.y,end.z};
+                    if(SegmentDistance(b.p,ep,s.position+Vec3{0,0,BodyHeight(s.stance)*0.7f})<2.2f&&ClearLine3D(r.map,end,{s.position.x,s.position.y,s.position.z+BodyHeight(s.stance)*0.7f})) {
+                        s.suppression=Clamp(s.suppression+0.23f/StatScale(s.stats.Get(Stat::Composure)),0,1);b.suppressed[s.id]=true;
+                    }
                 }
-            }
-            if(impact==Shot::Impact::None&&(endTime-shot.time>1||std::abs(end.x)>r.map.halfWidth+3||std::abs(end.y)>r.map.halfHeight+3)) impact=Shot::Impact::OutOfBounds;
-            shot.impact=impact;
-            auto& shooter=f.soldiers[b.owner];
-            if(!b.delivered&&shot.aimedEnemy>=0&&SegmentDistance(b.p,end,shot.aimedAt)<6&&ClearLine3D(r.map,(c.recoveryFixture||TypedController(c))?shot.flight.front().position:shot.start,end+(((c.recoveryFixture||TypedController(c))?shot.flight.front().position:shot.start)-end)*.001f)) {
-                b.delivered=true;
-                FireDelivery report;report.supportWeapon=shooter.machineGun;report.shooter=b.owner;report.enemy=shot.aimedEnemy;
-                for(const auto& old:shooter.deliveries)if(old.shooter==b.owner&&(c.recoveryFixture||(old.enemy==report.enemy&&Distance(old.target,shot.aimedAt)<6)))report=old;
-                report.enemy=shot.aimedEnemy;report.origin=shot.start;report.target=shot.aimedAt;report.observedAt=f.time;
-                if(c.recoveryFixture){
-                    report.history.erase(std::remove_if(report.history.begin(),report.history.end(),[&](const DeliveredRound& round){return f.time-round.at>10;}),report.history.end());
-                    report.history.push_back({f.time,shot.aimedAt});
+                shot.end=end;shot.impactTime=endTime;shot.flight.push_back({endTime,end});
+                bool exited=false;
+                if(hit>=0) {
+                    auto& victim=f.soldiers[hit];
+                    Vec3 v=b.velocity;v.z-=9.81f*dt*first;v=v*std::exp(-b.dragK*Distance(b.p,end));
+                    const float energy=0.5f*b.mass*Dot(v,v),remainder=energy-DepositedEnergy(energy);
+                    const float damage=HitDamage(energy,HitSeverity(rng.Next()));
+                    victim.health=std::max(0.f,victim.health-damage);victim.suppression=Clamp(victim.suppression+0.3f/StatScale(victim.stats.Get(Stat::Composure)),0,1);
+                    shot.victims.push_back({hit,endTime,energy});b.struck[hit]=true;
+                    shot.hit=true;shot.target=shot.victims.front().soldier;
+                    event(EventKind::Hit,b.owner,hit,std::string(Name(b.owner))+" hit "+Name(hit));r.events.back().time=endTime;
+                    if(!victim.Active()) {
+                        victim.action=rng.Next()<0.55f?Action::Wounded:Action::Killed;victim.reason=Reason::Down;victim.aim=0;victim.aimTarget=-1;
+                        run[hit].tactics.assigned=false;
+                        for(auto& contact:victim.contacts) contact.visible=false;
+                        event(EventKind::Casualty,hit,b.owner,std::string(Name(hit))+(victim.action==Action::Killed?" killed in action":" incapacitated"));
+                        r.events.back().time=endTime;
+                    }
+                    if(remainder<ExitEnergy)impact=Shot::Impact::Soldier;
+                    else {
+                        b.p=end;b.velocity=v*(std::sqrt(2*remainder/b.mass)/Length(v));
+                        segBegin+=(float(sub+1)/Substeps-segBegin)*first;exited=true;
+                    }
                 }
-                for(int k=7;k>0;--k)report.times[k]=report.times[k-1];
-                report.times[0]=f.time;
-                report.firstAt=f.time;report.rounds=0;for(float t:report.times)if(f.time-t<=6){++report.rounds;report.firstAt=std::min(report.firstAt,t);}
-                RememberDelivery(shooter,report);
+                if(impact==Shot::Impact::None&&(endTime-shot.time>1||std::abs(end.x)>r.map.halfWidth+3||std::abs(end.y)>r.map.halfHeight+3)) impact=Shot::Impact::OutOfBounds;
+                shot.impact=exited?Shot::Impact::None:impact;
+                auto& shooter=f.soldiers[b.owner];
+                if(!b.delivered&&shot.aimedEnemy>=0&&SegmentDistance(b.p,end,shot.aimedAt)<6&&ClearLine3D(r.map,(c.recoveryFixture||TypedController(c))?shot.flight.front().position:shot.start,end+(((c.recoveryFixture||TypedController(c))?shot.flight.front().position:shot.start)-end)*.001f)) {
+                    b.delivered=true;
+                    FireDelivery report;report.supportWeapon=shooter.machineGun;report.shooter=b.owner;report.enemy=shot.aimedEnemy;
+                    for(const auto& old:shooter.deliveries)if(old.shooter==b.owner&&(c.recoveryFixture||(old.enemy==report.enemy&&Distance(old.target,shot.aimedAt)<6)))report=old;
+                    report.enemy=shot.aimedEnemy;report.origin=shot.start;report.target=shot.aimedAt;report.observedAt=f.time;
+                    if(c.recoveryFixture){
+                        report.history.erase(std::remove_if(report.history.begin(),report.history.end(),[&](const DeliveredRound& round){return f.time-round.at>10;}),report.history.end());
+                        report.history.push_back({f.time,shot.aimedAt});
+                    }
+                    for(int k=7;k>0;--k)report.times[k]=report.times[k-1];
+                    report.times[0]=f.time;
+                    report.firstAt=f.time;report.rounds=0;for(float t:report.times)if(f.time-t<=6){++report.rounds;report.firstAt=std::min(report.firstAt,t);}
+                    RememberDelivery(shooter,report);
+                }
+                if(exited)continue; // Delivery was judged on this pass; the round flies on from the body.
+                if(impact!=Shot::Impact::None)bullets.erase(bullets.begin()+i);
+                else {const float travelled=Distance(b.p,next);b.p=next;b.velocity=b.velocity*std::exp(-b.dragK*travelled);b.velocity.z-=9.81f*dt;++i;}
+                flying=false;
             }
-            if(impact!=Shot::Impact::None)bullets.erase(bullets.begin()+i);
-            else {b.p=next;b.velocity.z-=9.81f*dt;++i;}
         }
         r.diagnostics->ballistics+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         // Fire at the end of the interval, after resolving incoming rounds.
@@ -1090,11 +1123,11 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             Vec3 direction={std::cos(angle),std::sin(angle)};s.facing=direction;
             const float speed=s.gun.muzzleVelocity;
             // Aim at the last seen torso; small vertical spread and gravity compensation.
-            const float flightTime=best/speed;
+            const float flightTime=FlightTime(best,speed,s.gun.dragK);
             float vz=(solution.point.z-muzzle.z)/std::max(0.001f,flightTime)+4.905f*flightTime+(rng.Next()-0.5f)*speed*VerticalSpread(s);
             Shot shot;shot.suppressive=solution.area;shot.aimedAt=solution.point;shot.time=shot.impactTime=f.time;shot.owner=s.id;shot.aimedEnemy=solution.enemy;shot.start=shot.end=s.position;
             shot.flight.push_back({f.time,muzzle});r.shots.push_back(shot);
-            bullets.push_back({muzzle,{direction.x*speed,direction.y*speed,vz},s.id,r.shots.size()-1,{}});
+            bullets.push_back({muzzle,{direction.x*speed,direction.y*speed,vz},s.id,r.shots.size()-1,s.gun.bulletMass,s.gun.dragK,{},{}});
             ++s.rounds;s.lastShotAt=f.time;s.aim=sustained?0.98f:automatic?0.8f:s.gun.action==WeaponAction::SemiAuto?0.5f:0.2f;
             s.blockedSeconds=0;s.lastBlockedAt=-100;
             // Cyclic rate is mechanical and never stat-modified; burst structure is behaviour.

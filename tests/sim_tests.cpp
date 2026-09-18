@@ -46,6 +46,7 @@ static std::string Fingerprint(const Record& r) {
         o<<s.time<<s.impactTime<<s.owner<<s.start.x<<s.start.y<<s.start.z<<s.end.x<<s.end.y<<s.end.z<<s.hit<<int(s.impact)<<s.target;
         o<<s.suppressive<<s.aimedAt.x<<s.aimedAt.y<<s.aimedAt.z;
         for(const auto& sample:s.flight)o<<sample.time<<sample.position.x<<sample.position.y<<sample.position.z;
+        o<<s.victims.size();for(const auto& v:s.victims)o<<v.soldier<<v.time<<v.energy;
     }
     return o.str();
 }
@@ -839,7 +840,7 @@ int main(int argc,char** argv) {
     coordination(one);coordination(changed);
     int results[3]={0,0,0};size_t totalShots=0,totalHits=0,memories=0,settled=0,coverFire=0,crouched=0,popUps=0,overwatchRounds=0;
     size_t upperShots=0,groundWindowShots=0,stairSamples=0;
-    size_t rearRounds=0,heldFire=0,laneOrders=0,flankFrames=0,pullBackFrames=0,friendlyHits=0;
+    size_t rearRounds=0,heldFire=0,laneOrders=0,flankFrames=0,pullBackFrames=0,friendlyHits=0,multiVictim=0;
     for(int seed=100;seed<104;++seed) {
         c.seed=seed;c.doctrine=Doctrine(seed%3);c.approach=Approach((seed/3)%3);c.supportWeapon=seed%2;
         auto r=Simulate(c);++results[r.winner+1];coordination(r);
@@ -893,17 +894,33 @@ int main(int argc,char** argv) {
                 assert(Distance({a.x,a.y},{b.x,b.y})<0.02f&&std::abs(a.z-b.z)<0.02f);
                 assert(shot.impact==Shot::Impact::Soldier||shot.impact==Shot::Impact::Cover);
             }
-            if(shot.hit) {
-                assert(shot.target>=0&&shot.impact==Shot::Impact::Soldier);
-                bool eventFound=false;
-                for(const auto& e:r.events)if(e.kind==EventKind::Hit&&e.actor==shot.owner&&e.target==shot.target&&e.time==shot.impactTime)eventFound=true;
-                assert(eventFound);
+            assert(shot.hit==!shot.victims.empty());
+            if(!shot.victims.empty()) {
+                assert(shot.target>=0&&shot.target==shot.victims.front().soldier);
+                // A round that over-penetrates stops somewhere later; impact is the terminal kind.
+                assert(shot.impact==Shot::Impact::Soldier||shot.impact==Shot::Impact::Cover||
+                       shot.impact==Shot::Impact::Ground||shot.impact==Shot::Impact::OutOfBounds);
+                for(const auto& victim:shot.victims) {
+                    bool eventFound=false;
+                    for(const auto& e:r.events)if(e.kind==EventKind::Hit&&e.actor==shot.owner&&e.target==victim.soldier&&e.time==victim.time)eventFound=true;
+                    assert(eventFound);
+                }
+                multiVictim+=shot.victims.size()>1;
             }
+            // Drag: each segment covers its own starting horizontal speed times its duration,
+            // and a body the round leaves takes its share of the energy out of that speed.
+            const auto& firer=r.frames.front().soldiers[shot.owner];
+            float horizontal=firer.gun.muzzleVelocity;size_t passed=0;
             for(size_t k=1;k<shot.flight.size();++k) {
                 const auto& a=shot.flight[k-1];const auto& b=shot.flight[k];
                 assert(b.time>=a.time&&std::isfinite(b.position.z)&&b.position.z>=-0.001f);
                 float distance=Distance({a.position.x,a.position.y},{b.position.x,b.position.y});
-                assert(std::abs(distance-(b.time-a.time)*r.frames.front().soldiers[shot.owner].gun.muzzleVelocity)<0.025f);
+                assert(std::abs(distance-(b.time-a.time)*horizontal)<0.05f);
+                horizontal*=std::exp(-firer.gun.dragK*Distance(a.position,b.position));
+                while(passed<shot.victims.size()&&shot.victims[passed].time<=b.time) {
+                    const float energy=shot.victims[passed].energy;
+                    horizontal*=std::sqrt(std::max(0.f,energy-DepositedEnergy(energy))/energy);++passed;
+                }
                 for(const auto& obstacle:r.map.obstacles) {
                     float hit=SegmentObstacle(a.position,b.position,obstacle);
                     assert(hit<0||(k+1==shot.flight.size()&&shot.impact==Shot::Impact::Cover&&hit>0.99f));
@@ -922,7 +939,7 @@ int main(int argc,char** argv) {
     assert(upperShots>0&&groundWindowShots>0&&stairSamples>0);
     std::cout<<"Building integration: upper window shots="<<upperShots<<" ground window shots="<<groundWindowShots<<" stair samples="<<stairSamples<<"\n";
     assert(rearRounds>0&&heldFire>0&&laneOrders>0&&flankFrames>0);
-    std::cout<<"Squad integration: wounded rear rounds="<<rearRounds<<" holding-fire samples="<<heldFire<<" lane-clearance samples="<<laneOrders<<" flank frames="<<flankFrames<<" fallback frames="<<pullBackFrames<<" friendly hits="<<friendlyHits<<"\n";
+    std::cout<<"Squad integration: wounded rear rounds="<<rearRounds<<" holding-fire samples="<<heldFire<<" lane-clearance samples="<<laneOrders<<" flank frames="<<flankFrames<<" fallback frames="<<pullBackFrames<<" friendly hits="<<friendlyHits<<" over-penetrating shots="<<multiVictim<<"\n";
     std::cout<<"PASS: delayed officer/NCO orders, overwatch assignments, reports up the chain, succession, aim acquisition and suppression, crouched hitboxes, protected low-cover positions, pop-up firing, reload shelter, default observation, suppression/reload shelter, active wounded support, minimal corner clearance, gravity, finite cover, moving-target collisions, replay timing, cover commitment/settling/peeking, suppression response, reservations, personal knowledge, navigation, determinism, health invariants\n";
     std::cout<<"4 large-battle sweep: draw="<<results[0]<<" azure="<<results[1]<<" ember="<<results[2]<<" shots="<<totalShots<<" hits="<<totalHits<<" MG-overwatch rounds="<<overwatchRounds<<" crouched samples="<<crouched<<" pop-up samples="<<popUps<<" settling samples="<<settled<<" cover-fire samples="<<coverFire<<" remembered-contact samples="<<memories<<"\n";
     std::cout<<"Default battle: "<<one.duration<<"s; "<<one.shots.size()<<" shots; winner="<<one.winner<<"; "<<one.conclusion<<"\n";

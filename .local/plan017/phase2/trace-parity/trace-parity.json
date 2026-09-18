@@ -1,0 +1,122 @@
+[
+  {
+    "case": "works",
+    "on": {
+      "command": [
+        ".local/lab/battle-lab",
+        "--drills",
+        "--seed",
+        "107",
+        "--seconds",
+        "360",
+        "--terrain",
+        "0",
+        "--out",
+        ".local/plan017/phase2/trace-parity/works/on"
+      ],
+      "manifest": ".local/plan017/phase2/trace-parity/works/on/battle-107-1789720715919820464/manifest.json",
+      "digest": "3708722225137808743"
+    },
+    "off": {
+      "command": [
+        ".local/lab/battle-lab",
+        "--drills",
+        "--seed",
+        "107",
+        "--seconds",
+        "360",
+        "--terrain",
+        "0",
+        "--out",
+        ".local/plan017/phase2/trace-parity/works/off",
+        "--no-trace"
+      ],
+      "manifest": ".local/plan017/phase2/trace-parity/works/off/battle-107-1789720732258142734/manifest.json",
+      "digest": "3708722225137808743"
+    },
+    "match": true
+  },
+  {
+    "case": "trenches",
+    "on": {
+      "command": [
+        ".local/lab/battle-lab",
+        "--drills",
+        "--seed",
+        "107",
+        "--seconds",
+        "360",
+        "--terrain",
+        "1",
+        "--out",
+        ".local/plan017/phase2/trace-parity/trenches/on"
+      ],
+      "manifest": ".local/plan017/phase2/trace-parity/trenches/on/battle-107-1789720743661067567/manifest.json",
+      "digest": "14400172634036035642"
+    },
+    "off": {
+      "command": [
+        ".local/lab/battle-lab",
+        "--drills",
+        "--seed",
+        "107",
+        "--seconds",
+        "360",
+        "--terrain",
+        "1",
+        "--out",
+        ".local/plan017/phase2/trace-parity/trenches/off",
+        "--no-trace"
+      ],
+      "manifest": ".local/plan017/phase2/trace-parity/trenches/off/battle-107-1789720763450292751/manifest.json",
+      "digest": "14400172634036035642"
+    },
+    "match": true
+  },
+  {
+    "case": "F1",
+    "on": {
+      "command": [
+        ".local/lab/battle-lab",
+        "--drills",
+        "--seed",
+        "107",
+        "--seconds",
+        "360",
+        "--generated",
+        "F1",
+        "--gen-seed",
+        "1",
+        "--out",
+        ".local/plan017/phase2/trace-parity/F1/on"
+      ],
+      "manifest": ".local/plan017/phase2/trace-parity/F1/on/battle-107-1789720767594116038/manifest.json",
+      "digest": "8020727356151939957"
+    },
+    "off": {
+      "command": [
+        ".local/lab/battle-lab",
+        "--drills",
+        "--seed",
+        "107",
+        "--seconds",
+        "360",
+        "--generated",
+        "F1",
+        "--gen-seed",
+        "1",
+        "--out",
+        ".local/plan017/phase2/trace-parity/F1/off",
+        "--no-trace"
+      ],
+      "manifest": ".local/plan017/phase2/trace-parity/F1/off/battle-107-1789720772483955510/manifest.json",
+      "digest": "8020727356151939957"
+    },
+    "match": true
+  },
+  {
+    "case": "works-repeat",
+    "digest": "3708722225137808743",
+    "match": true
+  }
+]

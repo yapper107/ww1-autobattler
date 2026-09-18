@@ -611,6 +611,14 @@ struct SquadCommand {
 float AimSeconds(const Soldier& soldier);
 float ShotSpread(const Soldier& soldier);
 float VerticalSpread(const Soldier& soldier);
+// Energy ballistics. Speed decays as v0*exp(-dragK*distance), so the flight time
+// to a point is the integral of that decay; dragK <= 0 falls back to distance/v0.
+float FlightTime(float distance,float muzzleVelocity,float dragK);
+// A body absorbs a fixed number of joules; a round that would keep less than the
+// exit threshold stops inside and gives up all of its energy.
+float DepositedEnergy(float impactEnergy);
+float HitSeverity(float roll);
+float HitDamage(float impactEnergy,float severity);
 struct FireSolution { int enemy=-1; Vec3 point{}; float observedAt=-100; bool area=false; };
 FireSolution SelectFireSolution(const Soldier& soldier,const Map& map,float time);
 float FriendlyFireRisk(const Soldier& soldier,const Map& map,Vec3 aim,float time);
@@ -654,10 +662,12 @@ struct Shot {
     bool hit = false, suppressive = false;
     Vec3 aimedAt{};
     enum class Impact { None, Ground, Cover, Soldier, OutOfBounds };
-    Impact impact = Impact::None;
+    Impact impact = Impact::None;   // The terminal stop; a round that over-penetrates keeps flying.
     int target = -1, aimedEnemy=-1;
     struct Sample { float time; Vec3 position; };
     std::vector<Sample> flight;
+    struct Victim { int soldier=-1; float time=0, energy=0; };
+    std::vector<Victim> victims;    // hit == !victims.empty(); target == victims.front().soldier.
 };
 // Returns only the part of the recorded flight reached at this replay time.
 bool ProjectilePosition(const Shot& shot, float time, Vec3& position);

@@ -2,7 +2,7 @@
 
 Authoritative formulas for the stat system and the weapon item model. The design and the user's
 decisions are in [plan 017](../plans/017-stat-system.md). Phases: 1 stats and fire control (landed),
-2 energy ballistics, 3 sway and recoil.
+2 energy ballistics (landed), 3 sway and recoil.
 
 ## Stats
 
@@ -78,18 +78,31 @@ Muzzle velocity is `referenceVelocity * (barrelLength / referenceBarrel) ^ 0.2`.
   started by an empty magazine.
 - Muzzle velocity feeds the shot and the friendly-fire lead.
 
-## Energy ballistics (phase 2, pending)
+## Energy ballistics (phase 2)
 
-Speed decays as `v(d) = v0 * exp(-dragK * d)`. Impact energy `E = 0.5 * m * v^2`. Deposit
-`Edep = E * (1 - exp(-2000 J / E))`; if the remainder is under 300 J the round stops and deposits
-everything. `damage = Edep / 35 * severity`, severity from one RNG draw: 80 % torso ×1, 10 % limb
-×0.5, 7.5 % ×1.5, 2.5 % ×2. A round that exits continues into whoever is behind; cover stays solid.
+Each ballistic substep multiplies the velocity by `exp(-dragK * segment)` before gravity, so speed
+decays as `v(d) = v0 * exp(-dragK * d)` and the flight time used for lead is
+`t = (exp(k d) - 1) / (k v0)` (`FlightTime`, falling back to `d / v0` when `k <= 0`). Impact energy
+`E = 0.5 * m * v^2` is taken at the contact point. Deposit `Edep = E * (1 - exp(-2000 J / E))`
+(`DepositedEnergy`); if the remainder is under 300 J the round stops in the body and deposits
+everything. `damage = Edep / 35 * severity` (`HitDamage`), severity from one RNG draw
+(`HitSeverity`): 80 % torso ×1, 10 % limb ×0.5, 7.5 % ×1.5, 2.5 % ×2.
 
-| Range | Impact energy | Deposited | Health lost (torso) |
-|---|---|---|---|
-| 0 m | 2.93 kJ | 1.45 kJ | 41 |
-| 100 m | 2.54 kJ | 1.38 kJ | 40 |
-| 300 m | 1.92 kJ | 1.24 kJ | 36 |
+| Range | Impact energy | Deposited | Health lost (torso) | Exits with |
+|---|---|---|---|---|
+| 0 m | 2.93 kJ | 1.45 kJ | 41 | 1.48 kJ |
+| 100 m | 2.55 kJ | 1.39 kJ | 40 | 1.16 kJ |
+| 300 m | 1.92 kJ | 1.24 kJ | 36 | 0.68 kJ |
+
+A round that exits continues into whoever is behind and is never allowed to strike the same body
+twice; cover, ground and the map boundary still stop it. Every body it strikes is recorded on the
+shot as a `Shot::Victim` (soldier, time, impact energy), `hit` means the victim list is not empty,
+`target` is the first victim and `impact` is the terminal stop. With the 300 J exit threshold a
+rifle round fired at 100 m passes through the first body and stops in the second: the exit energy
+1.16 kJ leaves only 0.21 kJ, below the threshold, so the second body absorbs all of it for 33
+health. Three bodies are reached only at contact range, where the round leaves the second with
+0.38 kJ and the third keeps it for 11 health. Each victim is hashed into the gameplay digest and
+exported in `shots.jsonl` as `victims` plus the first victim's `impact_energy`.
 
 ## Sway and recoil (phase 3, pending)
 

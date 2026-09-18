@@ -107,9 +107,79 @@ static void WeaponItemTests() {
     frame->soldiers[0].magazineRemaining=frame->soldiers[0].gun.magazine;CheckWeaponConsistency(*frame);
     std::cout<<"STATS weapons: table reference, modifiers, power-law velocity and the consistency assertion PASS\n";
 }
+// Plan 017 phase 2: drag, impact energy, the deposit rule and over-penetration.
+static void BallisticEnergyTests() {
+    const Soldier rifleman;const auto& gun=rifleman.gun;
+    auto energyAt=[&](float range){const float v=gun.muzzleVelocity*std::exp(-gun.dragK*range);return .5f*gun.bulletMass*v*v;};
+    assert(std::abs(energyAt(0)-2929.f)<25.f);                        // about 2.9 kJ at the muzzle
+    // The substep rule multiplies the velocity by exp(-k*segment) every step, which
+    // integrates to the muzzle speed times exp(-k*distance).
+    float speed=gun.muzzleVelocity;for(int step=0;step<3000;++step)speed*=std::exp(-gun.dragK*.1f);
+    assert(speed>582.f&&speed<585.f);                                 // about 583 m/s after 300 m
+    assert(std::abs(speed-gun.muzzleVelocity*std::exp(-gun.dragK*300.f))<.5f);
+    assert(std::abs(energyAt(100)-2546.f)<25.f&&std::abs(energyAt(300)-1925.f)<25.f);
+    // Severity is one draw with four outcomes and scales the deposited energy only.
+    assert(HitSeverity(0.f)==1.f&&HitSeverity(.79f)==1.f&&HitSeverity(.85f)==.5f&&HitSeverity(.95f)==1.5f&&HitSeverity(.99f)==2.f);
+    const float close=energyAt(100);
+    assert(std::abs(HitDamage(close,1.f)-40.f)<1.f);                  // a standing target at 100 m
+    assert(std::abs(HitDamage(energyAt(0),1.f)-41.f)<1.f&&std::abs(HitDamage(energyAt(300),1.f)-36.f)<1.f);
+    assert(HitDamage(close,.5f)*2==HitDamage(close,1.f)&&HitDamage(close,2.f)==2*HitDamage(close,1.f));
+    // Deposit rises with impact energy and saturates above the exit threshold; below it a
+    // round cannot leave the body and gives up everything, so the rule steps there.
+    for(float e=100;e<=1300;e+=50)assert(DepositedEnergy(e)==e);
+    for(float e=1450;e<6000;e+=50)assert(DepositedEnergy(e)>DepositedEnergy(e-50)&&DepositedEnergy(e)<e&&DepositedEnergy(e)<2000.f);
+    const float through=close-DepositedEnergy(close);
+    assert(through>300.f&&std::abs(through-1161.f)<15.f);             // the first body lets 1.16 kJ out
+    assert(DepositedEnergy(through)==through);                        // and the second keeps it
+    // At contact range the round leaves two bodies and the third stops it.
+    float carried=energyAt(0);int exits=0;
+    while(DepositedEnergy(carried)!=carried){carried-=DepositedEnergy(carried);++exits;}
+    assert(exits==2&&carried<400.f&&std::abs(HitDamage(carried,1.f)-10.9f)<1.f);
+    // A slow round has too little energy to leave the first body at all.
+    Soldier slow;EquipWeapon(slow,{WeaponId::Rifle,{{WeaponModifier::Field::MuzzleVelocity,.35f,0}}});
+    const float weak=.5f*slow.gun.bulletMass*slow.gun.muzzleVelocity*slow.gun.muzzleVelocity;
+    assert(slow.gun.muzzleVelocity<260.f&&weak<400.f&&DepositedEnergy(weak)==weak);
+    // Drag-aware lead against a numerically integrated flight, and the k<=0 fallback.
+    for(float range:{25.f,100.f,300.f}) {
+        const double k=gun.dragK,v0=gun.muzzleVelocity;double integrated=0;
+        for(int step=0;step<20000;++step)integrated+=(range/20000.0)/(v0*std::exp(-k*range*(step+.5)/20000.0));
+        const float lead=FlightTime(range,gun.muzzleVelocity,gun.dragK);
+        assert(std::abs(lead-float(integrated))<1e-3f*lead);
+        assert(lead>range/gun.muzzleVelocity);                        // drag always costs time
+    }
+    assert(std::abs(FlightTime(100,gun.muzzleVelocity,0)-100.f/gun.muzzleVelocity)<1e-6f);
+    std::cout<<"STATS ballistics: muzzle "<<energyAt(0)<<" J, 300 m speed "<<speed<<" m/s, 100 m loss "
+             <<HitDamage(close,1.f)<<" health, first body lets "<<through<<" J out PASS\n";
+}
+static void OverPenetrationTests(const Record& r) {
+    size_t withVictims=0,penetrating=0,stopped=0;
+    for(const auto& shot:r.shots) {
+        assert(shot.hit==!shot.victims.empty());
+        if(shot.victims.empty())continue;
+        ++withVictims;penetrating+=shot.victims.size()>1;
+        assert(shot.target==shot.victims.front().soldier);
+        float previous=1e9f,last=shot.time-1e-4f;std::array<bool,UnitCount> seen{};
+        for(const auto& victim:shot.victims) {
+            assert(victim.soldier>=0&&victim.soldier<UnitCount&&victim.soldier!=shot.owner&&!seen[victim.soldier]);
+            seen[victim.soldier]=true;
+            assert(victim.time>=last&&victim.time<=shot.impactTime);last=victim.time;
+            assert(victim.energy>0&&victim.energy<previous);previous=victim.energy;   // an exiting round is slower
+            bool found=false;
+            for(const auto& e:r.events)if(e.kind==EventKind::Hit&&e.actor==shot.owner&&e.target==victim.soldier&&e.time==victim.time)found=true;
+            assert(found);
+        }
+        // The terminal stop is Soldier exactly when the last body kept everything.
+        const float terminal=shot.victims.back().energy;
+        if(DepositedEnergy(terminal)==terminal){++stopped;assert(shot.impact==Shot::Impact::Soldier);}
+        else assert(shot.impact!=Shot::Impact::Soldier);
+    }
+    assert(withVictims>0&&penetrating>0&&stopped>0);
+    std::cout<<"STATS over-penetration: "<<withVictims<<" shots with victims, "<<penetrating<<" through more than one body, "<<stopped<<" stopped in a body PASS\n";
+}
 static void StatBattleTests() {
     Config c;c.maxSeconds=120;const auto record=std::make_unique<Record>(Simulate(c));const auto& r=*record;
     assert(!r.shots.empty());
+    OverPenetrationTests(r);
     // Every recorded frame keeps the weapon invariants.
     for(const auto& f:r.frames)for(const auto& s:f.soldiers) {
         assert(s.machineGun==(s.gun.action==WeaponAction::Automatic));
@@ -144,6 +214,6 @@ static void StatBattleTests() {
     std::cout<<"STATS battle: "<<reloads<<" rifle reloads between "<<fastest<<"s and "<<slowest<<"s; "<<decaySamples<<" composure decay samples PASS\n";
 }
 static void StatsTests() {
-    StatSamplerTests();StatGenerationTests();WeaponItemTests();StatBattleTests();
-    std::cout<<"PASS: stat sampler, roster generation, weapon items, fire control references and magazine tracking\n";
+    StatSamplerTests();StatGenerationTests();WeaponItemTests();BallisticEnergyTests();StatBattleTests();
+    std::cout<<"PASS: stat sampler, roster generation, weapon items, fire control references, magazine tracking, energy ballistics and over-penetration\n";
 }

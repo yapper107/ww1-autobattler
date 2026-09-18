@@ -1,0 +1,126 @@
+== suite
+Route fixture: status=complete expansions=41 exposed=15.2381 -> 4.06868 seconds
+Route arrival: claims assigned cover and takes its firing peek
+Trenches: recessed floor, raised earth, ramps, connected detour and deployment verified
+Geometry knowledge: hidden mutation preserves received orders and movement before observation
+Deathmatch: elimination/timer results, sector search, no centre capture, protected regroup and 136 individual cover objects verified
+Platoon: report/relay/order reactions, north/south coordination, stale knowledge, local danger veto, expiry and succession verified
+Reassessment: delayed covered push/withdrawal, heavier resistance, quiet search, stale cover release, suppression veto and support follow verified
+Tracks: confidence, uncertainty, negative observation, occlusion, passed-position decay and stale-report rejection verified
+Prepared assault: eight seconds of crossing-specific fire, reset on gap, pause on lost support verified
+Commitments: one pause, no unchanged-fire retries, cleared-track search, delayed fire evidence verified
+Rifle suppression: remembered fire, expiry, specific track/crossing delivery evidence verified
+Lab: geometry revisions/IDs, spatial equivalence, trace on/off/detail determinism, causal order links, tick-boundary changes and stable cover verified
+MG encounter matrix: 3 layouts x 3 seeds, covering rounds=3830 flank-group hits on MG=0 pauses=13 blocked frames=1762 (individual outcomes vary)
+MG encounter group closure: 9/9
+Fixed defender: 3/3 eliminated within six minutes
+Recorded vertical dispersion: above and below aim; longest stationary MG burst: 18 rounds
+Coordination integration: paired move/cover frames=5327 completed bounds=177 window-team rounds=181 passage waits=2193 useful support reports=11891
+Hold-and-engage firing samples=91425
+Building integration: upper window shots=634 ground window shots=1241 stair samples=1299
+Squad integration: wounded rear rounds=1196 holding-fire samples=7324 lane-clearance samples=11268 flank frames=25683 fallback frames=1836 friendly hits=43 over-penetrating shots=36
+PASS: delayed officer/NCO orders, overwatch assignments, reports up the chain, succession, aim acquisition and suppression, crouched hitboxes, protected low-cover positions, pop-up firing, reload shelter, default observation, suppression/reload shelter, active wounded support, minimal corner clearance, gravity, finite cover, moving-target collisions, replay timing, cover commitment/settling/peeking, suppression response, reservations, personal knowledge, navigation, determinism, health invariants
+4 large-battle sweep: draw=0 azure=2 ember=2 shots=6502 hits=481 MG-overwatch rounds=689 crouched samples=29166 pop-up samples=81079 settling samples=1744 cover-fire samples=27739 remembered-contact samples=210740
+Default battle: 360s; 2511 shots; winner=1; Time limit: more surviving soldiers wins.
+Elapsed: 230.255s
+suite exit=0
+== stats
+STATS sampler: base=49910 low=40121 high=9969 of 100000 PASS
+STATS generation: roster determinism, independence, equal-troop mirroring and neutral fixtures PASS
+STATS weapons: table reference, modifiers, power-law velocity and the consistency assertion PASS
+STATS ballistics: muzzle 2928.96 J, 300 m speed 583.659 m/s, 100 m loss 39.5832 health, first body lets 1160.9 J out PASS
+STATS over-penetration: 56 shots with victims, 4 through more than one body, 4 stopped in a body PASS
+STATS battle: 48 rifle reloads between 2.0028s and 2.74084s; 3476 composure decay samples PASS
+PASS: stat sampler, roster generation, weapon items, fire control references, magazine tracking, energy ballistics and over-penetration
+stats exit=0
+== python
+Ran 102 tests in 17.931s
+
+OK
+== selectors
+--- --drills D02
+D02 report_only=1 30-50m=0 protected_trail=1 control_traveling=1 control_close=1
+sim_tests: /home/jchan/ww1-autobattler/tests/drills_tests.h:64: void DrillD02(): Assertion `received&&DrillTrace(report,"technique_selected","traveling overwatch")&&distant&&protectedTrail' failed.
+exit=0
+--- --drills D05
+D05 support=1 incorrectly_blocked=0 weak_report=1 latency=3.3
+exit=0
+--- --drills D07
+D07 phase_receipt=84.7 lift_received=86 late_original_area_rounds=219 no_signal_lift=0
+sim_tests: /home/jchan/ww1-autobattler/tests/squad_drills_tests.h:27: void DrillD07(): Assertion `receipt>=0&&lift>=receipt&&lift-receipt<=c.reportDelay+1&&crossing==0&&!noSignalLift' failed.
+exit=0
+--- --drills D08
+D08 covered_attack=1 moved=1 physical_angle=1 longest_rush=4.8 consolidate=0 reorganise=0 bare_attack=0 bare_report=1
+sim_tests: /home/jchan/ww1-autobattler/tests/squad_drills_tests.h:85: void DrillD08(): Assertion `accepted&&moved&&angle&&longest<=5.05f&&consolidated&&reorganise==1&&!unsupported&&reported' failed.
+exit=0
+--- --drills D17
+D17 scarce_occupied=5 ample_occupied=7 spacing=1
+sim_tests: /home/jchan/ww1-autobattler/tests/drills_tests.h:127: void DrillD17(): Assertion `occupied[0]==5&&occupied[1]==8&&spaced' failed.
+exit=0
+--- --decision-loop
+support 16 release=0 loss=0 physical=0
+sim_tests: /home/jchan/ww1-autobattler/tests/decision_loop_tests.h:196: void PhysicalDeploymentScenario(): Assertion `waiting&&released&&travel&&transported' failed.
+exit=0
+--- --reliability
+recon 34: selected=1 observed=0 new occupation=0 complete=0
+sim_tests: /home/jchan/ww1-autobattler/tests/reliability_tests.h:439: void ReliabilityReconnaissanceScenario(): Assertion `selected&&observed&&reassigned&&completed' failed.
+exit=0
+== lab
+seed=107 repeat=0 simulation=11.768 export=0.954251 total=12.7237 peak_memory_bytes=3110543360 digest=10685804680188570437 run=.local/battles/battle-107-1789720370091976801
+c01ca99f0842cac0-linux
+== rebaseline
+legacy trenches 106 17195899332456774064 shots 1025 dur 360 winner 1
+legacy trenches 107 6757369468413547090 shots 2244 dur 360 winner 0
+regenerated 40 archived 40
+== parity
+legacy trenches 107 True
+legacy trenches 106 True
+== trace
+works True 3708722225137808743
+trenches True 14400172634036035642
+F1 True 8020727356151939957
+works repeat True
+== acceptance dev
+seed=107 repeat=0 simulation=0.57552 export=0.402882 total=0.979214 peak_memory_bytes=862998528 digest=3825071000558513775 run=.local/plan017/phase2/acceptance-dev/battle-107-1789720783372269056
+seed=108 repeat=0 simulation=0.661559 export=0.464277 total=1.12674 peak_memory_bytes=979480576 digest=10303688536985563595 run=.local/plan017/phase2/acceptance-dev/battle-108-1789720784755242194
+seed=109 repeat=0 simulation=0.788273 export=0.657769 total=1.44686 peak_memory_bytes=1326989312 digest=15380528626457651702 run=.local/plan017/phase2/acceptance-dev/battle-109-1789720786422914151
+seed=107 repeat=0 simulation=0.712838 export=0.512459 total=1.22619 peak_memory_bytes=1033101312 digest=14911528681468006128 run=.local/plan017/phase2/acceptance-dev/battle-107-1789720788087984007
+seed=108 repeat=0 simulation=0.724672 export=0.540733 total=1.26623 peak_memory_bytes=1063899136 digest=6195497898395176603 run=.local/plan017/phase2/acceptance-dev/battle-108-1789720789675090541
+seed=109 repeat=0 simulation=0.720472 export=0.542346 total=1.26368 peak_memory_bytes=1118494720 digest=2531682870217403758 run=.local/plan017/phase2/acceptance-dev/battle-109-1789720791326415083
+seed=107 repeat=0 simulation=1.79998 export=1.66661 total=3.4675 peak_memory_bytes=3094786048 digest=7408263061910978999 run=.local/plan017/phase2/acceptance-dev/battle-107-1789720794652739766
+seed=108 repeat=0 simulation=1.5972 export=1.69399 total=3.29201 peak_memory_bytes=3094294528 digest=11785388929641874916 run=.local/plan017/phase2/acceptance-dev/battle-108-1789720798993536001
+seed=109 repeat=0 simulation=1.31092 export=1.31719 total=2.6289 peak_memory_bytes=2476474368 digest=16995259017394154133 run=.local/plan017/phase2/acceptance-dev/battle-109-1789720802817381018
+{"build": "c01ca99f0842cac0-linux", "per_layout": {"5": 3, "6": 3, "7": 3}, "passed": true}
+== acceptance held-out
+seed=110 repeat=0 simulation=0.639605 export=0.452251 total=1.09268 peak_memory_bytes=923693056 digest=8690423748187695062 run=.local/plan017/phase2/acceptance-heldout/battle-110-1789720805058747496
+seed=111 repeat=0 simulation=0.906348 export=0.716314 total=1.62353 peak_memory_bytes=1360830464 digest=8914661671761147144 run=.local/plan017/phase2/acceptance-heldout/battle-111-1789720806892927306
+seed=112 repeat=0 simulation=2.06237 export=1.68754 total=3.75069 peak_memory_bytes=3090464768 digest=17218648295443097682 run=.local/plan017/phase2/acceptance-heldout/battle-112-1789720810733070323
+seed=113 repeat=0 simulation=1.84409 export=1.64647 total=3.49127 peak_memory_bytes=3089235968 digest=4002216573750813418 run=.local/plan017/phase2/acceptance-heldout/battle-113-1789720815334260166
+seed=114 repeat=0 simulation=1.04107 export=0.911682 total=1.95366 peak_memory_bytes=1730314240 digest=13681536846130542103 run=.local/plan017/phase2/acceptance-heldout/battle-114-1789720818503503348
+seed=115 repeat=0 simulation=0.608888 export=0.439008 total=1.04872 peak_memory_bytes=950476800 digest=9468170475980756568 run=.local/plan017/phase2/acceptance-heldout/battle-115-1789720820327910655
+seed=116 repeat=0 simulation=1.02364 export=0.840328 total=1.86482 peak_memory_bytes=1569861632 digest=2816732551467622303 run=.local/plan017/phase2/acceptance-heldout/battle-116-1789720822239210178
+seed=117 repeat=0 simulation=0.792745 export=0.595364 total=1.38896 peak_memory_bytes=1173819392 digest=18084387449565274252 run=.local/plan017/phase2/acceptance-heldout/battle-117-1789720824326637841
+seed=118 repeat=0 simulation=0.909544 export=0.758064 total=1.66848 peak_memory_bytes=1475219456 digest=520868612822631120 run=.local/plan017/phase2/acceptance-heldout/battle-118-1789720826301567847
+seed=119 repeat=0 simulation=0.793689 export=0.582185 total=1.37668 peak_memory_bytes=1158848512 digest=7584445394886931153 run=.local/plan017/phase2/acceptance-heldout/battle-119-1789720828239728880
+seed=110 repeat=0 simulation=0.700999 export=0.518491 total=1.22031 peak_memory_bytes=1080844288 digest=4523694866888316978 run=.local/plan017/phase2/acceptance-heldout/battle-110-1789720829828516838
+seed=111 repeat=0 simulation=0.983618 export=0.751056 total=1.73551 peak_memory_bytes=1410080768 digest=3613677500763735984 run=.local/plan017/phase2/acceptance-heldout/battle-111-1789720831756307032
+seed=112 repeat=0 simulation=0.547573 export=0.364185 total=0.91269 peak_memory_bytes=812371968 digest=2815028238994136530 run=.local/plan017/phase2/acceptance-heldout/battle-112-1789720833387286764
+seed=113 repeat=0 simulation=0.951412 export=0.712501 total=1.6648 peak_memory_bytes=1373528064 digest=11810571797556300522 run=.local/plan017/phase2/acceptance-heldout/battle-113-1789720835082631845
+seed=114 repeat=0 simulation=2.16467 export=1.6035 total=3.76906 peak_memory_bytes=3085873152 digest=18144336104528251430 run=.local/plan017/phase2/acceptance-heldout/battle-114-1789720838933002817
+seed=115 repeat=0 simulation=1.81719 export=1.62725 total=3.44536 peak_memory_bytes=3086057472 digest=14602434955216469741 run=.local/plan017/phase2/acceptance-heldout/battle-115-1789720843287532560
+seed=116 repeat=0 simulation=0.599237 export=0.450039 total=1.05007 peak_memory_bytes=948195328 digest=13911969725031606684 run=.local/plan017/phase2/acceptance-heldout/battle-116-1789720845742641875
+seed=117 repeat=0 simulation=0.674068 export=0.491413 total=1.1664 peak_memory_bytes=1006825472 digest=1895742171909682793 run=.local/plan017/phase2/acceptance-heldout/battle-117-1789720847150264670
+seed=118 repeat=0 simulation=0.687532 export=0.511021 total=1.1994 peak_memory_bytes=1005666304 digest=11595743545360172833 run=.local/plan017/phase2/acceptance-heldout/battle-118-1789720848655682485
+seed=119 repeat=0 simulation=0.848959 export=0.643628 total=1.4935 peak_memory_bytes=1233907712 digest=7173419912995047683 run=.local/plan017/phase2/acceptance-heldout/battle-119-1789720850400461106
+seed=110 repeat=0 simulation=0.866583 export=0.725957 total=1.59347 peak_memory_bytes=1419993088 digest=14208448763285766415 run=.local/plan017/phase2/acceptance-heldout/battle-110-1789720852383098342
+seed=111 repeat=0 simulation=0.740174 export=0.566544 total=1.30756 peak_memory_bytes=1111244800 digest=9343918080708986576 run=.local/plan017/phase2/acceptance-heldout/battle-111-1789720854166450402
+seed=112 repeat=0 simulation=1.9282 export=1.74553 total=3.6746 peak_memory_bytes=3094298624 digest=10485136093092049285 run=.local/plan017/phase2/acceptance-heldout/battle-112-1789720857666732142
+seed=113 repeat=0 simulation=1.56877 export=1.61686 total=3.18639 peak_memory_bytes=3081211904 digest=16827364496950382879 run=.local/plan017/phase2/acceptance-heldout/battle-113-1789720862042311783
+seed=114 repeat=0 simulation=1.52429 export=1.64986 total=3.17495 peak_memory_bytes=3089297408 digest=9400571684865438347 run=.local/plan017/phase2/acceptance-heldout/battle-114-1789720866118615971
+seed=115 repeat=0 simulation=1.20716 export=1.19037 total=2.39833 peak_memory_bytes=2295889920 digest=16398941008727399793 run=.local/plan017/phase2/acceptance-heldout/battle-115-1789720869595641988
+seed=116 repeat=0 simulation=1.64328 export=1.63987 total=3.28397 peak_memory_bytes=3084685312 digest=4423216227383859802 run=.local/plan017/phase2/acceptance-heldout/battle-116-1789720873366264505
+seed=117 repeat=0 simulation=1.63672 export=1.77714 total=3.41467 peak_memory_bytes=3092217856 digest=11651461392494812559 run=.local/plan017/phase2/acceptance-heldout/battle-117-1789720877634889286
+seed=118 repeat=0 simulation=1.8737 export=1.67003 total=3.54478 peak_memory_bytes=3097829376 digest=6856177451941367936 run=.local/plan017/phase2/acceptance-heldout/battle-118-1789720882282411377
+seed=119 repeat=0 simulation=1.66971 export=1.62649 total=3.29707 peak_memory_bytes=3086512128 digest=15741112912400703009 run=.local/plan017/phase2/acceptance-heldout/battle-119-1789720886570977177
+{"build": "c01ca99f0842cac0-linux", "per_layout": {"5": 9, "6": 9, "7": 2}, "passed": false}
+chain exit=0

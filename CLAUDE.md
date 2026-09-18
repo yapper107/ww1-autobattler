@@ -1,3 +1,20 @@
+## Plan 017 phase 2 landed — 18 September 2026
+
+Energy ballistics are on source `c01ca99f0842cac0`: velocity decays in flight, impact energy is
+deposited through a continuous body-absorption rule, a severity roll replaces the flat
+damage draw, and a round that keeps more than the exit threshold passes through the body
+into whoever is behind (`Shot::victims`, one Hit event per victim, `impact` is the
+terminal stop). Lead uses the drag-aware flight time. Fable corrected two details of the
+plan's control flow during review: the re-run advances the sweep interpolation toward the
+substep end rather than toward 1, and the delivery-report block still runs on an exit
+pass. Full Linux suite, `--stats` (energy and over-penetration tests) and 102 Python
+tests pass. References archived to `.local/baselines-pre017/phase2/` and regenerated:
+40/40 parity, 3/3 trace parity plus a determinism repeat (`.local/plan017/phase2/`).
+Informational acceptance: development 9/9, held-out 20/30 (9/9/2). Reference battles
+(mean shots, winners azure/ember/draw, phase 1 -> phase 2): candidate90 works: shots 1167 -> 1259, winners azure/ember/draw 7/3/0 -> 7/2/1; candidate90 trenches: shots 515 -> 571, winners azure/ember/draw 4/5/1 -> 5/5/0; legacy works: shots 2455 -> 2380, winners azure/ember/draw 6/4/0 -> 2/8/0; legacy trenches: shots 2119 -> 1974, winners azure/ember/draw 3/7/0 -> 4/5/1.
+Failing selectors are now D02, D07, D08, D17, `--decision-loop` deployment and
+`--reliability` reconnaissance; D05 passes on this source. Nothing was tuned.
+
 ## Plan 017 stat system — 18 September 2026 (phase 1 landed)
 
 The user approved [plan 017](plans/017-stat-system.md) on 17 September 2026: seven

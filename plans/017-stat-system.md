@@ -241,8 +241,9 @@ manifest (`Diagnostics.cpp:286`) and `tools/battle_cli.cpp` so a battle can be r
   | 100 m | 2.54 kJ | 1.38 kJ | 40 | 1.16 kJ |
   | 300 m | 1.92 kJ | 1.24 kJ | 36 | 0.68 kJ |
 
-  A second body on the line at 100 m takes about 24 health and lets 0.2 kJ through; a third body stops
-  it for about 6. These constants are chosen once here and not retuned after re-baseline.
+  A second body on the line at 100 m receives 1.16 kJ, keeps it (the remainder would be under 300 J)
+  and loses about 33 health; three bodies are reached only near contact range. These constants are
+  chosen once here and not retuned after re-baseline.
 - Severity: one RNG draw `u`: `u<.80` ×1.0 torso, `<.90` limb ×0.5, `<.975` ×1.5, else ×2.0.
 - Substep control flow, replacing `:983-995` and the tail at `:1013-1014`. `dt` already derives from
   `shot.impactTime` (`:957, :959`), so re-running a bullet after a penetration means `continue` without
@@ -259,9 +260,10 @@ manifest (`Diagnostics.cpp:286`) and `tools/battle_cli.cpp` so a battle can be r
       shot.victims.push_back({hit,endTime,E}); b.struck[hit]=true;
       if(E-Edep<ExitThreshold) impact=Shot::Impact::Soldier;
       else { b.p=end; b.velocity=v*(std::sqrt(2*(E-Edep)/b.mass)/Length(v));
-             segBegin+=(1-segBegin)*first; shot.impact=Shot::Impact::None; continue; }
+             segBegin+=(float(sub+1)/Substeps-segBegin)*first; exited=true; }
   }
-  /* :996-1012 unchanged: suppression pass and delivery report are per-bullet flags, no double count */
+  /* out-of-bounds test, shot.impact (None on an exit pass) and the delivery block run as today */
+  if(exited) continue;   // re-run the remainder of the substep for this bullet
   if(impact!=Shot::Impact::None) bullets.erase(bullets.begin()+i);
   else { b.p=next; b.velocity.z-=9.81f*dt; b.velocity=b.velocity*std::exp(-b.dragK*Distance(b.p,next)); ++i; }
   ```
