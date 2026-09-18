@@ -1,5 +1,7 @@
 #pragma once
 // Engine-independent authoritative simulation. Units are metres and seconds.
+#include "Stats.h"
+#include "Weapons.h"
 #include <array>
 #include <cstdint>
 #include <string>
@@ -238,6 +240,8 @@ enum class ScenarioFamily { None, F1, F2, F3 };
 struct Config {
     bool cognition=false, fullVision=false;
     float reportDelay=.75f;
+    std::array<StatDistribution,2> statProfiles{};
+    uint32_t rosterSeed=0; // 0 means "use seed"; the same roster across battle seeds keeps the same soldiers.
     OfficerProfile officer;
     bool leaderEffects=false, equalTroops=false; // Explicit leader comparison; historical configurations unchanged.
     std::array<OfficerProfile,2> platoonProfiles{};
@@ -260,6 +264,7 @@ struct Config {
 };
 inline bool SameConfig(const Config& a,const Config& b) {
     if(bool(a.battlefield)!=bool(b.battlefield)||(a.battlefield&&a.battlefield->digest!=b.battlefield->digest))return false;
+    if(a.rosterSeed!=b.rosterSeed||!SameDistribution(a.statProfiles[0],b.statProfiles[0])||!SameDistribution(a.statProfiles[1],b.statProfiles[1]))return false;
     return a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
@@ -384,7 +389,14 @@ struct Soldier {
     std::array<FireDelivery,16> deliveries{};
     std::array<MoveFailure,SquadSize> movementReports;
     int id = 0, team = 0, squad = 0;
+    Stats stats;
+    WeaponItem weapon;
+    WeaponStats gun;             // Effective weapon values; the only source of combat numbers.
+    int magazineRemaining = 8;
+    float swayPhase = 0;         // Reserved for plan 017 phase 3.
+    Vec3 recoil{};               // Reserved for plan 017 phase 3.
     Vec3 position{}, facing{1,0}, goal{};
+    float maxHealth = 100;
     float health = 100, suppression = 0;
     int rounds = 0;
     float lastShotAt=-100;
@@ -432,6 +444,12 @@ struct Soldier {
 inline bool IsPlatoonStaff(const Soldier& s){return s.role==Role::Lieutenant||s.role==Role::PlatoonSergeant;}
 const char* RankTag(Role role);
 const char* PlatoonTaskName(PlatoonTask task);
+// The only writer of the machineGun organisation flag.
+void EquipWeapon(Soldier& soldier,WeaponItem item);
+// Wisdom quality of a sent report; base is the site's own resolved delay.
+float ReportDelay(float base,const Soldier& sender);
+// What a soldier assumes an enemy can reach. A soldier cannot read enemy stats.
+constexpr float AssumedEnemyReach=95.f;
 // Perception boundary: only the sensory producer may inspect an enemy body.
 float SightRange(const Soldier& observer);
 Contact SenseEnemy(const Soldier& observer,const Soldier& target,const Map& map,float time);
@@ -604,6 +622,10 @@ struct Frame {
     std::array<SquadCommand, SquadCount> command{};
     std::array<PlatoonCommand,2> platoon{};
 };
+// Encounter fixtures set every soldier to stats 100 and max health 100.
+void NeutraliseStats(Frame& frame);
+// Throws std::logic_error if machineGun or the magazine disagrees with the equipped weapon.
+void CheckWeaponConsistency(const Frame& frame);
 // Tactical input contains personal observations and friendly reservations only.
 struct Tactics {
     uint64_t coverId=0,geometryRevision=0;
@@ -678,6 +700,8 @@ struct Record {
 // Outcome uses active combatants; location never awards points.
 bool ResolveDeathmatch(Record& record, const Frame& frame, bool projectilesPending, bool timeLimit);
 Frame InitialFrame(const Config& config);
+// In-place form; a Frame is large enough that callers should avoid a temporary.
+void InitialFrameInto(const Config& config,Frame& frame);
 // Investigation layouts use the same authoritative simulation and start without enemy knowledge.
 void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& frame);
 void MakeMGEncounter(const Config& config,int variant,Map& map,Frame& frame);

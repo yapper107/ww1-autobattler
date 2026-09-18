@@ -157,7 +157,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
             if(commander>=0&&std::find(recipients.begin(),recipients.end(),commander)==recipients.end())recipients.push_back(commander);
             for(int recipient:recipients){
                 PlatoonMessage packet;packet.radio=true;packet.sender=sender;packet.recipient=recipient;
-                packet.arrives=f.time+config.reportDelay;packet.broadcast=message;rt.messages.push_back(packet);
+                packet.arrives=f.time+ReportDelay(config.reportDelay,f.soldiers[sender]);packet.broadcast=message;rt.messages.push_back(packet);
                 if(message.kind==SquadBroadcastKind::Assaulting||message.kind==SquadBroadcastKind::PhaseLine){
                     PlatoonMessage lane;lane.lane=true;lane.sender=sender;lane.recipient=recipient;lane.arrives=packet.arrives;
                     lane.subject=sender;lane.fireLane={message.position,message.objective,.06f,message.sentAt};rt.messages.push_back(lane);
@@ -237,14 +237,14 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
             float priority=ct.observedAt+(ct.automaticWeapon?6.f:0.f);
             if(priority>contactPriority){contactPriority=priority;report.contact=ct;report.contact.visible=false;report.enemy=enemy;}
         }
-        rt.messages.push_back({false,leader,receiver,f.time+(TypedController(config)?config.reportDelay:MessageDelay),report,{}});
+        rt.messages.push_back({false,leader,receiver,f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,f.soldiers[leader]),report,{}});
     }
     for(int team=0;team<2;++team) {
         auto& cmd=f.platoon[team];int sergeant=cmd.sergeant;
         if(sergeant>=0&&cmd.leader>=0&&sergeant!=cmd.leader&&f.soldiers[sergeant].Active()&&f.time>=rt.nextRelay[team]) {
             rt.nextRelay[team]=f.time+(TypedController(config)?.5f:2.f);
             for(const auto& report:f.soldiers[sergeant].platoonReports)if(report.squad>=0&&f.time-report.observedAt<12)
-                rt.messages.push_back({false,sergeant,cmd.leader,f.time+(TypedController(config)?config.reportDelay:MessageDelay),report,{}});
+                rt.messages.push_back({false,sergeant,cmd.leader,f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,f.soldiers[sergeant]),report,{}});
         }
         if(cmd.leader<0)continue;
         if(TypedController(config)&&f.time>=rt.nextSupportRelay[team]){
@@ -252,7 +252,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
             // Disseminate already received support evidence; the recipient's belief is not refreshed.
             for(const auto& report:f.soldiers[cmd.leader].platoonReports)if(!report.deliveries.empty()&&f.time-report.observedAt<6)
                 for(int squad=team*SquadsPerTeam;squad<(team+1)*SquadsPerTeam;++squad){int recipient=f.command[squad].leader;
-                    if(recipient>=0&&recipient!=report.leader)rt.messages.push_back({false,cmd.leader,recipient,f.time+config.reportDelay,report,{}});
+                    if(recipient>=0&&recipient!=report.leader)rt.messages.push_back({false,cmd.leader,recipient,f.time+ReportDelay(config.reportDelay,f.soldiers[cmd.leader]),report,{}});
                 }
         }
         if(config.drills){
@@ -263,7 +263,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
                 directive.intent.expiresAt=directive.expiresAt;
                 cmd.tasks.assigned[order.recipient/SquadSize%SquadsPerTeam]=directive;
                 rt.lastOrders[order.recipient/SquadSize]=directive;
-                rt.messages.push_back({true,cmd.leader,order.recipient,f.time+config.reportDelay,{},directive});
+                rt.messages.push_back({true,cmd.leader,order.recipient,f.time+ReportDelay(config.reportDelay,f.soldiers[cmd.leader]),{},directive});
                 ++cmd.plans;cmd.sector=directive.sector;
                 events.push_back({f.time,EventKind::OrderIssued,cmd.leader,order.recipient,"Platoon task-tree directive: "+std::string(PlatoonTaskName(directive.task))});
             }
@@ -289,7 +289,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
                 }
                 auto amendment=previous;amendment.serial=rt.nextSerial++;amendment.issuedAt=f.time;amendment.issuer=cmd.leader;
                 amendment.supportWithdrawn=true;amendment.supportSoldier=replacement;amendment.supportSquad=replacementSquad;previous=amendment;
-                rt.messages.push_back({true,cmd.leader,mover.leader,f.time+config.reportDelay,{},amendment});
+                rt.messages.push_back({true,cmd.leader,mover.leader,f.time+ReportDelay(config.reportDelay,f.soldiers[cmd.leader]),{},amendment});
                 events.push_back({f.time,EventKind::OrderIssued,cmd.leader,mover.leader,replacement<0?"Support withdrawn after received loss report":"Replacement support assigned to the retained mission"});
                 if(reactions.diagnostics&&reactions.diagnostics->options.enabled){TraceEntry e;e.id=reactions.diagnostics->nextId++;e.time=f.time;e.soldier=cmd.leader;e.squad=mover.squad;e.kind="platoon_support_amended";e.support=replacement;e.intent=amendment.intent;e.reason="fresh supplier report changes support binding without renewing the executing mission";reactions.diagnostics->entries.push_back(e);}
             }
@@ -311,7 +311,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
                 if(!valid)continue;
                 replacement.serial=rt.nextSerial++;replacement.intent.id=replacement.serial;previous=replacement;
                 handledFeedback=true;
-                rt.messages.push_back({true,cmd.leader,report.leader,f.time+(TypedController(config)?config.reportDelay:MessageDelay),{},replacement});
+                rt.messages.push_back({true,cmd.leader,report.leader,f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,f.soldiers[cmd.leader]),{},replacement});
                 cmd.nextPlanAt=f.time+10;
                 events.push_back({f.time,EventKind::OrderIssued,cmd.leader,report.leader,"Blocked goal "+std::to_string(replacement.intent.parent)+" replaced by observe goal "+std::to_string(replacement.intent.id)});
                 if(reactions.diagnostics&&reactions.diagnostics->options.enabled){TraceEntry e;e.id=reactions.diagnostics->nextId++;e.time=f.time;e.soldier=cmd.leader;e.squad=report.squad;e.kind="goal_alternative_applied";e.intent=replacement.intent;e.plan=replacement.intent.id;e.order=replacement.intent.parent;e.goal=replacement.intent.objective;e.reason="matching delayed subordinate failure; higher command revises mission";reactions.diagnostics->entries.push_back(e);}
@@ -349,7 +349,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
             if(config.foundations){order.directive.intent.id=order.directive.serial;order.directive.intent.expiresAt=order.directive.expiresAt;
                 if(order.directive.intent.purpose==GoalPurpose::None){order.directive.intent.purpose=GoalPurpose::Support;order.directive.intent.objective=order.directive.position;}}
             previous=order.directive;
-            rt.messages.push_back({true,cmd.leader,order.recipient,f.time+(TypedController(config)?config.reportDelay:MessageDelay),{},order.directive});
+            rt.messages.push_back({true,cmd.leader,order.recipient,f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,f.soldiers[cmd.leader]),{},order.directive});
             if(order.directive.task==PlatoonTask::Support)cmd.supportSquad=order.recipient/SquadSize;
             else if(order.directive.task==PlatoonTask::Reserve)cmd.reserveSquad=order.recipient/SquadSize;
             else if(order.directive.task!=PlatoonTask::Consolidate){cmd.mainEffortSquad=cmd.flankSquad=order.recipient/SquadSize;cmd.maneuver=order.directive.task;}

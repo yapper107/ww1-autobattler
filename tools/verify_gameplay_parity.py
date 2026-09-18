@@ -16,6 +16,8 @@ def verify(binary, reference, output):
         for option, key in [('doctrine', 'doctrine'), ('ember-doctrine', 'ember_doctrine'),
                             ('approach', 'approach'), ('terrain', 'terrain'), ('encounter', 'encounter')]:
             args.extend(['--' + option, str(manifest.get(key, 0))])
+        if manifest.get('roster_seed'):
+            args.extend(['--roster-seed', str(manifest['roster_seed'])])
         if not manifest['support_weapon']:
             args.append('--no-mg')
         subprocess.run(args, check=True)

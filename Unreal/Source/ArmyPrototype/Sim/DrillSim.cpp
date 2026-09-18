@@ -354,7 +354,7 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
         else {Advance(leader,p,DrillStage::BoundSetup,d,time,why);issue(SelectMembers(members,p));}
     };
     auto contact=[&](const std::string& why){
-        Accept(leader,p,BattleDrill::ReactToContact,d,time);p.assessed=false;p.coverComplete=false;p.closing=false;p.blocked=false;p.retreat=false;p.assessmentAt=time+3+leader.reactionBase;
+        Accept(leader,p,BattleDrill::ReactToContact,d,time);p.assessed=false;p.coverComplete=false;p.closing=false;p.blocked=false;p.retreat=false;p.assessmentAt=time+3/StatScale(leader.stats.Get(Stat::Wisdom))+leader.reactionBase;
         SetTechnique(leader,p,MovementTechnique::BoundingOverwatch,d,time);Advance(leader,p,DrillStage::ContactCover,d,time,why);issue(SelectMembers(members,p));
     };
     std::string trigger;

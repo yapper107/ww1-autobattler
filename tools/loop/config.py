@@ -28,6 +28,8 @@ CONTROLLER_FLAG = {'legacy': '--legacy-ai', 'candidate90': '--cognition', 'drill
 BASELINES = {
     'legacy': dict(controller='legacy', binary=None),
     'candidate90': dict(controller='candidate90', binary=None),
+    # Plan 017: this pinned binary predates the stat model, so it is no longer a
+    # comparable reference; legacy and candidate90 follow the candidate binary.
     'squad-only': dict(controller='drills', binary=str(REPO/'.local/phase3h/final/battle-lab'),
                        version='a0364bff5cea6ab9-linux'),
 }
@@ -51,7 +53,7 @@ PARITY_SPECS = [dict(set='works', terrain=0, seed=107), dict(set='trenches', ter
 SELECTORS = ['Q06', 'Q07', 'Q08', 'Q09', 'retention', 'Q01', 'Q05', 'clock-arrival', 'P04', 'P05', 'P06', 'P07',
              'Q02', 'Q03', 'Q04', 'D01', 'D02', 'D03', 'D04', 'D05', 'D06', 'D07', 'D08', 'D09', 'D10', 'D11',
              'D16', 'D17', 'close', 'sprint', 'projection', 'sector', 'positions', 'plumbing', 'lifecycle']
-SELECTOR_GROUPS = ['--leaders']
+SELECTOR_GROUPS = ['--leaders', '--stats']
 
 # Policy sources that may only see officer memory, own orders, received reports
 # and permitted squad-member fields. The static check forbids these tokens there.

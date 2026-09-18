@@ -463,7 +463,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             PendingReaction reaction;reaction.kind=ReactionKind::Order;reaction.order=order;reaction.source=sender;
             QueueReaction(f.soldiers[recipient],reaction,f.time,rt.reactions);return;
         }
-        CommandMessage message;message.sender=sender;message.recipient=recipient;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);message.assignment=order;
+        CommandMessage message;message.sender=sender;message.recipient=recipient;message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,f.soldiers[sender]);message.assignment=order;
         rt.messages.push_back(message);
     };
     // A gun reports its own live assignment in response to a received request.
@@ -475,7 +475,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             Distance(task.sector,request.focus)>6||f.time<rt.nextSupportProgress[gun.id])continue;
         rt.nextSupportProgress[gun.id]=f.time+1;
         CommandMessage message;message.kind=CommandMessage::Kind::SupportProgress;message.sender=gun.id;message.recipient=request.requester;
-        message.arrives=f.time+config.reportDelay;auto& report=message.supportProgress;
+        message.arrives=f.time+ReportDelay(config.reportDelay,gun);auto& report=message.supportProgress;
         report.shooter=gun.id;report.assignment=task.id;report.route=request.route;report.stage=request.stage;
         report.position=gun.position;report.sector=task.sector;report.observedAt=f.time;report.statusAt=task.statusAt;
         report.deadline=task.execution.deadline;report.status=task.status;report.cause=task.cause;
@@ -490,7 +490,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         const auto& receipt=leader.taskReports[request.shooter%SquadSize];
         if(receipt.soldier!=request.shooter||receipt.active||receipt.status!=TaskStatus::Failed||receipt.cause!=TaskCause::Casualty)continue;
         rt.nextSupportProgress[id]=f.time+1;
-        CommandMessage message;message.kind=CommandMessage::Kind::SupportProgress;message.sender=id;message.recipient=request.requester;message.arrives=f.time+config.reportDelay;
+        CommandMessage message;message.kind=CommandMessage::Kind::SupportProgress;message.sender=id;message.recipient=request.requester;message.arrives=f.time+ReportDelay(config.reportDelay,leader);
         auto& report=message.supportProgress;report.shooter=request.shooter;report.assignment=receipt.id;report.route=request.route;report.stage=request.stage;
         report.position=receipt.position;report.sector=request.focus;report.observedAt=report.statusAt=receipt.at;report.status=TaskStatus::Failed;report.cause=TaskCause::Casualty;
         rt.messages.push_back(message);
@@ -513,7 +513,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             auto& sent=rt.sentTargetDeliveryAt[(uint64_t(s.id)*UnitCount+evidence.shooter)*(UnitCount+1)+uint64_t(evidence.enemy+1)];
             if(evidence.observedAt<=sent)continue;
             auto relay=[&](int receiver){if(receiver<0||receiver==s.id||!f.soldiers[receiver].Active())return;
-                CommandMessage message;message.kind=CommandMessage::Kind::Delivery;message.sender=s.id;message.recipient=receiver;message.arrives=f.time+config.reportDelay;message.delivery=evidence;rt.messages.push_back(message);};
+                CommandMessage message;message.kind=CommandMessage::Kind::Delivery;message.sender=s.id;message.recipient=receiver;message.arrives=f.time+ReportDelay(config.reportDelay,s);message.delivery=evidence;rt.messages.push_back(message);};
             if(s.id==cmd.leader){relay(nco);for(int other=0;other<SquadCount;++other)if(other!=s.squad&&other/SquadsPerTeam==s.team)relay(f.command[other].leader);}
             else relay(parent);
             // Reply to the maneuver's explicit request over the same delayed
@@ -534,7 +534,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             (s.reason==Reason::EmergencyCover||s.reason==Reason::ProtectedHold||s.reason==Reason::Suppressed)&&
             Distance(s.position,s.assignment.position)>3) {
             CommandMessage message;message.kind=CommandMessage::Kind::Movement;message.sender=s.id;message.recipient=cmd.leader;
-            message.failedMove={s.id,s.assignment.serial,s.assignment.position,f.time};message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
+            message.failedMove={s.id,s.assignment.serial,s.assignment.position,f.time};message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,s);rt.messages.push_back(message);
         }
         if(s.blockedSeconds>=1&&(s.holdingFire||f.time-s.lastBlockedAt<4))
             s.blockedLanes[s.id]={s.position,s.aimPoint,ShotSpread(s),f.time};
@@ -544,35 +544,35 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
                 const auto& lane=s.blockedLanes[shooter];
                 if(f.time-lane.observedAt>8||lane.observedAt<=f.soldiers[receiver].blockedLanes[shooter].observedAt)continue;
                 CommandMessage message;message.kind=CommandMessage::Kind::Lane;message.sender=s.id;message.recipient=receiver;
-                message.subject=shooter;message.fireLane=lane;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
+                message.subject=shooter;message.fireLane=lane;message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,s);rt.messages.push_back(message);
             }
         };
         if(s.id==cmd.leader) {
             relayLanes(nco);
             for(int other=0;other<SquadCount;++other)if(other!=s.squad&&other/SquadsPerTeam==s.team)relayLanes(f.command[other].leader);
         } else relayLanes(parent);
-        auto relayFire=[&](int receiver){if(receiver<0||receiver==s.id)return;for(const auto& e:s.deliveries)if(e.shooter>=0&&f.time-e.observedAt<(config.recoveryFixture?10.f:6.f)){CommandMessage m;m.kind=CommandMessage::Kind::Delivery;m.sender=s.id;m.recipient=receiver;m.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);m.delivery=e;rt.messages.push_back(m);}};
+        auto relayFire=[&](int receiver){if(receiver<0||receiver==s.id)return;for(const auto& e:s.deliveries)if(e.shooter>=0&&f.time-e.observedAt<(config.recoveryFixture?10.f:6.f)){CommandMessage m;m.kind=CommandMessage::Kind::Delivery;m.sender=s.id;m.recipient=receiver;m.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,s);m.delivery=e;rt.messages.push_back(m);}};
         if(!TypedController(config)){if(s.id==cmd.leader){relayFire(nco);for(int other=0;other<SquadCount;++other)if(other!=s.squad&&other/SquadsPerTeam==s.team)relayFire(f.command[other].leader);}
         else relayFire(parent);}
         if(s.id==cmd.leader||parent<0||parent==s.id)continue;
         for(const auto& area:s.fireAreas)if(area.intensity>0&&f.time-area.observedAt<=18) {
             CommandMessage message;message.kind=CommandMessage::Kind::Fire;message.sender=s.id;message.recipient=parent;
-            message.fireArea=area;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
+            message.fireArea=area;message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,s);rt.messages.push_back(message);
         }
         for(const auto& friendUnit:f.soldiers)if(friendUnit.squad==s.squad&&KnowsWounded(s,friendUnit)&&!f.soldiers[parent].knownWounded[friendUnit.id]) {
             CommandMessage message;message.kind=CommandMessage::Kind::Wound;message.sender=s.id;message.recipient=parent;
-            message.subject=friendUnit.id;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
+            message.subject=friendUnit.id;message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,s);rt.messages.push_back(message);
         }
         const auto knowledge=WithTracks(s,f.time);
         for(int enemy=0;enemy<UnitCount;++enemy) {
             const auto& ct=knowledge.contacts[enemy];
             if((!ct.known&&ct.clearedAt<=-100)||f.time-std::max(ct.observedAt,ct.clearedAt)>120)continue;
             CommandMessage message;message.kind=CommandMessage::Kind::Contact;message.sender=s.id;message.recipient=parent;
-            message.enemy=enemy;message.contact=ct;message.contact.visible=false;message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);rt.messages.push_back(message);
+            message.enemy=enemy;message.contact=ct;message.contact.visible=false;message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,s);rt.messages.push_back(message);
         }
         if(s.id==cmd.support&&cmd.leader>=0) {
             CommandMessage message;message.kind=CommandMessage::Kind::Ready;message.sender=s.id;message.recipient=cmd.leader;
-            message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);
+            message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,s);
             // Local shelter/peek corrections can move a deployed gun away from its
             // original coordinate. Report actual deployment; the officer verifies the angle.
             message.ready=(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard||s.assignment.task==Task::Hold)&&
@@ -601,7 +601,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             if(cmd.drill.selected&&cmd.route&&cmd.support>=0&&f.time>=rt.nextSupportSector[team]){
                 rt.nextSupportSector[team]=f.time+2;
                 CommandMessage message;message.kind=CommandMessage::Kind::SupportSector;message.sender=cmd.leader;message.recipient=cmd.support;
-                message.arrives=f.time+(TypedController(config)?config.reportDelay:MessageDelay);message.supportSector=AssaultSupportSector(f.soldiers[cmd.leader],cmd,knownMap,f.time);
+                message.arrives=f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,f.soldiers[cmd.leader]);message.supportSector=AssaultSupportSector(f.soldiers[cmd.leader],cmd,knownMap,f.time);
                 rt.messages.push_back(message);
                 TraceProposal(rt.diagnostics,f.soldiers[cmd.leader],cmd,knownMap,f.time,"support_sector_sent",std::string(message.supportSector.lifted?"lift sector: ":"prioritize threats overlooking assault slots: ")+std::to_string(message.supportSector.threats.size())+" known tracks");
             }
@@ -654,7 +654,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         if(config.cognition&&(cmd.accepted.requiresSupport||cmd.accepted.method==CognitiveMethod::SupportedAdvance||cmd.accepted.method==CognitiveMethod::AlternateApproach)&&cmd.accepted.support>=0&&f.time>=rt.nextSupportSector[team]){
             rt.nextSupportSector[team]=f.time+1;
             CommandMessage message;message.kind=CommandMessage::Kind::SupportSector;message.sender=cmd.leader;message.recipient=cmd.accepted.support;
-            message.arrives=f.time+config.reportDelay;message.supportSector.requester=cmd.leader;message.supportSector.stage=cmd.accepted.routeStage;message.supportSector.shooter=cmd.accepted.support;message.supportSector.focus=SupportDeploymentSector(cmd.accepted,f.soldiers[cmd.leader],f.time);message.supportSector.route=cmd.accepted.route?cmd.accepted.route->id:0;message.supportSector.observedAt=f.time;
+            message.arrives=f.time+ReportDelay(config.reportDelay,f.soldiers[cmd.leader]);message.supportSector.requester=cmd.leader;message.supportSector.stage=cmd.accepted.routeStage;message.supportSector.shooter=cmd.accepted.support;message.supportSector.focus=SupportDeploymentSector(cmd.accepted,f.soldiers[cmd.leader],f.time);message.supportSector.route=cmd.accepted.route?cmd.accepted.route->id:0;message.supportSector.observedAt=f.time;
             auto knowledge=WithTracks(f.soldiers[cmd.leader],f.time);
             for(int id=0;id<UnitCount;++id)if(knowledge.contacts[id].known&&
                 (id==cmd.accepted.requestedThreat||id==cmd.accepted.supportThreat||Distance(knowledge.contacts[id].position,cmd.accepted.sector)<(cmd.accepted.supportThreat>=0?4.f:18.f)))message.supportSector.threats.push_back({id,knowledge.contacts[id]});

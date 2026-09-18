@@ -38,7 +38,7 @@ static void FoundationsBeliefTests(){
     observations[0].contact.clearedAt=5;ReceiveObservations(officer,observations,1,6);
     observations[0].contact=contact;ReceiveObservations(officer,observations,6,7);assert(BuildMentalMap(officer,7).empty());
     // A leader's regional picture must not depend on unobserved bodies.
-    Soldier hidden;hidden.id=33;hidden.team=1;hidden.position={21,0};hidden.machineGun=true;
+    Soldier hidden;hidden.id=33;hidden.team=1;hidden.position={21,0};EquipWeapon(hidden,{WeaponId::MachineGun,{}});
     assert(BuildMentalMap(reckless,3)[0].observations==1);
     Frame f;f.soldiers[0]=officer;ReactionRuntime rt;std::vector<Event> events;
     PendingReaction directive;directive.kind=ReactionKind::PlatoonOrder;directive.source=5;
@@ -92,15 +92,21 @@ static void FoundationsFeedbackTests(){
     std::cout<<"Foundations goals: matching subordinate blockage, delayed upward report, retained alternative and delayed changed squad orders verified\n";
 }
 static void FoundationsJudgmentTests(){
-    Config config;config.foundations=true;auto frame=InitialFrame(config);auto commander=frame.soldiers[5];Map map;
+    Config config;config.foundations=true;auto frame=InitialFrame(config);NeutraliseStats(frame);auto commander=frame.soldiers[5];Map map;
     for(int n=0;n<5;++n)commander.contacts[32+n]={true,false,{20,float(n)},1};
     for(int n=0;n<2;++n){auto& report=commander.platoonReports[n];report.squad=n;report.leader=n*8;report.active=6;report.mobile=4;
         report.position={-20,float(n*15)};report.contact=commander.contacts[32];report.enemy=32;report.observedAt=1;}
     commander.platoonReports[0].machineGuns=1;
+    // Judgment attenuates estimate bias for every controller now, so the
+    // interpretation fixture uses an officer whose judgment cannot correct it.
+    commander.officer.judgment=0;
     commander.estimateBias=-1;auto optimistic=PlanPlatoon(commander,map,config,2);
     commander.estimateBias=1;auto pessimistic=PlanPlatoon(commander,map,config,2);
     assert(optimistic.size()>=2&&pessimistic.size()>=2);
     assert(optimistic[1].directive.task!=PlatoonTask::Observe&&pessimistic[1].directive.task==PlatoonTask::Observe);
+    commander.officer.judgment=1;auto corrected=PlanPlatoon(commander,map,config,2);
+    assert(corrected.size()>=2&&corrected[1].directive.task!=PlatoonTask::Observe); // strong judgment discounts the same bias
+    commander.officer.judgment=0;
     // Real task/navigation feedback passes through the existing message and reaction transport.
     auto& mover=frame.soldiers[10];mover.position={0,0};mover.assignment.id=7;mover.assignment.serial=7;
     mover.assignment.intent={40,0,GoalPurpose::Seize,{20,0},8,60};mover.assignment.task=Task::Flank;mover.assignment.position={20,0};

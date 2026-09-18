@@ -43,6 +43,8 @@ def set_guards(cases, references, authored=True, trenches=False, expected=10):
         paired('stronger_remaining_at_limit',
                lambda r: max(n/i for n, i in zip(r['survivors'], r['initial_actives'])),
                lambda a, b: min(a['metrics']['time_to_decision'], b['metrics']['time_to_decision']) >= 359.9, informational=True)
+    # Plan 017: battles that resolve before 360 s drop out of this informational
+    # interval; report the eligible-pair count alongside it.
     for side in ('azure', 'ember'):
         paired('orders_'+side+'_per_minute', lambda r, s=side: r['metrics']['orders_'+s+'_per_minute'])
     # C4: disclose the paired spacing interval on every set. Only Trenches

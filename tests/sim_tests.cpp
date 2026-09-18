@@ -27,6 +27,8 @@ static std::string Fingerprint(const Record& r) {
             for(const auto& r:s.movementReports){o<<r.soldier<<r.order<<r.observedAt;vec(r.destination);}
             for(const auto& r:s.platoonReports){o<<r.squad<<r.leader<<r.active<<r.enemy<<r.engaged<<r.supportUseful<<r.movementBlocked<<r.machineGuns<<r.mobile<<r.suppression<<r.danger<<r.observedAt;vec(r.position);contact(r.contact);}
             const auto& pd=s.platoonOrder;o<<int(pd.task)<<pd.issuer<<pd.serial<<pd.enemy<<pd.issuedAt<<pd.receivedAt<<pd.activatedAt<<pd.expiresAt;vec(pd.position);vec(pd.sector);contact(pd.contact);
+            for(float stat:s.stats.value)o<<stat;
+            o<<s.maxHealth<<int(s.weapon.def)<<s.magazineRemaining;
             o<<s.position.x<<s.position.y<<s.position.z<<s.health<<s.suppression<<s.rounds<<int(s.action)<<int(s.reason)<<int(s.stance)<<int(s.role)<<s.aim<<s.aimTarget<<s.aimPoint.x<<s.aimPoint.y<<s.aimPoint.z<<s.regrouping;
             o<<s.squad<<s.reactionBase<<s.reactionUntil<<int(s.reactingTo)<<s.pendingReactions<<s.understoodHealth<<s.understoodSuppression<<s.supportReadyAt<<s.reloadUntil<<s.areaFire;
             for(bool wounded:s.knownWounded)o<<wounded;
@@ -69,9 +71,13 @@ static void SightAndValleyTests() {
     Map empty;Soldier observer,target;target.team=1;target.id=TeamSize;
     target.position={69,0};assert(SenseEnemy(observer,target,empty,2).visible);
     target.position={70,0};assert(!SenseEnemy(observer,target,empty,2).known);
-    observer.machineGun=true;target.position={94,0};assert(SenseEnemy(observer,target,empty,2).visible);
+    EquipWeapon(observer,{WeaponId::MachineGun,{}});target.position={94,0};assert(SenseEnemy(observer,target,empty,2).visible);
     target.position={95,0};assert(!SenseEnemy(observer,target,empty,2).visible);
-    observer.machineGun=false;target.position={-20,0};assert(SenseEnemy(observer,target,empty,2).visible); // current scan is omnidirectional
+    EquipWeapon(observer,{WeaponId::Rifle,{}});
+    // Perception scales the weapon's engagement range.
+    observer.stats.value[size_t(Stat::Perception)]=120;target.position={83,0};assert(SenseEnemy(observer,target,empty,2).visible);
+    target.position={85,0};assert(!SenseEnemy(observer,target,empty,2).visible);
+    observer.stats=Stats{};target.position={-20,0};assert(SenseEnemy(observer,target,empty,2).visible); // current scan is omnidirectional
     Map valley=MakeSkirmishMap();assert(valley.halfWidth==170&&valley.halfHeight==150);
     observer.position={-30,0};target.position={30,0};assert(!SenseEnemy(observer,target,valley,2).visible);
     assert(!ClearLine3D(valley,{-30,0,4.9f},{30,0,4.9f})); // screens also interrupt upper-floor views
@@ -167,7 +173,7 @@ static void PlatoonTests() {
     lieutenant.platoonReports[1].suppression=0;
     lieutenant.platoonReports[1].engaged=false;assert(PlanPlatoon(lieutenant,map,config,20).empty());
     // Actual two-hop communication: squad -> platoon sergeant -> lieutenant.
-    f=InitialFrame(config);PlatoonRuntime transport;ReactionRuntime reactions;std::vector<Event> events;
+    f=InitialFrame(config);NeutraliseStats(f);PlatoonRuntime transport;ReactionRuntime reactions;std::vector<Event> events;
     f.platoon[0].nextPlanAt=f.platoon[1].nextPlanAt=100;
     for(auto& s:f.soldiers)if(s.squad==0)s.position={-20,0};else if(s.squad==1)s.position={-40,-70};
     f.command[0].engaged=true;f.soldiers[0].contacts[TeamSize]={true,true,{20,0},0};f.soldiers[0].contacts[TeamSize].automaticWeapon=true;
@@ -369,12 +375,12 @@ static void ReactionAndMachineGunTests() {
     f.time=2.05f+ReactionSeconds(soldier,ReactionKind::UnderFire)+0.01f;
     ProcessReactions(f,rt,events);assert(soldier.understoodSuppression==0);
     f.time=3;ProcessReactions(f,rt,events);assert(soldier.understoodSuppression==0);
-    Soldier gun;gun.id=7;gun.machineGun=true;gun.assignment.task=Task::Overwatch;gun.position={-10,0};gun.action=Action::Fire;
+    Soldier gun;gun.id=7;EquipWeapon(gun,{WeaponId::MachineGun,{}});gun.assignment.task=Task::Overwatch;gun.position={-10,0};gun.action=Action::Fire;
     gun.contacts[TeamSize]={true,false,{10,0},2.f};Map empty;empty.obstacles.clear();
     auto solution=SelectFireSolution(gun,empty,4);assert(solution.enemy==TeamSize&&solution.area&&solution.point.x==10);
     assert(SelectFireSolution(gun,empty,8.1f).enemy<0);
-    gun.machineGun=false;assert(SelectFireSolution(gun,empty,4).area); // rifles assigned overwatch now suppress remembered contacts
-    gun.machineGun=true;Tactics memory;memory.assigned=true;memory.peeking=true;memory.halfCover=true;
+    EquipWeapon(gun,{WeaponId::Rifle,{}});assert(SelectFireSolution(gun,empty,4).area); // rifles assigned overwatch now suppress remembered contacts
+    EquipWeapon(gun,{WeaponId::MachineGun,{}});Tactics memory;memory.assigned=true;memory.peeking=true;memory.halfCover=true;
     memory.peek=memory.shelter=gun.position;memory.expires=100;memory.phaseUntil=20;memory.roundsAtPeek=0;
     gun.rounds=4;auto order=ChooseOrder(gun,empty,Config{}, {},memory,4);
     assert(memory.peeking&&order.action==Action::Fire); // no rifle-like duck after 1-3 rounds
@@ -411,7 +417,7 @@ static void WoundedRearGuardTests() {
     Soldier red=wounded;red.id=TeamSize+2;red.squad=SquadsPerTeam;red.team=1;red.position={0,0};red.assignment={};
     Soldier redLeader=red;redLeader.id=TeamSize;redLeader.health=redLeader.understoodHealth=100;redLeader.knownWounded[red.id]=true;
     Vec3 redRear=RearPosition(redLeader,red,{redLeader,red},map,14);assert(redRear.x>=0);
-    wounded.machineGun=true;wounded.contacts[TeamSize].visible=false;
+    EquipWeapon(wounded,{WeaponId::MachineGun,{}});wounded.contacts[TeamSize].visible=false;
     assert(SelectFireSolution(wounded,map,f.time).area);
     // Leaders only change assignments after learning about an injury. A wounded
     // NCO keeps commanding from the rear; healthy soldiers receive officer orders.
@@ -425,7 +431,7 @@ static void WoundedRearGuardTests() {
     // Prefer reachable cover behind the healthy front, with separate reservations.
     Map cover;cover.obstacles={{{-15,0},{0.6f,4},false,true}};
     officer.contacts={};officer.reports={};officer.position={0,0};friends[3].position={0,0};
-    wounded.position={0,0};wounded.assignment={};wounded.machineGun=false;
+    wounded.position={0,0};wounded.assignment={};EquipWeapon(wounded,{WeaponId::Rifle,{}});
     const Vec3 covered=RearPosition(officer,wounded,friends,cover,14);
     assert(covered.x<-10&&ProtectedAt(cover,covered,{0,0},Stance::Crouched));
     const Vec3 separate=RearPosition(officer,wounded,friends,cover,14,{covered});assert(Distance(covered,separate)>=1.5f);
@@ -455,12 +461,12 @@ static void ManeuverAndFireLaneTests() {
     PendingReaction report;report.kind=ReactionKind::FireReport;report.fireArea={{-12,0},0.9f,10};QueueReaction(leader,report,10,reaction);
     f.time=10.01f;ProcessReactions(f,reaction,events);assert(FireDanger(leader,{-12,0},f.time)==0);
     f.time=11;ProcessReactions(f,reaction,events);assert(FireDanger(leader,{-12,0},f.time)>0.5f);
-    Soldier gun;gun.id=7;gun.machineGun=true;gun.assignment.task=Task::Overwatch;gun.position={0,0};
+    Soldier gun;gun.id=7;EquipWeapon(gun,{WeaponId::MachineGun,{}});gun.assignment.task=Task::Overwatch;gun.position={0,0};
     gun.allies[2]={true,true,{15,0},10,1.85f};
     assert(ShouldHoldFire(gun,FriendlyFireRisk(gun,map,{40,0,1.45f},10)));
     gun.allies[2].position.y=1.25f;
     assert(ShouldHoldFire(gun,FriendlyFireRisk(gun,map,{40,0,1.45f},10)));
-    Soldier rifle=gun;rifle.machineGun=false;
+    Soldier rifle=gun;EquipWeapon(rifle,{WeaponId::Rifle,{}});
     assert(!ShouldHoldFire(rifle,FriendlyFireRisk(rifle,map,{40,0,1.45f},10)));
     gun.allies[2].position.y=3;gun.allyVelocity[2]={0,-3.2f};
     assert(ShouldHoldFire(gun,FriendlyFireRisk(gun,map,{40,0,1.45f},10))); // predicted crossing
@@ -752,8 +758,10 @@ static void CoordinationTests() {
 #include "drills_tests.h"
 #include "platoon_tests.h"
 #include "leader_tests.h"
+#include "stats_tests.h"
 int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--leaders"){LeaderTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--stats"){StatsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--platoon"){PlatoonTests(argc>2?argv[2]:"all");return 0;}
     if(argc>1&&std::string(argv[1])=="--drills"){DrillsTests(argc>2?argv[2]:"all");return 0;}
     if(argc>1&&std::string(argv[1])=="--generated"){ScenarioGeneratorTests();return 0;}
@@ -794,7 +802,7 @@ int main(int argc,char** argv) {
     for(const auto& shot:one.shots) {
         if(shot.flight.size()>1) {
             const auto& a=shot.flight[0];const auto& b=shot.flight[1];float dt=b.time-a.time;
-            float speed=shot.owner%SquadSize==7?680.f:720.f;
+            float speed=one.frames.front().soldiers[shot.owner].gun.muzzleVelocity;
             float travel=Distance(shot.start,{shot.aimedAt.x,shot.aimedAt.y})/speed;
             float vertical=(b.position.z-a.position.z)/dt+4.905f*dt;
             float error=vertical-((shot.aimedAt.z-a.position.z)/travel+4.905f*travel);
@@ -838,7 +846,8 @@ int main(int argc,char** argv) {
         assert(r.frames.front().time==0);assert(r.frames.back().time==r.duration);
         assert(r.duration>1&&r.duration<=c.maxSeconds+0.1f);
         assert(!r.shots.empty());assert(!r.conclusion.empty());
-        float time=-1;std::array<float,UnitCount> health;health.fill(100);
+        float time=-1;std::array<float,UnitCount> health;
+        for(int id=0;id<UnitCount;++id)health[id]=r.frames.front().soldiers[id].maxHealth;
         for(const auto& f:r.frames) {
             assert(f.time>time);time=f.time;
             for(const auto& cmd:f.command)if(cmd.hasWaypoint){if(cmd.maneuver==Maneuver::PullBack)++pullBackFrames;else ++flankFrames;}
@@ -872,7 +881,7 @@ int main(int argc,char** argv) {
             if(at!=r.frames.begin()) {
                 const auto& shooter=(at-1)->soldiers[shot.owner];
                 if(shooter.machineGun&&shooter.assignment.task==Task::Overwatch)++overwatchRounds;
-                if(shooter.health<100&&shooter.assignment.task==Task::RearGuard)++rearRounds;
+                if(shooter.health<shooter.maxHealth&&shooter.assignment.task==Task::RearGuard)++rearRounds;
             }
             for(const auto& window:r.map.windows)if(Distance(shot.start,window.peek)<0.7f){if(shot.start.z>3)++upperShots;else ++groundWindowShots;break;}
             assert(shot.time<=shot.impactTime&&shot.impactTime<=r.duration);
@@ -894,7 +903,7 @@ int main(int argc,char** argv) {
                 const auto& a=shot.flight[k-1];const auto& b=shot.flight[k];
                 assert(b.time>=a.time&&std::isfinite(b.position.z)&&b.position.z>=-0.001f);
                 float distance=Distance({a.position.x,a.position.y},{b.position.x,b.position.y});
-                assert(std::abs(distance-(b.time-a.time)*(r.frames.front().soldiers[shot.owner].machineGun?680.f:720.f))<0.025f);
+                assert(std::abs(distance-(b.time-a.time)*r.frames.front().soldiers[shot.owner].gun.muzzleVelocity)<0.025f);
                 for(const auto& obstacle:r.map.obstacles) {
                     float hit=SegmentObstacle(a.position,b.position,obstacle);
                     assert(hit<0||(k+1==shot.flight.size()&&shot.impact==Shot::Impact::Cover&&hit>0.99f));

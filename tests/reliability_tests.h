@@ -190,7 +190,9 @@ static void ReliabilityPhysicalThreatScenario(){
         if(report.shooter==7&&report.enemy==32&&report.observedAt>=0){received=true;assert(frame.time>=report.observedAt+config.reportDelay);}
     std::cerr<<"physical threat: cover denial="<<physical<<" delivery="<<received<<"\n";assert(physical&&received);
     std::cout<<"SCENARIO reliability physical threat: gun covers the requested concealed MG instead of substituting the nearby rifleman PASS\n";
-    config.reportDelay=7;config.maxSeconds=24;
+    // A support sector is current for eight seconds from its own observation, so
+    // the transported window must still hold one settle at the reference reaction.
+    config.reportDelay=6;config.maxSeconds=24;
     auto rifle=Simulate(config,{}, {},27);bool reported=false,denied=false;
     for(const auto& shot:rifle.shots)if(shot.owner==7&&shot.aimedEnemy==32&&shot.aimedAt.z>1.2f)denied=true;
     for(const auto& f:rifle.frames){const auto& gun=f.soldiers[7];const auto& contact=gun.reports[32];

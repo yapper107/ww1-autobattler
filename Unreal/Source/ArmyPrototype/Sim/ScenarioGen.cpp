@@ -103,7 +103,8 @@ void ApplyScenario(const GeneratedScenario& g,const Config& config,Map& map,Fram
     for(auto& s:frame.soldiers){const int slot=s.id%8;
         s.position=g.positions[s.id];s.goal=s.position;
         if(!(g.squads[s.squad]&(1<<slot))){s.health=0;s.action=Action::Killed;}
-        s.machineGun=s.squad%4==0&&slot==7&&g.machineGun[s.team]&&(s.team==1||config.supportWeapon);
+        // Re-equip both the gunner and any slot this scenario demotes to rifle.
+        EquipWeapon(s,{s.squad%4==0&&slot==7&&g.machineGun[s.team]&&(s.team==1||config.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
         if(s.role==Role::MachineGunner)s.role=Role::Rifleman;
         if(s.machineGun)s.role=Role::MachineGunner;
         if(s.team)s.stance=Stance::Crouched;

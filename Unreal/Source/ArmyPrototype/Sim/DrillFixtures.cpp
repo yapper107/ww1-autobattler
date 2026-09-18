@@ -6,10 +6,10 @@ namespace army {
 static void MakeActionEncounter(int id,Map& map,Frame& frame){
     map=Map{};map.halfWidth=160;map.halfHeight=100;
     for(auto& s:frame.soldiers){s.health=0;s.action=Action::Killed;s.assignment={};s.contacts={};s.reports={};}
-    for(int n=0;n<8;++n){auto& s=frame.soldiers[n];s.health=100;s.role=n==0?Role::Sergeant:n==1?Role::Corporal:n==7?Role::MachineGunner:Role::Rifleman;s.machineGun=n==7;s.position={-6,(n-3.5f)*6};s.goal=s.position;
+    for(int n=0;n<8;++n){auto& s=frame.soldiers[n];s.health=100;s.role=n==0?Role::Sergeant:n==1?Role::Corporal:n==7?Role::MachineGunner:Role::Rifleman;EquipWeapon(s,{n==7?WeaponId::MachineGun:WeaponId::Rifle,{}});s.position={-6,(n-3.5f)*6};s.goal=s.position;
         map.obstacles.push_back({{3,(n-3.5f)*6},{.6f,2},false,true,1.3f});
     }
-    auto& enemy=frame.soldiers[32];enemy.health=10000;enemy.position={70,0};enemy.goal=enemy.position;enemy.role=Role::Sergeant;enemy.machineGun=false;enemy.reloadUntil=id<=57||id>=68?10000:0;
+    auto& enemy=frame.soldiers[32];enemy.health=10000;enemy.position={70,0};enemy.goal=enemy.position;enemy.role=Role::Sergeant;EquipWeapon(enemy,{WeaponId::Rifle,{}});enemy.reloadUntil=id<=57||id>=68?10000:0;
     map.obstacles.push_back({{68,0},{.6f,2},false,true,1.3f});
     auto& order=frame.soldiers[0].platoonOrder;order.serial=1;order.issuer=13;order.expiresAt=600;order.intent={1,0,id<=57?GoalPurpose::Support:GoalPurpose::Seize,{70,0},12,600};order.task=id<=57?PlatoonTask::Support:PlatoonTask::FlankNorth;
     frame.command[0].mission={70,0};frame.command[4].leader=32;
@@ -26,7 +26,7 @@ static void MakeActionEncounter(int id,Map& map,Frame& frame){
         // Keep the deathmatch alive after objective clearance so D08 can observe
         // consolidation. Remote, durable observer; no reports or contacts injected.
         auto& remote=frame.soldiers[63];remote.health=10000;remote.reloadUntil=10000;
-        remote.position={-150,-90};remote.goal=remote.position;remote.role=Role::Sergeant;remote.machineGun=false;
+        remote.position={-150,-90};remote.goal=remote.position;remote.role=Role::Sergeant;EquipWeapon(remote,{WeaponId::Rifle,{}});
         remote.platoonOrder.serial=1;remote.platoonOrder.issuer=63;remote.platoonOrder.expiresAt=600;
         remote.platoonOrder.task=PlatoonTask::Observe;
         remote.platoonOrder.intent={1,0,GoalPurpose::Observe,remote.position,8,600};
@@ -37,7 +37,7 @@ static void MakeActionEncounter(int id,Map& map,Frame& frame){
     if(id>=68){
         for(int n=0;n<8;++n)frame.soldiers[n].health=10000; // Isolate the strength condition from the casualty trigger.
 
-        for(int n=32;n<(id==68?48:40);++n){auto& s=frame.soldiers[n];s.health=10000;s.reloadUntil=10000;s.position={65.f+(n-32)/8*6,(n%8-3.5f)*6};s.goal=s.position;s.role=Role::Rifleman;s.machineGun=false;}
+        for(int n=32;n<(id==68?48:40);++n){auto& s=frame.soldiers[n];s.health=10000;s.reloadUntil=10000;s.position={65.f+(n-32)/8*6,(n%8-3.5f)*6};s.goal=s.position;s.role=Role::Rifleman;EquipWeapon(s,{WeaponId::Rifle,{}});}
         for(float x:{-35.f,-65.f})for(float y:{-18.f,-6.f,6.f,18.f})map.obstacles.push_back({{x,y},{.6f,2},false,true,1.3f});
     }
     for(auto& s:frame.soldiers){s.goal=s.position;s.facing=s.look={s.team?-1.f:1.f,0};}
@@ -56,13 +56,14 @@ void StepDrillEncounter(int id,Frame& f){
     if((id==66||id==67)&&f.time>=35){f.soldiers[4].health=0;f.soldiers[4].action=Action::Wounded;if(id==67){f.soldiers[5].health=0;f.soldiers[5].action=Action::Wounded;}}
 }
 void MakeDrillEncounter(const Config&,int id,Map& map,Frame& frame){
+    NeutraliseStats(frame);
     if(id>=56&&id<=69){MakeActionEncounter(id,map,frame);return;}
     if(id<44||id>55)throw std::invalid_argument("Unknown drill fixture");
     int pair=(id-44)/2;bool control=(id%2)!=0;
     map=Map{};map.halfWidth=260;map.halfHeight=110;
     for(auto& s:frame.soldiers){s.health=0;s.action=Action::Killed;s.assignment={};s.contacts={};s.reports={};}
-    for(int n=0;n<8;++n){auto& s=frame.soldiers[n];s.health=100;s.role=n==0?Role::Sergeant:n==1?Role::Corporal:n==7?Role::MachineGunner:Role::Rifleman;s.machineGun=n==7;s.position={-float(n/2)*7,float(n%2?1:-1)*7};s.goal=s.position;}
-    auto& enemy=frame.soldiers[32];enemy.health=10000;enemy.position={240,0};enemy.reloadUntil=10000;enemy.role=Role::Sergeant;enemy.machineGun=false;enemy.goal=enemy.position;
+    for(int n=0;n<8;++n){auto& s=frame.soldiers[n];s.health=100;s.role=n==0?Role::Sergeant:n==1?Role::Corporal:n==7?Role::MachineGunner:Role::Rifleman;EquipWeapon(s,{n==7?WeaponId::MachineGun:WeaponId::Rifle,{}});s.position={-float(n/2)*7,float(n%2?1:-1)*7};s.goal=s.position;}
+    auto& enemy=frame.soldiers[32];enemy.health=10000;enemy.position={240,0};enemy.reloadUntil=10000;enemy.role=Role::Sergeant;EquipWeapon(enemy,{WeaponId::Rifle,{}});enemy.goal=enemy.position;
     // Own pre-battle movement order, never injected enemy knowledge or receipts.
     auto& order=frame.soldiers[0].platoonOrder;order.serial=1;order.issuer=0;order.expiresAt=600;order.intent={1,0,GoalPurpose::Seize,{120,0},12,600};
     frame.command[0].mission={120,0};frame.command[4].leader=32;
@@ -77,7 +78,7 @@ void MakeDrillEncounter(const Config&,int id,Map& map,Frame& frame){
         if(!(pair==1&&control))for(float x:{-10.f,10.f,30.f,50.f,70.f,100.f})for(float y:{-14.f,14.f})map.obstacles.push_back({{x,y},{.6f,4},false,true,1.3f});
     }
     if(pair==3||pair==4){
-        enemy.position={pair==3?60.f:80.f,0};enemy.reloadUntil=0;enemy.machineGun=pair==4;
+        enemy.position={pair==3?60.f:80.f,0};enemy.reloadUntil=0;EquipWeapon(enemy,{pair==4?WeaponId::MachineGun:WeaponId::Rifle,{}});
         // A rifleman ordered to hold exposed ground retreats before firing. Give
         // the durable target its own low cover, outside the squad's 25m search.
         map.obstacles.push_back({{enemy.position.x-1.8f,0},{.6f,2},false,true,1.3f});

@@ -4,6 +4,8 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mkdir -p "$repo_root/.local/tests"
 g++ -DARMY_TEST_CONTROLS -std=c++17 -O2 -Wall -Wextra -Wpedantic \
   -I "$repo_root/Unreal/Source/ArmyPrototype/Sim" \
+  "$repo_root/Unreal/Source/ArmyPrototype/Sim/Stats.cpp" \
+  "$repo_root/Unreal/Source/ArmyPrototype/Sim/Weapons.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/PositionSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/DrillFixtures.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp" \

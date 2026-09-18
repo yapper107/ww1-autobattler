@@ -1,3 +1,44 @@
+## Plan 017 stat system — 18 September 2026 (phase 1 landed)
+
+The user approved [plan 017](plans/017-stat-system.md) on 17 September 2026: seven
+soldier stats on a base of 100 (perception, dexterity, toughness, strength, wisdom,
+initiative, composure), weapons as items with a data table, energy ballistics with
+body over-penetration, and sway plus recoil. User decisions and the assumptions Fable
+made without a ruling are listed in the plan; formulas are in
+[docs/STATS_AND_WEAPONS.md](docs/STATS_AND_WEAPONS.md). Execution changed for this
+plan at the user's instruction: Opus agents implement, Fable reviews the diff, runs
+verification and commits on branch `plan-017-stats`. Fable owns the Sim sources,
+fixtures, `tests/`, `tools/battle_cli.cpp` and `BattleGameMode.cpp` until the plan
+lands; Astra does not edit them meanwhile. Legacy remains the playable default.
+
+Phase 1 (stats, sampler, roster seed, weapon table, `EquipWeapon`, fire control on
+the equipped weapon, magazine tracking, diagnostics and HUD) is on source
+`ccaa94cdca873c23`. Full Linux suite passes including the whole-battle sweep,
+102 Python tests pass, `--stats` passes. The 40 authored legacy/cognition references
+were archived to `.local/baselines-pre017/phase1/` and regenerated on this source:
+40/40 parity against the new references, 3/3 drills trace parity and a repeat run
+for determinism (`.local/plan017/phase1/`). Frozen acceptance is informational after
+plan 017: development 7/9 (layouts 3/3/1) and held-out 25/30 (10/9/6), against 9/9
+and 22/30 before. Digests were re-measured, not tuned.
+
+**Reported, not repaired:** 30 of the 35 loop mechanism selectors pass. D02, D05,
+D07, D08 and D17 fail, and so do the `--decision-loop` physical deployment and
+`--reliability` reconnaissance scenarios. Isolated one change at a time on unchanged
+source: every fixture soldier now reacts at the reference 0.425 s instead of a hashed
+0.25 to 0.60 s spread, which alone reproduces D05, D08, D17, the deployment and the
+reconnaissance failures and moves D02's element separation from 13 s to 72 s; the
+rifle's random cadence jitter is gone, which shifts the RNG stream and alone
+reproduces D07 (90 rounds at the original area after a lift). A varied reaction
+spread fails a different six, so these fixtures are sensitive to reaction timing at
+the 0.1 s level rather than to lockstep as such. Per the plan no stat, weapon value,
+seed or horizon was adjusted to bring them back. Two fixture premises the model made
+impossible were repaired and are disclosed: cognitive variants 20/21 place the
+in-lane mover beyond the gun's own 95 m friendly sight, and the reliability
+physical-threat report delay is 6 s instead of 7 s. Open for the user: whether
+fixtures should keep a natural reaction spread, whether initiative should map to
+reaction time more steeply than linearly (in real battles half of all soldiers now
+sit within 5 % of the reference), and whether D07's late fire is an AI defect to fix.
+
 ## User decision — 17 September 2026: AI accepted for now
 
 After replaying the drills controller on the reworked maps, the user judged the AI

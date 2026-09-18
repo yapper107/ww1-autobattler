@@ -2,7 +2,7 @@
 #include "PlanSim.h"
 static void RifleFlankTests(){
     Map map;Soldier s;s.id=8;s.position={0,0};s.assignment.task=Task::Overwatch;
-    Soldier enemy;enemy.id=39;enemy.team=1;enemy.machineGun=true;enemy.position={20,0};
+    Soldier enemy;enemy.id=39;enemy.team=1;EquipWeapon(enemy,{WeaponId::MachineGun,{}});enemy.position={20,0};
     assert(SenseEnemy(s,enemy,map,0).automaticWeapon);enemy.position={100,0};assert(!SenseEnemy(s,enemy,map,0).known);
     s.contacts[39]={true,false,{30,0},0};assert(SelectFireSolution(s,map,4).area);
     s.assignment.task=Task::Hold;assert(SelectFireSolution(s,map,1).area);assert(SelectFireSolution(s,map,4).enemy<0);

@@ -41,6 +41,7 @@ struct TraceEntry {
     bool assigned=false,protectedPosition=false,nearShelter=false,supportReady=false,blocked=false,alive=true;
     int action=0,task=0,stance=0,rounds=0,role=0,movementBlock=0;
     float aim=0,suppression=0,danger=0,health=100,orderIssued=0,orderReceived=0;
+    Stats stats;float maxHealth=100;const char* weapon="Rifle";int magazine=8;
     std::vector<TraceContact> knowledge;
     std::vector<MoveFailure> movementReports;
     std::vector<FireDelivery> deliveries;

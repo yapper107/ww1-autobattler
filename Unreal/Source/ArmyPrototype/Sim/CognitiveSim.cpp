@@ -736,14 +736,14 @@ std::vector<PlannedOrder> CognitiveOrders(const Soldier& leader,const std::vecto
 
 namespace army {
 void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& frame){
-    frame=InitialFrame(config);map={};map.halfWidth=90;map.halfHeight=85;
+    InitialFrameInto(config,frame);NeutraliseStats(frame);map={};map.halfWidth=90;map.halfHeight=85;
     if(variant==43){
         for(auto& s:frame.soldiers)if(s.id!=0&&s.id!=7&&s.id!=8&&s.id!=10&&s.id!=11&&s.id!=12&&s.id!=33){s.health=0;s.action=Action::Killed;}
         map.obstacles={{{-58,0},{.6f,4},false,true,1.3f},{{-28,8},{.6f,4},false,true,1.3f},{{32,15},{.6f,4},false,true,1.3f},{{52,25},{.6f,4},false,true,1.3f}};PrepareGeometry(map);
         frame.soldiers[0].position={-64,-6};frame.soldiers[7].position={-60,0};
         frame.soldiers[8].position={20,20};frame.soldiers[10].position={18,22};frame.soldiers[11].position={18,24};frame.soldiers[12].position={58,32};
         frame.soldiers[32].position={30,15};frame.soldiers[33].position={48,25};
-        frame.soldiers[33].machineGun=true;frame.soldiers[33].role=Role::MachineGunner;
+        EquipWeapon(frame.soldiers[33],{WeaponId::MachineGun,{}});frame.soldiers[33].role=Role::MachineGunner;
         for(int id:{33}){frame.soldiers[id].health=10000;frame.soldiers[id].reloadUntil=600;}
         for(auto& s:frame.soldiers)s.goal=s.position;
         for(int squad:{0,1}){auto& p=frame.command[squad].accepted;auto& leader=frame.soldiers[squad*SquadSize];
@@ -780,7 +780,7 @@ void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& fra
         frame.soldiers[32].position={-15,0};frame.soldiers[32].health=10000;
         if(variant==39){frame.soldiers[6].position={-38,14};frame.soldiers[16].position={-38,12};
             frame.soldiers[23].position={-45,-3};frame.soldiers[23].health=10000;frame.soldiers[23].reloadUntil=20;
-            frame.soldiers[23].machineGun=true;frame.soldiers[23].role=Role::MachineGunner;}
+            EquipWeapon(frame.soldiers[23],{WeaponId::MachineGun,{}});frame.soldiers[23].role=Role::MachineGunner;}
         for(auto& s:frame.soldiers)s.goal=s.position;
         for(int squad=0;squad<(variant==39?3:2);++squad){
             auto& p=frame.command[squad].accepted;auto& leader=frame.soldiers[squad*SquadSize];
@@ -825,7 +825,7 @@ void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& fra
         map.obstacles={{{18,25},{1,3},false,true,1.3f},{{-52,-15},{.6f,4},false,true,1.3f}};PrepareGeometry(map);
         frame.soldiers[0].position={10,17};frame.soldiers[1].position={5,20};frame.soldiers[2].position={16.4f,25};
         frame.soldiers[3].position={3,25};frame.soldiers[4].position={2,28};frame.soldiers[7].position={-53.2f,-15};
-        frame.soldiers[32].position={30,-15};frame.soldiers[32].machineGun=true;frame.soldiers[32].role=Role::MachineGunner;
+        frame.soldiers[32].position={30,-15};EquipWeapon(frame.soldiers[32],{WeaponId::MachineGun,{}});frame.soldiers[32].role=Role::MachineGunner;
         frame.soldiers[33].position={40,25};
         for(int id:{32,33}){frame.soldiers[id].health=10000;frame.soldiers[id].reloadUntil=600;}
         if(variant==33)frame.soldiers[2].reloadUntil=600;
@@ -878,9 +878,12 @@ void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& fra
         if(variant==23||variant==27||variant==36)map.obstacles={{{35,0},{.6f,4},false,true,1.3f}};
         PrepareGeometry(map);
         frame.soldiers[0].position={-62,-6};frame.soldiers[7].position={-60,0};
-        frame.soldiers[8].position={32,variant==36?-2.f:-10.f};frame.soldiers[10].position={34,variant==20?0.f:24.f};
+        frame.soldiers[8].position={32,variant==36?-2.f:-10.f};
+        // The gun's friendly sight is its own engagement range, so the in-lane
+        // mover sits past it: this fixture is about transported intent, not sight.
+        frame.soldiers[10].position={variant==20?36.f:34.f,variant==20?0.f:24.f};
         frame.soldiers[32].position={38,0};frame.soldiers[32].health=10000;frame.soldiers[32].reloadUntil=600;
-        if(variant==23||variant==27||variant==36){frame.soldiers[32].machineGun=variant==23;frame.soldiers[32].role=variant==23?Role::MachineGunner:Role::Rifleman;frame.soldiers[33].position={38,-15};frame.soldiers[33].health=10000;frame.soldiers[33].reloadUntil=600;}
+        if(variant==23||variant==27||variant==36){EquipWeapon(frame.soldiers[32],{variant==23?WeaponId::MachineGun:WeaponId::Rifle,{}});frame.soldiers[32].role=variant==23?Role::MachineGunner:Role::Rifleman;frame.soldiers[33].position={38,-15};frame.soldiers[33].health=10000;frame.soldiers[33].reloadUntil=600;}
         for(auto& s:frame.soldiers)s.goal=s.position;
         for(int squad:{0,1}){
             auto& leader=frame.soldiers[squad*SquadSize];auto& p=frame.command[squad].accepted;
@@ -976,8 +979,8 @@ void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& fra
         }
         if(variant==17){
             map.obstacles.push_back({{-27,18},{1,35},false,false,4});
-            frame.soldiers[7].machineGun=false;frame.soldiers[7].role=Role::Rifleman;
-            frame.soldiers[15].machineGun=true;frame.soldiers[15].role=Role::MachineGunner;
+            EquipWeapon(frame.soldiers[7],{WeaponId::Rifle,{}});frame.soldiers[7].role=Role::Rifleman;
+            EquipWeapon(frame.soldiers[15],{WeaponId::MachineGun,{}});frame.soldiers[15].role=Role::MachineGunner;
             frame.soldiers[15].position={-45,30};frame.soldiers[8].position={-45,33};
             frame.soldiers[15].goal=frame.soldiers[15].position;frame.soldiers[8].goal=frame.soldiers[8].position;
             // A durable passive target isolates coordination from early elimination.

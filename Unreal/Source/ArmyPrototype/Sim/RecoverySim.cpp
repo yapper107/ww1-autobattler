@@ -75,7 +75,7 @@ bool TacticalPairLaneClear(const Map& map,const CoverPosition& a,const CoverPosi
 std::vector<TacticalSlot> QueryTacticalPositions(const Soldier& leader,const std::vector<Soldier>& movers,const Map& map,const PositionQuery& q,float time,Diagnostics* d){
     std::vector<TacticalSlot> candidates,result;
     auto knowledge=WithTracks(leader,time);
-    float fireRange=95;for(const auto& mover:movers)fireRange=std::min(fireRange,SightRange(mover));
+    float fireRange=AssumedEnemyReach;for(const auto& mover:movers)fireRange=std::min(fireRange,SightRange(mover));
     std::vector<CoverPosition> points;
     for(const auto& cover:CoverPositions(map)){
         points.push_back(cover);

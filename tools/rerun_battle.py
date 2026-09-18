@@ -22,6 +22,7 @@ if m.get('battlefield_file'):
     cmd+=['--map',map_path,'--map-digest',str(m['battlefield_digest'])]
 
 cmd+=['--ember-doctrine',str(m.get('ember_doctrine',0))]
+if m.get('roster_seed'):cmd+=['--roster-seed',str(m['roster_seed'])]
 if m.get('foundations_policy'):cmd+=['--foundations','--estimate-bias',str(m.get('estimate_bias',0))]
 if m.get('cognition_policy') or m.get('drills_policy'):
     cmd+=['--drills' if m.get('drills_policy') else '--cognition','--report-delay',str(m.get('report_delay',.75)),'--judgment',str(m.get('judgment',.7)),'--risk',str(m.get('risk',.5)),'--adaptability',str(m.get('adaptability',.7))]

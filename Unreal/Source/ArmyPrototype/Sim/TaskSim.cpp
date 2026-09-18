@@ -59,7 +59,7 @@ void UpdateTaskReports(Frame& f,CommandRuntime& rt){
         const int leader=f.command[s.squad].leader,nco=s.squad*SquadSize+1;
         for(const auto& r:s.taskOutbox)for(int recipient:{leader,nco==leader?-1:nco}){
             if(recipient<0||!f.soldiers[recipient].Active())continue;
-            CommandMessage m;m.kind=CommandMessage::Kind::TaskStatus;m.sender=s.id;m.recipient=recipient;m.arrives=f.time+rt.reportDelay;m.taskReceipt=r;rt.messages.push_back(m);
+            CommandMessage m;m.kind=CommandMessage::Kind::TaskStatus;m.sender=s.id;m.recipient=recipient;m.arrives=f.time+ReportDelay(rt.reportDelay,s);m.taskReceipt=r;rt.messages.push_back(m);
         }
         s.taskOutbox.clear();
     }
@@ -88,7 +88,7 @@ Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std
     Doctrine doctrine=s.team?config.emberDoctrine:config.doctrine;
     float duck=doctrine==Doctrine::Cautious?.4f:doctrine==Doctrine::Aggressive?.65f:.52f;
     bool exposed=false;
-    for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<10&&Distance(s.position,ct.position)<95&&
+    for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<10&&Distance(s.position,ct.position)<AssumedEnemyReach&&
         ClearLine3D(map,ct.position+Vec3{0,0,1.5f},s.position+Vec3{0,0,1.3f})&&!ProtectedAt(map,s.position,ct.position,Stance::Crouched))exposed=true;
     const bool pressure=s.suppression>duck;
     const float shelterThreshold=s.cognition&&s.assignment.teamPlan.released?.3f:.08f;

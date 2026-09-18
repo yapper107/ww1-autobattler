@@ -159,8 +159,27 @@ const char* ReasonText(Reason r) {
 }
 const char* DoctrineName(Doctrine d) { return d==Doctrine::Cautious?"Cautious":d==Doctrine::Aggressive?"Aggressive":"Balanced"; }
 const char* ApproachName(Approach a) { return a==Approach::North?"North flank":a==Approach::South?"South flank":"Direct approach"; }
-Frame InitialFrame(const Config& c) {
-    Frame f;
+// Reaction time at initiative 100.
+static constexpr float ReferenceReactionSeconds=.425f;
+// Encounter fixtures are stat-neutral so their authored timing bounds keep their
+// meaning; only full battles roll the talent mixture. Every stat-derived field
+// InitialFrame wrote is returned to its stat-100 value, including the wisdom
+// scaling of the officer profile (exact unless that scaling clamped at 1).
+void NeutraliseStats(Frame& f) {
+    for(auto& s:f.soldiers) {
+        const float wisdom=StatScale(s.stats.Get(Stat::Wisdom));
+        if(wisdom>0)s.officer={std::min(1.f,s.officer.judgment/wisdom),s.officer.risk,std::min(1.f,s.officer.adaptability/wisdom),std::min(1.f,s.officer.communication/wisdom)};
+        if(s.health==s.maxHealth)s.health=100;
+        s.stats={};s.maxHealth=100;s.reactionBase=ReferenceReactionSeconds;
+    }
+}
+// Built in place: a Frame is 1.5 MB, so the makers must not stack a temporary.
+void InitialFrameInto(const Config& c,Frame& f) {
+    f.time=0;
+    for(auto& s:f.soldiers)s=Soldier{};
+    for(auto& squad:f.command)squad=SquadCommand{};
+    for(auto& platoon:f.platoon)platoon=PlatoonCommand{};
+    const uint32_t roster=c.rosterSeed?c.rosterSeed:c.seed;
     for(int squad=0;squad<SquadCount;++squad) {f.command[squad].leader=squad*SquadSize;f.command[squad].support=(squad+1)*SquadSize-1;}
     for(int i=0;i<UnitCount;++i) {
         auto& s=f.soldiers[i];s.id=i;s.team=i/TeamSize;s.squad=i/SquadSize;
@@ -171,21 +190,24 @@ Frame InitialFrame(const Config& c) {
         s.goal={0,sign*lane*0.25f};s.facing={sign,0};
         s.cognition=TypedController(c);s.officer=c.officer;
         s.directionalSight=c.foundations&&!(TypedController(c)&&c.fullVision);s.look=s.facing;
-        s.machineGun=s.squad%SquadsPerTeam==0&&slot==SquadSize-1&&(s.team==1||c.supportWeapon);
+        // Talent is hashed from the roster seed, never from the battle RNG.
+        s.stats=GenerateStats(c.statProfiles[s.team],roster,c.equalTroops?i%TeamSize:i);
+        s.maxHealth=100*StatScale(s.stats.Get(Stat::Toughness));s.health=s.maxHealth;
+        EquipWeapon(s,{s.squad%SquadsPerTeam==0&&slot==SquadSize-1&&(s.team==1||c.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
         s.role=slot==0?Role::Sergeant:slot==1?Role::Corporal:s.machineGun?Role::MachineGunner:Role::Rifleman;
         if(s.squad%SquadsPerTeam==0&&slot==5)s.role=Role::Lieutenant;
         if(s.squad%SquadsPerTeam==0&&slot==6)s.role=Role::PlatoonSergeant;
         uint32_t value=c.seed+uint32_t(i+1)*2654435761u;value^=value>>16;
-        s.reactionBase=0.25f+float(value%351)/1000.f;
-        if(c.cognition){
-            auto vary=[](float base,uint32_t hash){return std::clamp(base+(float(hash%201)/100.f-1)*.1f,0.f,1.f);};
-            s.officer={vary(c.officer.judgment,value),vary(c.officer.risk,value/211u),vary(c.officer.adaptability,value/401u)};
-        }
+        s.reactionBase=ReferenceReactionSeconds/StatScale(s.stats.Get(Stat::Initiative));
         if(c.foundations)s.estimateBias=std::clamp(c.estimateBias+(float(value%201)/100.f-1)*.2f,-1.f,1.f);
         if(c.drills&&c.leaderEffects){
             s.leaderEffects=true;s.initiativeAllowed=LeaderSettings(c.platoonProfiles[s.team]).initiative;
             if(s.role==Role::Lieutenant)s.officer=c.platoonProfiles[s.team];
         }
+        // Wisdom is officer skill: judgment, adaptability and communication scale with it; risk does not.
+        const float wisdom=StatScale(s.stats.Get(Stat::Wisdom));
+        auto skill=[&](float base){return std::clamp(base*wisdom,0.f,1.f);};
+        s.officer={skill(s.officer.judgment),s.officer.risk,skill(s.officer.adaptability),skill(s.officer.communication)};
         s.action=Action::Hold;s.reason=Reason::AwaitOrders;
     }
     for(int team=0;team<2;++team){f.platoon[team].leader=team*TeamSize+5;f.platoon[team].sergeant=team*TeamSize+6;}
@@ -193,10 +215,12 @@ Frame InitialFrame(const Config& c) {
         for(auto& s:f.soldiers){s.position=c.battlefield->positions[s.id];s.goal=c.battlefield->goals[s.id];}
         for(int q=0;q<SquadCount;++q)f.command[q].mission=c.battlefield->goals[q*SquadSize];
     }
-    return f;
+}
+Frame InitialFrame(const Config& c) {
+    Frame f;InitialFrameInto(c,f);return f;
 }
 void MakeMGEncounter(const Config& config,int variant,Map& map,Frame& frame) {
-    map={};map.halfWidth=90;map.halfHeight=85;frame=InitialFrame(config);
+    map={};map.halfWidth=90;map.halfHeight=85;InitialFrameInto(config,frame);NeutraliseStats(frame);
     map.obstacles={{{-40,0},{.6f,9},false,true},{{9,0},{.6f,8},false,true},
         {{-45,-28},{5,.6f},false,true},{{-28,-35},{5,.6f},false,true},
         {{-12,-31},{5,.6f},false,true},{{3,-23},{5,.6f},false,true},
@@ -236,10 +260,11 @@ void MakeMGEncounter(const Config& config,int variant,Map& map,Frame& frame) {
     PrepareGeometry(map);
 }
 float AimSeconds(const Soldier& s) {
-    return (s.machineGun?0.65f:0.45f)*(1+3*s.suppression)*(s.health<55?1.3f:1.f);
+    return 0.45f/(s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)))*(1+3*s.suppression)*(s.health<55?1.3f:1.f);
 }
-float ShotSpread(const Soldier& s) {return (s.machineGun?0.080f:0.047f)+s.suppression*0.10f;}
-float VerticalSpread(const Soldier& s) {return 0.014f+s.suppression*0.024f;}
+float ShotSpread(const Soldier& s) {return s.gun.baseDeviation+0.040f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))+s.suppression*0.10f;}
+float VerticalSpread(const Soldier& s) {return 0.014f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))+s.suppression*0.024f;}
+float ReportDelay(float base,const Soldier& sender) {return base/StatScale(sender.stats.Get(Stat::Wisdom));}
 void UpdateAim(Soldier& s,int target,Vec3 point,float dt) {
     if(target<0||s.action!=Action::Fire||s.suppression>=0.8f) {s.aim=0;s.aimTarget=-1;return;}
     if(s.aimTarget!=target)s.aim=0;
@@ -263,17 +288,18 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
         if(along>0&&along<1&&cross>0&&cross<1&&Distance(s.position+shot*along,lane.target)>12)risk=1;
     }
     const float muzzle=s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f);
+    const bool automatic=s.gun.action==WeaponAction::Automatic;
     for(int id=0;id<UnitCount;++id) {
         const auto& ct=s.allies[id];float age=time-ct.observedAt;
         if(id==s.id||!ct.known||age<0||age>1.5f)continue;
-        for(float ahead:{0.f,s.machineGun?0.7f:0.25f}) {
-            Vec3 p=ct.position+s.allyVelocity[id]*std::min(1.5f,age+ahead+Distance(s.position,ct.position)/(s.machineGun?680.f:720.f));
+        for(float ahead:{0.f,automatic?0.7f:0.25f}) {
+            Vec3 p=ct.position+s.allyVelocity[id]*std::min(1.5f,age+ahead+Distance(s.position,ct.position)/s.gun.muzzleVelocity);
             Vec3 offset=p-s.position;float along=offset.x*direction.x+offset.y*direction.y;
             if(along<0||along>std::min(110.f,range+25))continue;
             // Solid terrain protects a friendly hidden beyond it. This uses only
             // that friendly's observed/predicted position, never enemy truth.
             if(!ClearLine3D(map,{s.position.x,s.position.y,muzzle},{p.x,p.y,ct.position.z+(ct.aimHeight-ct.position.z)*0.75f}))continue;
-            const float width=0.55f+along*ShotSpread(s)+(s.machineGun?0.6f:0.15f)+age*0.2f;
+            const float width=0.55f+along*ShotSpread(s)+(automatic?0.6f:0.15f)+age*0.2f;
             const float lateral=std::abs(offset.x*direction.y-offset.y*direction.x);
             float height=muzzle+(aim.z-muzzle)*along/range;
             float verticalWidth=along*VerticalSpread(s)*0.5f+0.25f;
@@ -301,7 +327,7 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
     }
     return risk;
 }
-bool ShouldHoldFire(const Soldier& s,float risk) {return risk>=(s.machineGun?0.25f:0.45f);}
+bool ShouldHoldFire(const Soldier& s,float risk) {return risk>=(s.gun.action==WeaponAction::Automatic?0.25f:0.45f);}
 FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
     FireSolution best;float score=1e9f;
     if(s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)return best;
@@ -646,7 +672,7 @@ static float SegmentDistance(Vec3 a,Vec3 b,Vec3 p) {
     Vec3 d=b-a;float den=Dot(d,d);
     return Distance(p,a+d*(den>0?Clamp(Dot(p-a,d)/den,0,1):0));
 }
-float SightRange(const Soldier& s){return s.machineGun?95.f:70.f;}
+float SightRange(const Soldier& s){return s.gun.engagementRange*StatScale(s.stats.Get(Stat::Perception));}
 Contact SenseEnemy(const Soldier& observer,const Soldier& target,const Map& map,float time) {
     Contact ct;
     if(!observer.Active()||!target.Active()||observer.team==target.team||!InVisualField(observer,target.position,SightRange(observer)))return ct;
@@ -656,11 +682,16 @@ Contact SenseEnemy(const Soldier& observer,const Soldier& target,const Map& map,
         Vec3 offset=side*lateral,p=target.position+offset;
         float z=target.position.z+BodyHeight(target.stance)*fraction;
         if(ClearLine3D(map,eye,{p.x,p.y,z})) {
-            ct.detectionDelay=observer.cognition?(.1f+.5f*Distance(observer.position,target.position)/SightRange(observer)+.25f*(1-fraction)+.1f*std::abs(lateral)):0;
-            ct.known=ct.visible=true;ct.originalObserver=observer.id;ct.position=target.position;ct.observedAt=time;ct.aimHeight=z;ct.aimOffset=offset;ct.automaticWeapon=target.machineGun;if(time-target.lastShotAt<1)ct.lastFireAt=target.lastShotAt;return ct;
+            ct.detectionDelay=observer.cognition?(.1f+.5f*Distance(observer.position,target.position)/SightRange(observer)+.25f*(1-fraction)+.1f*std::abs(lateral))/StatScale(observer.stats.Get(Stat::Perception)):0;
+            ct.known=ct.visible=true;ct.originalObserver=observer.id;ct.position=target.position;ct.observedAt=time;ct.aimHeight=z;ct.aimOffset=offset;ct.automaticWeapon=target.gun.action==WeaponAction::Automatic;if(time-target.lastShotAt<1)ct.lastFireAt=target.lastShotAt;return ct;
         }
     }
     return ct;
+}
+// The organisation flag is a cache of the equipped weapon; no maker may diverge.
+void CheckWeaponConsistency(const Frame& f) {
+    for(const auto& s:f.soldiers)if(s.machineGun!=(s.gun.action==WeaponAction::Automatic)||s.magazineRemaining>s.gun.magazine)
+        throw std::logic_error("Soldier weapon state disagrees with the organisation flag or magazine capacity");
 }
 bool ResolveDeathmatch(Record& record,const Frame& frame,bool projectilesPending,bool timeLimit) {
     int alive[2]={0,0};for(const auto& s:frame.soldiers)if(s.Active())++alive[s.team];
@@ -686,6 +717,11 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     if(encounter>=9&&encounter<=43&&!input.cognition)throw std::invalid_argument("Cognitive scenarios require --cognition");
     if(encounter==8&&!input.foundations)throw std::invalid_argument("Encounter 8 requires --foundations");
     if(!std::isfinite(input.estimateBias)||std::abs(input.estimateBias)>1)throw std::invalid_argument("Estimate bias must be between -1 and 1");
+    for(const auto& profile:input.statProfiles){
+        for(float value:{profile.baseShare,profile.lowShare,profile.highShare,profile.baseHalfWidth,profile.lowEdge,profile.highEdge,profile.shape})if(!std::isfinite(value)||value<0)throw std::invalid_argument("Stat distribution values must be finite and non-negative");
+        if(std::abs(profile.baseShare+profile.lowShare+profile.highShare-1)>1e-4f)throw std::invalid_argument("Stat distribution shares must sum to 1");
+        if(profile.shape<=0||profile.lowEdge>100||profile.highEdge<100)throw std::invalid_argument("Stat distribution tails must bracket 100 with a positive shape");
+    }
     if(input.recoveryFixture&&(encounter<5||encounter>7))throw std::invalid_argument("Recovery policy requires controlled encounter 5..7 until its acceptance gates pass");
     auto totalStart=DiagnosticClock::now();
     Config c=input;c.maxSeconds=Clamp(c.maxSeconds,1,600);
@@ -707,6 +743,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         command.platoon.nextSerial=std::max(command.platoon.nextSerial,order.serial+1);}}
     r.diagnostics=std::make_shared<Diagnostics>();r.diagnostics->options=options;command.diagnostics=r.diagnostics.get();command.reactions.diagnostics=r.diagnostics.get();
     r.frames.reserve(size_t(c.maxSeconds/FrameSeconds)+2);
+    CheckWeaponConsistency(f);
     r.frames.push_back(f);Random rng(c.seed);
     std::array<Runtime,UnitCount> run;
     std::vector<Projectile> bullets;TrafficRuntime traffic;auto passages=BuildingPassages(r.map);
@@ -761,7 +798,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(options.enabled){TraceEntry e;e.id=r.diagnostics->nextId++;e.time=f.time;e.soldier=s.id;e.squad=s.squad;e.geometry=r.map.revision;e.kind="geometry_observed";e.reason="local geometry change recognized after observation delay";r.diagnostics->entries.push_back(e);}
             }
         }
-        for(auto& s:f.soldiers) s.suppression=std::max(0.f,s.suppression-TickSeconds*SuppressionRecoveryPerSecond);
+        for(auto& s:f.soldiers) s.suppression=std::max(0.f,s.suppression-TickSeconds*SuppressionRecoveryPerSecond*StatScale(s.stats.Get(Stat::Composure)));
         if(c.foundations)for(auto& observer:f.soldiers)UpdateAttention(observer,f.time,TickSeconds);
         if(tick%4==0) {
             if(TypedController(c))for(const auto& s:f.soldiers){
@@ -773,7 +810,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             for(auto& s:f.soldiers) if(s.Active()) for(const auto& enemy:f.soldiers) {
                 if(enemy.team==s.team) {
                     if(enemy.id==s.id)continue;
-                    Contact ct;ct.visible=enemy.Active()&&InVisualField(s,enemy.position,70)&&ClearLine3D(r.map,
+                    Contact ct;ct.visible=enemy.Active()&&InVisualField(s,enemy.position,SightRange(s))&&ClearLine3D(r.map,
                         {s.position.x,s.position.y,s.position.z+(s.stance==Stance::Crouched?0.82f:1.7f)},{enemy.position.x,enemy.position.y,enemy.position.z+BodyHeight(enemy.stance)*0.9f});
                     if(ct.visible){ct.known=true;ct.position=enemy.position;ct.observedAt=f.time;ct.aimHeight=enemy.position.z+BodyHeight(enemy.stance);}
                     auto& wasVisible=command.reactions.sensedVisible[s.id][enemy.id];
@@ -976,13 +1013,13 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 // A round can suppress each soldier once; shelter occludes near misses.
                 Vec3 ep{end.x,end.y,end.z};
                 if(SegmentDistance(b.p,ep,s.position+Vec3{0,0,BodyHeight(s.stance)*0.7f})<2.2f&&ClearLine3D(r.map,end,{s.position.x,s.position.y,s.position.z+BodyHeight(s.stance)*0.7f})) {
-                    s.suppression=Clamp(s.suppression+0.23f,0,1);b.suppressed[s.id]=true;
+                    s.suppression=Clamp(s.suppression+0.23f/StatScale(s.stats.Get(Stat::Composure)),0,1);b.suppressed[s.id]=true;
                 }
             }
             shot.end=end;shot.impactTime=endTime;shot.flight.push_back({endTime,end});
             if(hit>=0) {
                 auto& victim=f.soldiers[hit];float damage=32+rng.Next()*25;
-                victim.health=std::max(0.f,victim.health-damage);victim.suppression=Clamp(victim.suppression+0.3f,0,1);
+                victim.health=std::max(0.f,victim.health-damage);victim.suppression=Clamp(victim.suppression+0.3f/StatScale(victim.stats.Get(Stat::Composure)),0,1);
                 shot.hit=true;shot.target=hit;
                 event(EventKind::Hit,b.owner,hit,std::string(Name(b.owner))+" hit "+Name(hit));r.events.back().time=endTime;
                 if(!victim.Active()) {
@@ -1018,10 +1055,15 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         for(auto& s:f.soldiers) if(s.Active()) {
             auto& a=run[s.id];
             a.cooldown-=TickSeconds;
+            // A reload is only ever started by an empty magazine, so fixtures that
+            // drive reloadUntil directly to silence a soldier keep working.
+            if(s.magazineRemaining<=0&&f.time>=s.reloadUntil)s.magazineRemaining=s.gun.magazine;
             // Fire only after stopping: movement and settling are deliberate commitments.
             if(s.action!=Action::Fire||s.suppression>=0.8f||f.time<s.reloadUntil) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;continue;}
             const Vec3 muzzle{s.position.x,s.position.y,s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f)};
-            const bool sustained=s.machineGun&&(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard||(s.assignment.drillInstance>0&&s.assignment.teamPlan.assaultAreaFire&&s.assignment.task==Task::BoundCover));
+            const bool automatic=s.gun.action==WeaponAction::Automatic;
+            const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
+            const bool sustained=automatic&&(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard||(s.assignment.drillInstance>0&&s.assignment.teamPlan.assaultAreaFire&&s.assignment.task==Task::BoundCover));
             if((s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)||f.time-a.burst.observedAt>6||(s.assignment.id&&s.assignment.teamPlan.liftFire&&Distance(a.burst.point,s.assignment.teamPlan.liftedSector)<12))a.burst={};
             FireSolution solution=SelectFireSolution(s,r.map,f.time);
             if(sustained&&a.burst.enemy>=0&&f.time-a.burst.observedAt<=6)solution=a.burst;
@@ -1042,23 +1084,25 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             float best=Length({aim.x-s.position.x,aim.y-s.position.y,0});
             UpdateAim(s,target,aim,TickSeconds);
             if(a.cooldown>0||s.aim<1)continue;
-            float spread=ShotSpread(s)+(!s.machineGun&&solution.area?.015f:0.f);
+            float spread=ShotSpread(s)+(!automatic&&solution.area?.015f:0.f);
             if(s.action==Action::Advance||s.action==Action::Cover) spread+=0.030f;
             float angle=std::atan2(aim.y-s.position.y,aim.x-s.position.x)+(rng.Next()-0.5f)*2*spread;
             Vec3 direction={std::cos(angle),std::sin(angle)};s.facing=direction;
-            const float speed=s.machineGun?680.f:720.f;
+            const float speed=s.gun.muzzleVelocity;
             // Aim at the last seen torso; small vertical spread and gravity compensation.
             const float flightTime=best/speed;
             float vz=(solution.point.z-muzzle.z)/std::max(0.001f,flightTime)+4.905f*flightTime+(rng.Next()-0.5f)*speed*VerticalSpread(s);
             Shot shot;shot.suppressive=solution.area;shot.aimedAt=solution.point;shot.time=shot.impactTime=f.time;shot.owner=s.id;shot.aimedEnemy=solution.enemy;shot.start=shot.end=s.position;
             shot.flight.push_back({f.time,muzzle});r.shots.push_back(shot);
             bullets.push_back({muzzle,{direction.x*speed,direction.y*speed,vz},s.id,r.shots.size()-1,{}});
-            ++s.rounds;s.lastShotAt=f.time;s.aim=sustained?0.98f:s.machineGun?0.8f:0.2f;
+            ++s.rounds;s.lastShotAt=f.time;s.aim=sustained?0.98f:automatic?0.8f:s.gun.action==WeaponAction::SemiAuto?0.5f:0.2f;
             s.blockedSeconds=0;s.lastBlockedAt=-100;
-            a.cooldown=sustained?0.10f:(s.machineGun?0.32f:1.25f)+rng.Next()*0.35f+s.suppression*0.5f;
+            // Cyclic rate is mechanical and never stat-modified; burst structure is behaviour.
+            a.cooldown=automatic||s.gun.action==WeaponAction::SemiAuto?s.gun.cyclicSeconds:s.gun.cycleSeconds/dexterity+s.suppression*0.5f;
             if(sustained&&s.rounds%18==0){a.cooldown=1.f;a.burst={};}
-            if(s.rounds%(s.machineGun?60:8)==0) {a.cooldown+=s.machineGun?4.f:2.5f;s.reloadUntil=f.time+a.cooldown;}
-            a.tactics.readyAt=f.time+a.cooldown;
+            if(automatic&&!sustained&&s.rounds%3==0)a.cooldown=0.6f/(s.gun.ergonomics*dexterity);
+            if(--s.magazineRemaining<=0)s.reloadUntil=f.time+s.gun.reloadSeconds/dexterity;
+            a.tactics.readyAt=std::max(f.time+a.cooldown,s.reloadUntil);
         }
         r.diagnostics->firing+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         if(options.enabled)for(const auto& s:f.soldiers)TraceSoldier(*r.diagnostics,s,f.command[s.squad],r.map,run[s.id].tactics,f.time);

@@ -24,7 +24,7 @@ std::vector<RegionEstimate> BuildMentalMap(const Soldier& observer,float time){
         // Partial observation leaves room for another element even with fresh sightings.
         region.unseen=std::max(1.f,region.observations*.25f);
         region.high+=region.unseen;
-        float bias=observer.estimateBias*(observer.cognition?1-observer.officer.judgment*.8f:1.f);
+        float bias=observer.estimateBias*(1-observer.officer.judgment*.8f);
         float judgment=.5f+.5f*std::clamp(bias,-1.f,1.f);
         region.estimate=region.low+(region.high-region.low)*judgment;
     }

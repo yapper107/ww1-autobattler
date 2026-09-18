@@ -482,7 +482,7 @@ void ABattleGameMode::SmokeTest(float Dt) {
     if(SmokeStage==9&&RealSeconds>23) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("06-command-overwatch.png"),true,false);++SmokeStage;}
     if(SmokeStage==10&&RealSeconds>24) {
         bool Found=false;
-        for(const auto& F:Battle.frames)for(const auto& S:F.soldiers)if(!Found&&S.Active()&&S.health<100&&S.assignment.task==army::Task::RearGuard&&S.action==army::Action::Fire) {
+        for(const auto& F:Battle.frames)for(const auto& S:F.soldiers)if(!Found&&S.Active()&&S.health<S.maxHealth&&S.assignment.task==army::Task::RearGuard&&S.action==army::Action::Fire) {
             Seek(F.time);Selected=S.id;Zoom=0.35f;CameraPan=World(S.position);Found=true;
         }
         check(Found);++SmokeStage;
@@ -712,8 +712,8 @@ void ABattleHUD::DrawHUD() {
         Label(FString::Printf(TEXT("SIGHT %.0fm / %s"),army::SightRange(S),S.directionalSight?TEXT("140 DEGREE FIELD"):TEXT("ALL DIRECTIONS")),34,213,Muted,0.70f);
         Label(FString(TEXT("ORDER: "))+UTF8_TO_TCHAR(army::TaskName(S.assignment.task)),34,225,Gold,0.95f);
         if(S.assignment.issuer>=0)Label(FString::Printf(TEXT("From %s / received %.1fs"),UTF8_TO_TCHAR(army::Name(S.assignment.issuer)),S.assignment.receivedAt),34,247,Muted,0.85f);
-        Label(FString::Printf(TEXT("HEALTH  %.0f%s"),S.health,S.Active()&&S.health<100?TEXT(" / WOUNDED"):TEXT("")),34,275,Muted,0.85f);
-        Rect(Ink,34,294,260,4);Rect(Azure,34,294,260*S.health/100,4);
+        Label(FString::Printf(TEXT("HEALTH  %.0f / %.0f%s"),S.health,S.maxHealth,S.Active()&&S.health<S.maxHealth?TEXT(" / WOUNDED"):TEXT("")),34,275,Muted,0.85f);
+        Rect(Ink,34,294,260,4);Rect(Azure,34,294,260*FMath::Min(1.f,S.health/FMath::Max(1.f,S.maxHealth)),4);
         Label(FString::Printf(TEXT("SUPPRESSION  %.0f%%"),S.suppression*100),34,307,Muted,0.85f);
         Rect(Ink,34,326,260,4);Rect(Ember,34,326,260*S.suppression,4);
         Label(FString::Printf(TEXT("AIM  %.0f%%   /   %s"),S.aim*100,S.aim>=1?TEXT("READY"):S.aimTarget>=0?TEXT("ACQUIRING"):TEXT("NO FIRING SOLUTION")),34,339,Muted,0.8f);
@@ -722,8 +722,11 @@ void ABattleHUD::DrawHUD() {
         Label(S.stance==army::Stance::Crouched?TEXT("CROUCHED / LOW PROFILE"):TEXT("STANDING"),34,400,Azure,0.8f);
         float Y=Wrapped(S.holdingFire?TEXT("Holding fire: friendly troops in the firing lane. Requesting clearance if blocked."):UTF8_TO_TCHAR(army::ReasonText(S.reason)),34,423);
         Label(FString::Printf(TEXT("Rounds fired: %d"),S.rounds),34,Y+10,Muted,0.85f);
-        Label(S.pendingReactions>0?FString::Printf(TEXT("Registering %s / %.2fs"),UTF8_TO_TCHAR(army::ReactionName(S.reactingTo)),FMath::Max(0.f,S.reactionUntil-F.time)):FString::Printf(TEXT("Reaction time: %.2fs base"),S.reactionBase),34,Y+29,Gold,0.8f);
-        Y+=60;Label(TEXT("PERSONAL SIGHTINGS"),34,Y,Paper,0.85f);Y+=22;int Count=0;
+        Label(FString::Printf(TEXT("%s / magazine %d of %d"),UTF8_TO_TCHAR(S.gun.name),S.magazineRemaining,S.gun.magazine),34,Y+29,Muted,0.8f);
+        Label(FString::Printf(TEXT("PER %.0f  DEX %.0f  TGH %.0f  STR %.0f"),S.stats.Get(army::Stat::Perception),S.stats.Get(army::Stat::Dexterity),S.stats.Get(army::Stat::Toughness),S.stats.Get(army::Stat::Strength)),34,Y+46,Muted,0.7f);
+        Label(FString::Printf(TEXT("WIS %.0f  INI %.0f  CMP %.0f"),S.stats.Get(army::Stat::Wisdom),S.stats.Get(army::Stat::Initiative),S.stats.Get(army::Stat::Composure)),34,Y+61,Muted,0.7f);
+        Label(S.pendingReactions>0?FString::Printf(TEXT("Registering %s / %.2fs"),UTF8_TO_TCHAR(army::ReactionName(S.reactingTo)),FMath::Max(0.f,S.reactionUntil-F.time)):FString::Printf(TEXT("Reaction time: %.2fs base"),S.reactionBase),34,Y+80,Gold,0.8f);
+        Y+=111;Label(TEXT("PERSONAL SIGHTINGS"),34,Y,Paper,0.85f);Y+=22;int Count=0;
         for(int I=0;I<army::UnitCount;++I) if(S.contacts[I].known) {
             ++Count;if(Count>2)continue;const auto& C=S.contacts[I];
             Label(FString::Printf(TEXT("%s / %s / %.1fs ago"),UTF8_TO_TCHAR(army::Name(I)),C.visible?TEXT("visible"):TEXT("last seen"),F.time-C.observedAt),34,Y,C.visible?Ember:Muted,0.85f);Y+=22;
@@ -774,7 +777,7 @@ void ABattleHUD::DrawHUD() {
         }
         const float BarWidth=Wide?8.f:25.f;
         Rect(FLinearColor(0.015f,0.03f,0.03f),X-BarWidth/2,Y-5,BarWidth,3);
-        Rect(C,X-BarWidth/2,Y-5,BarWidth*S.health/100,3);
+        Rect(C,X-BarWidth/2,Y-5,BarWidth*FMath::Min(1.f,S.health/FMath::Max(1.f,S.maxHealth)),3);
         AddHitBox(FVector2D(X-(Wide?6:17),Y-6)*UiScale,FVector2D(Wide?12:34,22)*UiScale,FName(*FString::Printf(TEXT("unit%d"),I)),true,1);
     }
     Rect(Ink,18,H-146,W-36,128);

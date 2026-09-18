@@ -4,10 +4,13 @@ static void LeaderTests(){
     const OfficerProfile good{.9f,.5f,.9f,.9f},bad{.15f,.9f,.2f,.2f};
     Config c;c.drills=c.foundations=c.leaderEffects=true;c.family=ScenarioFamily::F1;c.equalTroops=true;
     c.platoonProfiles={good,bad};auto initial=InitialFrame(c);
-    assert(SameProfile(initial.soldiers[5].officer,good)&&SameProfile(initial.soldiers[37].officer,bad));
-    assert(SameProfile(initial.soldiers[0].officer,c.officer)); // NCO quality and troop abilities are untouched.
+    // Wisdom scales judgment, adaptability and communication; risk is untouched.
+    auto skilled=[](const OfficerProfile& p,const Soldier& s){const float w=StatScale(s.stats.Get(Stat::Wisdom));
+        return OfficerProfile{std::min(1.f,p.judgment*w),p.risk,std::min(1.f,p.adaptability*w),std::min(1.f,p.communication*w)};};
+    assert(SameProfile(initial.soldiers[5].officer,skilled(good,initial.soldiers[5]))&&SameProfile(initial.soldiers[37].officer,skilled(bad,initial.soldiers[37])));
+    assert(SameProfile(initial.soldiers[0].officer,skilled(c.officer,initial.soldiers[0]))); // NCO quality and troop abilities are untouched.
     assert(initial.soldiers[0].initiativeAllowed&&!initial.soldiers[32].initiativeAllowed);
-    auto successor=initial.soldiers[38];assert(SameProfile(successor.officer,c.officer));
+    auto successor=initial.soldiers[38];assert(SameProfile(successor.officer,skilled(c.officer,successor)));
     int drops[2]={};double delays[2]={};
     for(int team=0;team<2;++team)for(int n=0;n<200;++n){
         PlatoonMessage message;message.radio=true;message.sender=team*32;message.recipient=team*32+8;message.arrives=2+n;

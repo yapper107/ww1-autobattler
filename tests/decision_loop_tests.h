@@ -21,7 +21,7 @@ static void ExecutionContractScenarios(){
     replacement.reloadUntil=0;EvaluateTaskExecution(replacement,map,memory,21,nullptr);assert(replacement.assignment.status==TaskStatus::Failed);
     auto support=s;support.assignment.status=TaskStatus::Executing;support.assignment.execution.completion=Completion::Support;
     EvaluateTaskExecution(support,map,memory,4,nullptr);assert(support.assignment.status==TaskStatus::Executing);
-    auto gun=s;gun.id=7;gun.machineGun=true;gun.assignment.id=70;gun.assignment.intent.expiresAt=50;
+    auto gun=s;gun.id=7;EquipWeapon(gun,{WeaponId::MachineGun,{}});gun.assignment.id=70;gun.assignment.intent.expiresAt=50;
     gun.assignment.execution.completion=Completion::Support;gun.assignment.status=TaskStatus::Executing;
     auto& delivery=gun.deliveries[0];delivery.shooter=7;delivery.supportWeapon=true;delivery.target={20,0};delivery.observedAt=3;
     EvaluateTaskExecution(gun,map,memory,4,nullptr);assert(gun.assignment.status==TaskStatus::Done);
