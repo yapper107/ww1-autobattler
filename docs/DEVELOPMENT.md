@@ -29,6 +29,27 @@ Visual Studio's default MSVC 14.51 compiler failed against UE 5.4 engine headers
 
 This documents the tested local combination; it does not claim general IDE integration support for UE 5.4 with Visual Studio 2026. Recheck toolchain compatibility before changing the engine or compiler.
 
+## Moving to another machine (17 September 2026)
+
+Everything needed is in git except binaries and battle run exports, which rebuild
+or regenerate. On a fresh clone:
+
+1. `./scripts/battle-lab.sh --version` builds the Linux lab binary; `./scripts/test-sim.sh`
+   builds and runs the simulation suite (about five minutes).
+2. Reference builds used by parity and the improvement loop are preserved as source
+   snapshots, not binaries: candidate90 under `.local/phase0b/original/` and the
+   squad-only reference `a0364bff5cea6ab9` under `.local/phase3h/final/`. Rebuild one with
+   `g++ -std=c++17 -O2 -DARMY_BUILD_ID=\"<fingerprint>\" -I <snapshot dir> <snapshot dir>/*.cpp tools/battle_cli.cpp -o <snapshot dir>/battle-lab`.
+3. `python3 .local/phase4/parity.py <out dir> .local/lab/battle-lab` checks the 40 authored
+   legacy and cognition digests against the preserved reference manifests.
+4. Handoff and step reports live under `.local/handoffs/`; plan 015 and 016 evidence
+   (after-action summaries, patches, scoreboards) under `.local/plan015/` and `.local/plan016/`.
+   Large run exports were not pushed; every report states the fingerprint that reproduces them.
+5. The improvement loop (`python3 -m tools.loop`, [guide](IMPROVEMENT_LOOP.md)) keeps its
+   tree, baselines and generated maps under `.local/loop/`, created on first use.
+6. Windows and Unreal builds need the mirror path below and the Windows toolchain;
+   Codex sessions and Claude memory are per machine and carry nothing the repository does not.
+
 ## Source and builds
 
 - Authoritative source repository: this WSL checkout.
