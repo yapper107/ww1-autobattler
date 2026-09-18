@@ -1,0 +1,362 @@
+[
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 100,
+  "digest": "6659202064640225652",
+  "shots": 914,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 101,
+  "digest": "16684915089916797745",
+  "shots": 342,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 102,
+  "digest": "13256530323082517267",
+  "shots": 831,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 103,
+  "digest": "14466491924220697569",
+  "shots": 399,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 104,
+  "digest": "16575436602599459084",
+  "shots": 794,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 105,
+  "digest": "7513790536446862861",
+  "shots": 501,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 106,
+  "digest": "17386914487406832860",
+  "shots": 665,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 107,
+  "digest": "15454056456431408962",
+  "shots": 554,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 108,
+  "digest": "3247817244346369150",
+  "shots": 355,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "trenches",
+  "seed": 109,
+  "digest": "14941446188378179031",
+  "shots": 352,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 100,
+  "digest": "8867417899461883895",
+  "shots": 1414,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 101,
+  "digest": "6700323526613867055",
+  "shots": 1343,
+  "duration": 360,
+  "winner": -1
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 102,
+  "digest": "2078856967643580848",
+  "shots": 1311,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 103,
+  "digest": "7605173589964954163",
+  "shots": 1932,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 104,
+  "digest": "18280650438842525449",
+  "shots": 1431,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 105,
+  "digest": "5516370778746015441",
+  "shots": 859,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 106,
+  "digest": "15966423871461244351",
+  "shots": 974,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 107,
+  "digest": "12940087716509613311",
+  "shots": 830,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 108,
+  "digest": "16275222248426005658",
+  "shots": 1105,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "candidate90",
+  "map": "works",
+  "seed": 109,
+  "digest": "5361183259930236386",
+  "shots": 1390,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 100,
+  "digest": "9071152313711513850",
+  "shots": 1894,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 101,
+  "digest": "7236839585449913613",
+  "shots": 2030,
+  "duration": 360,
+  "winner": -1
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 102,
+  "digest": "16621286876989663505",
+  "shots": 2298,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 103,
+  "digest": "7144433613704669811",
+  "shots": 2416,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 104,
+  "digest": "8401094412050575444",
+  "shots": 2203,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 105,
+  "digest": "6992940896739673083",
+  "shots": 1561,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 106,
+  "digest": "17195899332456774064",
+  "shots": 1025,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 107,
+  "digest": "6757369468413547090",
+  "shots": 2244,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 108,
+  "digest": "1136454633995259057",
+  "shots": 1637,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "trenches",
+  "seed": 109,
+  "digest": "1889850431855872831",
+  "shots": 2427,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 100,
+  "digest": "18250563732774269089",
+  "shots": 2339,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 101,
+  "digest": "12084560741825637395",
+  "shots": 2640,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 102,
+  "digest": "1661417401052964390",
+  "shots": 2491,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 103,
+  "digest": "9346866430013948346",
+  "shots": 2423,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 104,
+  "digest": "10222539629048536654",
+  "shots": 1885,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 105,
+  "digest": "6304842404681845733",
+  "shots": 1911,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 106,
+  "digest": "17760764379672202671",
+  "shots": 1788,
+  "duration": 360,
+  "winner": 0
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 107,
+  "digest": "10685804680188570437",
+  "shots": 2511,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 108,
+  "digest": "17740962922379255497",
+  "shots": 3143,
+  "duration": 360,
+  "winner": 1
+ },
+ {
+  "controller": "legacy",
+  "map": "works",
+  "seed": 109,
+  "digest": "10989034783084061392",
+  "shots": 2666,
+  "duration": 360,
+  "winner": 0
+ }
+]

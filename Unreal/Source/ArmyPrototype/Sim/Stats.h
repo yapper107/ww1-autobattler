@@ -29,4 +29,7 @@ inline bool SameDistribution(const StatDistribution& a,const StatDistribution& b
 }
 float SampleStat(const StatDistribution& distribution,float u);   // inverse CDF, u in [0,1)
 Stats GenerateStats(const StatDistribution& distribution,uint32_t rosterSeed,int slot);
+// The same splitmix family as the stat rolls, for per-soldier constants that are
+// not stats (sway phases, recoil direction). Salts never collide with a stat index.
+uint64_t SoldierHash(uint32_t rosterSeed,int slot,uint32_t salt);
 }

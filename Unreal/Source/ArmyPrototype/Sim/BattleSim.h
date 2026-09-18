@@ -393,8 +393,9 @@ struct Soldier {
     WeaponItem weapon;
     WeaponStats gun;             // Effective weapon values; the only source of combat numbers.
     int magazineRemaining = 8;
-    float swayPhase = 0;         // Reserved for plan 017 phase 3.
-    Vec3 recoil{};               // Reserved for plan 017 phase 3.
+    float swayPhase = 0, swayPhase2 = 0;   // Sway yaw and pitch phases, from the roster hash.
+    float recoilSign = 1;        // Fixed yaw direction of this soldier's recoil kick.
+    Vec3 recoil{};               // Accumulated recoil offset: x yaw, y pitch, z unused.
     Vec3 position{}, facing{1,0}, goal{};
     float maxHealth = 100;
     float health = 100, suppression = 0;
@@ -611,6 +612,13 @@ struct SquadCommand {
 float AimSeconds(const Soldier& soldier);
 float ShotSpread(const Soldier& soldier);
 float VerticalSpread(const Soldier& soldier);
+// Sway and recoil are aim offsets in radians: x is yaw, y is pitch, z is unused.
+// SwayOffset is a pure function of recorded state so the viewer can draw it.
+float SwayAmplitude(const Soldier& soldier);
+Vec3 SwayOffset(const Soldier& soldier,float time);
+float RecoilKick(const Soldier& soldier);
+void ApplyRecoil(Soldier& soldier);
+void DecayRecoil(Soldier& soldier,float seconds);
 // Energy ballistics. Speed decays as v0*exp(-dragK*distance), so the flight time
 // to a point is the integral of that decay; dragK <= 0 falls back to distance/v0.
 float FlightTime(float distance,float muzzleVelocity,float dragK);

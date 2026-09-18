@@ -1,3 +1,29 @@
+## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
+
+Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
+incommensurate periods with an amplitude set by ergonomics, dexterity, stance and
+suppression, and every shot adds a recoil kick that decays with a quarter-second time
+constant at the reference, so sustained machine-gun bursts settle near three kicks and
+walk upward until the 18-round pause. Phases and recoil direction are hashed from the
+roster slot; the RNG draw order per shot is unchanged. Trace, evaluation export, digest,
+fingerprint and the inspector carry sway and recoil. Full Linux suite, `--stats` and
+102 Python tests pass. References archived to `.local/baselines-pre017/phase3/` and
+regenerated: 40/40 parity, 3/3 trace parity plus a determinism repeat
+(`.local/plan017/phase3/`). Informational acceptance: development 8/9, held-out 21/30
+(8/9/4). Reference battles, phase 2 -> phase 3 mean shots and winners azure/ember/draw:
+candidate90 works 1259 -> 1531, 7/2/1 -> 5/5/0; candidate90 trenches 571 -> 808,
+5/5/0 -> 5/4/1; legacy works 2380 -> 3171, 2/8/0 -> 4/5/1; legacy trenches 1974 -> 2918,
+4/5/1 -> 3/7/0. Shots per battle rose about a quarter with hits roughly flat: the
+accumulated recoil lifts sustained fire by about 12 mrad, which at 50 m and beyond
+passes over a torso aim point, so machine-gun volume now buys less than before. This is
+the designed effect at the chosen constants and was not tuned; the user may want a
+gunner compensation term or a different decay rate later. Failing selectors are
+unchanged: D02, D07, D08, D17, `--decision-loop` deployment, `--reliability`
+reconnaissance. Windows and Unreal builds remain unverified on this branch; the
+inspector edits are uncompiled. The phase 2 commit had left the moved phase 1
+reference paths tracked; this commit stages those deletions so a fresh checkout finds
+exactly 40 reference manifests.
+
 ## Plan 017 phase 2 landed — 18 September 2026
 
 Energy ballistics are on source `c01ca99f0842cac0`: velocity decays in flight, impact energy is

@@ -2,7 +2,7 @@
 
 Authoritative formulas for the stat system and the weapon item model. The design and the user's
 decisions are in [plan 017](../plans/017-stat-system.md). Phases: 1 stats and fire control (landed),
-2 energy ballistics (landed), 3 sway and recoil.
+2 energy ballistics (landed), 3 sway and recoil (landed).
 
 ## Stats
 
@@ -36,7 +36,7 @@ battles roll the mixture.
 | Composure | near miss `+0.23 / StatScale`, hit `+0.30 / StatScale`, decay `0.15 per s * StatScale`; thresholds untouched |
 | Perception | `SightRange = gun.engagementRange * StatScale`; cognition `detectionDelay / StatScale`; aim error below |
 | Wisdom | officer judgment, adaptability and communication are the config profile times `StatScale`, clamped to 1; risk untouched. Every report a soldier sends arrives after `base / StatScale(sender wisdom)`. Judgment attenuates estimate bias for all controllers. Drills assessment pause `3 s / StatScale + reactionBase` |
-| Dexterity | reload, bolt cycle, settle, aimed-burst re-lay, and in phase 3 sway and recoil |
+| Dexterity | reload, bolt cycle, settle, aimed-burst re-lay, sway amplitude, recoil kick and recoil decay |
 
 Literals that encode what a soldier assumes about the enemy (`AssumedEnemyReach = 95 m`) stay
 literals: a soldier cannot read enemy stats.
@@ -53,7 +53,7 @@ A soldier carries a `WeaponItem` (a table id plus a list of modifiers) and cache
 | cycle / cyclic seconds | 1.25 | 0.10 |
 | magazine, reload | 8, 2.5 s | 60, 4.0 s |
 | baseDeviation | 0.007 rad | 0.020 rad |
-| recoil (phase 3) | 0.012 rad | 0.004 rad |
+| recoil | 0.012 rad | 0.004 rad |
 | sightQuality | 1.0 | 0.67 |
 | ergonomics | 1.0 | 0.69 |
 | cartridge | 11.3 g, 720 m/s at a 0.74 m barrel, drag 0.0007 per m | same |
@@ -104,12 +104,61 @@ health. Three bodies are reached only at contact range, where the round leaves t
 0.38 kJ and the third keeps it for 11 health. Each victim is hashed into the gameplay digest and
 exported in `shots.jsonl` as `victims` plus the first victim's `impact_energy`.
 
-## Sway and recoil (phase 3, pending)
+## Sway and recoil (phase 3)
 
-Sway is a (yaw, pitch) wander `A * (sin(2π t / 2.3 + φ), sin(2π t / 3.7 + φ'))` with
-`A = 0.010 rad / (ergonomics * StatScale(dex)) * (crouched ? 0.7 : 1) * (1 + 2 * suppression)`. Each
-shot adds a recoil kick `recoil / (ergonomics * StatScale(dex))` that decays with a quarter-second
-time constant at the reference. Both are added to the aim direction before the random cone.
+Both are aim offsets in radians carried as a `Vec3` with `x` the yaw, `y` the pitch and `z` unused.
+
+Sway is a pure function of recorded state, so the viewer can draw it and nothing has to be replayed:
+
+```
+SwayAmplitude(s) = 0.010 / (gun.ergonomics * StatScale(dexterity))
+                 * (stance == Crouched ? 0.7 : 1) * (1 + 2 * suppression)
+SwayOffset(s,t)  = A * (sin(2π t / 2.3 + φ), sin(2π t / 3.7 + φ'))
+```
+
+The two periods are incommensurate, so the aim point wanders instead of retracing a closed figure.
+`φ` and `φ'` are `Soldier::swayPhase` and `Soldier::swayPhase2`, set once in `InitialFrame` to
+`SoldierHash(rosterSeed, slot, 0)` and `SoldierHash(rosterSeed, slot, 1)` mapped to [0, 2π).
+`SoldierHash` is the splitmix64 family that rolls the stats (`Sim/Stats.h`), with salts offset past
+the stat indices so a phase never reuses a stat draw; the battle RNG is not consumed. The phases and
+the recoil direction carry no talent, so `NeutraliseStats` leaves them alone and fixtures keep a
+natural wander.
+
+Recoil accumulates on `Soldier::recoil`. Each shot adds
+
+```
+kick     = gun.recoil / (gun.ergonomics * StatScale(dexterity)) * (crouched ? 0.8 : 1)
+recoil  += (0.3 * sign * kick, kick)          // ApplyRecoil
+```
+
+with `sign = ±1` from `SoldierHash(rosterSeed, slot, 2)`, stored once as `Soldier::recoilSign`.
+Every tick, for every soldier, next to the suppression decay:
+
+```
+recoil *= exp(-TickSeconds * 4 * gun.ergonomics * StatScale(dexterity))   // DecayRecoil
+```
+
+Rate 4 at the reference weapon and dexterity is a quarter-second time constant. A rifle kick of
+12 mrad is under a tenth of itself again after the 1.25 s bolt cycle. The machine gun's ergonomics
+0.69 slow its decay to a 0.36 s time constant, so ten rounds at the 0.10 s cyclic rate settle at
+2.95 kicks (17 mrad) and the burst walks upward until the 18-round pause; 1.0 s of that pause leaves
+0.19 of a kick, a tenth of the burst offset, and a tenth of a single kick is reached at 1.25 s.
+
+The shot adds both before the random cone, keeping the horizontal-speed convention:
+
+```cpp
+const Vec3 off = SwayOffset(s,f.time) + s.recoil;
+angle = atan2(...) + off.x + (rng.Next()-0.5f)*2*spread;
+vz    = (point.z-muzzle.z)/flightTime + 4.905f*flightTime + speed*std::tan(off.y)
+      + (rng.Next()-0.5f)*speed*VerticalSpread(s);
+```
+
+The RNG draw count and order per shot are unchanged. Exports (`Sim/BattleSim.h`):
+`SwayAmplitude`, `SwayOffset`, `RecoilKick`, `ApplyRecoil`, `DecayRecoil`, plus
+`SoldierHash` in `Sim/Stats.h`. The digest hashes both phases and the recoil direction once per
+soldier in the frame-0 block and `recoil.x`/`recoil.y` per soldier per frame; the trace entry and
+`evaluation.jsonl` carry `sway_yaw`, `sway_pitch`, `recoil_yaw` and `recoil_pitch`; the HUD
+inspector shows `SWAY ... RECOIL ... mrad` on the selected soldier.
 
 ## Verification and references
 

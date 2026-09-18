@@ -28,7 +28,7 @@ static std::string Fingerprint(const Record& r) {
             for(const auto& r:s.platoonReports){o<<r.squad<<r.leader<<r.active<<r.enemy<<r.engaged<<r.supportUseful<<r.movementBlocked<<r.machineGuns<<r.mobile<<r.suppression<<r.danger<<r.observedAt;vec(r.position);contact(r.contact);}
             const auto& pd=s.platoonOrder;o<<int(pd.task)<<pd.issuer<<pd.serial<<pd.enemy<<pd.issuedAt<<pd.receivedAt<<pd.activatedAt<<pd.expiresAt;vec(pd.position);vec(pd.sector);contact(pd.contact);
             for(float stat:s.stats.value)o<<stat;
-            o<<s.maxHealth<<int(s.weapon.def)<<s.magazineRemaining;
+            o<<s.maxHealth<<int(s.weapon.def)<<s.magazineRemaining<<s.swayPhase<<s.swayPhase2<<s.recoilSign<<s.recoil.x<<s.recoil.y;
             o<<s.position.x<<s.position.y<<s.position.z<<s.health<<s.suppression<<s.rounds<<int(s.action)<<int(s.reason)<<int(s.stance)<<int(s.role)<<s.aim<<s.aimTarget<<s.aimPoint.x<<s.aimPoint.y<<s.aimPoint.z<<s.regrouping;
             o<<s.squad<<s.reactionBase<<s.reactionUntil<<int(s.reactingTo)<<s.pendingReactions<<s.understoodHealth<<s.understoodSuppression<<s.supportReadyAt<<s.reloadUntil<<s.areaFire;
             for(bool wounded:s.knownWounded)o<<wounded;

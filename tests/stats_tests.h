@@ -64,6 +64,9 @@ static void StatGenerationTests() {
     Config drills=c;drills.drills=drills.foundations=true;Map map;auto fixture=frame(drills);
     MakeDrillEncounter(drills,44,map,*fixture);
     for(const auto& s:fixture->soldiers){for(float value:s.stats.value)assert(value==100.f);assert(s.maxHealth==100.f);}
+    // Sway phases and the recoil direction carry no talent, so NeutraliseStats leaves them.
+    {bool phased=false;for(const auto& s:fixture->soldiers)phased|=s.swayPhase!=0.f||s.swayPhase2!=0.f;assert(phased);
+     for(int id=0;id<UnitCount;++id)assert(fixture->soldiers[id].swayPhase==plain->soldiers[id].swayPhase&&fixture->soldiers[id].recoilSign==plain->soldiers[id].recoilSign);}
     std::cout<<"STATS generation: roster determinism, independence, equal-troop mirroring and neutral fixtures PASS\n";
 }
 static void WeaponItemTests() {
@@ -176,6 +179,55 @@ static void OverPenetrationTests(const Record& r) {
     assert(withVictims>0&&penetrating>0&&stopped>0);
     std::cout<<"STATS over-penetration: "<<withVictims<<" shots with victims, "<<penetrating<<" through more than one body, "<<stopped<<" stopped in a body PASS\n";
 }
+// Plan 017 phase 3: the sway wander, the recoil kick and its decay.
+static void SwayAndRecoilTests() {
+    Soldier rifleman;rifleman.swayPhase=1.3f;rifleman.swayPhase2=4.1f;
+    const float amplitude=SwayAmplitude(rifleman);
+    assert(std::abs(amplitude-.010f)<1e-6f);
+    for(float t=0;t<60;t+=.01f){const Vec3 off=SwayOffset(rifleman,t);
+        assert(std::abs(off.x)<=amplitude+1e-6f&&std::abs(off.y)<=amplitude+1e-6f&&off.z==0.f);}
+    for(float t:{0.f,3.3f,17.75f,119.9f}){const Vec3 a=SwayOffset(rifleman,t),b=SwayOffset(rifleman,t);assert(a.x==b.x&&a.y==b.y);}
+    // The yaw period is 2.3 s and the pitch period 3.7 s, so the figure does not close.
+    assert(std::abs(SwayOffset(rifleman,2.3f).x-SwayOffset(rifleman,0).x)<1e-5f);
+    assert(std::abs(SwayOffset(rifleman,2.3f).y-SwayOffset(rifleman,0).y)>1e-3f);
+    // Dexterity, stance, suppression and ergonomics are the only inputs to the amplitude.
+    Soldier quick=rifleman;quick.stats.value[size_t(Stat::Dexterity)]=140;
+    Soldier clumsy=rifleman;clumsy.stats.value[size_t(Stat::Dexterity)]=80;
+    assert(SwayAmplitude(quick)<amplitude&&amplitude<SwayAmplitude(clumsy));
+    assert(std::abs(SwayAmplitude(quick)-.010f/1.4f)<1e-6f&&std::abs(SwayAmplitude(clumsy)-.010f/.8f)<1e-6f);
+    Soldier low=rifleman;low.stance=Stance::Crouched;
+    assert(SwayAmplitude(low)<amplitude&&std::abs(SwayAmplitude(low)-.7f*amplitude)<1e-6f);
+    Soldier pinned=rifleman;pinned.suppression=1;
+    assert(std::abs(SwayAmplitude(pinned)-3*amplitude)<1e-6f);
+    Soldier gunner;EquipWeapon(gunner,{WeaponId::MachineGun,{}});
+    assert(SwayAmplitude(gunner)>amplitude&&std::abs(SwayAmplitude(gunner)-.010f/gunner.gun.ergonomics)<1e-6f);
+    // One bolt shot displaces the aim by the kick and the cycle takes it away again.
+    Soldier shooter;const float kick=RecoilKick(shooter);
+    assert(std::abs(kick-.012f)<1e-6f&&shooter.recoil.x==0.f&&shooter.recoil.y==0.f);
+    ApplyRecoil(shooter);
+    assert(std::abs(shooter.recoil.y-kick)<1e-6f&&std::abs(std::abs(shooter.recoil.x)-.3f*kick)<1e-6f);
+    const int boltTicks=int(1.25f/TickSeconds+.5f);
+    for(int step=0;step<boltTicks;++step)DecayRecoil(shooter,TickSeconds);
+    assert(shooter.recoil.y<.1f*kick&&std::abs(shooter.recoil.x)<.1f*kick&&shooter.recoil.y>0);
+    // A sustained burst at the cyclic rate settles near three kicks, decaying between rounds.
+    const float mgKick=RecoilKick(gunner);
+    for(int round=0;round<10;++round){ApplyRecoil(gunner);for(int step=0;step<int(.10f/TickSeconds+.5f);++step)DecayRecoil(gunner,TickSeconds);}
+    const float burst=gunner.recoil.y;
+    assert(std::abs(burst-3*mgKick)<.15f*3*mgKick);
+    // The 1.0 s pause takes a tenth of the burst offset away; a tenth of one kick needs 1.25 s,
+    // because the gun's ergonomics 0.69 slow its decay to a 0.36 s time constant.
+    for(int step=0;step<int(1.0f/TickSeconds+.5f);++step)DecayRecoil(gunner,TickSeconds);
+    const float afterPause=gunner.recoil.y;
+    assert(afterPause<.1f*burst&&afterPause<.2f*mgKick);
+    for(int step=0;step<int(.25f/TickSeconds+.5f);++step)DecayRecoil(gunner,TickSeconds);
+    assert(gunner.recoil.y<.1f*mgKick);
+    // Crouching steadies both; the phases carry no talent, so fixtures keep them.
+    Soldier braced;braced.stance=Stance::Crouched;
+    assert(std::abs(RecoilKick(braced)-.8f*kick)<1e-6f);
+    std::cout<<"STATS sway and recoil: amplitude "<<amplitude*1000<<" mrad, rifle kick "<<kick*1000
+             <<" mrad, ten machine-gun rounds reach "<<burst/mgKick<<" kicks, the 1.0 s pause leaves "
+             <<afterPause/mgKick<<" and 1.25 s leaves "<<gunner.recoil.y/mgKick<<" PASS\n";
+}
 static void StatBattleTests() {
     Config c;c.maxSeconds=120;const auto record=std::make_unique<Record>(Simulate(c));const auto& r=*record;
     assert(!r.shots.empty());
@@ -211,9 +263,25 @@ static void StatBattleTests() {
         }
     }
     assert(reloads>0&&ordinaryFaster&&fastest<slowest);
+    // Recoil is live in a real battle: automatic fire stacks it and it decays between bursts.
+    float peak=0;int stacked=0,settled=0;
+    for(const auto& frame:r.frames)for(const auto& s:frame.soldiers) {
+        peak=std::max(peak,std::abs(s.recoil.y));
+        if(s.rounds>0&&frame.time-s.lastShotAt>1.5f&&std::abs(s.recoil.y)<.05f*RecoilKick(s))++settled;
+    }
+    for(size_t k=1;k<r.frames.size();++k)for(int id=0;id<UnitCount;++id) {
+        const auto& before=r.frames[k-1].soldiers[id];const auto& now=r.frames[k].soldiers[id];
+        if(now.gun.action!=WeaponAction::Automatic||now.rounds<=before.rounds)continue;
+        if(now.recoil.y>1.5f*RecoilKick(now))++stacked;
+    }
+    assert(peak>0&&stacked>0&&settled>0);
+    float trailing=0;for(const auto& s:r.frames.back().soldiers)trailing=std::max(trailing,std::abs(s.recoil.y)/RecoilKick(s));
+    assert(trailing<1.f);
+    std::cout<<"STATS recoil in battle: peak "<<peak*1000<<" mrad, "<<stacked<<" automatic rounds fired on a displaced aim, "
+             <<settled<<" settled samples, final frame at "<<trailing<<" kicks PASS\n";
     std::cout<<"STATS battle: "<<reloads<<" rifle reloads between "<<fastest<<"s and "<<slowest<<"s; "<<decaySamples<<" composure decay samples PASS\n";
 }
 static void StatsTests() {
-    StatSamplerTests();StatGenerationTests();WeaponItemTests();BallisticEnergyTests();StatBattleTests();
-    std::cout<<"PASS: stat sampler, roster generation, weapon items, fire control references, magazine tracking, energy ballistics and over-penetration\n";
+    StatSamplerTests();StatGenerationTests();WeaponItemTests();BallisticEnergyTests();SwayAndRecoilTests();StatBattleTests();
+    std::cout<<"PASS: stat sampler, roster generation, weapon items, fire control references, magazine tracking, energy ballistics, over-penetration, sway and recoil\n";
 }

@@ -205,7 +205,11 @@ void InitialFrameInto(const Config& c,Frame& f) {
         s.cognition=TypedController(c);s.officer=c.officer;
         s.directionalSight=c.foundations&&!(TypedController(c)&&c.fullVision);s.look=s.facing;
         // Talent is hashed from the roster seed, never from the battle RNG.
-        s.stats=GenerateStats(c.statProfiles[s.team],roster,c.equalTroops?i%TeamSize:i);
+        const int rosterSlot=c.equalTroops?i%TeamSize:i;
+        s.stats=GenerateStats(c.statProfiles[s.team],roster,rosterSlot);
+        s.swayPhase=float(SoldierHash(roster,rosterSlot,0)>>40)/16777216.f*6.28318531f;
+        s.swayPhase2=float(SoldierHash(roster,rosterSlot,1)>>40)/16777216.f*6.28318531f;
+        s.recoilSign=(SoldierHash(roster,rosterSlot,2)&1ull)?1.f:-1.f;
         s.maxHealth=100*StatScale(s.stats.Get(Stat::Toughness));s.health=s.maxHealth;
         EquipWeapon(s,{s.squad%SquadsPerTeam==0&&slot==SquadSize-1&&(s.team==1||c.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
         s.role=slot==0?Role::Sergeant:slot==1?Role::Corporal:s.machineGun?Role::MachineGunner:Role::Rifleman;
@@ -278,6 +282,24 @@ float AimSeconds(const Soldier& s) {
 }
 float ShotSpread(const Soldier& s) {return s.gun.baseDeviation+0.040f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))+s.suppression*0.10f;}
 float VerticalSpread(const Soldier& s) {return 0.014f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))+s.suppression*0.024f;}
+float SwayAmplitude(const Soldier& s) {
+    return 0.010f/(s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)))*(s.stance==Stance::Crouched?0.7f:1.f)*(1+2*s.suppression);
+}
+Vec3 SwayOffset(const Soldier& s,float time) {
+    // Two incommensurate periods, so the aim point wanders instead of retracing a closed figure.
+    const float a=SwayAmplitude(s);
+    return {a*std::sin(6.28318531f*time/2.3f+s.swayPhase),a*std::sin(6.28318531f*time/3.7f+s.swayPhase2),0};
+}
+float RecoilKick(const Soldier& s) {
+    return s.gun.recoil/(s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)))*(s.stance==Stance::Crouched?0.8f:1.f);
+}
+void ApplyRecoil(Soldier& s) {const float kick=RecoilKick(s);s.recoil.x+=0.3f*s.recoilSign*kick;s.recoil.y+=kick;}
+void DecayRecoil(Soldier& s,float seconds) {
+    // Rate 4 at the reference weapon and dexterity: a quarter-second time constant, so a bolt
+    // shot decays to nothing before the next round and a burst settles near three kicks.
+    const float k=std::exp(-seconds*4*s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)));
+    s.recoil.x*=k;s.recoil.y*=k;
+}
 float ReportDelay(float base,const Soldier& sender) {return base/StatScale(sender.stats.Get(Stat::Wisdom));}
 void UpdateAim(Soldier& s,int target,Vec3 point,float dt) {
     if(target<0||s.action!=Action::Fire||s.suppression>=0.8f) {s.aim=0;s.aimTarget=-1;return;}
@@ -812,7 +834,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(options.enabled){TraceEntry e;e.id=r.diagnostics->nextId++;e.time=f.time;e.soldier=s.id;e.squad=s.squad;e.geometry=r.map.revision;e.kind="geometry_observed";e.reason="local geometry change recognized after observation delay";r.diagnostics->entries.push_back(e);}
             }
         }
-        for(auto& s:f.soldiers) s.suppression=std::max(0.f,s.suppression-TickSeconds*SuppressionRecoveryPerSecond*StatScale(s.stats.Get(Stat::Composure)));
+        for(auto& s:f.soldiers) {s.suppression=std::max(0.f,s.suppression-TickSeconds*SuppressionRecoveryPerSecond*StatScale(s.stats.Get(Stat::Composure)));DecayRecoil(s,TickSeconds);}
         if(c.foundations)for(auto& observer:f.soldiers)UpdateAttention(observer,f.time,TickSeconds);
         if(tick%4==0) {
             if(TypedController(c))for(const auto& s:f.soldiers){
@@ -1119,16 +1141,17 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             if(a.cooldown>0||s.aim<1)continue;
             float spread=ShotSpread(s)+(!automatic&&solution.area?.015f:0.f);
             if(s.action==Action::Advance||s.action==Action::Cover) spread+=0.030f;
-            float angle=std::atan2(aim.y-s.position.y,aim.x-s.position.x)+(rng.Next()-0.5f)*2*spread;
+            const Vec3 off=SwayOffset(s,f.time)+s.recoil;
+            float angle=std::atan2(aim.y-s.position.y,aim.x-s.position.x)+off.x+(rng.Next()-0.5f)*2*spread;
             Vec3 direction={std::cos(angle),std::sin(angle)};s.facing=direction;
             const float speed=s.gun.muzzleVelocity;
             // Aim at the last seen torso; small vertical spread and gravity compensation.
             const float flightTime=FlightTime(best,speed,s.gun.dragK);
-            float vz=(solution.point.z-muzzle.z)/std::max(0.001f,flightTime)+4.905f*flightTime+(rng.Next()-0.5f)*speed*VerticalSpread(s);
+            float vz=(solution.point.z-muzzle.z)/std::max(0.001f,flightTime)+4.905f*flightTime+speed*std::tan(off.y)+(rng.Next()-0.5f)*speed*VerticalSpread(s);
             Shot shot;shot.suppressive=solution.area;shot.aimedAt=solution.point;shot.time=shot.impactTime=f.time;shot.owner=s.id;shot.aimedEnemy=solution.enemy;shot.start=shot.end=s.position;
             shot.flight.push_back({f.time,muzzle});r.shots.push_back(shot);
             bullets.push_back({muzzle,{direction.x*speed,direction.y*speed,vz},s.id,r.shots.size()-1,s.gun.bulletMass,s.gun.dragK,{},{}});
-            ++s.rounds;s.lastShotAt=f.time;s.aim=sustained?0.98f:automatic?0.8f:s.gun.action==WeaponAction::SemiAuto?0.5f:0.2f;
+            ++s.rounds;s.lastShotAt=f.time;ApplyRecoil(s);s.aim=sustained?0.98f:automatic?0.8f:s.gun.action==WeaponAction::SemiAuto?0.5f:0.2f;
             s.blockedSeconds=0;s.lastBlockedAt=-100;
             // Cyclic rate is mechanical and never stat-modified; burst structure is behaviour.
             a.cooldown=automatic||s.gun.action==WeaponAction::SemiAuto?s.gun.cyclicSeconds:s.gun.cycleSeconds/dexterity+s.suppression*0.5f;

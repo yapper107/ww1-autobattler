@@ -723,10 +723,12 @@ void ABattleHUD::DrawHUD() {
         float Y=Wrapped(S.holdingFire?TEXT("Holding fire: friendly troops in the firing lane. Requesting clearance if blocked."):UTF8_TO_TCHAR(army::ReasonText(S.reason)),34,423);
         Label(FString::Printf(TEXT("Rounds fired: %d"),S.rounds),34,Y+10,Muted,0.85f);
         Label(FString::Printf(TEXT("%s / magazine %d of %d"),UTF8_TO_TCHAR(S.gun.name),S.magazineRemaining,S.gun.magazine),34,Y+29,Muted,0.8f);
-        Label(FString::Printf(TEXT("PER %.0f  DEX %.0f  TGH %.0f  STR %.0f"),S.stats.Get(army::Stat::Perception),S.stats.Get(army::Stat::Dexterity),S.stats.Get(army::Stat::Toughness),S.stats.Get(army::Stat::Strength)),34,Y+46,Muted,0.7f);
-        Label(FString::Printf(TEXT("WIS %.0f  INI %.0f  CMP %.0f"),S.stats.Get(army::Stat::Wisdom),S.stats.Get(army::Stat::Initiative),S.stats.Get(army::Stat::Composure)),34,Y+61,Muted,0.7f);
-        Label(S.pendingReactions>0?FString::Printf(TEXT("Registering %s / %.2fs"),UTF8_TO_TCHAR(army::ReactionName(S.reactingTo)),FMath::Max(0.f,S.reactionUntil-F.time)):FString::Printf(TEXT("Reaction time: %.2fs base"),S.reactionBase),34,Y+80,Gold,0.8f);
-        Y+=111;Label(TEXT("PERSONAL SIGHTINGS"),34,Y,Paper,0.85f);Y+=22;int Count=0;
+        const army::Vec3 Sway=army::SwayOffset(S,F.time);
+        Label(FString::Printf(TEXT("SWAY %.1f / %.1f mrad  RECOIL %.1f / %.1f mrad"),Sway.x*1000,Sway.y*1000,S.recoil.x*1000,S.recoil.y*1000),34,Y+44,Muted,0.7f);
+        Label(FString::Printf(TEXT("PER %.0f  DEX %.0f  TGH %.0f  STR %.0f"),S.stats.Get(army::Stat::Perception),S.stats.Get(army::Stat::Dexterity),S.stats.Get(army::Stat::Toughness),S.stats.Get(army::Stat::Strength)),34,Y+61,Muted,0.7f);
+        Label(FString::Printf(TEXT("WIS %.0f  INI %.0f  CMP %.0f"),S.stats.Get(army::Stat::Wisdom),S.stats.Get(army::Stat::Initiative),S.stats.Get(army::Stat::Composure)),34,Y+76,Muted,0.7f);
+        Label(S.pendingReactions>0?FString::Printf(TEXT("Registering %s / %.2fs"),UTF8_TO_TCHAR(army::ReactionName(S.reactingTo)),FMath::Max(0.f,S.reactionUntil-F.time)):FString::Printf(TEXT("Reaction time: %.2fs base"),S.reactionBase),34,Y+95,Gold,0.8f);
+        Y+=126;Label(TEXT("PERSONAL SIGHTINGS"),34,Y,Paper,0.85f);Y+=22;int Count=0;
         for(int I=0;I<army::UnitCount;++I) if(S.contacts[I].known) {
             ++Count;if(Count>2)continue;const auto& C=S.contacts[I];
             Label(FString::Printf(TEXT("%s / %s / %.1fs ago"),UTF8_TO_TCHAR(army::Name(I)),C.visible?TEXT("visible"):TEXT("last seen"),F.time-C.observedAt),34,Y,C.visible?Ember:Muted,0.85f);Y+=22;

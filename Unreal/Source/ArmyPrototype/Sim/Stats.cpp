@@ -26,4 +26,7 @@ Stats GenerateStats(const StatDistribution& d,uint32_t rosterSeed,int slot){
     for(size_t k=0;k<StatCount;++k)s.value[k]=SampleStat(d,float(Mix(soldier+(k+1)*0x9e3779b97f4a7c15ull)>>40)/16777216.f);
     return s;
 }
+uint64_t SoldierHash(uint32_t rosterSeed,int slot,uint32_t salt){
+    return Mix(Mix((uint64_t(rosterSeed)<<32)^uint64_t(uint32_t(slot)))+(uint64_t(salt)+StatCount+1)*0x9e3779b97f4a7c15ull);
+}
 }
