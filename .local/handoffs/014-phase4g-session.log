@@ -1,0 +1,238 @@
+OpenAI Codex v0.154.0-alpha.6.2
+--------
+workdir: /home/jchan/ww1-autobattler
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, /mnt/c/Users/Jordan Chan/Documents/Codex/ArmyPrototype]
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0ad4f-920e-7312-900e-04e2688842e8
+--------
+user
+Fable architect response to your Phase 4f report: read plans/014-phase4f-fable-review.md first. The user chose to keep iterating Phase 4. P08's trace pins two linked causes: the fire-and-movement branch is not a commitment (support lost at 36.5 s after 8 s without evidence, immediate re-decision into observation, withdrawal at 85 s, and the forbidden Reserve comes from that observation branch), and the movers' bound endpoints require catalogue cover facing the sector, so on open ground they advanced 3.6 to 9.4 m in twenty supported seconds; that is the third occurrence of the catalogue-cover defect class and is now a recorded general rule in plan 014. Your Trenches 103 disagreement is accepted and carried as a separate item. Rulings: (1) fire-and-movement persists through support loss for a 30 s recovery allowance with movers pausing in protected holds, reconsideration only after that, platoon superiority evidence over a 15 s window, Reserve capacity zero for the branch's lifetime; (2) fire-and-movement bound endpoints are projected points along the corridor toward the sector, snapped to walkable ground, within 35 m of the overwatch element, Safe by line-block, catalogue cover preferred within 3 m never required; (3) diagnose the 36 s fire lapse from the fixture trace and fix it if it is a defect; (4) Trenches 103 movement-budget exhaustion is a Phase 4h diagnostic item.
+
+Do Phase 4g: apply the rulings; up to three local attempts on P08, documented, no distribution runs between them, until P08 and all 27 existing selectors pass on one source; then the full ./scripts/test-sim.sh, the 40 authored digest checks, drills trace parity on both maps and one F1 draw, and the single measured build under the Phase 4 exit in the Phase 3d review with the engagement guard active. Report to .local/handoffs/014-phase4g-report.md and stop; no second measured build; no F2/F3; no gun pickup; weapon attachment, Merge transfer and company escalation remain deferred. Rules unchanged: officer memory, own orders, received reports and permitted squad-member fields only; areas and claims are the platoon's own intentions; no per-seed tuning; protected files untouched; no commit, reset or stash; no Fable launcher; Windows and Unreal stay with the architect.
+codex
+I’ll read the Phase 4f review first, trace the support lapse, and implement the commitment and projected-endpoint rulings. Measurement will stay gated on P08 and all 27 existing selectors passing on one source.
+
+exec
+/bin/bash -lc "cat plans/014-phase4f-fable-review.md
+python3 tools/source_id.py
+sed -n '96,192p' Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+sed -n '124,215p' Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+# Plan 014 Phase 4f review — Fable
+
+Actual Claude Fable 5.1 (`claude-fable-5-1`) response, direct architect session, 17 September 2026. Reviewed Astra's Phase 4f report (`.local/handoffs/014-phase4f-report.md`) on fingerprint `01462c286da88358` and the P08 fixture and assertion in `tests/platoon_tests.h`. Verified independently: protected files intact, diff clean; native Windows lab build and tests running from this session. The user chose to continue Phase 4 without a replay review at this point. Advisory review, not acceptance.
+
+## Verdict
+
+All 27 existing selectors pass; the attack-by-fire-and-movement branch is chosen at 8.9 s, the fixing squad's fire establishes at 16 s, and the movers use bounding overwatch. P08 fails on two linked points that the trace pins down:
+
+1. **The branch is not a commitment.** At 36.5 s eight seconds pass without delivery evidence, support is declared lost, and the platoon immediately re-decides "inferior without superiority", drops into bounded observation and withdraws at 85 s. A squad attack tolerates a 30 s support-recovery allowance; the platoon branch tolerates none. The Reserve directive P08 forbids is issued by that observation branch.
+2. **Movers barely move while supported.** In the twenty supported seconds the three moving squads advanced 3.6 to 9.4 m. Their bound endpoints require catalogue cover facing the sector, which open ground between 90 and 50 m from the enemy rarely offers, so bounds shrink to nothing. This is the third occurrence of the catalogue-cover class of defect (formation slots in Phase 2c, rush endpoints in Phase 3b).
+
+Astra's disagreement on Trenches seed 103 is accepted: that run shows movement-budget exhaustion, not the no-flank hold, and it is carried as its own item rather than folded into this ruling.
+
+## Binding corrections for Phase 4g
+
+1. **Fire-and-movement is a commitment.** Once chosen, the branch persists through support loss for a 30 s recovery allowance, during which movers pause in protected holds as the squad attack already does; only after that allowance without regained support does the platoon reconsider. Platoon superiority evidence uses a 15 s window so a reload cycle does not read as loss. Reserve stays at capacity zero for the branch's lifetime.
+2. **Bound endpoints in fire-and-movement use projected generation.** As for formation slots and rushes: the point along the squad's corridor toward the sector, snapped to walkable ground, within 35 m of the overwatch element, with `Safe` from known contacts evaluated by line-block and catalogue cover preferred when within 3 m, never required. Record this as a general rule in plan 014: a moving element's endpoint is a projected point; a halted element's position is a cover slot.
+3. **Diagnose the 36 s fire lapse** from the fixture trace (reload, target lost from the gun's view, or lane inhibition) and fix the cause if it is a defect; if it is a reload cycle, ruling 1 covers it.
+4. **Trenches seed 103** joins the report as a separate diagnostic item for Phase 4h: movement-budget exhaustion in trench passages.
+
+## Allowance and exit
+
+Up to three local attempts on P08, documented, no distribution runs between them; then the full suite, the 40 digests, trace parity, and the single measured build under the Phase 4 exit. Report and stop if it fails.
+01462c286da88358
+    const Map& map,const Config& config,const std::vector<Vec3>& approaches,DrillPlan& p,
+    const std::array<bool,SquadSize>& selected,Diagnostics* d,float time,bool repair=false){
+    ++p.generation;p.blocked=false;p.exhausted=false;
+    if(!repair){p.waiting.fill(false);p.arrivals.fill(false);p.arrivalQuorumAt=-1;p.arrivalConsumed=false;p.movers.fill(false);p.slotWaiting.fill(false);}
+    const bool coverStage=p.stage==DrillStage::ContactCover||p.stage==DrillStage::BoundSetup||p.stage==DrillStage::BoundCover;
+    Vec3 direction=Unit(p.destination-p.center);if(coverStage&&p.target>=0)direction=Unit(p.sector-p.center);
+    Vec3 left{-direction.y,direction.x};p.interval=!p.forceColumn&&ClearLine(map,p.center-left*12,p.center+left*12,.5f)?10.f:4.f;
+    std::vector<ReservedPosition> reserved;
+    for(Vec3 at:approaches){CoverPosition c;c.shelter=c.peek=at;reserved.push_back({-1,c});}
+    for(const auto& s:members)if(!selected[s.id%SquadSize]){
+        const int n=s.id%SquadSize;CoverPosition c=p.slots[n];if(!p.hasSlot[n])c.shelter=c.peek=p.positions[n];reserved.push_back({s.id,c});
+    }
+    float longest=0;int protectedCount=0;
+    for(int element=0;element<2;++element){
+        std::vector<Soldier> group;for(const auto& s:members)if(p.elements[s.id%SquadSize]==element&&selected[s.id%SquadSize])group.push_back(s);if(group.empty())continue;
+        Vec3 origin=Mean(members,element,p),overwatch=Mean(members,1-element,p);
+        Vec3 segment=origin;
+        if(!coverStage&&!repair){
+            const float length=p.technique==MovementTechnique::Traveling?24.f:p.technique==MovementTechnique::BoundingOverwatch?24.f:40.f;
+            const Vec3 start=p.technique==MovementTechnique::Traveling?p.center:origin;
+            segment=start+Unit(p.destination-start)*std::min(length,Distance(start,p.destination));
+            if(p.retreat)segment=origin-Unit(p.sector-origin)*30;
+            if(p.technique==MovementTechnique::BoundingOverwatch&&Distance(segment,overwatch)>24)segment=overwatch+Unit(segment-overwatch)*24;
+        }
+        Vec3 resolved=origin;ResolveOrderPosition(map,origin,segment,resolved);
+        TacticalRoutePlanner planner(map,knowledge,time,leader.team?config.emberDoctrine:config.doctrine,Stance::Crouched);
+        auto route=std::make_shared<TacticalRoute>(planner.Evaluate(origin,resolved));
+        if(p.platoonArea&&leader.platoonOrder.corridor&&!coverStage&&!repair&&!p.retreat){
+            const auto& corridor=*leader.platoonOrder.corridor;
+            Vec3 before=corridor.start,projection=before;float best=1e9f;size_t segmentIndex=0;
+            for(size_t n=0;n<corridor.points.size();++n){Vec3 delta=corridor.points[n]-before;float length2=delta.x*delta.x+delta.y*delta.y+delta.z*delta.z;
+                Vec3 rel=origin-before;float fraction=length2>0?std::clamp((rel.x*delta.x+rel.y*delta.y+rel.z*delta.z)/length2,0.f,1.f):0;
+                Vec3 point=before+delta*fraction;float distance=Distance(origin,point);
+                if(distance<best){best=distance;projection=point;segmentIndex=n;}before=corridor.points[n];
+            }
+            Vec3 next=projection;float remaining=24;
+            for(size_t n=segmentIndex;n<corridor.points.size();++n){Vec3 end=corridor.points[n];float length=Distance(next,end);
+                if(length>=remaining){next=next+Unit(end-next)*remaining;break;}remaining-=length;next=end;
+            }
+            if(p.technique==MovementTechnique::BoundingOverwatch&&Distance(next,overwatch)>24)next=overwatch+Unit(next-overwatch)*24;
+            if(ResolveOrderPosition(map,origin,next,resolved)){*route=corridor;route->start=origin;route->destination=resolved;route->points=FollowCorridor(map,corridor,origin,resolved);}
+
+        }
+        // A geometric element centre is not necessarily a navigable start. Keep
+        // the accepted corridor, or build from a real known member position.
+        if(route->points.empty()){
+            for(const auto& member:group){
+                Vec3 endpoint=segment;
+                if(!ResolveOrderPosition(map,member.position,segment,endpoint))continue;
+                auto candidate=planner.Evaluate(member.position,endpoint);
+                if(!candidate.points.empty()){*route=std::move(candidate);resolved=route->destination;break;}
+            }
+        }
+        if(route->points.empty()&&p.routes[element]&&p.routes[element]->geometry==map.revision&&!p.routes[element]->points.empty())*route=*p.routes[element];
+        if(route->points.empty()){
+            p.blocked=true;p.lastRejection="no executable element corridor";
+            Trace(d,leader,p,time,"drill_recovering","recovering: no executable element corridor; retry column before exhaustion");
+            continue;
+        }
+        route->id=700000000ULL+uint64_t(leader.squad)*1000000+uint64_t(p.instance)*1000+p.generation*2+element;route->owner=leader.id;route->plan=p.instance;p.routes[element]=route;
+        GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=p.areaMin;query.areaMax=p.areaMax;query.coherenceRadius=90;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
+        if(p.platoonArea&&leader.platoonOrder.areaRouteRadius>0){query.areaRoute=leader.platoonOrder.corridor;query.areaRouteRadius=25;query.areaDiscCenter=leader.platoonOrder.areaDiscCenter;query.areaDiscRadius=60;}
+        const bool protectedBound=p.action.closureFallback&&!coverStage&&!repair&&p.effectiveFire&&!p.superiority;
+        query.formation=!coverStage&&!repair&&!protectedBound;query.protectedPosition=coverStage||repair||protectedBound;
+        if(p.action.closureFallback&&!p.platoonArea){query.areaDiscCenter=p.action.objective;query.areaDiscRadius=60;}
+        query.firing=query.protectedPosition&&element==0&&p.target>=0&&Distance(origin,p.sector)<SightRange(group.front());
+        if(p.stage==DrillStage::BoundSetup){query.target=p.center+direction*40;query.firing=element==0;}
+        if(p.stage==DrillStage::Bound&&p.technique==MovementTechnique::BoundingOverwatch){query.boundCenter=overwatch;query.boundRadius=35;}
+        query.anchorWeight=query.formation?3.f:1.f;query.coverWeight=query.formation?0.f:12.f;query.lineWeight=query.formation?0.f:20.f;
+        Vec3 averageOffset{};
+        if(p.interval==10){for(size_t rank=1;rank<group.size();++rank)averageOffset=averageOffset+direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));averageOffset=averageOffset*(1.f/group.size());}
+        int rank=0;for(const auto& s:group){Vec3 offset{};
+            if(p.interval==4)offset=direction*(-4.f*(rank+(p.technique==MovementTechnique::Traveling&&element==1?p.strength[0]:0)));
+            else if(rank>0)offset=direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));
+            // Two wedges 18m apart along the route. The former diagonal overlap
+            // made four of eight nearest-neighbour intervals only 5.1m.
+            if(p.interval==10)offset=offset-averageOffset+(p.technique==MovementTechnique::Traveling?direction*(element==0?9.f:-9.f):Vec3{});
+            query.anchors[s.id%SquadSize]=coverStage||repair?s.position:resolved+offset;++rank;
+        }
+        auto allocated=QueryPositions(leader,group,map,query,time,d);
+        if(protectedBound)for(size_t n=0;n<allocated.size();++n){auto& a=allocated[n];
+            Vec3 delta=a.primary.cover.shelter-group[n].position;
+            if(a.valid&&delta.x*direction.x+delta.y*direction.y<3)a.valid=false;
+        }
+        if(protectedBound&&std::none_of(allocated.begin(),allocated.end(),[](const MemberPositions& a){return a.valid;})){
+            p.movers.fill(false);p.deadline=0;p.stage=DrillStage::ContactHold;
+            Trace(d,leader,p,time,"drill_stage_advanced","effective incoming fire without superiority; no protected bound: hold existing cover");
+            continue;
+        }
+        bool needsColumn=false;
+        if(query.formation)for(size_t n=0;n<allocated.size();++n)if(!allocated[n].valid){
+            const Vec3 ahead=group[n].position-p.center;
+            const bool coherenceWait=ahead.x*direction.x+ahead.y*direction.y>0&&Distance(query.anchors[group[n].id%SquadSize],p.center)>query.coherenceRadius;
+            needsColumn|=!coherenceWait;
+        }
+        if(query.formation&&(needsColumn||std::none_of(allocated.begin(),allocated.end(),[](const MemberPositions& r){return r.valid;}))){
+            // Empty wedges contract on the accepted route, retaining all hard checks.
+    int target=-1;float bestGroup=1e9f;
+    std::vector<int> selected;
+    for(const auto& group:groups){Vec3 centre{};for(int id:group)centre=centre+knowledge.contacts[id].position;centre=centre*(1.f/group.size());float distance=Distance(centroid,centre);if(distance<bestGroup){bestGroup=distance;objective=centre;target=group.front();selected=group;}}
+    float enemy=target<0?0:BelievedStrength(l,objective,120,time);state.believedRatio=enemy>0?strength/enemy:10;
+    Vec3 forward=Unit(objective-centroid),side{-forward.y,forward.x};
+    bool withdraw=target>=0&&state.believedRatio<.5f&&!support;
+    bool superiority=false;for(const auto& r:squads)superiority|=r.drillSuperiority;
+    if(target<0||(state.noFlankBranch&&Distance(objective,state.observeObjective)>60)){state.observeStarted=-1;state.observeSuperiority=false;state.noFlankBranch=0;}
+    if(state.observeStarted>=0)state.observeSuperiority|=superiority;
+    auto add=[&](PlatoonNodeKind kind,int id,int priority,int capacity,Vec3 goal,bool weapon,const char* why){
+        auto at=std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==id;});
+        auto old=std::find_if(previousNodes.begin(),previousNodes.end(),[&](const auto& n){return n.id==id;});
+        bool completed=false;int assigned=0,finished=0;
+        for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];if(a.taskNode==id){++assigned;if(r.goalId==a.intent.id&&r.directive==a.serial&&(r.goalStatus==TaskStatus::Done||r.goalStatus==TaskStatus::Blocked))++finished;}}
+        completed=assigned>0&&assigned==finished;
+        if(old!=previousNodes.end()&&old->active&&old->kind==kind&&old->enemy==target&&!completed)goal=old->objective;
+        if(at==state.nodes.end()){state.nodes.push_back({});at=state.nodes.end()-1;}
+        auto& n=*at;n.id=id;n.parent=id==1?0:1;n.kind=kind;n.priority=priority;n.capacity=capacity;n.active=true;n.status=PlatoonNodeStatus::Active;n.objective=goal;n.enemy=target;n.needsWeapon=weapon;n.fireMovement=false;n.activation=why;
+    };
+    auto nodeAt=[&](int id)->PlatoonTaskNode&{return *std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==id;});};
+    for(const auto& r:squads){
+        Vec3 next{std::clamp(r.position.x+direction*60,-map.halfWidth+12,map.halfWidth-12),r.position.y};
+        add(PlatoonNodeKind::Advance,30+r.squad,10,1,next,false,"no known contact; own reported position plus 60 m lane leg");
+        auto& n=nodeAt(30+r.squad);n.active=target<0&&!state.advanceExhausted[r.squad%4];n.status=n.active?PlatoonNodeStatus::Active:state.advanceExhausted[r.squad%4]?PlatoonNodeStatus::Blocked:PlatoonNodeStatus::Dormant;
+    }
+    int fixing=-1,weapon=-1;float fixCost=1e9f;Vec3 fixPoint=centroid;
+    for(const auto& r:squads)if(r.supportSoldier>=0)weapon=r.supportSoldier;
+    if(target>=0&&!withdraw){
+        for(const auto& r:squads){if(weapon>=0&&r.machineGuns==0)continue;Vec3 goal=r.position;bool lines=Lines(map,goal,objective,r.machineGuns?95:70);
+            for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,r.position)<35&&Lines(map,cover.peek,objective,r.machineGuns?95:70)&&(!lines||Distance(r.position,cover.shelter)<Distance(r.position,goal))){goal=cover.shelter;lines=true;}
+            float score=Distance(r.position,goal)/1.89f+(lines?0:1000)+(r.machineGuns?0:25);
+            if(score<fixCost){fixCost=score;fixing=r.squad;fixPoint=goal;}
+            if(r.supportSoldier>=0)weapon=r.supportSoldier;
+        }
+    }
+    struct FlankChoice{int squad=-1,side=0;float score=1e9f;std::shared_ptr<TacticalRoute> route;};std::vector<FlankChoice> flanks;
+    if(target>=0&&!withdraw){
+        for(int direction:{-1,1}){Vec3 extreme=objective;float lateral=-1e9f;for(int id:selected){auto ct=knowledge.contacts[id];float dot=(ct.position.x-centroid.x)*side.x*direction+(ct.position.y-centroid.y)*side.y*direction;if(dot>lateral){lateral=dot;extreme=ct.position;}}
+            for(const auto& r:squads)if(r.squad!=fixing){Vec3 goal=extreme+side*(35.f*direction)+forward*8;auto route=Route(knowledge,map,config,r.position,goal,time,{},r.squad,false);
+                if(route&&Covered(map,knowledge,*route))flanks.push_back({r.squad,direction,route->cost.Total(),route});
+            }
+        }
+        for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];
+            if((a.task==PlatoonTask::FlankNorth||a.task==PlatoonTask::FlankSouth)&&a.corridor&&
+               r.goalId==a.intent.id&&r.goalStatus==TaskStatus::Executing&&Distance(a.sector,objective)<30)
+                flanks.push_back({r.squad,a.task==PlatoonTask::FlankNorth?1:-1,a.corridor->cost.Total(),std::make_shared<TacticalRoute>(*a.corridor)});
+        }
+        add(PlatoonNodeKind::Fix,2,90,1,objective,weapon>=0,"known group; potential firing lines");
+        if(flanks.empty()){
+            state.noCoveredRoute=true;
+            if(state.observeStarted<0&&state.believedRatio<1&&!superiority){state.observeStarted=time;state.observeObjective=objective;state.observeSuperiority=false;}
+            const bool expired=state.observeStarted>=0&&time>=state.observeStarted+45;
+            const bool observing=!expired&&state.believedRatio<1&&!superiority;
+            const int branch=expired&&!state.observeSuperiority?3:observing?2:1;
+            if(branch!=state.noFlankBranch){
+                // One honest route-rejection report, followed by the selected manoeuvre.
+                if(!state.noFlankBranch)Trace(l,d,time,"platoon_blocked","no covered flank route: selecting bounded observation or attack by fire and movement",objective);
+                Trace(l,d,time,"platoon_manoeuvre",branch==1?"no covered flank: attack by fire and movement; Reserve capacity zero":branch==2?"inferior without superiority: Fix/Observe/Reserve for at most 45 s":"45 s observation expired without superiority: Withdraw",objective);
+                state.noFlankBranch=branch;state.observeObjective=objective;
+            }
+            if(branch==3){withdraw=true;nodeAt(2).active=false;}
+            else if(branch==2)add(PlatoonNodeKind::Observe,3,60,1,objective,false,"inferior without superiority; bounded observation");
+            else for(const auto& r:squads)if(r.squad!=fixing){
+                const float sign=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y>=0?1.f:-1.f;
+                Vec3 extreme=objective;float extent=-1e9f;
+                for(int id:selected){Vec3 delta=knowledge.contacts[id].position-objective;float v=(delta.x*side.x+delta.y*side.y)*sign;if(v>extent){extent=v;extreme=knowledge.contacts[id].position;}}
+                const float lane=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y;
+                int outward=0;for(const auto& other:squads)if(other.squad!=fixing&&other.squad!=r.squad){
+                    const float otherLane=(other.position.x-centroid.x)*side.x+(other.position.y-centroid.y)*side.y;
+                    if(otherLane*sign>=0&&std::abs(otherLane)<std::abs(lane))++outward;
+                }
+                Vec3 goal=extreme+side*(sign*(24.f+24.f*outward))-forward*8;const Vec3 anchor=goal;
+                // Flank-most catalogue cover near the group, ranked for this own lane.
+                float best=1e9f;for(const auto& cover:CoverPositions(map)){
+                    Vec3 delta=cover.shelter-objective;
+                    if(Distance(cover.shelter,objective)>65||(delta.x*forward.x+delta.y*forward.y)<-20)continue;
+                    float cost=Distance(cover.shelter,anchor)+.25f*Distance(r.position,cover.shelter);
+                    if(cost<best){best=cost;goal=cover.shelter;}
+                }
+                add(PlatoonNodeKind::Advance,40+r.squad,80,1,goal,false,"attack by fire and movement in own corridor");nodeAt(40+r.squad).fireMovement=true;
+            }
+        }
+        else {auto best=*std::min_element(flanks.begin(),flanks.end(),[](const auto&a,const auto&b){return a.score<b.score;});
+            add(PlatoonNodeKind::Flank,3,80,std::min(int(squads.size())-1,std::max(1,int(std::round(squads.size()*.6f)))),best.route->destination,false,"covered flank with assigned fixing element");nodeAt(3).side=best.side;
+        }
+        add(PlatoonNodeKind::Reserve,4,20,state.noCoveredRoute&&state.noFlankBranch!=2?0:int(squads.size()),fixPoint-forward*30,false,"reserve behind fixing element");
+    }
+    if(withdraw)add(PlatoonNodeKind::Withdraw,5,100,int(squads.size()),centroid-forward*60,false,state.noFlankBranch==3?"bounded observation exhausted without superiority":"believed ratio below one half without support");
+    for(const auto& r:squads)if(r.active<3&&squads.size()>1)add(PlatoonNodeKind::Merge,10+r.squad,95,1,centroid,false,"received remnant strength below three");
+    for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];
+        if(r.goalStatus==TaskStatus::Done&&r.goalId==a.intent.id&&
+           (a.task==PlatoonTask::FlankNorth||a.task==PlatoonTask::FlankSouth))
+

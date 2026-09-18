@@ -1,0 +1,1754 @@
+OpenAI Codex v0.154.0-alpha.6.2
+--------
+workdir: /home/jchan/ww1-autobattler
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, /mnt/c/Users/Jordan Chan/Documents/Codex/ArmyPrototype]
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0ad4f-920e-7312-900e-04e2688842e8
+--------
+user
+Fable architect response to your Phase 2b report: read plans/014-phase2b-fable-review.md first. I read Sim/DrillSim.cpp and the traced Works seed-107 battle. The failure is structural: UpdateDrillPlan re-plans every second and bumps the generation each time (1630 orders to own soldiers in six minutes against cognition's 454 on the same seed; 0.089 hits per soldier-minute against 0.498), and elements are re-formed at every drill acceptance, which violates the plan's frozen-element invariant and is why D05 fails. The closure ruling and mechanism bounds stand; the lifecycle the plan specified was not implemented.
+
+Do Phase 2c now: restructure DrillSim around the six binding rules in the review (commitment with transitions only on completion, deadline, hysteresis-gated knowledge change, platoon directive or minStrength; stationary elements hold their slots; bounding as stages with one order set per bound; react-to-contact as stages with a single assessment; frozen elements re-formed only by Reorganise; per-stage latched arrival). Trace only transitions, with the trigger. Then one measured build under the Phase 2 corrected criteria plus the new churn criterion (orders per minute to own soldiers not above candidate90 on the same map and seed; produce the traced candidate90 runs you need and prove their digests equal the untraced baselines), hits per soldier-minute as a diagnostic, mechanism pairs D01-D05 and D17 under the existing rulings, 40 authored digests unchanged, drills trace parity, full suite, engagement guard. If the exit is still not met, report and stop; no second measured build. No Phase 3 drills, no platoon task tree, no F2/F3. Rules unchanged: officer memory and permitted squad-member fields only; no per-seed tuning; protected files untouched; no commit, reset or stash; no Fable launcher call; Windows and Unreal stay with the architect. Report to .local/handoffs/014-phase2c-report.md with fingerprints, the order-rate and hit-rate table, mechanism results, both per-run tables and disagreements. Stop after the report.
+codex
+I’ll read the Phase 2b review first and implement its lifecycle rules before building. Then I’ll measure one fixed build, including order churn against digest-verified candidate90 traces, and report any remaining failures without another tactical iteration.
+exec
+/bin/bash -lc 'cat plans/014-phase2b-fable-review.md' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+# Plan 014 Phase 2b review — Fable
+
+Actual Claude Fable 5.1 (`claude-fable-5-1`) response, direct architect session, 17 September 2026. Reviewed Astra's Phase 2b report (`.local/handoffs/014-phase2b-report.md`) on fingerprint `d80bca688ebe67ad`, and read `Sim/DrillSim.cpp` and the traced Works seed-107 battle directly. Verified independently: protected files intact, 50 Python tests pass, diff clean, 40 of 40 authored digests unchanged. Advisory review, not acceptance.
+
+## Verdict
+
+The corrected build fails the exit and the report is right not to iterate. The cause is not the closure ruling or the mechanism bounds. It is structural, and it was visible only by reading the code and the trace, which I should have done before issuing tactical rulings:
+
+- `UpdateDrillPlan` re-plans every second, re-queries every position and increments the order generation each time. On Works seed 107 it issued 1630 orders to its own soldiers in six minutes (272 per minute, up to 71 to one soldier) against 454 for cognition on the same seed. Every re-issue restarts execution, so soldiers move instead of aiming: 0.089 hits per soldier-minute against 0.498. That single defect explains the casualty collapse on both authored maps, the failed closure, and the D03 and D17 failures.
+- Elements are re-formed from survivors at every drill acceptance (`AssignElements` on each new instance), which violates the plan's frozen-element invariant and is exactly why D05 fails: the gun group refills on the contact transition.
+- The plan's method lifecycle (accept, stage, advance on evidence, commit otherwise) was not implemented; the controller is one reactive function with no stage ownership. The foundation work around it (plumbing, position service, harness) is sound.
+
+## Binding structure for Phase 2c
+
+1. **Commitment.** A drill instance owns an accepted stage. Positions are queried and orders issued only at stage transitions, never on a timer. A transition happens only on: stage completion (arrival receipts from at least half the moving element, latched once per stage, with a 3 s grace for the rest); stage deadline; a material knowledge change with hysteresis (a new contact inside 100 m; the current contact unknown for more than 10 s; effective incoming fire beginning or ending, 6 s hysteresis; superiority established or lost, 8 s hysteresis, as cognition's support release and loss already do); a platoon directive; or an element dropping below `minStrength`. Otherwise the planner returns without touching generation or positions. Trace every transition as `drill_stage_advanced` with its trigger; trace nothing for a continue.
+2. **Stationary members hold.** An element that is not moving keeps its slots and its `Overwatch`/`Occupy` orders until its stage changes; a slot is invalidated only by a geometry revision or a known enemy inside its uncertainty radius.
+3. **Bounding as stages.** In bounding overwatch the moving element receives one order set to positions within 35 m of the overwatch element; the overwatch element receives none during the bound; on completion the roles swap and one new order set is issued.
+4. **React to contact as stages.** Stage 1 issues cover-and-return-fire positions once. The assessment at 3 s plus reaction decides once: hold and fire from cover while the contact persists without superiority, or resume closure by the bounding stages above. No per-second re-planning; a fresh contact or fire change re-enters through the hysteresis rules.
+5. **Frozen elements.** Elements are assigned at deployment and re-formed only by `Reorganise` at drill completion or failure, or when an element falls below `minStrength`. A new drill instance inherits the current elements.
+6. **Arrival is per stage.** `Arrived` latches on the stage's own receipts; it is not re-evaluated as a continuous condition.
+
+## Exit for Phase 2c
+
+The corrected criteria of the Phase 2 review, plus: orders issued per minute to own soldiers not above candidate90 on the same map and seed (traced candidate90 runs are cheap and digest-equal with tracing on). Report hits per soldier-minute alongside as a diagnostic. Mechanism pairs D01 to D05 and D17 re-run under the same rulings; D05 must now pass by frozen elements alone. One measured build; stop and report if it fails.
+
+## Note to the user
+
+Phase 2 has taken three measured builds. The first two failures were partly my rulings; this one is a missing invariant from the plan that I should have checked in the code before measuring. The harness caught each within one build, the playable game was never affected, and the fix is the lifecycle the plan specified rather than new tactical rules.
+
+exec
+/bin/bash -lc "cat Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp; sed -n '408,445p' Unreal/Source/ArmyPrototype/Sim/BattleSim.h; sed -n '380,460p' Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp; sed -n '160,180p' Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp; cat Unreal/Source/ArmyPrototype/Sim/DrillSim.h" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+#include "DrillSim.h"
+#include "PositionSim.h"
+#include "TacticalRouteSim.h"
+#include "Diagnostics.h"
+#include <algorithm>
+#include <cmath>
+namespace army {
+const SquadOrganisation& Organisation(OrganisationKind kind){
+    static const std::array<SquadOrganisation,4> data{{
+        {"Gun-centric",{{{"gun group",Role::Sergeant,2},{"rifle group",Role::Corporal,2}}},5,AttritionRule::GunNest,true,.5f,1,false},
+        {"Section",{{{"gun group",Role::Sergeant,2},{"rifle group",Role::Corporal,3}}},5,AttritionRule::HaltAndMerge,true,.5f,3,false},
+        {"Teams",{{{"first team",Role::Sergeant,2},{"second team",Role::Corporal,2}}},5,AttritionRule::SingleElement,true,.5f,2,false},
+        {"Rush",{{{"assault group",Role::Sergeant,2},{"reserve",Role::Corporal,0}}},3,AttritionRule::SingleElement,true,2,5,true}
+    }};return data[int(kind)];
+}
+std::array<int,SquadSize> AssignElements(const std::vector<Soldier>& members,OrganisationKind kind){
+    std::array<int,SquadSize> result;result.fill(-1);int counts[2]={};
+    for(const auto& s:members)if(s.Active()&&!IsPlatoonStaff(s)&&(s.role==Role::Sergeant||s.role==Role::Corporal||s.machineGun)){
+        int e=s.role==Role::Corporal&&kind!=OrganisationKind::Rush?1:0;result[s.id%SquadSize]=e;++counts[e];
+    }
+    for(const auto& s:members)if(s.Active()&&!IsPlatoonStaff(s)&&result[s.id%SquadSize]<0){
+        int e=kind==OrganisationKind::Rush?0:counts[0]<3?0:counts[1]<=counts[0]?1:0;
+        result[s.id%SquadSize]=e;++counts[e];
+    }return result;
+}
+static void Trace(Diagnostics* d,const Soldier& leader,const DrillPlan& p,float time,const char* kind,const std::string& reason,int subject=-1,Vec3 position={}){
+    if(!d||!d->options.enabled)return;
+    TraceEntry e;e.id=d->nextId++;e.time=time;e.soldier=leader.id;e.squad=leader.squad;e.kind=kind;e.reason=reason;e.plan=p.instance;e.routeStage=p.generation;e.goal=p.destination;e.sector=p.sector;e.position=position;e.taskSubject=subject;e.intent=p.intent;d->entries.push_back(e);
+}
+static Vec3 Unit(Vec3 p){p.z=0;float n=Length(p);return n>.01f?p*(1/n):Vec3{1,0};}
+static std::vector<Soldier> SquadView(const Soldier& leader,const std::vector<Soldier>& members,DrillPlan& p,float time){
+    std::vector<Soldier> result;
+    for(const auto& member:members){const int index=member.id%SquadSize;auto& v=p.members[index];
+        // Initial deployment orders are legal. Later updates require own observation or a received report.
+        if(!p.initialized){v={true,member.position,member.health,member.suppression,time,member.role,member.machineGun};}
+        if(member.id==leader.id){v={true,leader.position,leader.understoodHealth,leader.understoodSuppression,time,leader.role,leader.machineGun};}
+        const auto& sight=leader.allies[member.id];
+        if(sight.known&&sight.observedAt>v.observedAt){v.position=sight.position;v.health=member.health;v.suppression=member.suppression;v.observedAt=sight.observedAt;v.role=member.role;v.machineGun=member.machineGun;}
+        const auto& report=leader.taskReports[index];
+        if(report.soldier==member.id&&report.at>v.observedAt){v.position=report.position;v.observedAt=report.at;if(!report.active)v.health=0;}
+        if(!v.known)continue;
+        Soldier s;s.id=member.id;s.squad=leader.squad;s.team=leader.team;s.position=v.position;s.health=v.health;s.suppression=v.suppression;s.role=v.role;s.machineGun=v.machineGun;s.assignment=member.assignment;
+        result.push_back(s);
+    }return result;
+}
+static Vec3 Mean(const std::vector<Soldier>& members,int element,const DrillPlan& p){Vec3 sum{};int count=0;for(const auto& s:members)if(s.Active()&&(element<0||p.elements[s.id%SquadSize]==element)){sum=sum+s.position;++count;}return count?sum*(1.f/count):p.center;}
+static bool Arrived(const Soldier& leader,const std::vector<Soldier>& members,const DrillPlan& p){
+    int required=0;for(const auto& s:members)if(s.Active()&&p.movers[s.id%SquadSize]){++required;const auto& r=leader.taskReports[s.id%SquadSize];
+        if(r.id!=p.expected[s.id%SquadSize]||r.execution.method!=p.instance||r.execution.generation!=p.generation||r.status!=TaskStatus::Done)return false;
+    }return required>0;
+}
+static Vec3 Sweep(const Soldier& leader,const Map& map,DrillPlan& p){
+    const float sign=leader.team?-1.f:1.f;const float fractions[]={-.55f,-.15f,.35f,.75f,.35f,-.35f};
+    Vec3 target{map.halfWidth*fractions[p.leg%6]*sign,p.deployment.y,p.deployment.z};
+    while(p.leg%6<3&&p.center.x*sign>target.x*sign+8){++p.leg;target.x=map.halfWidth*fractions[p.leg%6]*sign;}
+    return target;
+}
+static bool Mouth(const Map& map,Vec3 from,Vec3 direction){
+    Vec3 to=from+direction*30;return !ClearLine(map,from+Vec3{0,10},to+Vec3{0,10},.5f)||!ClearLine(map,from+Vec3{0,-10},to+Vec3{0,-10},.5f);
+}
+void UpdateDrillPlan(const Soldier& leader,const std::vector<Soldier>& actual,const Map& map,const Config& config,const std::vector<Vec3>& approaches,const std::vector<int>& claimed,SquadCommand& cmd,Diagnostics* d,float time){
+    (void)claimed;auto& p=cmd.battleDrill;auto members=SquadView(leader,actual,p,time);
+    // Deployment organisation includes absent casualties, so losing the gun group
+    // cannot silently conscript the intact rifle group before the first assessment.
+    auto roster=members;for(auto& s:roster)s.health=100;
+    const auto deploymentElements=AssignElements(roster,OrganisationKind::Section);
+    members.erase(std::remove_if(members.begin(),members.end(),[](const Soldier& s){return !s.Active()||IsPlatoonStaff(s);}),members.end());if(members.empty())return;
+    p.center=Mean(members,-1,p);const float sign=leader.team?-1.f:1.f;
+    if(!p.initialized){p.deployment=p.center;p.initialized=true;p.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,p.deployment.y-24)};p.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,p.deployment.y+24)};p.destination=config.family!=ScenarioFamily::None?cmd.mission:Sweep(leader,map,p);}
+    const auto knowledge=WithTracks(leader,time);int target=-1;float nearest=1e9f;
+    for(int id=0;id<UnitCount;++id)if(knowledge.contacts[id].known){float distance=Distance(p.center,knowledge.contacts[id].position);if(distance<nearest){nearest=distance;target=id;}}
+    bool incoming=leader.understoodSuppression>.08f;for(const auto& area:leader.fireAreas)incoming|=time-area.observedAt<6&&area.intensity>.08f;
+    bool effectiveIncoming=leader.understoodSuppression>.3f;
+    for(const auto& s:members)effectiveIncoming|=s.suppression>.3f;
+    for(const auto& area:leader.fireAreas)effectiveIncoming|=time-area.observedAt<6&&area.intensity>.3f;
+    int delivered=0;bool gunDelivery=false;
+    for(const auto& report:leader.deliveries)if(report.shooter>=0&&report.shooter/SquadSize==leader.squad&&report.observedAt<=time&&time-report.observedAt<=6&&target>=0&&
+        (report.enemy==target||Distance(report.target,knowledge.contacts[target].position)<18)){
+        int rounds=0;for(float at:report.times)rounds+=at>=time-6&&at<=time;
+        delivered+=rounds;gunDelivery|=report.supportWeapon&&rounds>=2;
+    }
+    const bool superiority=gunDelivery&&delivered>=3;
+    // A contact assessment remains valid through the closure leg. Effective
+    // incoming fire without superiority can interrupt it for a fresh assessment.
+    if(p.closing&&effectiveIncoming&&!superiority&&nearest<=70)p.closing=false;
+    if(target<0&&!incoming)p.closing=false;
+    BattleDrill kind=((target>=0&&nearest<100)||incoming)&&!p.closing?BattleDrill::ReactToContact:BattleDrill::MoveTactically;
+    MovementTechnique technique=p.closing||(target>=0&&nearest<100)||incoming?MovementTechnique::BoundingOverwatch:
+        (target>=0&&nearest<=150)||Mouth(map,p.center,Unit(p.destination-p.center))?MovementTechnique::TravelingOverwatch:MovementTechnique::Traveling;
+    bool accepted=kind!=p.kind||p.instance==0;
+    if(accepted){p.kind=kind;++p.instance;p.generation=0;p.started=time;p.nextStage=0;p.assessed=false;p.assessmentAt=time+3+leader.reactionBase;p.retreat=false;p.blocked=false;p.exhausted=false;
+        p.elements=p.instance==1?deploymentElements:AssignElements(members,OrganisationKind::Section);p.intent={100000+leader.squad*1000+p.instance,0,GoalPurpose::Seize,p.destination,10,config.maxSeconds};
+        Trace(d,leader,p,time,"drill_candidate",kind==BattleDrill::ReactToContact?"known threatening contact or received fire":"deployment lane sweep");
+        Trace(d,leader,p,time,"drill_accepted",kind==BattleDrill::ReactToContact?"ReactToContact: cover and return fire; close or support":"MoveTactically");
+        for(const auto& s:members)Trace(d,leader,p,time,"element_assigned","frozen element "+std::to_string(p.elements[s.id%SquadSize]),s.id,s.position);
+    }
+    if(p.technique!=technique||accepted){p.technique=technique;Trace(d,leader,p,time,"technique_selected",technique==MovementTechnique::Traveling?"traveling":technique==MovementTechnique::TravelingOverwatch?"traveling overwatch":"bounding overwatch");}
+    p.target=target;p.sector=target>=0?knowledge.contacts[target].position:p.center+Vec3{sign*60,0};
+    cmd.engaged=target>=0&&nearest<100;cmd.advancing=true;cmd.searching=!cmd.engaged;
+    bool paused=false;for(const auto& receipt:leader.taskReports)if(receipt.execution.method==p.instance&&receipt.execution.generation==p.generation&&receipt.status==TaskStatus::Interrupted&&receipt.cause==TaskCause::Shelter&&time-receipt.at<3)paused=true;
+    if(paused!=p.paused){p.paused=paused;Trace(d,leader,p,time,paused?"drill_safety_override":"drill_resume",paused?"received shelter interruption; retain method and slots":"shelter interruption cleared; retained generation");}
+    bool assessmentDue=p.kind==BattleDrill::ReactToContact&&!p.assessed&&time>=p.assessmentAt;
+    bool arrived=Arrived(leader,members,p);bool timeout=p.generation>0&&time>p.deadline;
+    if(!accepted&&!arrived&&!timeout&&time<p.nextStage&&!assessmentDue)return;
+    if(!accepted&&!arrived&&!timeout&&p.kind==BattleDrill::MoveTactically)return;
+    if(p.kind==BattleDrill::ReactToContact&&!p.assessed&&time>=p.assessmentAt){
+        int gunStrength=0;for(const auto& s:members)gunStrength+=p.elements[s.id%SquadSize]==0;
+        p.blocked=gunStrength<Organisation(OrganisationKind::Section).elements[0].minStrength;
+        p.assessed=true;Trace(d,leader,p,time,"drill_stage",p.blocked?"Blocked/Support: gun group below minStrength; request platoon support":"assessment: gun group supports; rifle group covers or closes");
+    }
+    if(p.kind==BattleDrill::ReactToContact&&p.assessed&&!p.blocked&&!p.retreat&&
+       (nearest>70||superiority||!effectiveIncoming)){
+        p.closing=true;p.kind=BattleDrill::MoveTactically;p.technique=technique=MovementTechnique::BoundingOverwatch;
+        Trace(d,leader,p,time,"drill_stage","assessment decision: resume MoveTactically bounding overwatch toward objective");
+        Trace(d,leader,p,time,"technique_selected","bounding overwatch");
+    }
+    if(timeout){p.attempts.push_back({CognitiveMethod::None,p.intent.objective,p.destination,map.revision,leader.knowledgeRevision,time,TaskCause::Timeout});Trace(d,leader,p,time,"drill_exhausted","stage deadline from path time expired; continue sweep or revise approach, never observe known enemy");p.exhausted=true;}
+    if(arrived){p.lastProgress=time;Trace(d,leader,p,time,"drill_stage_advanced","matching received arrivals for moving element");if(technique!=MovementTechnique::Traveling)p.movingElement=1-p.movingElement;}
+    if(p.kind==BattleDrill::MoveTactically&&(Distance(p.center,p.destination)<18||timeout)){
+        ++p.leg;p.destination=Sweep(leader,map,p);p.intent.objective=p.destination;Trace(d,leader,p,time,"drill_stage_advanced","deployment sweep leg advanced");
+    }
+    if(leader.platoonOrder.serial>cmd.platoonOrderSerial&&time<leader.platoonOrder.expiresAt){cmd.platoonOrderSerial=leader.platoonOrder.serial;p.destination=leader.platoonOrder.intent.objective;p.intent.parent=leader.platoonOrder.intent.id;}
+    Vec3 direction=Unit((target>=0?p.sector:p.destination)-p.center);
+    Vec3 left{-direction.y,direction.x};p.interval=ClearLine(map,p.center-left*12,p.center+left*12,.5f)?10.f:4.f;
+    ++p.generation;p.hasSlot.fill(false);p.movers.fill(false);p.routes={};p.memberRoutes={};p.support=-1;
+    std::vector<ReservedPosition> reserved;for(Vec3 at:approaches){CoverPosition c;c.shelter=c.peek=at;reserved.push_back({-1,c});}
+    float longest=0;int protectedCount=0;
+    for(int element=0;element<2;++element){
+        std::vector<Soldier> group;for(const auto& s:members)if(p.elements[s.id%SquadSize]==element)group.push_back(s);if(group.empty())continue;
+        Vec3 origin=Mean(members,element,p);bool moving=technique==MovementTechnique::Traveling||p.movingElement==element;
+        Vec3 targetPoint=p.destination;
+        if(p.kind==BattleDrill::ReactToContact&&target>=0){const float distance=Distance(origin,p.sector);targetPoint=origin+Unit(p.sector-origin)*std::min(20.f,std::max(0.f,distance-45.f));}
+        Vec3 stageOrigin=technique==MovementTechnique::Traveling?p.center:origin;
+        Vec3 segment=stageOrigin+Unit(targetPoint-stageOrigin)*std::min(technique==MovementTechnique::Traveling?24.f:40.f,Distance(stageOrigin,targetPoint));
+        if(moving&&technique==MovementTechnique::BoundingOverwatch){
+            const Vec3 overwatch=Mean(members,1-element,p);
+            // Leave room for the formation's forward offset within the 47m rifle bound.
+            if(Distance(segment,overwatch)>35)segment=overwatch+Unit(segment-overwatch)*35;
+        }
+        if(!moving)segment=origin;
+        if(p.retreat)segment=origin-direction*(moving?30.f:0.f);
+        Vec3 resolved=origin;ResolveOrderPosition(map,origin,segment,resolved);
+        TacticalRoutePlanner planner(map,knowledge,time,leader.team?config.emberDoctrine:config.doctrine,Stance::Crouched);
+        auto route=std::make_shared<TacticalRoute>(planner.Evaluate(origin,resolved));route->id=700000000ULL+uint64_t(leader.squad)*1000000+uint64_t(p.instance)*1000+p.generation*2+element;route->owner=leader.id;route->plan=p.instance;p.routes[element]=route;
+        Vec3 anchor=resolved;
+        GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=p.areaMin;query.areaMax=p.areaMax;query.coherenceRadius=technique==MovementTechnique::Traveling?50.f:90.f;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
+        query.formation=p.kind==BattleDrill::MoveTactically&&moving;query.protectedPosition=!query.formation;query.firing=!moving&&target>=0&&nearest<SightRange(leader);
+        if(p.kind==BattleDrill::MoveTactically&&!moving)query.target=p.center+direction*40;
+        query.anchorWeight=query.formation?3.f:1.f;query.coverWeight=query.formation?0.f:12.f;query.lineWeight=query.formation?0.f:20.f;
+        Vec3 averageOffset{};
+        if(p.interval==10){for(size_t rank=1;rank<group.size();++rank)averageOffset=averageOffset+direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));averageOffset=averageOffset*(1.f/group.size());}
+        int rank=0;for(const auto& s:group){Vec3 offset{};
+            if(p.interval==4)offset=direction*(-4.f*rank);
+            else if(rank>0)offset=direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));
+            if(p.kind==BattleDrill::MoveTactically&&p.interval==10)offset=offset-averageOffset+direction*(element==0?6.f:-6.f)+left*(element==0?-4.f:4.f);
+            query.anchors[s.id%SquadSize]=p.kind==BattleDrill::ReactToContact?s.position:anchor+offset;++rank;
+        }
+        auto allocated=QueryPositions(leader,group,map,query,time,d);
+        for(size_t n=0;n<allocated.size();++n){const auto& s=group[n];auto result=allocated[n];const int slot=s.id%SquadSize;
+            if(!result.valid&&p.kind==BattleDrill::ReactToContact&&!p.blocked){
+                // No useful local cover: close by a short route-projected step. Incoming fire
+                // without local shelter instead activates the emergency rearward response.
+                GroupPositionQuery fallback=query;fallback.protectedPosition=false;fallback.firing=false;fallback.formation=true;fallback.radius=5;fallback.reserved=reserved;fallback.anchors[slot]=anchor;
+                auto other=QueryPositions(leader,{s},map,fallback,time,d);if(!other.empty())result=other[0];
+            }
+            p.positions[slot]=result.valid?result.primary.cover.shelter:s.position;p.hasSlot[slot]=result.valid&&result.primary.cover.id!=0;
+            if(p.hasSlot[slot]){p.slots[slot]=result.primary.cover;++protectedCount;if(element==0&&p.support<0)p.support=s.id;}
+            p.movers[slot]=!p.blocked&&Distance(s.position,p.positions[slot])>.75f;
+            if(result.valid)reserved.push_back({s.id,result.primary.cover});
+            // The tactical route is evaluated once per element. A member's execution
+            // corridor is its reachable projected path inside that formation corridor,
+            // not the old four-metre centreline that funnels a whole wedge together.
+            auto memberRoute=std::make_shared<TacticalRoute>(*route);memberRoute->id=route->id*16+slot;memberRoute->start=s.position;memberRoute->destination=p.positions[slot];
+            memberRoute->points=FindPath(map,s.position,p.positions[slot]);memberRoute->stages.clear();
+            float pathLength=0;Vec3 prior=s.position;bool inside=!memberRoute->points.empty();
+            for(Vec3 point:memberRoute->points){pathLength+=Distance(prior,point);prior=point;inside&=CorridorDistance(*route,point)<=query.groupCap&&point.y>=p.areaMin.y&&point.y<=p.areaMax.y;}
+            if(!inside){p.positions[slot]=s.position;p.hasSlot[slot]=false;p.movers[slot]=false;memberRoute->destination=s.position;memberRoute->points={s.position};Trace(d,leader,p,time,"drill_stage","formation projection cannot stay in accepted area/corridor",s.id,s.position);}
+            memberRoute->stages.push_back({0,memberRoute->points.size(),memberRoute->destination,pathLength/1.89f,0});p.memberRoutes[slot]=memberRoute;
+            longest=std::max(longest,pathLength);
+            Trace(d,leader,p,time,"formation_slot",std::string(p.interval==4?"column interval 4 m":"wedge interval 10 m")+(result.valid?"; allocated":"; no slot, wait within coherence"),s.id,p.positions[slot]);
+        }
+    }
+    if(p.kind==BattleDrill::ReactToContact&&incoming&&protectedCount==0&&!p.retreat){p.retreat=true;p.nextStage=time+1;Trace(d,leader,p,time,"drill_stage","BreakContact emergency response: no local protected slots; alternate rearward bounds");}
+    else p.nextStage=time+(p.kind==BattleDrill::ReactToContact?6.f:1.f);
+    p.deadline=time+longest/1.89f+2*config.reportDelay+6;p.intent.expiresAt=config.maxSeconds;
+    cmd.mission=p.destination;cmd.hasWaypoint=true;cmd.waypoint=p.destination;cmd.planId=p.intent.id;cmd.phase=p.kind==BattleDrill::ReactToContact?SquadPhase::EstablishFire:SquadPhase::Bound;cmd.planReason=p.kind==BattleDrill::ReactToContact?"known contact: return fire from cover and close or support":"move through own deployment lane";
+    Trace(d,leader,p,time,"drill_stage",p.retreat?"rearward bound with other element covering":"positions and per-element routes issued");
+}
+std::vector<PlannedOrder> DrillOrders(const Soldier&,const std::vector<Soldier>& squad,const SquadCommand& cmd,float){
+    const auto& p=cmd.battleDrill;std::vector<PlannedOrder> out;
+    for(const auto& s:squad)if(s.Active()&&!IsPlatoonStaff(s)&&p.elements[s.id%SquadSize]>=0){const int n=s.id%SquadSize;
+        PlannedOrder o{};o.recipient=s.id;o.task=p.movers[n]?(p.retreat?Task::PullBack:Task::BoundMove):Task::Overwatch;o.position=p.positions[n];o.sector=p.sector;o.hasSlot=p.hasSlot[n];o.slot=p.slots[n];
+        o.teamPlan.route=p.memberRoutes[n];o.teamPlan.targetEnemy=p.target;o.teamPlan.released=p.movers[n];
+        o.execution.completion=p.movers[n]&&!p.hasSlot[n]?Completion::Transit:Completion::Occupy;o.execution.method=p.instance;o.execution.generation=p.generation;o.execution.stage=p.leg;o.execution.deadline=p.deadline;o.execution.paused=p.paused&&p.movers[n];out.push_back(o);
+    }return out;
+}
+std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier&,const Map&,const Config&,float){return {};}
+}
+    bool initialized=false,selected=false,released=false,fireShifted=false;
+    bool closeOccupation=false,finalQueryDone=false;int occupationLead=-1;
+    uint64_t screenedKnowledge=0,screenedGeometry=0;int screenedStage=-1;
+    float currentExposure=0;bool screeningBlocked=false;
+    float nextAssessment=0,opportunity=-1;uint64_t knowledge=0,geometry=0;
+};
+enum class BattleDrill { None, MoveTactically, ReactToContact };
+enum class MovementTechnique { Traveling, TravelingOverwatch, BoundingOverwatch };
+struct KnownSquadMember {bool known=false;Vec3 position{};float health=0,suppression=0,observedAt=-100;Role role=Role::Rifleman;bool machineGun=false;};
+struct DrillPlan {
+    GoalIntent intent;
+    BattleDrill kind=BattleDrill::None;
+    MovementTechnique technique=MovementTechnique::Traveling;
+    int instance=0,generation=0,leg=0,movingElement=0,target=-1,support=-1;
+    float started=0,deadline=0,nextStage=0,lastProgress=0;
+    bool initialized=false,blocked=false,paused=false,exhausted=false;
+    Vec3 deployment{},destination{},sector{},center{},areaMin{},areaMax{};
+    std::array<int,SquadSize> elements{{-1,-1,-1,-1,-1,-1,-1,-1}};
+    std::array<Vec3,SquadSize> positions{};
+    std::array<CoverPosition,SquadSize> slots{};
+    std::array<bool,SquadSize> hasSlot{},movers{};
+    std::array<uint64_t,SquadSize> expected{};
+    std::array<KnownSquadMember,SquadSize> members{};
+    std::array<std::shared_ptr<const TacticalRoute>,2> routes{};
+    std::array<std::shared_ptr<const TacticalRoute>,SquadSize> memberRoutes{};
+    std::vector<FailedAttempt> attempts;
+    bool retreat=false,assessed=false,closing=false;
+    float assessmentAt=0,interval=10;
+};
+struct SquadCommand {
+    AcceptedPlan accepted;
+    DrillState drill;
+
+    std::shared_ptr<const TacticalRoute> route;
+    int routeSerial=0,routeStage=0;
+    std::shared_ptr<const ManeuverAssessment> routeAssessment;
+    SquadPhase phase=SquadPhase::Search;
+    int planId=0;float planStarted=0,commitUntil=0,opportunitySince=-1;
+            if((!config.recoveryFixture&&!TypedController(config))||sender.team!=recipient.team||sender.id!=f.command[sender.squad].leader||
+                (TypedController(config)?(CommandSupport(f.command[sender.squad],true)!=recipient.id&&
+                    (CommandSupport(f.command[sender.squad],true)<0||f.command[CommandSupport(f.command[sender.squad],true)/SquadSize].leader!=recipient.id)):f.command[sender.squad].support!=recipient.id))continue;
+            PendingReaction reaction;reaction.kind=ReactionKind::SupportSector;reaction.source=sender.id;reaction.supportSector=message.supportSector;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::SupportProgress) {
+            const auto& progress=message.supportProgress;
+            const bool ownerLoss=progress.status==TaskStatus::Failed&&progress.cause==TaskCause::Casualty&&
+                progress.shooter>=0&&progress.shooter<UnitCount&&progress.shooter/SquadSize==sender.squad&&
+                sender.id==f.command[sender.squad].leader;
+            if(!config.cognition||recipient.id!=f.command[recipient.squad].leader||
+                progress.shooter!=f.command[recipient.squad].accepted.support||
+                (!ownerLoss&&(sender.id!=progress.shooter)))continue;
+            PendingReaction reaction;reaction.kind=ReactionKind::SupportProgress;reaction.source=sender.id;reaction.supportProgress=message.supportProgress;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::Contact) {
+            auto& report=recipient.reports[message.enemy];
+            if(f.time-std::max(message.contact.observedAt,message.contact.clearedAt)>120||
+                (message.contact.observedAt<=report.observedAt&&message.contact.clearedAt<=report.clearedAt))continue;
+            PendingReaction reaction;reaction.kind=ReactionKind::Report;reaction.source=sender.id;reaction.enemy=message.enemy;reaction.contact=message.contact;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::Lane) {
+            PendingReaction reaction;reaction.kind=ReactionKind::LaneReport;reaction.source=sender.id;reaction.subject=message.subject;reaction.fireLane=message.fireLane;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::Delivery) {
+            PendingReaction reaction;reaction.kind=ReactionKind::DeliveryReport;reaction.source=sender.id;reaction.delivery=message.delivery;QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::TaskStatus) {
+            PendingReaction reaction;reaction.kind=ReactionKind::TaskReport;reaction.source=sender.id;reaction.taskReceipt=message.taskReceipt;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::Movement) {
+            PendingReaction reaction;reaction.kind=ReactionKind::MovementReport;reaction.source=sender.id;reaction.failedMove=message.failedMove;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::Fire) {
+            PendingReaction reaction;reaction.kind=ReactionKind::FireReport;reaction.source=sender.id;reaction.fireArea=message.fireArea;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.kind==CommandMessage::Kind::Wound) {
+            if(message.subject<0||message.subject>=UnitCount||recipient.knownWounded[message.subject])continue;
+            PendingReaction reaction;reaction.kind=ReactionKind::WoundReport;reaction.source=sender.id;reaction.subject=message.subject;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        } else if(message.sender==f.command[recipient.squad].support&&recipient.id==f.command[recipient.squad].leader) {
+            PendingReaction reaction;reaction.kind=ReactionKind::Ready;reaction.source=sender.id;reaction.ready=message.ready;
+            reaction.rounds=message.rounds;reaction.position=message.supportPosition;reaction.contact=message.contact;reaction.blocked=message.blocked;
+            QueueReaction(recipient,reaction,f.time,rt.reactions);
+        }
+    }
+    ProcessReactions(f,rt.reactions,events);
+    rt.platoon.geometryViews=rt.geometryViews;UpdatePlatoon(f,map,config,rt.platoon,rt.reactions,events);
+    auto send=[&](int sender,int recipient,Task task,Vec3 position,Vec3 sector,const TeamPlan& plan=TeamPlan{},const CoverPosition* slot=nullptr,ExecutionContract execution=ExecutionContract{}) {
+        const bool recovery=(config.recoveryFixture||config.foundations)&&f.soldiers[recipient].team!=rt.fixedDefender;
+        GoalIntent intent;
+        if(config.foundations){
+            const auto& issuer=f.soldiers[sender];
+            if(issuer.platoonOrder.intent.id&&f.time<issuer.platoonOrder.expiresAt)intent=issuer.platoonOrder.intent;
+            else if(issuer.assignment.intent.id&&f.time<issuer.assignment.intent.expiresAt)intent=issuer.assignment.intent;
+        }
+        if(config.cognition){const auto& accepted=f.command[f.soldiers[sender].squad].accepted;intent=f.time<accepted.intent.expiresAt?accepted.intent:GoalIntent{};}
+        if(config.drills){const auto& plan=f.command[f.soldiers[sender].squad].battleDrill;intent=plan.intent;}
+        const Vec3 requested=position;
+        const bool retainedTask=recovery&&rt.lastSent[recipient].intent.id==intent.id&&rt.lastSent[recipient].execution.method==execution.method&&rt.lastSent[recipient].execution.stage==execution.stage&&rt.lastSent[recipient].execution.generation==execution.generation&&rt.lastSent[recipient].execution.completion==execution.completion&&rt.lastSent[recipient].execution.unavailable==execution.unavailable&&rt.lastSent[recipient].execution.rifleSupport==execution.rifleSupport&&rt.lastSent[recipient].execution.supportThreat==execution.supportThreat&&EquivalentTask(rt.lastSent[recipient],task,position,sector,plan.targetEnemy)&&rt.lastSent[recipient].teamPlan.liftFire==plan.liftFire&&rt.lastSent[recipient].hasSlot==(slot!=nullptr)&&
+            (!slot||(rt.lastSent[recipient].slot.id==slot->id&&Distance(rt.lastSent[recipient].slot.shelter,slot->shelter)<.05f&&Distance(rt.lastSent[recipient].slot.peek,slot->peek)<.05f));
+        if(retainedTask&&rt.lastSent[recipient].execution.paused==execution.paused)return;
+        const Map& orderMap=recovery&&rt.geometryViews?(*rt.geometryViews)[sender]:map;
+        if(!ResolveOrderPosition(orderMap,f.soldiers[recipient].position,requested,position)) {
+            log(EventKind::Decision,sender,recipient,std::string(Name(sender))+": no reachable waypoint for "+Name(recipient));return;
+        }
+        auto& last=rt.lastSent[recipient];
+        const auto& unit=f.soldiers[recipient];
+        // Finish a short movement commitment before refreshing a moving formation
+        // anchor. Emergency withdrawals and lane clearance can still interrupt.
+        if(!recovery&&last.issuer==sender&&last.task==task&&last.teamPlan.serial==plan.serial&&
+            task!=Task::PullBack&&task!=Task::ClearLane&&f.time-last.issuedAt<8&&
+            unit.understoodSuppression<0.52f&&Distance(unit.position,last.position)>1.5f&&
+            Distance(last.position,position)>2&&!FindPath(map,unit.position,last.position).empty())return;
+        if(!recovery&&last.issuer==sender&&last.task==task&&Distance(last.position,position)<2&&Distance(last.sector,sector)<6&&last.teamPlan.serial==plan.serial)return;
+        Assignment order;
+        if(config.drills){const auto& p=f.command[f.soldiers[sender].squad].battleDrill;order.drillInstance=p.instance;order.element=p.elements[recipient%SquadSize];order.baseOfFire=order.element>=0&&!p.movers[recipient%SquadSize];order.areaMin=p.areaMin;order.areaMax=p.areaMax;}
+        order.execution=execution;order.intent=intent;order.geometry=orderMap.revision;order.target=plan.targetEnemy;order.task=task;order.issuer=sender;order.serial=rt.nextSerial++;
+        order.position=position;order.sector=sector;if(slot){order.hasSlot=true;order.slot=*slot;}if(recovery){order.id=TypedController(config)&&retainedTask?last.id:uint64_t(order.serial);order.statusAt=f.time;}order.teamPlan=plan;order.issuedAt=f.time;last=order;
+        TraceOrder(rt.diagnostics,f.soldiers[recipient],order,f.time,"order_issued");
+        log(EventKind::OrderIssued,sender,recipient,std::string(Name(sender))+" orders "+Name(recipient)+": "+TaskName(task));
+        if(Distance(requested,position)>0.1f)log(EventKind::Decision,sender,recipient,std::string(Name(sender))+": adjusts blocked waypoint for "+Name(recipient));
+        i(r.config.drills);f(r.config.reportDelay);i(r.config.fullVision);
+        for(const auto& frame:r.frames){
+            for(const auto& unit:frame.soldiers){const auto& a=unit.assignment;i(a.drillInstance);i(a.element);i(a.baseOfFire);v(a.areaMin);v(a.areaMax);i(a.execution.method);i(a.execution.stage);i(a.execution.generation);i(int(a.execution.completion));f(a.execution.deadline);i(a.execution.paused);
+                for(const auto& report:unit.platoonReports){i(report.drillInstance);i(report.drillKind);i(int(report.drillCause));}
+            }
+            for(const auto& cmd:frame.command){const auto& p=cmd.battleDrill;
+            i(p.initialized);i(p.assessed);i(p.retreat);i(p.closing);f(p.nextStage);f(p.lastProgress);f(p.assessmentAt);f(p.interval);v(p.deployment);i(p.intent.id);i(p.intent.parent);v(p.intent.objective);
+            for(const auto& member:p.members){i(member.known);v(member.position);f(member.health);f(member.suppression);f(member.observedAt);i(int(member.role));i(member.machineGun);}
+            for(const auto& route:p.memberRoutes)if(route){bytes(&route->id,sizeof(route->id));v(route->destination);for(Vec3 point:route->points)v(point);}
+            for(const auto& attempt:p.attempts){v(attempt.destination);f(attempt.at);i(int(attempt.cause));}
+
+            i(p.instance);i(p.generation);i(int(p.kind));i(int(p.technique));i(p.leg);i(p.movingElement);i(p.target);i(p.support);
+            f(p.started);f(p.deadline);i(p.blocked);i(p.paused);i(p.exhausted);v(p.destination);v(p.sector);v(p.center);v(p.areaMin);v(p.areaMax);
+            for(int n=0;n<SquadSize;++n){i(p.elements[n]);v(p.positions[n]);i(p.hasSlot[n]);v(p.slots[n].shelter);v(p.slots[n].peek);i(p.movers[n]);bytes(&p.expected[n],sizeof(p.expected[n]));}
+        }}
+    }
+    if(r.config.family!=ScenarioFamily::None){
+        i(int(r.config.family));bytes(&r.config.genSeed,sizeof(r.config.genSeed));
+        const uint64_t generated=r.generated?ScenarioDigest(*r.generated):0;bytes(&generated,sizeof(generated));
+    }
+    for(const auto& s:r.shots){f(s.time);f(s.impactTime);i(s.owner);i(s.target);i(int(s.impact));v(s.start);v(s.end);for(const auto& p:s.flight){f(p.time);v(p.position);}}
+#pragma once
+#include "CommandSim.h"
+#include "PlatoonSim.h"
+namespace army {
+enum class OrganisationKind { GunCentric, Section, Teams, Rush };
+enum class AttritionRule { GunNest, HaltAndMerge, SingleElement };
+struct ElementTemplate {const char* name;Role leader;int minStrength;};
+struct SquadOrganisation {
+    const char* name;std::array<ElementTemplate,2> elements;
+    int collapseBelow;AttritionRule collapse;bool gunNeverSilent;
+    float assistantDelay,riflemanDelay;bool requiresPlatoonOrder;
+};
+const SquadOrganisation& Organisation(OrganisationKind);
+std::array<int,SquadSize> AssignElements(const std::vector<Soldier>&,OrganisationKind);
+void MakeDrillEncounter(const Config&,int,Map&,Frame&);
+
+void UpdateDrillPlan(const Soldier&,const std::vector<Soldier>&,const Map&,const Config&,const std::vector<Vec3>&,const std::vector<int>&,SquadCommand&,Diagnostics*,float);
+std::vector<PlannedOrder> DrillOrders(const Soldier&,const std::vector<Soldier>&,const SquadCommand&,float);
+std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier&,const Map&,const Config&,float);
+inline int CommandSupport(const SquadCommand& c,bool typed){return c.battleDrill.initialized?c.battleDrill.support:typed?c.accepted.support:c.support;}
+}
+
+exec
+/bin/bash -lc "sed -n '130,245p' Unreal/Source/ArmyPrototype/Sim/TaskSim.cpp; grep -n 'Completion::Occupy\\|TaskStatus::Done' Unreal/Source/ArmyPrototype/Sim/{CoordinationSim,TaskSim}.cpp; grep -n 'drill' Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp; cat tests/drills_tests.h; sed -n '1,75p' docs/DEVELOPMENT.md; head -45 docs/BATTLE_LAB.md; grep -n 'commit\\|Reorganise\\|hysteresis' plans/014-battle-drill-controller.md" in /home/jchan/ww1-autobattler
+ succeeded in 4ms:
+exec
+/bin/bash -lc "grep -n 'PlanSquad(' Unreal/Source/ArmyPrototype/Sim/*.cpp; grep -n 'order_issued\\|order.recipient' Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp | head -18; grep -n 'CommandSupport\\|battleDrill' Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp; head -35 docs/DESIGN_VISION.md; cat tools/closure_metrics.py" in /home/jchan/ww1-autobattler
+ succeeded in 4ms:
+codex
+The command layer needs a change alongside DrillSim: it currently asks for every member’s order after each planner call. I’ll make stage transitions identify which recipients need new orders, so the stationary element keeps its existing orders. Arrival receipts will latch by stage, and contact assessment will run once while the accepted cover move finishes.
+exec
+/bin/bash -lc "mkdir -p .local/phase2c/entry .local/phase2c/final; cp -a Unreal/Source/ArmyPrototype/Sim .local/phase2c/entry/; cp tests/drills_tests.h .local/phase2c/entry/; python3 tools/source_id.py > .local/phase2c/entry/source-id.txt; git status --short > .local/phase2c/entry/git-status.txt; sed -n '205,220p' Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp; sed -n '55,75p' Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp; sed -n '120,145p' plans/014-battle-drill-controller.md" in /home/jchan/ww1-autobattler
+ succeeded in 62ms:
+            out<<",\"sector\":";V(out,s.assignment.sector);
+            out<<",\"order\":"<<s.assignment.serial<<",\"order_issued\":"<<s.assignment.issuedAt<<",\"assignment_id\":"<<s.assignment.id;
+            out<<",\"platoon_order\":"<<s.platoonOrder.serial<<",\"platoon_order_issued\":"<<s.platoonOrder.issuedAt;
+            out<<",\"machine_gun\":"<<s.machineGun<<",\"role\":"<<int(s.role);
+            // No drill element or area exists in legacy/cognition; never invent one.
+            if(r.config.drills&&s.assignment.element>=0){const auto& a=s.assignment;const auto& p=f.command[s.squad].battleDrill;
+                out<<",\"element\":"<<a.element<<",\"element_role\":"<<Q(a.baseOfFire?"base_of_fire":"moving")<<",\"base_of_fire\":"<<a.baseOfFire;
+                out<<",\"area_of_operation\":{\"min\":";V(out,a.areaMin);out<<",\"max\":";V(out,a.areaMax);out<<'}';
+                out<<",\"drill_instance\":"<<p.instance<<",\"drill_started\":"<<p.started<<",\"drill_kind\":"<<int(p.kind)<<",\"drill_movement\":"<<p.movers[s.id%SquadSize]<<",\"known_threat_sector\":"<<(p.target>=0)<<",\"squad_leader\":"<<f.command[s.squad].leader;
+            }else out<<",\"element\":null,\"element_role\":null,\"base_of_fire\":false,\"area_of_operation\":null";
+            out<<",\"plan\":"<<f.command[s.squad].planId<<",\"goal\":";V(out,s.assignment.position);out<<'}';
+        }
+        out<<"]}\n";
+    }
+}
+std::string ExportBattle(const Record& r,const std::string& root,const std::string& build){
+}
+void TraceProposal(Diagnostics* d,const Soldier& s,const SquadCommand& c,const Map& map,float time,const char* kind,const std::string& reason){
+    if(!d||!d->options.enabled)return;
+    TraceEntry e;e.id=d->nextId++;e.parent=d->lastPlan[s.squad];e.soldier=s.id;e.squad=s.squad;e.time=time;
+    e.routeId=c.route?c.route->id:0;e.routeStage=c.routeStage;
+    if(c.route&&std::none_of(d->routes.begin(),d->routes.end(),[&](const auto& r){return r==c.route;}))d->routes.push_back(c.route);
+    e.geometry=map.revision;e.kind=kind;e.reason=reason;e.phase=Phase(c);e.position=s.position;e.goal=c.hasWaypoint?c.waypoint:c.mission;e.plan=c.planId;e.movementBlock=int(c.movementBlock.reason);e.role=int(s.role);e.supportReady=c.movementBlock.reason==MoveBlock::None&&(c.supportUseful||c.coveringReady);e.danger=c.danger;
+    Knowledge(e,s,time);if(e.kind=="proposal_accepted"||e.kind=="plan_phase"||e.kind=="movement_revised"||e.kind=="movement_resumed"){d->lastPlan[s.squad]=e.id;d->activePlanIds[s.squad]=c.planId;}d->entries.push_back(std::move(e));
+}
+void TraceOrder(Diagnostics* d,const Soldier& s,const Assignment& a,float time,const char* kind){
+    if(!d||!d->options.enabled)return;
+    TraceEntry e;e.id=d->nextId++;e.time=time;e.soldier=s.id;e.squad=s.squad;e.issuer=a.issuer;e.order=a.serial;e.kind=kind;e.reason=TaskName(a.task);if(a.intent.id)e.reason+="; goal="+std::to_string(a.intent.id)+" purpose="+std::to_string(int(a.intent.purpose));
+    e.execution=a.execution;e.peek=a.hasSlot?a.slot.peek:a.position;e.sector=a.sector;
+    e.intent=a.intent;e.taskTarget=a.target;e.geometry=a.geometry;e.taskId=a.id;e.taskStatus=int(a.status);e.taskCause=int(a.cause);e.taskSequence=a.statusSequence;e.taskSubject=s.id;e.taskObservedAt=a.statusAt;
+    e.parent=d->issuedOrders.count(a.serial)?d->issuedOrders[a.serial]:d->lastPlan[s.squad];e.planDecision=d->lastPlan[s.squad];
+    e.plan=d->activePlanIds[s.squad];e.routeId=a.teamPlan.route?a.teamPlan.route->id:0;e.goal=a.position;e.position=s.position;e.orderIssued=a.issuedAt;e.orderReceived=a.receivedAt;Knowledge(e,s,time);
+    if(e.kind=="order_issued")d->issuedOrders[a.serial]=e.id;
+    if(e.kind=="order_received")d->receivedOrders[a.serial]=e.id;
+    d->entries.push_back(std::move(e));
+}
+void TracePath(Diagnostics* d,const Soldier& s,const Map& map,float time,const std::vector<Vec3>& path,const char* kind,uint64_t route){
+| **MoveTactically(destination, technique)** | platoon task or default sector; route from the planner for the squad, elements offset by formation | technique from expected contact: traveling when no known or reported enemy within 150 m; traveling overwatch when a reported enemy is within 150 m or the route crosses an unobserved corridor mouth (lead element up to 50 m ahead); bounding overwatch when a known enemy is within 100 m or fire has been received (bounds no longer than two-thirds of the overwatch element's weapon range, overwatch halted at firing positions with a line over the bound). Formation: column in restrictive terrain, wedge per element in the open, intervals per 6.2. Members hold formation slots through the position service | complete when both elements report arrival inside the destination radius; contact transitions to ReactToContact (not a failure); fail on Unreachable or InsufficientStrength; timeout from path length over the existing crouched speed plus report allowance |
+| **ReactToContact(contact)** | any member receives fire, or the leader learns of a contact within 100 m that threatens the route | all members: nearest protected slot with occupancy, return fire at known contacts in sector; element leaders report; the leader assesses within 2-4 s plus reaction: believed enemy strength (mental map) against own, fire superiority from delivered rounds against received fire. Branches in order: effective incoming fire and no cover -> BreakContact; an element has a line to the threat and strength at or above `minStrength` -> SupportByFire and assault assessment; otherwise hold in cover, report `Blocked/Support` and request platoon support by fire | transitions only; never completes by itself; timeout reports the assessment result upward |
+| **SupportByFire(area, element)** | element has at least two members able to reach protected positions with a line to the area | positions from the service; `Suppress(area, rate)` tasks with a sustained rate under the existing reload model; the support weapon, if present, engages the priority target (crew-served weapons first) | established when delivered rounds on the area reach the contract's count inside a 6 s window from at least one element shooter; lost after 8 s without evidence; lift or shift on the assault element's phase-line receipt, with hold-fire lanes across its route; fail on no positions (`Support`), element below `minStrength`, or the gun silent beyond the recovery timeout |
+| **SquadAttack(objective, threat)** | assessment says suppression is achievable; a covered and concealed route exists for the manoeuvre element to an assault position at least 45-55 degrees from the base of fire and within 40 m of the objective (planner exposure below threshold from known threats); strength ratio acceptable under template and profile | Prepare: base of fire established. Move: manoeuvre element bounds along the covered route by buddy rushes of at most 5 s between covers; pause if base-of-fire evidence is lost for more than 8 s; entry into any stage within 18 m of the objective or of a known threat is gated on that threat being covered. Assault: line at 5 m intervals; lift or shift signal sent before crossing the base-of-fire lane; assault through the objective by fire and movement. Consolidate: occupy positions oriented on remaining known threats; base of fire moves up. Reorganise | complete when at least half of the manoeuvre element occupies the objective area with receipts and no known live enemy remains inside its radius; one alternate route allowed when a fresh threat exposes the corridor, then `Blocked`; fail on `InsufficientStrength` or support lost beyond timeout |
+| **BreakContact(direction)** | believed enemy strength at least twice own with no fire superiority, or three casualties within 20 s without superiority, or a platoon Withdraw order | one element suppresses while the other bounds rearward 25-50 m to the next covered position; alternate | complete when no fresh contact within 100 m for 20 s or the rally point is reached; report strength |
+| **Occupy(area, sectors)** | platoon task or consolidation | positions with mutual support and sectors; elements keep separation | ends only by supersession; reports observed contacts |
+| **Observe(area)** | platoon task or assessment needs information | cognition's observation semantics retained: a viewpoint with a line inside sight range; a fresh sighting or clearance completes; silence times out with an explicit nothing-learned report | as cognition |
+| **Withdraw(rally)** | platoon order or template rule | BreakContact without pursuit, then Occupy at the rally point | as BreakContact |
+| **Reorganise** | after every completed or failed drill, on leader or gun loss | re-form elements from survivors per template; re-role to the gun; apply succession; report strength | completes in one plan tick; never runs mid-drill |
+
+### 6.4 Soldier layer
+
+Goals in priority order, each preemptible with receipts: Survive (effective suppression above the existing threshold, shelter within reach chosen with occupancy) > FollowOrder (current assignment) > EngageKnownThreat (fire from cover at known contacts in sector) > KeepFormationSlot (adjust when drift exceeds 1.5 intervals) > Scan. Tasks map onto the existing `Task` and `Completion` pairs initially (transit, occupy with slot, overwatch, rifle support, hold, observe, pull back); `Suppress` reuses the bounded area-fire behaviour proven in reliability fixture 27, and `Rush` is a short bound with at most 5 s of exposure. New enum values are appended only when a mapping does not exist.
+
+## 7. Platoon layer: task tree and manoeuvre
+
+`Sim/PlatoonTaskSim` builds a declarative task tree from the commander's own knowledge. Tasks: Advance(sector) by default, Fix(known enemy group), Flank(objective, side), Secure(sector), Reserve, Merge(squad into squad), Withdraw. Each task carries priority, capacity in squads, an area of operation, an activation condition on the commander's knowledge, a filter (for example needs a support weapon) and status. Squads flow to the highest-priority unfilled task by greedy assignment minimising `H(squad, task)` = travel time along the planner + coordination penalties (a fixing squad without potential lines, a flank without a fix) + tree balance + profile bias - a stickiness credit for the current assignment. Reallocation happens on activation and deactivation events and otherwise at the existing 5 s cadence. Directives expire after 60-90 s with renewal, never the whole battle.
+
+Envelopment procedure on contact: group known contacts (minimum spanning tree, 20 m threshold); flanks are the extreme contacts relative to the platoon centroid; candidate flank objectives lie 30-40 m beyond each flank and require a covered route (planner exposure below threshold); the better side wins by route quality; the fixing squad is the one that can reach positions with lines to the group within its weapon range; by default 60 % of available squads flank inside their own corridors and the remainder holds in reserve in its own area behind the fixing element. Corridor claims add cost to other squads' routes. When no covered route exists: Fix plus Observe plus Reserve, and an honest report upward. Withdraw when believed strength ratio falls below one half with no support. Lift and shift: the fixing element receives the assault element's phase-line receipt through command transport and uses the existing fire-lane messages. Leader death degrades to squad-autonomous drills under the template's succession rule.
+
+## 8. Metrics
+
+Computed offline from `evaluation.jsonl`, `events.jsonl`, `trace.jsonl` and the new `shots.jsonl`; observer facts never feed policy. Exact formulas are in the companion document.
+
+- Spatial: nearest-squadmate distance median and share under 2 m; squad radius; minimum inter-squad centroid distance; area-of-operation compliance.
+- Tactical conformance: share of moving-soldier seconds covered by friendly delivered fire on the relevant known threat area in the preceding 6 s; assault arrival angle relative to the base of fire; exposed seconds without a firing solution; suppression established before assault; break contact when outnumbered; friendly-fire hits; gun-silent seconds after a gunner casualty.
+
+exec
+/bin/bash -lc "cat > .local/phase2c/edit_model.py <<'PY'
+from pathlib import Path
+root=Path('Unreal/Source/ArmyPrototype/Sim')
+p=root/'BattleSim.h';s=p.read_text().replace('struct DrillPlan {','enum class DrillStage { None, Travel, BoundSetup, Bound, ContactCover, ContactHold, Reorganise };\\nstruct DrillPlan {',1)
+s=s.replace('    float assessmentAt=0,interval=10;','''    float assessmentAt=0,interval=10;
+    DrillStage stage=DrillStage::None;
+    std::array<bool,SquadSize> issue{},waiting{},arrivals{};
+    std::array<int,SquadSize> orderMethods{},orderGenerations{};
+    std::array<uint64_t,SquadSize> slotGeometry{};
+    std::array<bool,UnitCount> contactInside{};
+    std::array<float,UnitCount> contactLastKnown{};
+    std::array<int,2> strength{};
+    float arrivalQuorumAt=-1,contactLostAt=-1,fireCandidateAt=0,superiorityCandidateAt=0;
+    bool arrivalConsumed=false,coverComplete=false,closeAfterCover=false;
+    bool effectiveFire=false,fireCandidate=false,superiority=false,superiorityCandidate=false;
+''',1);p.write_text(s)
+p=root/'PositionSim.h';s=p.read_text();print(s)
+PY
+python3 .local/phase2c/edit_model.py" in /home/jchan/ww1-autobattler
+ succeeded in 9ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp');s=p.read_text();p.write_text(s[:s.index('static bool Arrived(')]+s[s.index('static Vec3 Sweep('):s.index('void UpdateDrillPlan(')])
+p=Path('Unreal/Source/ArmyPrototype/Sim/PositionSim.h');s=p.read_text().replace('float shelterSpacing=','Vec3 boundCenter{};float boundRadius=0;\\n    float shelterSpacing=');p.write_text(s)
+p=Path('Unreal/Source/ArmyPrototype/Sim/PositionSim.cpp');s=p.read_text().replace('else if(Distance(c.shelter,anchor)>q.radius)', 'else if(q.boundRadius>0&&(Distance(c.shelter,q.boundCenter)>q.boundRadius||Distance(c.peek,q.boundCenter)>q.boundRadius))reason=\"outside overwatch bound radius\";\\n            else if(Distance(c.shelter,anchor)>q.radius)');p.write_text(s)
+PY
+cat >> Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp <<'CPP'
+// Receipt evidence belongs to the accepted order, not to the latest heartbeat.
+static bool LatchArrival(const Soldier& leader,const std::vector<Soldier>& members,DrillPlan& p,float time){
+    if(p.arrivalConsumed)return false;
+    int required=0,arrived=0;
+    for(const auto& s:members){const int n=s.id%SquadSize;if("'!p.waiting[n])continue;++required;
+        const auto& r=leader.taskReports[n];
+        if(p.expected[n]&&r.id==p.expected[n]&&r.execution.method==p.orderMethods[n]&&
+           r.execution.generation==p.orderGenerations[n]&&r.status==TaskStatus::Done)p.arrivals[n]=true;
+        arrived+=p.arrivals[n];
+    }
+    if(required&&arrived*2>=required&&p.arrivalQuorumAt<0)p.arrivalQuorumAt=time;
+    if(required&&(arrived==required||(p.arrivalQuorumAt>=0&&time-p.arrivalQuorumAt>=3))){p.arrivalConsumed=true;return true;}
+    return false;
+}
+static bool Hysteresis(bool value,bool& candidate,float& since,bool& state,float delay,float time){
+    if(value!=candidate){candidate=value;since=time;}
+    if(state!=candidate&&time-since>=delay){state=candidate;return true;}return false;
+}
+static std::array<int,2> Strength(const std::vector<Soldier>& members,const DrillPlan& p){
+    std::array<int,2> result{};for(const auto& s:members)if(p.elements[s.id%SquadSize]>=0)++result[p.elements[s.id%SquadSize]];return result;
+}
+static void Reorganise(const Soldier& leader,const std::vector<Soldier>& members,DrillPlan& p,Diagnostics* d,float time,const char* trigger){
+    p.elements=AssignElements(members,OrganisationKind::Section);p.strength=Strength(members,p);
+    Trace(d,leader,p,time,"drill_stage_advanced",std::string("Reorganise: ")+trigger);
+    for(const auto& s:members)Trace(d,leader,p,time,"element_assigned","Reorganise element "+std::to_string(p.elements[s.id%SquadSize]),s.id,s.position);
+}
+static void Accept(const Soldier& leader,DrillPlan& p,BattleDrill kind,Diagnostics* d,float time){
+    if(p.kind==kind&&p.instance)return;
+    p.kind=kind;++p.instance;p.started=time;p.assessed=false;p.coverComplete=false;p.closeAfterCover=false;p.retreat=false;p.closing=false;
+    p.intent={100000+leader.squad*1000+p.instance,0,GoalPurpose::Seize,p.destination,10,0};
+    Trace(d,leader,p,time,"drill_accepted",kind==BattleDrill::ReactToContact?"ReactToContact: cover and return fire":"MoveTactically");
+}
+static bool InvalidSlot(const Soldier& knowledge,const Map& map,const DrillPlan& p,int n,float time){
+    if(!p.hasSlot[n])return false;
+    if(p.slotGeometry[n]!=map.revision)return true;
+    for(const auto& ct:knowledge.contacts)if(ct.known&&Distance(p.slots[n].peek,ct.position)<TrackUncertainty(ct,time)+2)return true;
+    return false;
+}
+// Called only on a transition. Retained element orders/slots are not reconstructed.
+static void IssueStage(const Soldier& leader,const Soldier& knowledge,const std::vector<Soldier>& members,
+    const Map& map,const Config& config,const std::vector<Vec3>& approaches,DrillPlan& p,
+    const std::array<bool,SquadSize>& selected,Diagnostics* d,float time,bool repair=false){
+    ++p.generation;
+    if(!repair){p.waiting.fill(false);p.arrivals.fill(false);p.arrivalQuorumAt=-1;p.arrivalConsumed=false;p.movers.fill(false);}
+    const bool coverStage=p.stage==DrillStage::ContactCover||p.stage==DrillStage::BoundSetup;
+    Vec3 direction=Unit(p.destination-p.center);if(coverStage&&p.target>=0)direction=Unit(p.sector-p.center);
+    Vec3 left{-direction.y,direction.x};p.interval=ClearLine(map,p.center-left*12,p.center+left*12,.5f)?10.f:4.f;
+    std::vector<ReservedPosition> reserved;
+    for(Vec3 at:approaches){CoverPosition c;c.shelter=c.peek=at;reserved.push_back({-1,c});}
+    for(const auto& s:members)if(!selected[s.id%SquadSize]){
+        const int n=s.id%SquadSize;CoverPosition c=p.slots[n];if(!p.hasSlot[n])c.shelter=c.peek=p.positions[n];reserved.push_back({s.id,c});
+    }
+    float longest=0;int protectedCount=0;
+    for(int element=0;element<2;++element){
+        std::vector<Soldier> group;for(const auto& s:members)if(p.elements[s.id%SquadSize]==element&&selected[s.id%SquadSize])group.push_back(s);if(group.empty())continue;
+        Vec3 origin=Mean(members,element,p),overwatch=Mean(members,1-element,p);
+        Vec3 segment=origin;
+        if(!coverStage&&!repair){
+            const float length=p.technique==MovementTechnique::Traveling?24.f:p.technique==MovementTechnique::BoundingOverwatch?24.f:40.f;
+            const Vec3 start=p.technique==MovementTechnique::Traveling?p.center:origin;
+            segment=start+Unit(p.destination-start)*std::min(length,Distance(start,p.destination));
+            if(p.retreat)segment=origin-Unit(p.sector-origin)*30;
+            if(p.technique==MovementTechnique::BoundingOverwatch&&Distance(segment,overwatch)>24)segment=overwatch+Unit(segment-overwatch)*24;
+        }
+        Vec3 resolved=origin;ResolveOrderPosition(map,origin,segment,resolved);
+        TacticalRoutePlanner planner(map,knowledge,time,leader.team?config.emberDoctrine:config.doctrine,Stance::Crouched);
+        auto route=std::make_shared<TacticalRoute>(planner.Evaluate(origin,resolved));route->id=700000000ULL+uint64_t(leader.squad)*1000000+uint64_t(p.instance)*1000+p.generation*2+element;route->owner=leader.id;route->plan=p.instance;p.routes[element]=route;
+        GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=p.areaMin;query.areaMax=p.areaMax;query.coherenceRadius=90;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
+        query.formation=!coverStage&&!repair;query.protectedPosition=coverStage||repair||(p.stage==DrillStage::Bound&&p.target>=0&&!p.retreat);
+        query.firing=query.protectedPosition&&p.target>=0;
+        if(p.stage==DrillStage::Bound&&p.technique==MovementTechnique::BoundingOverwatch){query.boundCenter=overwatch;query.boundRadius=35;}
+        query.anchorWeight=query.formation?3.f:1.f;query.coverWeight=query.formation?0.f:12.f;query.lineWeight=query.formation?0.f:20.f;
+        Vec3 averageOffset{};
+        if(p.interval==10){for(size_t rank=1;rank<group.size();++rank)averageOffset=averageOffset+direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));averageOffset=averageOffset*(1.f/group.size());}
+        int rank=0;for(const auto& s:group){Vec3 offset{};
+            if(p.interval==4)offset=direction*(-4.f*(rank+(p.technique==MovementTechnique::Traveling&&element==1?p.strength[0]:0)));
+            else if(rank>0)offset=direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));
+            // Two wedges 18m apart along the route. The former diagonal overlap
+            // made four of eight nearest-neighbour intervals only 5.1m.
+            if(p.interval==10)offset=offset-averageOffset+(p.technique==MovementTechnique::Traveling?direction*(element==0?9.f:-9.f):Vec3{});
+            query.anchors[s.id%SquadSize]=coverStage||repair?s.position:resolved+offset;++rank;
+        }
+        auto allocated=QueryPositions(leader,group,map,query,time,d);
+        for(size_t n=0;n<allocated.size();++n){const auto& s=group[n];const auto& result=allocated[n];const int slot=s.id%SquadSize;
+            p.positions[slot]=result.valid?result.primary.cover.shelter:s.position;p.hasSlot[slot]=result.valid&&result.primary.cover.id!=0;
+            if(p.hasSlot[slot]){p.slots[slot]=result.primary.cover;p.slotGeometry[slot]=map.revision;++protectedCount;}
+            p.movers[slot]=result.valid&&Distance(s.position,p.positions[slot])>.75f;
+            if(result.valid)reserved.push_back({s.id,result.primary.cover});
+            auto memberRoute=std::make_shared<TacticalRoute>(*route);memberRoute->id=route->id*16+slot;memberRoute->start=s.position;memberRoute->destination=p.positions[slot];
+            memberRoute->points=FindPath(map,s.position,p.positions[slot]);memberRoute->stages.clear();
+            float pathLength=0;Vec3 prior=s.position;bool inside=!memberRoute->points.empty();
+            for(Vec3 point:memberRoute->points){pathLength+=Distance(prior,point);prior=point;inside&=CorridorDistance(*route,point)<=query.groupCap&&point.y>=p.areaMin.y&&point.y<=p.areaMax.y;}
+            if(!inside){p.positions[slot]=s.position;p.hasSlot[slot]=false;p.movers[slot]=false;memberRoute->destination=s.position;memberRoute->points={s.position};}
+            memberRoute->stages.push_back({0,memberRoute->points.size(),memberRoute->destination,pathLength/1.89f,0});p.memberRoutes[slot]=memberRoute;
+            p.issue[slot]=true;p.waiting[slot]=result.valid&&inside;p.arrivals[slot]=false;p.expected[slot]=0;
+            p.orderMethods[slot]=p.instance;p.orderGenerations[slot]=p.generation;longest=std::max(longest,pathLength);
+            Trace(d,leader,p,time,"formation_slot",std::string(p.interval==4?"column interval 4 m":"wedge interval 10 m")+(result.valid?"; allocated":"; no slot, wait within coherence"),s.id,p.positions[slot]);
+        }
+    }
+    p.support=-1;for(const auto& s:members)if(p.elements[s.id%SquadSize]==0&&p.hasSlot[s.id%SquadSize]){p.support=s.id;break;}
+    if(!repair)p.deadline=time+longest/1.89f+2*config.reportDelay+6;
+    if(p.stage==DrillStage::ContactCover&&protectedCount==0){p.retreat=true;Trace(d,leader,p,time,"drill_stage","BreakContact emergency response: no local protected slots; alternate rearward bounds");}
+    p.intent.expiresAt=config.maxSeconds;
+}
+static std::array<bool,SquadSize> SelectMembers(const std::vector<Soldier>& members,const DrillPlan& p,int element=-1){
+    std::array<bool,SquadSize> selected{};for(const auto& s:members)if(element<0||p.elements[s.id%SquadSize]==element)selected[s.id%SquadSize]=true;return selected;
+}
+static void SetTechnique(const Soldier& leader,DrillPlan& p,MovementTechnique technique,Diagnostics* d,float time){
+    const bool changed=technique!=p.technique||p.stage==DrillStage::None;p.technique=technique;
+    if(changed)Trace(d,leader,p,time,"technique_selected",technique==MovementTechnique::Traveling?"traveling":technique==MovementTechnique::TravelingOverwatch?"traveling overwatch":"bounding overwatch");
+}
+static void Advance(const Soldier& leader,DrillPlan& p,DrillStage stage,Diagnostics* d,float time,const std::string& trigger){
+    p.stage=stage;p.lastProgress=time;Trace(d,leader,p,time,"drill_stage_advanced",trigger);
+}
+void UpdateDrillPlan(const Soldier& leader,const std::vector<Soldier>& actual,const Map& map,const Config& config,const std::vector<Vec3>& approaches,const std::vector<int>& claimed,SquadCommand& cmd,Diagnostics* d,float time){
+    (void)claimed;auto& p=cmd.battleDrill;p.issue.fill(false);
+    auto members=SquadView(leader,actual,p,time);const bool deployment=!p.initialized;
+    if(deployment){auto roster=members;for(auto& s:roster)s.health=100;p.elements=AssignElements(roster,OrganisationKind::Section);}
+    members.erase(std::remove_if(members.begin(),members.end(),[](const Soldier& s){return !s.Active()||IsPlatoonStaff(s);}),members.end());if(members.empty())return;
+    p.center=Mean(members,-1,p);
+    if(deployment){p.deployment=p.center;p.initialized=true;p.contactLastKnown.fill(-100);p.strength=Strength(members,p);
+        p.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,p.deployment.y-24)};p.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,p.deployment.y+24)};
+        p.destination=config.family!=ScenarioFamily::None?cmd.mission:Sweep(leader,map,p);
+        for(const auto& s:members)Trace(d,leader,p,time,"element_assigned","deployment element "+std::to_string(p.elements[s.id%SquadSize]),s.id,s.position);
+    }
+    const auto knowledge=WithTracks(leader,time);int target=-1;float nearest=1e9f;bool freshContact=false;
+    for(int id=0;id<UnitCount;++id){const auto& ct=knowledge.contacts[id];
+        if(ct.known){p.contactLastKnown[id]=time;const float distance=Distance(p.center,ct.position);
+            if(distance<nearest){nearest=distance;target=id;}
+            if(distance<100&&!p.contactInside[id]){freshContact=true;p.contactInside[id]=true;}
+        }else if(time-p.contactLastKnown[id]>10)p.contactInside[id]=false;
+    }
+    bool lost=false;if(p.target>=0&&!knowledge.contacts[p.target].known){if(p.contactLostAt<0)p.contactLostAt=time;lost=time-p.contactLostAt>10;}else p.contactLostAt=-1;
+    bool effective=leader.understoodSuppression>.3f;for(const auto& s:members)effective|=s.suppression>.3f;
+    for(const auto& area:leader.fireAreas)effective|=time-area.observedAt<6&&area.intensity>.3f;
+    int rounds=0;bool gun=false;for(const auto& r:leader.deliveries)if(r.shooter>=0&&r.shooter/SquadSize==leader.squad&&r.observedAt<=time&&time-r.observedAt<=6&&target>=0&&(r.enemy==target||Distance(r.target,knowledge.contacts[target].position)<18)){
+        int recent=0;for(float at:r.times)recent+=at>=time-6&&at<=time;rounds+=recent;gun|=r.supportWeapon&&recent>=2;
+    }
+    const bool fireChange=Hysteresis(effective,p.fireCandidate,p.fireCandidateAt,p.effectiveFire,6,time);
+    const bool superiorityChange=Hysteresis(gun&&rounds>=3,p.superiorityCandidate,p.superiorityCandidateAt,p.superiority,8,time);
+    const bool directive=leader.platoonOrder.serial>cmd.platoonOrderSerial&&time<leader.platoonOrder.expiresAt;
+    if(directive){cmd.platoonOrderSerial=leader.platoonOrder.serial;p.destination=leader.platoonOrder.intent.objective;}
+    const auto strength=Strength(members,p);bool below=false;
+    for(int el=0;el<2;++el)below|=p.strength[el]>=Organisation(OrganisationKind::Section).elements[el].minStrength&&strength[el]<Organisation(OrganisationKind::Section).elements[el].minStrength;
+    p.strength=strength;
+    const bool arrived=LatchArrival(leader,members,p,time);
+    const bool deadline=p.deadline>0&&time>=p.deadline;
+    std::array<bool,SquadSize> invalid{};bool repair=false;
+    for(const auto& s:members){const int n=s.id%SquadSize;invalid[n]=InvalidSlot(knowledge,map,p,n,time);repair|=invalid[n];}
+    const bool reassess=freshContact||lost||fireChange||superiorityChange||directive;
+    auto issue=[&](const std::array<bool,SquadSize>& who,bool fixing=false){IssueStage(leader,knowledge,members,map,config,approaches,p,who,d,time,fixing);};
+    auto beginMove=[&](const std::string& why,bool close){
+        Accept(leader,p,BattleDrill::MoveTactically,d,time);p.closing=close;
+        auto technique=close||(target>=0&&nearest<100)||p.effectiveFire?MovementTechnique::BoundingOverwatch:
+            (target>=0&&nearest<=150)||Mouth(map,p.center,Unit(p.destination-p.center))?MovementTechnique::TravelingOverwatch:MovementTechnique::Traveling;
+        SetTechnique(leader,p,technique,d,time);
+        if(technique==MovementTechnique::Traveling){Advance(leader,p,DrillStage::Travel,d,time,why);issue(SelectMembers(members,p));}
+        else if(p.coverComplete){Advance(leader,p,DrillStage::Bound,d,time,why);issue(SelectMembers(members,p,p.movingElement));}
+        else {Advance(leader,p,DrillStage::BoundSetup,d,time,why);issue(SelectMembers(members,p));}
+    };
+    auto contact=[&](const std::string& why){
+        Accept(leader,p,BattleDrill::ReactToContact,d,time);p.assessed=false;p.coverComplete=false;p.closing=false;p.blocked=false;p.retreat=false;p.assessmentAt=time+3+leader.reactionBase;
+        SetTechnique(leader,p,MovementTechnique::BoundingOverwatch,d,time);Advance(leader,p,DrillStage::ContactCover,d,time,why);issue(SelectMembers(members,p));
+    };
+    std::string trigger;
+    if(deployment)trigger="deployment";else if(freshContact)trigger="new contact inside 100 m";else if(lost)trigger="current contact unknown for 10 s";
+    else if(fireChange)trigger=p.effectiveFire?"effective incoming fire began (6 s hysteresis)":"effective incoming fire ended (6 s hysteresis)";
+    else if(superiorityChange)trigger=p.superiority?"superiority established (8 s hysteresis)":"superiority lost (8 s hysteresis)";
+    else if(directive)trigger="received platoon directive";
+    if(deployment||reassess){p.target=target;p.sector=target>=0?knowledge.contacts[target].position:p.center+Vec3{leader.team?-60.f:60.f,0};}
+    if(below){
+        p.blocked=true;p.deadline=0;Advance(leader,p,DrillStage::Reorganise,d,time,"minStrength crossed: drill failed; Reorganise next tick");
+        Trace(d,leader,p,time,"drill_stage","Blocked/Support: element below minStrength");
+    }else if(p.stage==DrillStage::Reorganise){
+        Reorganise(leader,members,p,d,time,"completed/failed drill");p.kind=BattleDrill::None;p.blocked=false;p.coverComplete=false;
+        if(target>=0&&nearest<100)contact("Reorganise complete: known contact");else beginMove("Reorganise complete",false);
+    }else if(deployment||reassess){
+        if((freshContact||(fireChange&&p.effectiveFire))&&((target>=0&&nearest<100)||p.effectiveFire))contact(trigger);
+        else if(p.stage==DrillStage::ContactCover){
+            // Assessment reads the new knowledge once; accepted cover orders remain.
+            Trace(d,leader,p,time,"drill_stage_advanced",trigger+"; retain contact cover stage");
+        }else if((target>=0&&nearest<100)&&p.effectiveFire&&!p.superiority&&nearest<=70){
+            if(p.stage!=DrillStage::ContactHold)contact(trigger);
+            else Trace(d,leader,p,time,"drill_stage_advanced",trigger+"; retain held slots");
+        }else beginMove(trigger,target>=0&&nearest<100);
+    }else if(p.stage==DrillStage::ContactCover){
+        if(arrived)p.coverComplete=true;
+        if(!p.assessed&&time>=p.assessmentAt){
+            p.assessed=true;p.blocked=p.strength[0]<Organisation(OrganisationKind::Section).elements[0].minStrength;
+            p.closeAfterCover=!p.blocked&&(nearest>70||p.superiority||!p.effectiveFire);
+            Trace(d,leader,p,time,"drill_stage_advanced","contact assessment complete (3 s plus reaction)");
+            Trace(d,leader,p,time,"drill_stage",p.blocked?"Blocked/Support: gun group below minStrength; request platoon support":"assessment: gun group supports; rifle group covers or closes");
+        }
+        if(p.assessed&&(p.coverComplete||deadline)){
+            if(p.retreat){p.kind=BattleDrill::MoveTactically;p.closing=false;Advance(leader,p,DrillStage::Bound,d,time,"contact assessment: BreakContact emergency rearward bound");issue(SelectMembers(members,p,p.movingElement));Trace(d,leader,p,time,"drill_stage","rearward bound with other element covering");}
+            else if(p.closeAfterCover){p.coverComplete=true;beginMove(deadline?"contact cover deadline: assessment resumes closure":"matching received arrivals: assessment resumes closure",true);}
+            else {p.movers.fill(false);p.deadline=0;Advance(leader,p,DrillStage::ContactHold,d,time,"assessment holds occupied cover; no replacement orders");}
+        }
+    }else if(arrived&&(p.stage==DrillStage::Travel||p.stage==DrillStage::Bound||p.stage==DrillStage::BoundSetup)){
+        if(p.stage==DrillStage::BoundSetup)p.coverComplete=true;
+        else if(Distance(p.center,p.destination)<18){
+            ++p.leg;p.destination=Sweep(leader,map,p);p.deadline=0;Advance(leader,p,DrillStage::Reorganise,d,time,"matching received arrivals: deployment leg complete");
+        }else if(p.stage==DrillStage::Bound)p.movingElement=1-p.movingElement;
+        if(p.stage!=DrillStage::Reorganise){Advance(leader,p,p.technique==MovementTechnique::Traveling?DrillStage::Travel:DrillStage::Bound,d,time,"matching received arrivals: quorum latched, grace complete");issue(SelectMembers(members,p,p.technique==MovementTechnique::Traveling?-1:p.movingElement));}
+    }else if(deadline){
+        p.exhausted=true;p.deadline=0;p.blocked=true;p.attempts.push_back({CognitiveMethod::None,p.intent.objective,p.destination,map.revision,leader.knowledgeRevision,time,TaskCause::Timeout});
+        Advance(leader,p,DrillStage::Reorganise,d,time,"stage deadline: drill failed; Reorganise next tick");
+    }else if(repair){
+        Trace(d,leader,p,time,"drill_stage_advanced","slot invalidated by geometry or known threat uncertainty");issue(invalid,true);
+    }
+    cmd.engaged=target>=0&&nearest<100;cmd.advancing=p.stage!=DrillStage::ContactHold;cmd.searching=!cmd.engaged;
+    cmd.mission=p.destination;cmd.hasWaypoint=true;cmd.waypoint=p.destination;cmd.planId=p.intent.id;cmd.phase=p.kind==BattleDrill::ReactToContact?SquadPhase::EstablishFire:SquadPhase::Bound;
+    cmd.planReason=p.kind==BattleDrill::ReactToContact?"committed contact stage":"committed movement stage";
+    if(directive)p.intent.parent=leader.platoonOrder.intent.id;p.intent.objective=p.destination;p.intent.expiresAt=config.maxSeconds;
+}
+std::vector<PlannedOrder> DrillOrders(const Soldier&,const std::vector<Soldier>& squad,const SquadCommand& cmd,float){
+    const auto& p=cmd.battleDrill;std::vector<PlannedOrder> out;
+    for(const auto& s:squad)if(s.Active()&&!IsPlatoonStaff(s)&&p.issue[s.id%SquadSize]&&p.elements[s.id%SquadSize]>=0){const int n=s.id%SquadSize;
+        PlannedOrder o{};o.recipient=s.id;o.task=p.retreat?Task::PullBack:p.stage==DrillStage::Travel?Task::BoundMove:Task::Overwatch;
+        o.position=p.positions[n];o.sector=p.sector;o.hasSlot=p.hasSlot[n];o.slot=p.slots[n];o.teamPlan.route=p.memberRoutes[n];o.teamPlan.targetEnemy=p.target;o.teamPlan.released=p.movers[n];
+        o.execution.completion=p.stage==DrillStage::Travel?Completion::Transit:Completion::Occupy;o.execution.method=p.orderMethods[n];o.execution.generation=p.orderGenerations[n];o.execution.stage=p.leg;o.execution.deadline=p.deadline;out.push_back(o);
+    }return out;
+}
+std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier&,const Map&,const Config&,float){return {};}
+}
+CPP' in /home/jchan/ww1-autobattler
+ succeeded in 27ms:
+exec
+/bin/bash -lc "sed -n '653,725p' Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp; grep -n 'p.stage\\|BoundSetup' Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp | tail -18; cat > .local/phase2c/finish_model.py <<'PY'
+from pathlib import Path
+root=Path('Unreal/Source/ArmyPrototype/Sim')
+p=root/'DrillSim.cpp';s=p.read_text().replace('p.started=time;p.assessed=false;p.coverComplete=false;p.closeAfterCover=false;', 'p.started=time;p.assessed=false;p.closeAfterCover=false;')
+s=s.replace('p.intent={100000+leader.squad*1000+p.instance,0,GoalPurpose::Seize,p.destination,10,0};', 'p.intent={100000+leader.squad*1000+p.instance,p.intent.parent,GoalPurpose::Seize,p.destination,10,0};')
+s=s.replace('query.firing=query.protectedPosition&&p.target>=0;', '''query.firing=query.protectedPosition&&p.target>=0&&Distance(origin,p.sector)<SightRange(group.front());
+        if(p.stage==DrillStage::BoundSetup){query.target=p.center+direction*40;query.firing=true;}''')
+s=s.replace('if(directive)p.intent.parent=leader.platoonOrder.intent.id;p.intent.objective=p.destination;p.intent.expiresAt=config.maxSeconds;', 'if(directive)p.intent.parent=leader.platoonOrder.intent.id;\\n    p.intent.objective=p.destination;p.intent.expiresAt=config.maxSeconds;')
+p.write_text(s)
+p=root/'Diagnostics.cpp';s=p.read_text();needle='i(p.initialized);i(p.assessed);i(p.retreat);i(p.closing);'
+s=s.replace(needle,'''i(int(p.stage));f(p.arrivalQuorumAt);f(p.contactLostAt);f(p.fireCandidateAt);f(p.superiorityCandidateAt);
+            i(p.arrivalConsumed);i(p.coverComplete);i(p.closeAfterCover);i(p.effectiveFire);i(p.fireCandidate);i(p.superiority);i(p.superiorityCandidate);
+            for(int n=0;n<SquadSize;++n){i(p.issue[n]);i(p.waiting[n]);i(p.arrivals[n]);i(p.orderMethods[n]);i(p.orderGenerations[n]);bytes(&p.slotGeometry[n],sizeof(p.slotGeometry[n]));}
+            for(int n=0;n<UnitCount;++n){i(p.contactInside[n]);f(p.contactLastKnown[n]);}for(int count:p.strength)i(count);
+            '''+needle)
+p.write_text(s)
+PY
+python3 .local/phase2c/finish_model.py" in /home/jchan/ww1-autobattler
+ succeeded in 17ms:
+exec
+/bin/bash -lc "grep -n 'baseOfFire\\|element_role' Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp; python3 - <<'PY'
+from pathlib import Path
+p=Path('Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp');s=p.read_text();s=s.replace('const bool arrived=LatchArrival(leader,members,p,time);','const bool arrived=LatchArrival(leader,members,p,time);\\n    if(arrived&&p.stage==DrillStage::ContactCover)p.coverComplete=true;')
+s=s.replace('if(p.stage"'!=DrillStage::Reorganise){Advance('"', 'if(p.stage==DrillStage::Travel)beginMove(\"matching received arrivals: traveling stage complete\",p.closing);\\n        else if(p.stage"'!=DrillStage::Reorganise){Advance('"')
+p.write_text(s)
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 9ms:
+codex
+The rewrite now separates cover acquisition, assessment, holding, bounds and reorganisation. New drill acceptance preserves element membership, and completed bounds issue orders only to the element taking the next bound. I also found a separate D01 geometry problem: the two wedges overlap at 5.1 m intervals. I’m separating their centres along the route while retaining the existing spacing assertion.
+exec
+/bin/bash -lc "sed -n '235,249p' Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp; cat > .local/phase2c/add_tests.py <<'PY'
+from pathlib import Path
+p=Path('tests/drills_tests.h');s=p.read_text();at=s.index('static void DrillsTests(')
+s=s[:at]+'''// Production sensing/transport: no fabricated receipts. These pins distinguish
+// policy commitment from a command-layer deduplication hiding planner churn.
+static void DrillLifecycleTests(){
+    int continued=0,retained=0,latched=0;
+    for(int encounter:{44,48,53,55}){
+        auto c=DrillConfig();c.maxSeconds=40;auto record=Simulate(c,{}, {},encounter);
+        auto transition=[&](float from,float to,const char* reason){
+            for(const auto& e:record.diagnostics->entries)if(e.squad==0&&e.kind==\"drill_stage_advanced\"&&e.time>from&&e.time<=to&&e.reason.find(reason)"'!=std::string::npos)return true;
+            return false;
+        };
+        for(size_t k=1;k<record.frames.size();++k){const auto& a=record.frames[k-1];const auto& b=record.frames[k];const auto& old=a.command[0].battleDrill;const auto& now=b.command[0].battleDrill;
+            if(!old.initialized)continue;
+            if(old.elements!=now.elements)assert(transition(a.time,b.time,"Reorganise"));
+            if(old.generation!=now.generation)assert(transition(a.time,b.time,""));
+            if(!transition(a.time,b.time,"")){
+                assert(old.generation==now.generation);++continued;
+                for(int n=0;n<8;++n){assert(Distance(old.positions[n],now.positions[n])<.001f);if(old.arrivals[n]){assert(now.arrivals[n]);++latched;}}
+            }
+            if(old.stage==DrillStage::Bound&&now.stage==DrillStage::Bound&&old.movingElement==now.movingElement&&!transition(a.time,b.time,"")){
+                for(int n=0;n<8;++n)if(now.elements[n]!=now.movingElement&&b.soldiers[n].Active()){
+                    assert(a.soldiers[n].assignment.id==b.soldiers[n].assignment.id||b.soldiers[n].assignment.issuedAt<=a.time);++retained;
+                }
+            }
+        }
+        // Every issued squad order has a transition on its issuance tick.
+        for(const auto& e:record.diagnostics->entries)if(e.kind=="order_issued"&&e.squad==0)assert(transition(e.time-.001f,e.time+.001f,""));
+    }
+    std::cout<<"Lifecycle continue samples="<<continued<<" retained overwatch samples="<<retained<<" latched receipt samples="<<latched<<"'"\\\\n\";
+    assert(continued>100&&retained>0&&latched>0);
+}
+''' +s[at:]
+s=s.replace('if(name==\"positions\"){', 'if(name==\"lifecycle\"){DrillLifecycleTests();return;}\\n    if(name==\"positions\"){',1);p.write_text(s)
+PY
+python3 .local/phase2c/add_tests.py
+python3 - <<'PY'
+from pathlib import Path
+p=Path('Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp');s=p.read_text().replace('Q(a.baseOfFire?\"base_of_fire\":\"moving\")','Q("'!p.movers[s.id%SquadSize]?"base_of_fire":"moving")'"').replace('<<a.baseOfFire;', '<<"'!p.movers[s.id%SquadSize];'"');p.write_text(s)
+PY
+python3 tools/source_id.py" in /home/jchan/ww1-autobattler
+ succeeded in 59ms:
+2d0d3d2392fdd705
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp');s=p.read_text().replace('const auto& owner=(sample==r.frames.begin()?r.frames.front():*(sample-1)).soldiers[shot.owner];','const auto& ownerFrame=sample==r.frames.begin()?r.frames.front():*(sample-1);const auto& owner=ownerFrame.soldiers[shot.owner];').replace('Q(owner.assignment.baseOfFire?\"base_of_fire\":\"moving\")','Q("'!ownerFrame.command[owner.squad].battleDrill.movers[owner.id%SquadSize]?"base_of_fire":"moving")'"');p.write_text(s)
+p=Path('tests/drills_tests.h');s=p.read_text().replace('query.areaMin={10000,10000};assert("'!QueryPositions'"', 'query.boundCenter={10000,10000};query.boundRadius=35;assert("'!QueryPositions(leader,{member},map,query,0,nullptr)[0].valid);query.boundRadius=0;'"\\n        query.areaMin={10000,10000};assert("'!QueryPositions'"');p.write_text(s)
+PY
+./scripts/test-sim.sh --drills lifecycle > .local/phase2c/lifecycle-build.log 2>&1" in /home/jchan/ww1-autobattler
+ succeeded in 32368ms:
+exec
+/bin/bash -lc "cat > tools/order_metrics.py <<'PY'
+#"'!/usr/bin/env python3
+"""Offline own-side order churn; trace/event equality is checked when traced.
+
+Count issued soldier orders, including orders to NCOs, not deliveries, reports or
+platoon directives. Own side is Azure (team 0); disclose both teams. Divide by
+actual recorded battle minutes, never soldier-minutes or the requested limit.
+"""
+import argparse
+import json
+from pathlib import Path
+from phase0_metrics import rows
+
+
+def evaluate(root):
+    root = Path(root)
+    manifest = json.loads((root/'"'manifest.json').read_text())
+    counts = [0, 0]
+    for event in rows(root/'events.jsonl'):
+        issuer, recipient = event['actor'], event['target']
+        if event['kind'] == 6 and issuer >= 0 and recipient >= 0 and issuer//32 == recipient//32:
+            counts[recipient//32] += 1
+    traced = None
+    if manifest.get('trace_enabled'):
+        traced = [0, 0]
+        for event in rows(root/'trace.jsonl'):
+            if event['kind'] "'!= '"'order_issued':
+                continue
+            issuer, recipient = event['issuer'], event['soldier']
+            if issuer >= 0 and recipient >= 0 and issuer//32 == recipient//32:
+                traced[recipient//32] += 1
+        if traced "'!= counts:
+            raise ValueError(f'"'Order trace/event counts disagree: {traced} "'!= {counts}'"')
+    minutes = manifest['duration']/60
+    return dict(orders=counts, orders_per_minute=[n/minutes if minutes else None for n in counts],
+                trace_orders=traced, trace_event_equal=traced == counts if traced is not None else None)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('run');parser.add_argument('--out');args = parser.parse_args()
+    text = json.dumps(evaluate(args.run),indent=2,allow_nan=False)+'\\n'
+    if args.out: Path(args.out).write_text(text)
+    else: print(text,end='')
+
+
+if __name__ == '__main__': main()
+PY
+cat > tests/test_order_metrics.py <<'PY'
+import json
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
+import order_metrics
+
+class OrderMetricsTests(unittest.TestCase):
+    def test_issued_orders_both_teams_and_actual_minutes(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            (root/'manifest.json').write_text(json.dumps(dict(duration=120,trace_enabled=True)))
+            events=[dict(kind=6,actor=0,target=1),dict(kind=6,actor=0,target=0),dict(kind=7,actor=0,target=1),dict(kind=6,actor=32,target=33)]
+            trace=[dict(kind='order_issued',issuer=e['actor'],soldier=e['target']) for e in events if e['kind']==6]
+            for name,items in [('events',events),('trace',trace)]:
+                (root/(name+'.jsonl')).write_text(''.join(json.dumps(x)+'\\n' for x in items))
+            result=order_metrics.evaluate(root)
+            self.assertEqual(result['orders'],[2,1]);self.assertEqual(result['orders_per_minute'],[1,.5]);self.assertTrue(result['trace_event_equal'])
+            (root/'trace.jsonl').write_text('')
+            with self.assertRaises(ValueError):order_metrics.evaluate(root)
+
+    def test_trace_disabled_does_not_claim_trace_equality(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);(root/'manifest.json').write_text(json.dumps(dict(duration=360,trace_enabled=False)))
+            (root/'events.jsonl').write_text(json.dumps(dict(kind=6,actor=0,target=2))+'\\n')
+            result=order_metrics.evaluate(root)
+            self.assertIsNone(result['trace_event_equal']);self.assertEqual(result['orders_per_minute'][0],1/6)
+PY
+python3 -m unittest discover -s tests -p 'test_*.py' > .local/phase2c/python-tests.log 2>&1
+tail -5 .local/phase2c/lifecycle-build.log" in /home/jchan/ww1-autobattler
+ succeeded in 666ms:
+Lifecycle continue samples=772 retained overwatch samples=1152 latched receipt samples=1039
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp');s=p.read_text().replace('e.taskSubject=subject;e.intent=p.intent;', 'e.taskSubject=subject;e.intent=p.intent;e.execution.method=p.instance;e.execution.stage=int(p.stage);e.execution.generation=p.generation;');p.write_text(s)
+p=Path('Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp');s=p.read_text();needle='out<<\",\\\\\\\"drill_instance\\\\\\\":\"<<p.instance'
+pos=s.index(needle)
+s=s[:pos]+'''out<<\",\\\\\\\"drill_stage\\\\\\\":\"<<int(p.stage)<<\",\\\\\\\"drill_generation\\\\\\\":\"<<p.generation<<\",\\\\\\\"drill_moving_element\\\\\\\":\"<<p.movingElement<<\",\\\\\\\"drill_arrival_latched\\\\\\\":\"<<p.arrivals[s.id%SquadSize];
+                '''+s[pos:];p.write_text(s)
+PY
+cp -a Unreal/Source/ArmyPrototype/Sim .local/phase2c/final/; cp tests/drills_tests.h .local/phase2c/final/; python3 tools/source_id.py > .local/phase2c/final/source-id.txt
+./scripts/battle-lab.sh --version > .local/phase2c/cli-build.log 2>&1" in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc './scripts/test-sim.sh > .local/phase2c/full-suite.log 2>&1; result=$?; cp .local/tests/sim_tests .local/phase2c/final/sim-tests; echo "$result" > .local/phase2c/full-suite.exit; exit "$result"' in /home/jchan/ww1-autobattler
+codex
+The new lifecycle pin passes on four production scenarios: it checks unchanged plans between transitions, retained stationary-element orders, latched receipts and element changes confined to Reorganise. I’m freezing the source for the measured build now. Candidate90 trace runs will be checked against the preserved digests before their order rates enter the comparison.
+ succeeded in 26523ms:
+exec
+/bin/bash -lc "cat > .local/phase2c/setup_runners.py <<'PY'
+from pathlib import Path
+root=Path('.local/phase2c')
+for name in ('run_authored.py','run_mechanisms.py','parity.py','trace_checks.py','measure.py','analyze.py'):
+ s=Path('.local/phase2b',name).read_text().replace('.local/phase2b', '.local/phase2c')
+ if name=='run_authored.py':s=s.replace(\"'--evaluate','--no-trace','--out'\", \"'--evaluate','--out'\")
+ if name=='run_mechanisms.py':s=s.replace(\"'positions','plumbing','D01'\", \"'positions','plumbing','lifecycle','D01'\")
+ if name=='trace_checks.py':s=s.replace(\"'--seconds','360',*flags\", \"'--seconds','360','--no-trace',*flags\")
+ if name=='measure.py':
+  s=s.replace(\"'--jobs','2'\", \"'--jobs','2','--trace'\")
+  s=s.replace(\" 'defaults':\", \" 'candidate-traces':['python3',str(root/'candidate_traces.py')],\\n 'defaults':\")
+ (root/name).write_text(s)
+PY
+python3 .local/phase2c/setup_runners.py
+cat > .local/phase2c/candidate_traces.py <<'PY'
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor,as_completed
+import subprocess,json,sys
+sys.path.insert(0,'tools')
+import order_metrics
+root=Path('.local/phase2c/candidate-traces');root.mkdir(exist_ok=True)
+binary=str(Path('.local/phase2c/final/battle-lab').resolve())
+refs=[]
+for terrain,name in enumerate(('works','trenches')):
+ for p in Path('.local/baselines/candidate90',name).glob('*/manifest.json'):
+  m=json.loads(p.read_text())
+  if 100<=m['seed']<=109:refs.append(dict(map=name,seed=m['seed'],gen_seed=0,expected=m['gameplay_digest'],flags=['--terrain',str(terrain)],reference=str(p)))
+for row in json.loads(Path('.local/phase1/f1-dev/family.json').read_text())['cases']:
+ if row['controller']=='candidate90':refs.append(dict(map='F1',seed=row['seed'],gen_seed=row['gen_seed'],expected=row['digest'],flags=['--generated','F1','--gen-seed',str(row['gen_seed'])],reference=str(Path(row['run'])/'manifest.json')))
+assert len(refs)==110
+
+def run(row):
+ dest=root/row['map']/str(row['gen_seed'])/str(row['seed']);cmd=[binary,'--cognition','--seed',str(row['seed']),'--seconds','360',*row['flags'],'--out',str(dest)]
+ p=subprocess.run(cmd,capture_output=True,text=True)
+ if p.returncode:raise RuntimeError(p.stderr)
+ run=dest/json.loads((dest/'latest.json').read_text())['run'];m=json.loads((run/'manifest.json').read_text());match=row['expected']==m['gameplay_digest']
+ return dict(**row,command=cmd,run=str(run),actual=m['gameplay_digest'],match=match,orders=order_metrics.evaluate(run))
+results=[]
+with ThreadPoolExecutor(max_workers=2) as pool:
+ for job in as_completed([pool.submit(run,r) for r in refs]):
+  row=job.result();results.append(row);(root/'parity.json').write_text(json.dumps(results,indent=2)+'\\n');print(row['map'],row['gen_seed'],row['seed'],row['match'],len(results),flush=True)
+  if not row['match']:raise RuntimeError('Candidate90 traced digest changed; do not use changed baseline')
+assert all(r['match'] for r in results)
+PY
+cat .local/phase2c/final/source-id.txt; tail -3 .local/phase2c/cli-build.log; tail -3 .local/phase2c/full-suite.log" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+26e028623123f46e
+26e028623123f46e-linux
+Prepared assault: eight seconds of crossing-specific fire, reset on gap, pause on lost support verified
+Commitments: one pause, no unchanged-fire retries, cleared-track search, delayed fire evidence verified
+Rifle suppression: remembered fire, expiry, specific track/crossing delivery evidence verified
+
+exec
+/bin/bash -lc 'cp .local/lab/battle-lab .local/phase2c/final/battle-lab; cp .local/tests/sim_tests .local/phase2c/final/sim-tests; python3 .local/phase2c/run_mechanisms.py > .local/phase2c/mechanisms.log 2>&1' in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc 'python3 .local/phase2c/measure.py > .local/phase2c/measure.log 2>&1' in /home/jchan/ww1-autobattler
+ succeeded in 3313ms:
+exec
+/bin/bash -lc "grep -n 'OrderIssued\\|order_issued' Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp; tail -4 .local/phase2c/mechanisms.log; tail -3 .local/phase2c/authored.log; grep -n 'EventKind::OrderIssued' Unreal/Source/ArmyPrototype/Sim/*.cpp" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+243:                events.push_back({f.time,EventKind::OrderIssued,cmd.leader,mover.leader,replacement<0?"Support withdrawn after received loss report":"Replacement support assigned to the retained mission"});
+266:                events.push_back({f.time,EventKind::OrderIssued,cmd.leader,report.leader,"Blocked goal "+std::to_string(replacement.intent.parent)+" replaced by observe goal "+std::to_string(replacement.intent.id)});
+306:            events.push_back({f.time,EventKind::OrderIssued,cmd.leader,order.recipient,std::string(Name(cmd.leader))+" orders squad "+std::to_string(order.recipient/SquadSize%SquadsPerTeam+1)+": "+PlatoonTaskName(order.directive.task)});
+{'name': 'D03', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D03'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D03.log'}
+{'name': 'D04', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D04'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D04.log'}
+{'name': 'D17', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D17'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D17.log'}
+{'name': 'D05', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D05'], 'exit_code': -6, 'log': '.local/phase2c/mechanisms/D05.log'}
+works 100 complete 680
+Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp:459:        log(EventKind::OrderIssued,sender,recipient,std::string(Name(sender))+" orders "+Name(recipient)+": "+TaskName(task));
+Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp:591:            log(EventKind::OrderIssued,cmd.leader,-1,std::string(Name(cmd.leader))+(cmd.supportReady?": overwatch ready, rifle group advance":": support delayed, rifle group advance cautiously"));
+Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp:243:                events.push_back({f.time,EventKind::OrderIssued,cmd.leader,mover.leader,replacement<0?"Support withdrawn after received loss report":"Replacement support assigned to the retained mission"});
+Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp:266:                events.push_back({f.time,EventKind::OrderIssued,cmd.leader,report.leader,"Blocked goal "+std::to_string(replacement.intent.parent)+" replaced by observe goal "+std::to_string(replacement.intent.id)});
+Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp:306:            events.push_back({f.time,EventKind::OrderIssued,cmd.leader,order.recipient,std::string(Name(cmd.leader))+" orders squad "+std::to_string(order.recipient/SquadSize%SquadsPerTeam+1)+": "+PlatoonTaskName(order.directive.task)});
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json,pathlib,collections
+r=next(pathlib.Path('.local/phase2b/authored-parity/candidate90/works/107').glob('battle-*'));es=[json.loads(l) for l in (r/'events.jsonl').read_text().splitlines()];own=[e for e in es if e['kind']==6 and 0<=e['target']<32]
+print('allissued',len(own));print('soldier orders',sum(' orders ' in e['text'] and ' orders squad ' not in e['text'] for e in own));print('directive examples',[e['text'] for e in own if ' orders ' not in e['text'] or ' orders squad ' in e['text']][:6])
+PY
+cat .local/phase2c/mechanisms/D01.log .local/phase2c/mechanisms/D05.log .local/phase2c/mechanisms/D17.log; cat .local/phase2c/mechanisms/lifecycle.log" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+allissued 349
+soldier orders 344
+directive examples ['Iven orders squad 1: SUPPORT ENGAGED SQUAD', 'Iven orders squad 2: PLATOON FLANK SOUTH', 'Iven orders squad 3: PLATOON RESERVE', 'Iven orders squad 4: CONSOLIDATE ON MAIN EFFORT', 'Rook orders squad 2: PLATOON RESERVE']
+D01 moving=1611 spacing_share=0.934823 arrived=8 corridor_inside=1
+D05 support=1 incorrectly_blocked=1 weak_report=1 latency=3.9
+sim-tests: /home/jchan/ww1-autobattler/tests/drills_tests.h:100: void DrillD05(): Assertion `support&&!blocked' failed.
+D17 independently allocatable protected slots=8
+D17 scarce_occupied=5 ample_occupied=8 spacing=1
+Lifecycle continue samples=772 retained overwatch samples=1152 latched receipt samples=1039
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json,pathlib
+for label,base in [('candidate90','.local/phase2b/authored-parity/candidate90/works/107'),('drills2b','.local/phase2b/trace-parity/works')]:
+ r=next(pathlib.Path(base).glob('battle-*'));ev=[json.loads(l) for l in (r/'events.jsonl').read_text().splitlines()];counts=[sum(e['kind']==6 and e['target']>=0 and e['target']//32==team and ' orders ' in e['text'] and ' orders squad ' not in e['text'] for e in ev) for team in (0,1)];print(label,counts,sum(counts));ts=[json.loads(l) for l in (r/'trace.jsonl').read_text().splitlines()];print('trace',len([e for e in ts if e['kind']=='order_issued']))
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 16227ms:
+candidate90 [344, 370] 714
+trace 0
+drills2b [1630, 1674] 3304
+trace 3304
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('tools/order_metrics.py');s=p.read_text().replace(\"if event['kind'] == 6 and issuer >= 0 and recipient >= 0 and issuer//32 == recipient//32:\",\"# EventKind::OrderIssued also carries platoon directives. The ordinary\\n        # soldier-order writer has this distinct text shape; trace equality\\n        # below proves the selection on every traced run.\\n        soldier_order = ' orders ' in event.get('text', '') and ' orders squad ' not in event.get('text', '')\\n        if event['kind'] == 6 and soldier_order and issuer >= 0 and recipient >= 0 and issuer//32 == recipient//32:\")
+p.write_text(s)
+p=Path('tests/test_order_metrics.py');s=p.read_text().replace(\"dict(kind=6,actor=0,target=1)\",\"dict(kind=6,actor=0,target=1,text='A orders B: OVERWATCH')\").replace(\"dict(kind=6,actor=0,target=0)\",\"dict(kind=6,actor=0,target=0,text='A orders A: OVERWATCH')\").replace(\"dict(kind=6,actor=32,target=33)\",\"dict(kind=6,actor=32,target=33,text='C orders D: OVERWATCH')\").replace(\"dict(kind=6,actor=0,target=2)\",\"dict(kind=6,actor=0,target=2,text='A orders B: OVERWATCH')\")
+s=s.replace(\"for e in events if e['kind']==6]\", \"for e in events if e['kind']==6]\\n            events.append(dict(kind=6,actor=5,target=0,text='Officer orders squad 1: SUPPORT'))\")
+p.write_text(s)
+PY
+python3 -m unittest discover -s tests -p 'test_*.py' > .local/phase2c/python-tests.log 2>&1
+cat .local/phase2c/mechanisms.log; tail -3 .local/phase2c/authored.log; tail -3 .local/phase2c/authored-parity.log" in /home/jchan/ww1-autobattler
+ succeeded in 613ms:
+{'name': 'positions', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'positions'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/positions.log'}
+{'name': 'plumbing', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'plumbing'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/plumbing.log'}
+{'name': 'lifecycle', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'lifecycle'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/lifecycle.log'}
+{'name': 'D02', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D02'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D02.log'}
+{'name': 'D01', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D01'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D01.log'}
+{'name': 'D03', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D03'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D03.log'}
+{'name': 'D04', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D04'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D04.log'}
+{'name': 'D17', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D17'], 'exit_code': 0, 'log': '.local/phase2c/mechanisms/D17.log'}
+{'name': 'D05', 'command': ['.local/phase2c/final/sim-tests', '--drills', 'D05'], 'exit_code': -6, 'log': '.local/phase2c/mechanisms/D05.log'}
+works 103 complete 482
+works 104 complete 847
+works 105 complete 817
+candidate90 trenches 109 True
+candidate90 trenches 106 True
+legacy works 106 True
+
+codex
+D01–D04 and D17 now pass. D05’s weak gun group stays frozen and delivers its support request in 3.9 seconds, but the capable-control assertion still fails because it reports blocked later in the run. I’ll trace that failure and disclose it without changing the measured build.
+exec
+/bin/bash -lc 'mkdir -p .local/phase2c/fixture-diagnostics; .local/phase2c/final/battle-lab --drills --encounter 52 --seconds 60 --evaluate --out .local/phase2c/fixture-diagnostics/D05-capable > .local/phase2c/fixture-diagnostics/D05-capable.log 2>&1' in /home/jchan/ww1-autobattler
+ succeeded in 642ms:
+exec
+/bin/bash -lc 'cat .local/phase2c/full-suite.exit; tail -3 .local/phase2c/full-suite.log; cat .local/phase2c/mechanisms/D02.log .local/phase2c/mechanisms/D03.log .local/phase2c/mechanisms/D04.log; cat .local/phase2c/measure.log' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+cat: .local/phase2c/full-suite.exit: No such file or directory
+MG encounter group closure: 9/9
+Fixed defender: 3/3 eliminated within six minutes
+Recorded vertical dispersion: above and below aim; longest stationary MG burst: 18 rounds
+D02 report_only=1 30-50m=1 protected_trail=1 control_traveling=1 control_close=1
+D03 alternation=1 covered=1 maximum_bound=43.3757 far_early_bounds=0
+D04 first_receipt=2.2 return_shooters_4s=7 all_cover=1 spacing=1 path_bound=1 assessment=1 bare_rear=1
+
+exec
+/bin/bash -lc "cat > .local/phase2c/update_analysis.py <<'PY'
+from pathlib import Path
+p=Path('.local/phase2c/analyze.py');s=p.read_text().replace('import closure_metrics,report_family','import closure_metrics,report_family,order_metrics')
+s=s.replace(\"extra=closure_metrics.evaluate(row['run']);path.write_text\", \"extra=closure_metrics.evaluate(row['run']);extra.update(order_metrics.evaluate(row['run']));path.write_text\")
+s=s.replace(\"return row\\n\", \"row['metrics'].update(orders_azure_per_minute=extra['orders_per_minute'][0],orders_ember_per_minute=extra['orders_per_minute'][1],hits_per_soldier_minute=extra['hits_per_soldier_minute'])\\n return row\\n\",1)
+s=s.replace(\"old,authored,oldf,newf=enriched\", \"\"\"old,authored,oldf,newf=enriched
+ trace_refs=json.loads((root/'candidate-traces/parity.json').read_text());assert len(trace_refs)==110 and all(r['match'] for r in trace_refs)
+ for row in old+oldf:
+  if row['controller']"'!='"'candidate90':continue
+  reference=next(r for r in trace_refs if r['map']==row.get('map','F1') and r['seed']==row['seed'] and r['gen_seed']==row['gen_seed'])
+  assert reference['orders']['trace_event_equal']
+  assert row['metrics']['orders_azure_per_minute']==reference['orders']['orders_per_minute'][0]
+  row['orders_trace_run']=reference['run']
+\"\"\")
+s=s.replace(\"checks=dict(S=\", \"checks=dict(O=ge(c['orders_azure_per_minute'],d['orders_azure_per_minute']),S=\")
+s=s.replace(\"('S','C','N','U','F120','F240')\", \"('S','C','N','U','F120','F240','O')\")
+s=s.replace(\"print({k:{n:v\", \"\"\"rate_lines=['| Map or F1 gen / seed | Orders/min Azure D/C | Orders/min Ember D/C | Hits/soldier-min D/C | Churn exit |','|---|---:|---:|---:|---|']
+ for current,baseline in ((authored,old),(newf,oldf)):
+  for r in sorted(current,key=lambda x:(x.get('map','F1'),x['gen_seed'],x['seed'])):
+   c=next(x for x in baseline if x['controller']=='candidate90' and x.get('map')==r.get('map') and x['seed']==r['seed'] and x['gen_seed']==r['gen_seed'])['metrics'];d=r['metrics']
+   key=f\"{r.get('map','F1 gen'+str(r['gen_seed'])))} / {r['seed']}\"
+   rate_lines.append(f\"| {key} | {d['orders_azure_per_minute']:.2f}/{c['orders_azure_per_minute']:.2f} | {d['orders_ember_per_minute']:.2f}/{c['orders_ember_per_minute']:.2f} | {d['hits_per_soldier_minute']:.3f}/{c['hits_per_soldier_minute']:.3f} | {'PASS' if d['orders_azure_per_minute']<=c['orders_azure_per_minute'] else 'O'} |\")
+ (root/'order-hit-table.md').write_text('\\\\n'.join(rate_lines)+'\\\\n')
+ print({k:{n:v\"\"\")
+# Correct the nested expression without changing measured code.
+s=s.replace(\"r.get('map','F1 gen'+str(r['gen_seed'])))}\", \"r.get('map','F1 gen'+str(r['gen_seed']))}\")
+p.write_text(s)
+PY
+python3 .local/phase2c/update_analysis.py
+python3 -m py_compile .local/phase2c/analyze.py
+python3 - <<'PY'
+import json,pathlib
+r=next(pathlib.Path('.local/phase2c/fixture-diagnostics/D05-capable').glob('battle-*'))
+for line in (r/'trace.jsonl').open():
+ e=json.loads(line)
+ if e['squad']==0 and e['kind'] in ('drill_stage_advanced','drill_stage'):print(e['time'],e['kind'],e['reason'])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 77ms:
+0.050000001 drill_stage_advanced deployment
+4.0500002 drill_stage_advanced new contact inside 100 m
+7.5999999 drill_stage_advanced contact assessment complete (3 s plus reaction)
+7.5999999 drill_stage assessment: gun group supports; rifle group covers or closes
+8.6000004 drill_stage_advanced effective incoming fire began (6 s hysteresis)
+12.150001 drill_stage_advanced contact assessment complete (3 s plus reaction)
+12.150001 drill_stage assessment: gun group supports; rifle group covers or closes
+14.95 drill_stage_advanced matching received arrivals: assessment resumes closure
+19.450001 drill_stage_advanced superiority established (8 s hysteresis)
+23.200001 drill_stage_advanced effective incoming fire ended (6 s hysteresis)
+30.950001 drill_stage_advanced stage deadline: drill failed; Reorganise next tick
+31.950001 drill_stage_advanced Reorganise: completed/failed drill
+31.950001 drill_stage_advanced Reorganise complete: known contact
+31.950001 drill_stage BreakContact emergency response: no local protected slots; alternate rearward bounds
+35.950001 drill_stage_advanced contact assessment complete (3 s plus reaction)
+35.950001 drill_stage assessment: gun group supports; rifle group covers or closes
+39.950001 drill_stage_advanced contact assessment: BreakContact emergency rearward bound
+39.950001 drill_stage rearward bound with other element covering
+47.700001 drill_stage_advanced stage deadline: drill failed; Reorganise next tick
+48.700001 drill_stage_advanced Reorganise: completed/failed drill
+48.700001 drill_stage_advanced Reorganise complete: known contact
+48.700001 drill_stage BreakContact emergency response: no local protected slots; alternate rearward bounds
+52.049999 drill_stage_advanced effective incoming fire began (6 s hysteresis)
+52.049999 drill_stage BreakContact emergency response: no local protected slots; alternate rearward bounds
+56.450001 drill_stage_advanced contact assessment complete (3 s plus reaction)
+56.450001 drill_stage assessment: gun group supports; rifle group covers or closes
+57.450001 drill_stage_advanced superiority lost (8 s hysteresis); retain contact cover stage
+
+ succeeded in 271694ms:
+exec
+/bin/bash -lc 'tail -3 .local/phase2c/authored.log; tail -3 .local/phase2c/authored-parity.log; tail -3 .local/phase2c/full-suite.log; cat .local/phase2c/measure.log; cat .local/phase2c/candidate-traces.log 2>/dev/null | tail -2; cat .local/phase2c/family.log 2>/dev/null | tail -2; python3 tools/source_id.py' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+works 108 complete 807
+works 109 complete 788
+trenches 100 complete 450
+legacy trenches 100 True
+legacy trenches 107 True
+legacy trenches 108 True
+4 large-battle sweep: draw=1 azure=2 ember=1 shots=7351 hits=459 MG-overwatch rounds=2471 crouched samples=32125 pop-up samples=96942 settling samples=1339 cover-fire samples=27671 remembered-contact samples=207189
+Default battle: 360s; 1878 shots; winner=-1; Time limit: equal surviving soldiers. Draw.
+Elapsed: 238.741s
+26e028623123f46e
+
+codex
+D05’s remaining failure is a stage deadline at 30.95 seconds in the capable control; the gun group is no longer being refilled. The full simulation suite passes. I also found that platoon directives share the soldier-order event type, so the churn metric will exclude them and verify its counts against `order_issued` traces.
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+addition='''
+The attributed [Phase 2b review](plans/014-phase2b-fable-review.md) requires committed
+stages, latched arrivals and element changes only through Reorganise. It adds a
+per-run own-side soldier-order rate ceiling at candidate90's measured rate.
+Phase 2c's measured source is "'`26e028623123f46e`: D01–D04 and D17 pass, and the
+production lifecycle pin passes; D05'"'s weak-group report is fixed but its capable
+control still fails on a stage deadline. The build remains unpromoted. See the
+[Phase 2c report](.local/handoffs/014-phase2c-report.md). Legacy remains default;
+no Phase 3, platoon task tree or F2/F3 work follows this slice.
+'''
+for name in ('AGENTS.md','CLAUDE.md'):
+ p=Path(name);s=p.read_text();marker='## Previous main-build decisions (history, superseded by the replay decision above)';assert marker in s;s=s.replace(marker,addition+'\\n'+marker,1);p.write_text(s)
+p=Path('docs/AI_MAIN_BUILD.md');s=p.read_text()+'''\\n## Phase 2c lifecycle — 17 September 2026\\n\\nThe [attributed Phase 2b review](../plans/014-phase2b-fable-review.md) requires
+committed stages and adds own-side soldier orders per minute no higher than the
+paired candidate90 baseline. Measured source "'`26e028623123f46e` passes D01–D04,
+D17 and the lifecycle pin. D05'"'s weak-group report is fixed; its capable control
+still fails on a stage deadline. The build remains unpromoted; legacy stays default.
+The [Phase 2c report](../.local/handoffs/014-phase2c-report.md) contains the complete
+per-run scoreboard and trace-verified order rates. Native verification remains
+with the architect. No later phase started.
+''';p.write_text(s)
+PY
+python3 - <<'PY'
+import hashlib,json
+from pathlib import Path
+r=Path('.local/phase2c');refs=json.loads(Path('.local/phase0b/original/protected.json').read_text());checks={p:dict(expected=h,actual=hashlib.sha256(Path(p).read_bytes()).hexdigest()) for p,h in refs.items()}
+for c in checks.values():c['match']=c['expected']==c['actual']
+(r/'protected.json').write_text(json.dumps(checks,indent=2)+'\\n');assert all(c['match'] for c in checks.values())
+PY
+git diff --check > .local/phase2c/diff-check.log
+cat .local/phase2c/full-suite.exit; tail -3 .local/phase2c/authored.log; cat .local/phase2c/measure.log" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+0
+trenches 100 complete 450
+trenches 101 complete 332
+trenches 102 complete 303
+
+exec
+/bin/bash -lc 'tail -4 .local/phase2c/authored.log; tail -4 .local/phase2c/authored-parity.log; tail -3 .local/phase2c/family.log 2>/dev/null; tail -3 .local/phase2c/candidate-traces.log 2>/dev/null; cat .local/phase2c/measure.log; du -sh .local/phase2c' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+trenches 101 complete 332
+trenches 102 complete 303
+trenches 103 complete 447
+trenches 104 complete 294
+legacy trenches 104 True
+legacy trenches 106 True
+legacy trenches 102 True
+legacy trenches 105 True
+drills F1/1/108: complete (2/90)
+drills F1/2/107: complete (3/90)
+drills F1/1/109: complete (4/90)
+{'name': 'authored-parity', 'command': ['python3', '.local/phase2c/parity.py', '.local/phase2c/authored-parity', '.local/phase2c/final/battle-lab'], 'exit_code': 0}
+17G	.local/phase2c
+
+exec
+/bin/bash -lc "cat > .local/phase2c/report-body.md <<'MD'
+# Plan 014 Phase 2c report — Astra, 17 September 2026
+
+**Exit NOT MET; do not promote.** One fixed tactical build was measured. Five of six mechanism pairs pass; D05's weak-group report now passes, but its capable control fails on a stage deadline. No tactical change followed the measured results. Legacy remains the playable default and candidate90 remains explicitly selectable. No Phase 3 drills, platoon task tree or F2/F3 work started.
+
+## Fingerprints and provenance
+
+Entry: **"'`d80bca688ebe67ad`**. Measured and final simulation: **`26e028623123f46e`** (`-linux` binary suffix). Read first: the attributed [Phase 2b Fable review](../../plans/014-phase2b-fable-review.md). It accepts the surrounding foundation and requires lifecycle correction; it does not approve this build.
+
+Entry/final simulation trees, the frozen mechanism header and final executables are in `.local/phase2c/{entry,final}/`. A premeasurement lifecycle-only test build preceded the final build; the final change after that pin added transition-stage diagnostic fields, not a second tactical policy. The distribution pass used only `26e028623123f46e`. Source and mechanism tests were not revised after measurements began.
+
+No commit, reset, stash, Fable launcher, Windows or Unreal invocation. Existing work and protected files remain intact. Native verification stays with the architect. No new validation seeds were opened; only the specified authored100–109 and F1 development draws were used.
+
+## Lifecycle implementation
+
+`Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp` now separates accepted stages from planning cadence:
+
+1. **Commitment.** `DrillStage` distinguishes traveling, covering-position setup, bounds, contact cover, contact hold and Reorganise. Continued planning ticks update actor knowledge and receipt latches but leave accepted positions and generation unchanged. `drill_stage_advanced` names the transition trigger. A new contact must cross into the remembered inside100m set; contact loss requires10s unknown; effective-fire transitions require6s stable evidence; superiority transitions require8s. Platoon directives, completion, deadlines and minStrength crossings are explicit triggers. Slot repair is the geometry/known-uncertainty exception expressly allowed by rule2. There is no timed position-query refresh.
+2. **Stationary elements.** `DrillOrders` returns only the stage'"'s "'`issue` recipients. The command pipeline no longer receives reconstructed orders for every member on every planning tick. Unselected members retain slots, task IDs and execution contracts. Bounds use Overwatch/Occupy, so reaching a bound endpoint leaves a useful firing order without a second halt order. Slot repair selects only invalidated members.
+3. **Bounds.** Initial cover setup occurs once; subsequent bound completion swaps the moving element and issues one order set to it. PositionSim has an explicit35m hard bound radius about the remembered overwatch centre, applied to both shelter and peek. No orders are issued to the stationary element during an uninterrupted bound. Existing completed-bound47m scenario limit remains unchanged.
+4. **Contact stages.** Cover/return-fire positions are issued once on contact entry. Assessment occurs once per entry at3s plus leader reaction. The cover move may finish after assessment; its accepted slots remain until the arrival latch/grace or deadline resolves. The decision then holds existing cover or resumes bounding closure under the standing70m/superiority ruling. A material contact/fire change may re-enter the contact stage through the stated hysteresis rules. No-contact-cover emergency rearward response stays the existing Phase2 basic branch, not a Phase3 BreakContact implementation.
+5. **Elements.** Deployment assigns the roster once, including its pre-existing vacant slots. New drill acceptance inherits membership. Only the named `Reorganise` function reassigns survivors, after a completed/failed drill or minStrength crossing. Initial gun-group weakness therefore remains visible to contact assessment and platoon reporting. No gun recovery, new succession system or Phase3 reorganisation drill was added.
+6. **Arrivals.** Each member'"'s matching task ID, method and order generation latches a Done receipt. At least half of the required moving members starts a3s grace; all arrivals or expiry of that grace consumes completion once. Subsequent heartbeat/interrupt status changes cannot revoke or repeatedly consume the stage arrival. Per-member order identity permits stationary orders to span later stage generations.
+
+"'`BattleSim.h` stores the stage, latches and hysteresis state; `Diagnostics.cpp` hashes them only in the drills conditional block. Evaluation adds stage/generation/moving-element/arrival-latch fields. Exported element roles now follow the recorded stage'"'s mover mask: a member retaining an old order can become the covering element without receiving a new order just for diagnostic relabeling. These are observer exports, never policy inputs.
+
+The D01 formation correction is separate and explicit: the prior diagonally overlapping element wedges had5.1m nearest-member intervals in their ideal geometry. The same wedges now use centres18m apart along the route; column elements use successive4m slots. This is a general projection correction, not a fixture/seed rule. The6–14m/80% assertion was not changed. PositionSim's bound-radius rejection has a unit pin on the authored layouts.
+
+## Mechanisms and structural pin
+
+No fixture, paired control or existing behavioural assertion was relaxed. D01–D05/D17 use production sensing, ballistics, command transport and receipt delivery; no receipt injection. Every pair runs in an independent assert process so D05's abort does not hide the rest.
+
+| Pair | Measured evidence | Result |
+|---|---|---|
+| D01 /44–45 | 1,611 traveling/open moving samples;93.4823% in6–14m; all8 arrive; corridor control contained | PASS |
+| D02 /46–47 | Report-only contact;30–50m element separation; protected trail; no-report control travels and stays close | PASS |
+| D03 /48–49 | Alternation and continuous protected-overwatch predicate pass; maximum completed-bound element separation43.3757m; no early far-control bounding | PASS |
+| D04 /50–51 | First fire receipt2.2s;7 return shooters within4s; cover/path bound, slot spacing and assessment pass; bare rearward control passes | PASS |
+| D05 /52–53 | Weak gun group preserved; Blocked/Support received after3.9s, within4s. Capable case assesses support but later enters blocked state | **FAIL**, capable-control assertion |
+| D17 /54–55 | Independent query proves8 valid protected slots; scarce occupies5, ample8; spacing passes | PASS |
+| New lifecycle pin /44,48,53,55 | 772 continue samples preserve generation/positions;1,152 retained-overwatch samples;1,039 latched-receipt samples; all issued squad orders have a transition on their issuance tick; membership changes require Reorganise | PASS |
+| Position service /authored0,5,6,7 | Reservation, area, hard bound-radius rejection and organisation templates | PASS |
+
+D05 diagnosis comes from the fixed build's traced encounter52, not inference from the aggregate result: support assessments at7.60s and12.15s; closure at14.95s; superiority transition19.45s; effective-fire end23.20s; **stage deadline30.95s sets blocked**, then Reorganise31.95s. A second deadline occurs47.70s. The old silent gun-group refill is fixed, but the capable control still cannot sustain its bound contract. The existing assertion "'`support && !blocked` remains. No policy repair or retuned fixture followed the measurement. Evidence: `.local/phase2c/fixture-diagnostics/D05-capable/` and `mechanisms/D05.log`.
+
+## Commands
+
+All per-run argv and exits are preserved under `.local/phase2c/`: `measurement-status.json`, authored `results.json`, family `family.json`, authored/candidate trace `parity.json`, and `trace-parity.json`.
+
+```sh
+python3 tools/source_id.py
+./scripts/test-sim.sh --drills lifecycle
+./scripts/battle-lab.sh --version
+./scripts/test-sim.sh
+python3 .local/phase2c/run_mechanisms.py
+python3 -m unittest discover -s tests -p '"'test_*.py'
+python3 .local/phase2c/measure.py
+python3 .local/phase2c/trace_checks.py
+python3 .local/phase2c/analyze.py
+python3 tools/report_family.py .local/phase2c/f1-baselines-enriched.json .local/phase2c/f1-drills-enriched.json --out .local/phase2c/f1-report.json --markdown .local/phase2c/f1-report.md
+git diff --check
+python3 tools/source_id.py
+"'```
+
+`measure.py` executes these fixed-binary jobs:
+
+```sh
+python3 .local/phase2c/run_authored.py
+python3 .local/phase2c/parity.py .local/phase2c/authored-parity .local/phase2c/final/battle-lab
+python3 tools/run_family.py --binary .local/phase2c/final/battle-lab --out .local/phase2c/f1-dev --family F1 --gen-seeds 1-30 --seeds 107-109 --controllers drills --seconds 360 --jobs 2 --trace
+python3 .local/phase2c/candidate_traces.py
+python3 tests/check_controller_defaults.py --binary .local/phase2c/final/battle-lab --out .local/phase2c/defaults
+```
+
+Authored drills use `--drills --terrain 0|1 --seed 100..109 --seconds360 --evaluate` with tracing enabled. Forty historical parity runs use explicit legacy/cognition, both maps and100–109,360s, `--no-trace --evaluate`. Candidate traces reproduce20 authored and90 F1 candidate90 configurations with trace enabled, comparing each digest with its preserved untraced baseline before using order rates. Baseline metric values remain the original measured values; identical-digest exports supply diagnostics. Drills trace parity repeats Works/Trenches107 and F1 gen1/seed107 with trace disabled against the traced distribution records. The only extra diagnostic battle is the fixed-build D05 capable fixture above.
+
+## Metric definitions
+
+The Phase2 corrected definitions stand. **S**: shots >=candidate90; **C**: total initial-active minus final-active casualties across both teams >=candidate90; **N**: median nearest squadmate >=3m; **U**: under2m share <=legacy. **F120/F240**: Azure attacking-platoon closure >=candidate90 on Works/F1. Closure reproduces `evaluate_ai.py`'"'s per-squad median paired displacement of surviving initial members, then averages surviving Azure squads, exactly as disclosed in Phase2b. All squad and both platoon series are retained. Missing horizons are NA, not passes; no forward-fill or interpolation after battle end. Trenches closure is disclosed but not gated. Per-side casualty fractions remain visible.
+
+New **O**: Azure soldier orders issued per actual battle minute <=candidate90 on the same map/draw and battle seed. Trace count is "'`kind == order_issued`, recipient and issuer both Azure. It includes orders to NCOs and self-orders, excludes deliveries, reports and platoon directives. Both teams'"' rates are disclosed. "'`EventKind::OrderIssued` also carries platoon directives, so `tools/order_metrics.py` selects the soldier writer'"'s distinct event text and **requires equality with trace counts on traced runs**. This equality is checked for all measured drills runs and all110 candidate traces. Unit tests cover actual duration, both teams, issued-versus-received, directive exclusion, missing trace and mismatch rejection. Full-precision values determine pass/fail; displayed values are rounded.
+
+Hits per soldier-minute are diagnostic, using hit rounds from "'`shots.jsonl` divided by integrated active soldier-minutes across both teams. Friendly hits are included, as in Phase2b. It is not a gate and is not an actor input. `enriched-runs.json` and per-run diagnostic JSON retain exact counts and denominators; the family report supplies cluster-bootstrap distributions and paired deltas.
+MD' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+exec
+/bin/bash -lc 'tail -3 .local/phase2c/authored.log; tail -3 .local/phase2c/family.log; tail -3 .local/phase2c/candidate-traces.log 2>/dev/null; cat .local/phase2c/measure.log; cat .local/phase2c/python-tests.log' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+trenches 106 complete 129
+trenches 107 complete 573
+trenches 108 complete 395
+drills F1/13/108: complete (38/90)
+drills F1/13/109: complete (39/90)
+drills F1/14/107: complete (40/90)
+{'name': 'authored-parity', 'command': ['python3', '.local/phase2c/parity.py', '.local/phase2c/authored-parity', '.local/phase2c/final/battle-lab'], 'exit_code': 0}
+....................................................
+----------------------------------------------------------------------
+Ran 52 tests in 0.630s
+
+OK
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('tools/order_metrics.py');s=p.read_text();s=s.replace(\"        for event in rows(root/'trace.jsonl'):\\n            if event['kind'] "'!= '"'order_issued':\\n                continue\\n            issuer, recipient = event['issuer'], event['soldier']\\n            if issuer >= 0 and recipient >= 0 and issuer//32 == recipient//32:\\n                traced[recipient//32] += 1\", \"\"\"        with (root/'trace.jsonl').open() as stream:
+            for line in stream:
+                # Avoid decoding large unrelated perception/query records.
+                if '\\\"order_issued\\\"' not in line:
+                    continue
+                event = json.loads(line)
+                if event['kind'] "'!= '"'order_issued':
+                    continue
+                issuer, recipient = event['issuer'], event['soldier']
+                if issuer >= 0 and recipient >= 0 and issuer//32 == recipient//32:
+                    traced[recipient//32] += 1\"\"\")
+p.write_text(s)
+PY
+python3 -m unittest discover -s tests -p 'test_*.py' > .local/phase2c/python-tests.log 2>&1
+tail -3 .local/phase2c/authored.log; cat .local/phase2c/measure.log; tail -2 .local/phase2c/candidate-traces.log 2>/dev/null" in /home/jchan/ww1-autobattler
+ succeeded in 629ms:
+trenches 108 complete 395
+trenches 109 complete 357
+authored runs 20 of 20
+{'name': 'authored-parity', 'command': ['python3', '.local/phase2c/parity.py', '.local/phase2c/authored-parity', '.local/phase2c/final/battle-lab'], 'exit_code': 0}
+{'name': 'authored', 'command': ['python3', '.local/phase2c/run_authored.py'], 'exit_code': 0}
+works 0 109 True 3
+works 0 103 True 4
+
+codex
+All 40 authored legacy/cognition digests match, and the 52 Python tests pass. The 20 authored drills runs are complete; F1 and the candidate90 trace comparisons are still running. Five mechanism pairs now pass, but D05 and the distribution criteria will determine the final exit.
+exec
+/bin/bash -lc 'python3 .local/phase2c/trace_checks.py > .local/phase2c/trace-checks.log 2>&1' in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json,statistics
+from pathlib import Path
+rows=json.loads(Path('.local/phase2c/authored/results.json').read_text())['cases']
+for m in ('works','trenches'):
+ r=[x for x in rows if x['map']==m];print(m,statistics.mean(x['metrics']['shots'] for x in r),statistics.mean(sum(x['initial_actives'])-sum(x['survivors']) for x in r))
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+works 787 16.2
+trenches 375.4 8.4
+
+ succeeded in 17717ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+s=Path('.local/phase2b/precache_authored.py').read_text().replace('.local/phase2b','.local/phase2c');Path('.local/phase2c/precache_authored.py').write_text(s)
+PY
+python3 .local/phase2c/precache_authored.py > .local/phase2c/diagnostic-pull.log 2>&1" in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc "tail -3 .local/phase2c/family.log; tail -3 .local/phase2c/candidate-traces.log; cat .local/phase2c/trace-checks.log; python3 - <<'PY'
+from pathlib import Path
+import json
+p=Path('.local/phase2c/candidate-traces/parity.json')
+rows=json.loads(p.read_text());r=next((r for r in rows if r['map']=='works' and r['seed']==107),None)
+if r:print('candidate90 Works107',r['orders'],r['expected'],r['actual'])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+drills F1/22/109: complete (66/90)
+drills F1/23/107: complete (67/90)
+drills F1/23/108: complete (68/90)
+trenches 0 103 True 11
+trenches 0 102 True 12
+trenches 0 104 True 13
+works True
+trenches True
+F1 True
+candidate90 Works107 {'orders': [344, 370], 'orders_per_minute': [57.333333333333336, 61.666666666666664], 'trace_orders': [344, 370], 'trace_event_equal': True} 5263252470802575170 5263252470802575170
+
+exec
+/bin/bash -lc "tail -3 .local/phase2c/family.log; tail -3 .local/phase2c/candidate-traces.log; tail -3 .local/phase2c/diagnostic-pull.log; cat .local/phase2c/measure.log; python3 - <<'PY'
+import json
+from pathlib import Path
+p=Path('.local/phase2c/diagnostics/drills-works-0-107.json')
+if p.exists():
+ x=json.loads(p.read_text());print('drills Works107',x['orders_per_minute'],x['orders'],x['hits_per_soldier_minute'])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+drills F1/29/109: complete (87/90)
+drills F1/30/107: complete (88/90)
+drills F1/30/108: complete (89/90)
+F1 4 107 True 30
+F1 4 108 True 31
+F1 4 109 True 32
+diagnostic 54
+diagnostic 55
+diagnostic 56
+{'name': 'authored-parity', 'command': ['python3', '.local/phase2c/parity.py', '.local/phase2c/authored-parity', '.local/phase2c/final/battle-lab'], 'exit_code': 0}
+{'name': 'authored', 'command': ['python3', '.local/phase2c/run_authored.py'], 'exit_code': 0}
+drills Works107 [182.66666666666666, 170.83333333333334] [1096, 1025] 0.21057985757882533
+
+ succeeded in 76624ms:
+codex
+The first complete churn comparison still fails: Works seed 107 drops from 1,630 to 1,096 Azure orders, while the digest-matched candidate90 run issues 344. That differs from the review’s quoted 454, so I’ll use and document the verified trace count. I’m counting transition triggers to explain where the remaining orders come from.
+exec
+/bin/bash -lc "cat > .local/phase2c/transition_audit.py <<'PY'
+import json,collections
+from pathlib import Path
+root=Path('.local/phase2c');rows=json.loads((root/'authored/results.json').read_text())['cases'];row=next(r for r in rows if r['map']=='works' and r['seed']==107)
+counts=collections.Counter();orders=collections.Counter();last={};pending=[]
+def category(reason):
+ for text in ('new contact','current contact unknown','effective incoming fire','superiority','stage deadline','minStrength','slot invalidated','Reorganise','matching received arrivals','contact assessment','assessment holds','deployment','received platoon'):
+  if text in reason:return text
+ return reason
+for line in (Path(row['run'])/'trace.jsonl').open():
+ if '\"drill_stage_advanced\"' not in line and '\"order_issued\"' not in line:continue
+ e=json.loads(line)
+ if e['squad']>=4:continue
+ if e['kind']=='drill_stage_advanced':
+  key=category(e['reason']);counts[key]+=1;last[e['squad']]=(e['time'],key)
+ elif e['kind']=='order_issued':
+  at,key=last.get(e['squad'],(-1,'unmatched'))
+  orders[key if abs(at-e['time'])<.001 else 'unmatched']+=1
+result=dict(run=row['run'],transition_counts=dict(counts),orders_by_latest_transition=dict(orders),total_orders=sum(orders.values()))
+(root/'works107-transitions.json').write_text(json.dumps(result,indent=2)+'\\n');print(json.dumps(result,indent=2))
+PY
+python3 .local/phase2c/transition_audit.py" in /home/jchan/ww1-autobattler
+ succeeded in 3143ms:
+{
+  "run": ".local/phase2c/authored/works/107/battle-107-1789631648248012537",
+  "transition_counts": {
+    "deployment": 4,
+    "stage deadline": 68,
+    "Reorganise": 150,
+    "matching received arrivals": 51,
+    "contact assessment": 45,
+    "new contact": 36,
+    "effective incoming fire": 15,
+    "assessment holds": 7,
+    "superiority": 2,
+    "current contact unknown": 3,
+    "minStrength": 2,
+    "slot invalidated": 2
+  },
+  "orders_by_latest_transition": {
+    "unmatched": 52,
+    "deployment": 30,
+    "Reorganise": 548,
+    "matching received arrivals": 165,
+    "new contact": 225,
+    "effective incoming fire": 63,
+    "superiority": 3,
+    "current contact unknown": 6,
+    "contact assessment": 2,
+    "slot invalidated": 2
+  },
+  "total_orders": 1096
+}
+
+exec
+/bin/bash -lc 'tail -3 .local/phase2c/family.log; tail -3 .local/phase2c/candidate-traces.log; tail -3 .local/phase2c/diagnostic-pull.log; cat .local/phase2c/measure.log' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+drills F1/30/107: complete (88/90)
+drills F1/30/108: complete (89/90)
+drills F1/30/109: complete (90/90)
+F1 16 108 True 67
+F1 16 109 True 68
+F1 17 107 True 69
+diagnostic 58
+diagnostic 59
+diagnostic 60
+{'name': 'authored-parity', 'command': ['python3', '.local/phase2c/parity.py', '.local/phase2c/authored-parity', '.local/phase2c/final/battle-lab'], 'exit_code': 0}
+{'name': 'authored', 'command': ['python3', '.local/phase2c/run_authored.py'], 'exit_code': 0}
+{'name': 'family', 'command': ['python3', 'tools/run_family.py', '--binary', '.local/phase2c/final/battle-lab', '--out', '.local/phase2c/f1-dev', '--family', 'F1', '--gen-seeds', '1-30', '--seeds', '107-109', '--controllers', 'drills', '--seconds', '360', '--jobs', '2', '--trace'], 'exit_code': 0}
+{'name': 'defaults', 'command': ['python3', 'tests/check_controller_defaults.py', '--binary', '.local/phase2c/final/battle-lab', '--out', '.local/phase2c/defaults'], 'exit_code': 0}
+
+exec
+/bin/bash -lc "grep -n 'send(' Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp | head -30; grep -n 'TraceOrder' Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp; sed -n '480,530p' Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp; python3 - <<'PY'
+import json
+from pathlib import Path
+root=Path('.local/phase2c');row=next(r for r in json.loads((root/'authored/results.json').read_text())['cases'] if r['map']=='works' and r['seed']==107);last={};out=[]
+for line in (Path(row['run'])/'trace.jsonl').open():
+ if '\"drill_stage_advanced\"' not in line and '\"order_issued\"' not in line:continue
+ e=json.loads(line)
+ if e['squad']>=4:continue
+ if e['kind']=='drill_stage_advanced':last[e['squad']]=e['time']
+ elif e['kind']=='order_issued' and abs(last.get(e['squad'],-1)-e['time'])>=.001:
+  out.append({k:e[k] for k in ('time','soldier','issuer','reason')})
+(root/'unmatched-orders.json').write_text(json.dumps(out,indent=2)+'\\n');print(out[:8])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 3170ms:
+[{'time': 0.050000001, 'soldier': 5, 'issuer': 5, 'reason': 'HOLD'}, {'time': 0.050000001, 'soldier': 6, 'issuer': 6, 'reason': 'HOLD'}, {'time': 4.0500002, 'soldier': 5, 'issuer': 5, 'reason': 'HOLD; goal=100001 purpose=1'}, {'time': 4.0500002, 'soldier': 6, 'issuer': 6, 'reason': 'HOLD; goal=100001 purpose=1'}, {'time': 8.0500002, 'soldier': 5, 'issuer': 5, 'reason': 'HOLD; goal=100001 purpose=1'}, {'time': 8.0500002, 'soldier': 6, 'issuer': 6, 'reason': 'HOLD; goal=100001 purpose=1'}, {'time': 12.05, 'soldier': 5, 'issuer': 5, 'reason': 'HOLD; goal=100001 purpose=1'}, {'time': 12.05, 'soldier': 6, 'issuer': 6, 'reason': 'HOLD; goal=100001 purpose=1'}]
+
+exec
+/bin/bash -lc "tail -3 .local/phase2c/candidate-traces.log; cat .local/phase2c/trace-checks.log; python3 - <<'PY'
+from pathlib import Path
+import json
+r=json.loads(Path('.local/phase2c/unmatched-orders.json').read_text());print('unmatched recipients',sorted({x['soldier'] for x in r}),len(r))
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+F1 29 108 True 106
+F1 29 109 True 107
+F1 30 107 True 108
+works True
+trenches True
+F1 True
+unmatched recipients [5, 6] 52
+
+ succeeded in 739895ms:
+codex
+Drills trace parity passes on both authored maps and the F1 check draw. The Works 107 audit records 68 stage deadlines; 548 of its 1,096 Azure orders follow Reorganise transitions. Those retries are a major remaining source of churn. I’ll include the counts in the report and keep the stop rule.
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import json,subprocess,hashlib
+root=Path('.local/phase2c');changes=[];same=[]
+for p in (root/'final/Sim').iterdir():
+ q=Path('Unreal/Source/ArmyPrototype/Sim')/p.name;same.append(p.read_bytes()==q.read_bytes())
+ original=root/'entry/Sim'/p.name
+ if original.read_bytes()"'!=q.read_bytes():changes.append(subprocess.run(['"'diff','-u',str(original),str(q)],capture_output=True,text=True).stdout)
+(root/'simulation.patch').write_text(''.join(changes))
+checks=dict(fingerprint=subprocess.check_output(['python3','tools/source_id.py'],text=True).strip(),measured_source_unchanged=all(same),measured_tests_unchanged=(root/'final/drills_tests.h').read_bytes()==Path('tests/drills_tests.h').read_bytes(),protected=json.loads((root/'protected.json').read_text()))
+(root/'static-checks.json').write_text(json.dumps(checks,indent=2)+'\\n');assert checks['measured_source_unchanged'] and checks['measured_tests_unchanged'];print(checks['fingerprint'])
+PY
+git diff --check > .local/phase2c/diff-check.log
+tail -3 .local/phase2c/candidate-traces.log; cat .local/phase2c/measure.log" in /home/jchan/ww1-autobattler
+ succeeded in 114ms:
+26e028623123f46e
+F1 30 107 True 108
+F1 30 108 True 109
+F1 30 109 True 110
+{'name': 'authored-parity', 'command': ['python3', '.local/phase2c/parity.py', '.local/phase2c/authored-parity', '.local/phase2c/final/battle-lab'], 'exit_code': 0}
+{'name': 'authored', 'command': ['python3', '.local/phase2c/run_authored.py'], 'exit_code': 0}
+{'name': 'family', 'command': ['python3', 'tools/run_family.py', '--binary', '.local/phase2c/final/battle-lab', '--out', '.local/phase2c/f1-dev', '--family', 'F1', '--gen-seeds', '1-30', '--seeds', '107-109', '--controllers', 'drills', '--seconds', '360', '--jobs', '2', '--trace'], 'exit_code': 0}
+{'name': 'defaults', 'command': ['python3', 'tests/check_controller_defaults.py', '--binary', '.local/phase2c/final/battle-lab', '--out', '.local/phase2c/defaults'], 'exit_code': 0}
+{'name': 'candidate-traces', 'command': ['python3', '.local/phase2c/candidate_traces.py'], 'exit_code': 0}
+
+exec
+/bin/bash -lc 'python3 .local/phase2c/analyze.py > .local/phase2c/analysis.log 2>&1' in /home/jchan/ww1-autobattler
+ succeeded in 68720ms:
+exec
+/bin/bash -lc "cat .local/phase2c/analysis.log; ls -l .local/phase2c/exit.json 2>/dev/null; python3 - <<'PY'
+from pathlib import Path
+import json
+p=Path('.local/phase2c/candidate-traces/parity.json');rs=json.loads(p.read_text());assert len(rs)==110 and all(r['match'] and r['orders']['trace_event_equal'] for r in rs);print('candidate trace parity and event counts',len(rs))
+for name in ('works','trenches'):
+ print(name,json.loads(Path('.local/phase2c/authored',name+'-guard.json').read_text()))
+f=json.loads(Path('.local/phase2c/f1-dev/family.json').read_text());print('F1 guard',f['engagement_guard'])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 21ms:
+candidate trace parity and event counts 110
+works {'enabled': True, 'threshold': 3, 'block_size': 10, 'failed': False, 'zero_shot_blocks': []}
+trenches {'enabled': True, 'threshold': 3, 'block_size': 10, 'failed': False, 'zero_shot_blocks': []}
+F1 guard {'enabled': True, 'threshold': 3, 'block_size': 10, 'failed': False, 'zero_shot_blocks': []}
+
+exec
+/bin/bash -lc 'python3 tools/report_family.py .local/phase2c/f1-baselines-enriched.json .local/phase2c/f1-drills-enriched.json --out .local/phase2c/f1-report.json --markdown .local/phase2c/f1-report.md > .local/phase2c/family-report.log 2>&1' in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc "head -7 .local/phase2c/authored-table.md; head -5 .local/phase2c/order-hit-table.md; python3 - <<'PY'
+from pathlib import Path
+import json,statistics
+r=json.loads(Path('.local/phase2c/enriched-runs.json').read_text())
+for key in r:
+ for label in sorted({(x['controller'],x.get('map','F1')) for x in r[key]}):
+  rows=[x['metrics'] for x in r[key] if (x['controller'],x.get('map','F1'))==label]
+  print(label,{k:round(statistics.mean(x[k] for x in rows if x[k] is not None),3) for k in ('shots','casualties_total','nearest_m','under_2m','orders_azure_per_minute','hits_per_soldier_minute','closure_120s_m','closure_240s_m')})
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+| Map / seed | Shots D/C | Casualties D/C | D casualty % A/E | NN m | <2m % D/L | Closure120 D/C m | Closure240 D/C m | Adverse criteria |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| trenches / 100 | 450/598 | 6/11 | 6.2/12.5 | 1.61 | 60.3/28.5 | 12.2/42.1 | 12.0/41.2 | S,C,N,U |
+| trenches / 101 | 332/1342 | 11/17 | 15.6/18.8 | 1.61 | 58.3/33.4 | 13.4/37.7 | 12.2/27.9 | S,C,N,U |
+| trenches / 102 | 303/1179 | 11/23 | 21.9/12.5 | 1.61 | 58.4/39.5 | 12.4/32.2 | 11.6/36.5 | S,C,N,U |
+| trenches / 103 | 447/511 | 9/14 | 15.6/12.5 | 1.79 | 60.3/30.4 | 11.5/41.6 | 13.1/33.4 | S,C,N,U |
+| trenches / 104 | 294/817 | 7/18 | 6.2/15.6 | 1.98 | 53.5/40.3 | 17.3/39.9 | 14.1/34.4 | S,C,N,U |
+| Map or F1 gen / seed | Orders/min Azure D/C | Orders/min Ember D/C | Hits/soldier-min D/C | Churn exit |
+|---|---:|---:|---:|---|
+| trenches / 100 | 235.00/509.50 | 220.67/42.67 | 0.065/0.104 | PASS |
+| trenches / 101 | 205.17/313.33 | 207.83/674.33 | 0.116/0.181 | PASS |
+| trenches / 102 | 204.17/836.17 | 212.67/469.17 | 0.128/0.253 | PASS |
+('candidate90', 'trenches') {'shots': 798.9, 'casualties_total': 16.6, 'nearest_m': 1.454, 'under_2m': 0.665, 'orders_azure_per_minute': 611.033, 'hits_per_soldier_minute': 0.176, 'closure_120s_m': 39.698, 'closure_240s_m': 35.936}
+('candidate90', 'works') {'shots': 988.4, 'casualties_total': 38.8, 'nearest_m': 0.976, 'under_2m': 0.797, 'orders_azure_per_minute': 64.333, 'hits_per_soldier_minute': 0.502, 'closure_120s_m': 108.806, 'closure_240s_m': 109.355}
+('legacy', 'trenches') {'shots': 1989.3, 'casualties_total': 32.9, 'nearest_m': 3.946, 'under_2m': 0.313, 'orders_azure_per_minute': 255.383, 'hits_per_soldier_minute': 0.41, 'closure_120s_m': 35.672, 'closure_240s_m': 37.111}
+('legacy', 'works') {'shots': 2306.5, 'casualties_total': 38, 'nearest_m': 6.539, 'under_2m': 0.164, 'orders_azure_per_minute': 210.15, 'hits_per_soldier_minute': 0.468, 'closure_120s_m': 94.741, 'closure_240s_m': 91.292}
+('drills', 'trenches') {'shots': 375.4, 'casualties_total': 8.4, 'nearest_m': 1.797, 'under_2m': 0.57, 'orders_azure_per_minute': 216.1, 'hits_per_soldier_minute': 0.098, 'closure_120s_m': 14.211, 'closure_240s_m': 13.249}
+('drills', 'works') {'shots': 787, 'casualties_total': 16.2, 'nearest_m': 4.751, 'under_2m': 0.044, 'orders_azure_per_minute': 184.0, 'hits_per_soldier_minute': 0.166, 'closure_120s_m': 72.987, 'closure_240s_m': 80.135}
+('candidate90', 'F1') {'shots': 450.544, 'casualties_total': 12.989, 'nearest_m': 3.109, 'under_2m': 0.384, 'orders_azure_per_minute': 39.846, 'hits_per_soldier_minute': 0.452, 'closure_120s_m': 48.768, 'closure_240s_m': 48.803}
+('legacy', 'F1') {'shots': 718.2, 'casualties_total': 15.767, 'nearest_m': 5.102, 'under_2m': 0.136, 'orders_azure_per_minute': 127.523, 'hits_per_soldier_minute': 0.496, 'closure_120s_m': 53.498, 'closure_240s_m': 54.087}
+('drills', 'F1') {'shots': 754.244, 'casualties_total': 14.378, 'nearest_m': 7.42, 'under_2m': 0.026, 'orders_azure_per_minute': 90.671, 'hits_per_soldier_minute': 0.491, 'closure_120s_m': 30.185, 'closure_240s_m': 18.14}
+
+ succeeded in 12118ms:
+codex
+The completed scoreboard passes 0/20 authored runs and 0/90 F1 runs across all criteria. Churn passes on all ten Trenches runs, but on no Works runs and only four F1 runs. All 110 candidate90 trace digests match their baselines. The report will also flag a closure defect found in the final audit: the no-cover branch can select retreat without requiring effective incoming fire.
+exec
+/bin/bash -lc "cat > .local/phase2c/write_report.py <<'PY'
+from pathlib import Path
+import json,statistics
+root=Path('.local/phase2c');data=json.loads((root/'enriched-runs.json').read_text());exits=json.loads((root/'exit.json').read_text())
+parity=json.loads((root/'authored-parity/parity.json').read_text());trace=json.loads((root/'trace-parity.json').read_text());candidate=json.loads((root/'candidate-traces/parity.json').read_text())
+assert len(parity)==40 and all(r['match'] for r in parity)
+assert len(candidate)==110 and all(r['match'] and r['orders']['trace_event_equal'] for r in candidate)
+assert len(trace)==3 and all(r['match'] for r in trace)
+assert (root/'full-suite.exit').read_text().strip()=='0'
+assert len(data['authored'])==20 and len(data['family'])==90
+text=(root/'report-body.md').read_text()
+text+='''
+## Verification results
+
+| Check | Result | Evidence under "'`.local/phase2c/` |
+|---|---|---|
+| Final CLI build/version | PASS, `26e028623123f46e-linux` | `cli-build.log`, `final/battle-lab` |
+| Full `./scripts/test-sim.sh` | PASS, exit0, 238.741s | `full-suite.log`, `full-suite.exit` |
+| Python tests | 52 PASS | `python-tests.log` |
+| Controller defaults and manifest reruns | PASS; legacy remains default | `defaults.log`, `measurement-status.json` |
+| Existing authored legacy/cognition digests | **40/40 unchanged** | `authored-parity/parity.json` |
+| Traced candidate90 vs untraced preserved baseline | **110/110 unchanged**:20 authored +90 F1 | `candidate-traces/parity.json` |
+| Candidate90 trace/event soldier-order counts | **110/110 exact agreement**; also match original untraced event counts | `candidate-traces/parity.json`, `enriched-runs.json` |
+| Drills trace parity | **3/3 exact matches**, Works/Trenches107 and F1 gen1/seed107 | `trace-parity.json` |
+| Mechanism pairs | **5 PASS /1 FAIL**; D05 capable control fails | `mechanisms/results.json` |
+| Lifecycle, position service, short plumbing | PASS | `mechanisms/lifecycle.log`, `positions.log`, `plumbing.log` |
+| Measured drills trace/event order counts | **110/110 agree** | `diagnostics/drills-*.json` |
+| Authored/F1 execution | 20/20 and90/90 complete | `authored/results.json`, `f1-dev/family.json` |
+| Engagement guard | Enabled, three zero-shot runs per ten-run block; no aborts or zero-shot blocks | `authored/*-guard.json`, `f1-dev/family.json` |
+| Protected files, unchanged measured source/header, diff check | PASS | `protected.json`, `static-checks.json`, `diff-check.log` |
+| Windows/Unreal | Not attempted; architect-owned | No native result claimed |
+
+The full default suite does not select the optional drills pairs. Its pass does not turn D05 into a pass. Every behavioural assertion is retained.
+
+## Corrected exit, including churn
+
+**0/20 authored runs and0/90 F1 runs pass all applicable criteria.** The mechanism failure independently prevents acceptance. No engagement-guard abort truncated either distribution. Total casualties fail on every authored run. All Works runs fail both closure horizons and churn. All Trenches runs pass churn but fail both dispersion criteria and casualties.
+
+| Set | S shots | C casualties | N median | U under2m | F120 | F240 | O orders/min | All applicable |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+'"'''
+for name in ('works','trenches','F1'):
+ cases=exits['f1']['cases'] if name=='F1' else [c for c in exits['authored']['cases'] if c['key'].startswith(name)]
+ n=len(cases);cells=[]
+ for key in ('S','C','N','U','F120','F240','O'):
+  cells.append('not gated' if name=='trenches' and key.startswith('F') else f\"{sum(c['checks'].get(key,False) for c in cases)}/{n}\")
+ text+=f\"| {name} | \"+' | '.join(cells)+f\" | {sum(not c['adverse'] for c in cases)}/{n} |\\n\"
+text+='''
+The following means are per-run means. Closure shows available n because early termination can remove a horizon. Family distributions and paired95% CIs (2000 generated-map-cluster resamples) are in [the full family report](../phase2c/f1-report.md) and its JSON. The mean of hit rates here differs slightly from pooled hits / pooled soldier-time; both raw denominators are retained.
+
+| Map/family | Controller | Shots | Total casualties | NN m | Under2m % | Azure orders/min | Hits/soldier-min | Closure120 m (n) | Closure240 m (n) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+'''
+for name in ('works','trenches','F1'):
+ group=data['family_baselines']+data['family'] if name=='F1' else [r for r in data['authored_baselines']+data['authored'] if r['map']==name]
+ for controller in ('legacy','candidate90','drills'):
+  rows=[r['metrics'] for r in group if r['controller']==controller]
+  mean=lambda k:statistics.mean(r[k] for r in rows if r[k] is not None)
+  closure=lambda k:f\"{mean(k):.1f} ({sum(r[k] is not None for r in rows)})\"
+  text+=f\"| {name} | {controller} | {mean('shots'):.1f} | {mean('casualties_total'):.2f} | {mean('nearest_m'):.2f} | {100*mean('under_2m'):.1f} | {mean('orders_azure_per_minute'):.2f} | {mean('hits_per_soldier_minute'):.3f} | {closure('closure_120s_m')} | {closure('closure_240s_m')} |\\n\"
+text+='\\nF1 unavailable120/240s closure horizons: '
+for controller in ('legacy','candidate90','drills'):
+ rows=[r['metrics'] for r in data['family_baselines']+data['family'] if r['controller']==controller]
+ text+=f\"{controller} {sum(r['closure_120s_m'] is None for r in rows)}/{sum(r['closure_240s_m'] is None for r in rows)}; \"
+text+='''these remain NA and cannot pass the corresponding comparison. The authored runs have all horizons, so unavailable data do not explain their failure.
+
+### Authored maps, all20 runs
+
+D/C/L mean drills/candidate90/legacy. The final column lists every adverse criterion, including O. Churn's exact D/C values are in the order/hit table below.
+
+'''+(root/'authored-table.md').read_text()+'''
+### F1 development, all90 runs
+
+'''+(root/'f1-table.md').read_text()+'''
+## Per-run order-rate and hit-rate table
+
+Azure is the gated own side. Ember is disclosed as well; the hit-rate denominator includes both sides. Order rates use actual battle minutes, which can differ between a candidate and its baseline when one ends early.
+
+'''+(root/'order-hit-table.md').read_text()+'''
+## Transition audit and remaining churn
+
+Works seed107: Phase2b issued1630 Azure soldier orders; Phase2c issues1096 (182.67/min). Candidate90's newly traced, exact-baseline-digest run issues **344** (57.33/min), not the454 quoted in the review. Its digest is "'`5263252470802575170`, equal to the preserved untraced run. Both the new trace and the untraced events count344, after excluding five platoon directives. Counting directives gives349, so that distinction does not recover454. This report uses the verified paired baseline and records the numeric disagreement rather than silently changing the reference.
+
+The fixed Phase2c trace has68 stage-deadline transition records. Of1096 own-side orders,548 follow Reorganise transitions,225 follow new-contact transitions,165 follow received arrivals and63 follow effective-fire transitions. The complete category counts are in `.local/phase2c/works107-transitions.json`. The52 orders without a same-tick DrillSim transition are attached-staff self-orders to IDs5/6 from the existing follow controller in `CommandSim.cpp:498`; they remain included in the rate. They are not silent DrillOrders reissues. Its inherited staff-follow behaviour was not changed.
+
+This narrows the remaining cause: ordinary continue ticks retain orders, but repeated deadline/failure/reorganisation cycles still generate excessive traffic. The lifecycle pin does not establish that chosen bounds are feasible or that repeated failures become stable blocked outcomes. On Works, mean hits per soldier-minute rise from roughly0.089 in Phase2b to0.166 here, still below candidate90'"'s approximately0.502 per-run mean (0.498 pooled). On Trenches, spacing and fighting intensity regress despite passing the relative churn ceiling. Passing the focused pins is insufficient for a playable controller.
+
+The offline diagnostics preserve all front-line series, hit counts, non-incapacitating hits, incapacitating wounds, kills and active soldier-time. The requested rate table is above; detailed Works injury/closure data are additionally in "'`.local/phase2c/works-diagnostics.md` and `diagnostics/*.json`.
+
+## Disagreements and incomplete outcomes
+
+1. **No disagreement with the stop rule or exit thresholds.** This build fails; it is not promoted. No second measured build or post-measurement tactical change was made. The structural commitment and frozen-element fixes are present, but the distribution does not establish a satisfactory lifecycle outcome.
+2. **Reference count disagreement:** the review'"'s Works107 candidate90 figure454 does not reproduce from the preserved baseline. The new digest-equal trace and independent event selection both give344. The exact manifests and commands are retained in "'`candidate-traces/parity.json`.
+3. **D01 needed a geometry correction as well as commitment.** The original ideal element offsets yielded5.1m nearest neighbours, below the6m scenario floor even with perfect execution. The18m longitudinal centre separation corrects that general geometry; the80% bound was retained and now passes.
+4. **D05 is not fully complete.** Frozen elements alone fix its weak-group transport requirement (3.9s), but the capable control hits a bound deadline and reports blocked. That is a remaining policy/execution defect; the assertion was not reclassified or weakened.
+5. **Closure defect found during the postmeasurement audit:** `IssueStage` sets the emergency retreat flag whenever contact-cover allocation yields zero protected slots, without requiring effective incoming fire. That is broader than the retained closure ruling and can divert an otherwise eligible closure into a rearward bound. In the capable D05 trace, effective fire ends at23.20s, zero-slot emergency selection occurs at31.95s, and the rearward bound starts39.95s before the next effective-fire-began transition at52.05s. This is an implementation defect, not an architect ruling or an intentional exception. It remains in the frozen build because the requested stop rule forbids a second measured iteration. It also means the closure implementation cannot be claimed fully compliant.
+6. **Trace-label caveat:** material-knowledge events that retain the current contact-cover/hold stage are logged as `drill_stage_advanced` with an explicit `retain ...` reason, despite not advancing its order generation. Quiet continues are silent, but these event labels are broader than a literal stage advance. The audit counts records, not distinct completed bounds; it does not hide this distinction.
+7. **Metric interpretations remain explicit:** Azure is the attacking-side convention on Works; closure is the mean of surviving-squad medians; missing horizons do not pass. Effective fire still uses actor suppression/fire-area evidence above0.3; superiority still uses recent received gun/delivery evidence, now with6s/8s hysteresis. These are not observer estimates of enemy suppression. No per-seed thresholds were introduced.
+8. **Platform limits:** Windows/Unreal were intentionally left to the architect. No native outcome is claimed. Protected authored geometry, frozen seed lists and `tools/evaluate_routes.py` remain untouched. Legacy and cognition authored behavior remains exact; candidate90 F1 behavior is also verified by the90 additional trace digest matches.
+
+Stopped after this report. No further tactical iteration, Phase3, platoon task tree or F2/F3 work.
+'"'''
+Path('.local/handoffs/014-phase2c-report.md').write_text(text)
+print('report bytes',len(text))
+PY
+python3 .local/phase2c/write_report.py" in /home/jchan/ww1-autobattler
+ succeeded in 23ms:
+report bytes 40189
+
+exec
+/bin/bash -lc "python3 tools/source_id.py; git diff --check; python3 - <<'PY'
+from pathlib import Path
+import json,hashlib
+root=Path('.local/phase2c');static=json.loads((root/'static-checks.json').read_text())
+assert static['fingerprint']=='26e028623123f46e'
+assert all(p.read_bytes()==(Path('Unreal/Source/ArmyPrototype/Sim')/p.name).read_bytes() for p in (root/'final/Sim').iterdir())
+assert (root/'final/drills_tests.h').read_bytes()==Path('tests/drills_tests.h').read_bytes()
+for p,r in static['protected'].items():assert hashlib.sha256(Path(p).read_bytes()).hexdigest()==r['expected']
+report=Path('.local/handoffs/014-phase2c-report.md').read_text()
+assert len(report)>35000 and '0/20' in report and '0/90' in report
+print('report, immutable measured source/tests, and protected files verified')
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 97ms:
+26e028623123f46e
+report, immutable measured source/tests, and protected files verified
+
+codex
+Phase 2c is measured and **not promoted**.
+
+- Full exit: **0/20 authored**, **0/90 F1**.
+- **5/6 mechanism pairs pass**; D05 still fails.
+- **40 authored, 110 candidate trace and 3 drills trace parity checks pass**.
+- Full suite and **52 Python tests pass**.
+
+[Report, tables and remaining defects](/home/jchan/ww1-autobattler/.local/handoffs/014-phase2c-report.md)
+
+Fingerprint: `26e028623123f46e`. Legacy remains default. Stopped without another measured build or commit.
+tokens used
+2,099,304
+Phase 2c is measured and **not promoted**.
+
+- Full exit: **0/20 authored**, **0/90 F1**.
+- **5/6 mechanism pairs pass**; D05 still fails.
+- **40 authored, 110 candidate trace and 3 drills trace parity checks pass**.
+- Full suite and **52 Python tests pass**.
+
+[Report, tables and remaining defects](/home/jchan/ww1-autobattler/.local/handoffs/014-phase2c-report.md)
+
+Fingerprint: `26e028623123f46e`. Legacy remains default. Stopped without another measured build or commit.
+exit=0

@@ -1,0 +1,56 @@
+--- .local/plan015/step-b/review3-entry/Sim/SquadDrillSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+@@ -230,18 +230,18 @@
+         if(pause){
+             p.action.resumeMovers[n]=p.movers[n];
+             GroupPositionQuery q;q.center=p.center;q.target=p.action.objective;q.areaMin=p.areaMin;q.areaMax=p.areaMax;
+-            q.areaDiscCenter=p.action.objective;q.areaDiscRadius=60;q.coherenceRadius=160;q.radius=8;
+-            q.boundCenter=s.position;q.boundRadius=8;q.maxPathLength=8;q.corridor=p.action.route;q.groupCap=40;
++            q.areaDiscCenter=p.action.objective;q.areaDiscRadius=60;q.coherenceRadius=160;q.radius=15;
++            q.boundCenter=s.position;q.boundRadius=15;q.maxPathLength=15;q.corridor=p.action.route;q.groupCap=40;
+             q.protectedPosition=true;q.anchors[n]=s.position;q.anchorWeight=1;q.travelWeight=q.coverWeight=q.lineWeight=0;q.reserved=reserved;
+             if(p.platoonArea&&p.acceptedDirective.areaRouteRadius>0){q.areaRoute=p.acceptedDirective.corridor;q.areaRouteRadius=25;q.areaDiscCenter=p.acceptedDirective.areaDiscCenter;q.areaDiscRadius=60;}
+             auto slots=QueryPositions(l,{s},map,q,time,d);p.action.pauseHasSlot[n]=slots.front().valid;
+             if(slots.front().valid){
+                 p.action.pauseSlots[n]=slots.front().primary.cover;reserved.push_back({s.id,p.action.pauseSlots[n]});
+                 p.movers[n]=Distance(s.position,p.action.pauseSlots[n].shelter)>.75f;
+-                ActionTrace(l,p,d,time,"drill_safety_override","pause member "+std::to_string(s.id)+": nearest protected slot within 8 m; retain method and generation");
++                ActionTrace(l,p,d,time,"drill_safety_override","pause member "+std::to_string(s.id)+": nearest protected slot within 15 m; retain method and generation");
+             }else{
+                 p.movers[n]=false;
+-                ActionTrace(l,p,d,time,"drill_safety_override","pause exposed: member "+std::to_string(s.id)+" has no protected slot within 8 m; hold in place");
++                ActionTrace(l,p,d,time,"drill_safety_override","pause exposed: member "+std::to_string(s.id)+" has no protected slot within 15 m; hold in place");
+             }
+         }else{p.movers[n]=p.action.resumeMovers[n];p.action.pauseHasSlot[n]=false;}
+     }
+--- .local/plan015/step-b/review3-entry/Sim/TaskSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/TaskSim.cpp
+@@ -121,7 +121,7 @@
+     }
+     if(s.assignment.drillInstance>0&&s.assignment.execution.paused&&s.assignment.hasSlot){
+         const auto& slot=s.assignment.slot;
+-        if(Distance(s.position,slot.shelter)<=8&&CoverExists(map,slot.id)){
++        if(Distance(s.position,slot.shelter)<=15&&CoverExists(map,slot.id)){
+             auto path=FindPath(map,s.position,slot.shelter);bool allowed=!path.empty();
+             for(Vec3 point:path){
+                 const auto& a=s.assignment;
+@@ -207,6 +207,19 @@
+         (Distance(s.position,s.assignment.position)<.75f||
+             (s.assignment.hasSlot&&Distance(s.position,s.assignment.slot.peek)<.75f));
+     if(occupies){SetTaskStatus(s,TaskStatus::Done,TaskCause::Arrived,time,d);return;}
++    // Drill movement may use all of its rush/leg budget to reach the endpoint's
++    // arrival band. Certify the actor's actual position through normal transport,
++    // including during a reload or shelter interruption; never certify support.
++    const auto& movement=s.assignment;
++    const bool movementTimeout=movement.drillInstance>0&&!movement.execution.paused&&
++        ((movement.execution.rushSeconds>0&&time-movement.activatedAt-movement.drillRushPausedSeconds>=movement.execution.rushSeconds)||
++         (movement.execution.deadline>0&&time>=movement.execution.deadline));
++    if(movementTimeout&&s.Active()&&!movement.execution.unavailable&&
++        (movement.execution.completion==Completion::Transit||movement.execution.completion==Completion::Occupy)&&
++        Walkable(map,movement.position)&&(!movement.hasSlot||CoverExists(map,movement.slot.id))&&
++        Distance(s.position,movement.position)<=3){
++        SetTaskStatus(s,TaskStatus::Done,TaskCause::Arrived,time,d);return;
++    }
+     if(TerminalTask(s.assignment.status)&&!(s.assignment.status==TaskStatus::Done&&(s.assignment.execution.completion==Completion::Support||(s.cognition&&s.assignment.execution.completion==Completion::Occupy))))return;
+     TaskStatus status=TaskStatus::Executing;TaskCause cause=TaskCause::None;
+     if(!s.Active()){status=TaskStatus::Failed;cause=TaskCause::Casualty;}

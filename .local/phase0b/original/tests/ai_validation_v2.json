@@ -1,0 +1,24 @@
+{
+  "source_before": "8a5b385e04c22185",
+  "seconds": 360,
+  "layouts": [
+    5,
+    6,
+    7
+  ],
+  "validation_seeds": [
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010
+  ],
+  "required_per_layout": 8,
+  "evaluator_sha256": "3ade284789f519b1d4c6d377b091b075b177f14b183d2329464a1bfaa8d86dca",
+  "policy": "Frozen before reliability changes. Open only on a frozen candidate after mechanism scenarios and original 9/9. Never tune on these seeds."
+}

@@ -1,0 +1,1 @@
+Before running Q02–Q04 on the third attempt, static inspection found a remaining two-slot count in direct Support/HelpSquad acceptance. Corrected it to the reviewed gun-or-two-rifle quorum. The preliminary build ran only Q01, which passed; neither Q02–Q04 nor distributions ran on that preliminary fingerprint. Recompiled before the final mechanism run.

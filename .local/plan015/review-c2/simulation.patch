@@ -1,0 +1,43 @@
+diff -ruN .local/plan015/review-c2/entry/Sim/DrillSim.h Unreal/Source/ArmyPrototype/Sim/DrillSim.h
+--- .local/plan015/review-c2/entry/Sim/DrillSim.h	2026-09-17 08:37:48.837775457 -0700
++++ Unreal/Source/ArmyPrototype/Sim/DrillSim.h	2026-09-17 09:46:25.777990916 -0700
+@@ -14,6 +14,9 @@
+ std::array<int,SquadSize> AssignElements(const std::vector<Soldier>&,OrganisationKind);
+ void MakeDrillEncounter(const Config&,int,Map&,Frame&);
+ void StepDrillEncounter(int,Frame&);
++#ifdef ARMY_TEST_CONTROLS
++bool TestRadioAction(const Soldier&,const Soldier&,const std::vector<Soldier>&,const Map&,const Config&,DrillPlan&,Diagnostics*,float);
++#endif
+ bool BeginContactAction(const Soldier&,const Soldier&,const std::vector<Soldier>&,const Map&,const Config&,DrillPlan&,Diagnostics*,float);
+ bool UpdateSquadAction(const Soldier&,const Soldier&,const std::vector<Soldier>&,const Map&,const Config&,DrillPlan&,Diagnostics*,float,bool,bool,bool);
+ 
+diff -ruN .local/plan015/review-c2/entry/Sim/PlatoonFixtures.cpp Unreal/Source/ArmyPrototype/Sim/PlatoonFixtures.cpp
+--- .local/plan015/review-c2/entry/Sim/PlatoonFixtures.cpp	2026-09-17 09:37:04.208057372 -0700
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonFixtures.cpp	2026-09-17 09:46:25.774002972 -0700
+@@ -8,11 +8,6 @@
+         // Three independent squads, no screened flank. Physical attrition and
+         // delivered fire generate the broadcasts through normal transport.
+         map.obstacles.erase(std::remove_if(map.obstacles.begin(),map.obstacles.end(),[](const auto& o){return o.half.x>20;}),map.obstacles.end());
+-        // The volunteer is within radio-help distance but cannot reach weapon
+-        // range in the 60 m support search. Delay actual fixing fire until that
+-        // local exhaustion is established, then deliver the unrelated offer.
+-        for(int n=8;n<16;++n){auto& s=f.soldiers[n];s.position=s.position-Vec3{90,20};s.goal=s.position;}
+-        for(int n=16;n<24;++n)f.soldiers[n].reloadUntil=35;
+         for(int squad=0;squad<3;++squad){auto& s=f.soldiers[squad*8];auto& order=s.platoonOrder;
+             order.task=squad==2?PlatoonTask::HelpSquad:PlatoonTask::None;
+             order.helpSquad=squad==2?0:-1;order.intent.objective=squad==2?Vec3{70,0}:s.position;
+diff -ruN .local/plan015/review-c2/entry/Sim/SquadDrillSim.cpp Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+--- .local/plan015/review-c2/entry/Sim/SquadDrillSim.cpp	2026-09-17 09:25:47.326573746 -0700
++++ Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp	2026-09-17 09:46:25.778206614 -0700
+@@ -388,6 +388,11 @@
+     Assign(l,members,Element(members,p,1),map,p,goal,false,Task::PullBack,Completion::Occupy,false,false,d,time);
+ }
+ }
++#ifdef ARMY_TEST_CONTROLS
++bool TestRadioAction(const Soldier& leader,const Soldier& knowledge,const std::vector<Soldier>& members,const Map& map,const Config& config,DrillPlan& plan,Diagnostics* diagnostics,float time){
++    return RadioAction(leader,knowledge,members,map,config,plan,diagnostics,time);
++}
++#endif
+ bool BeginContactAction(const Soldier& l,const Soldier& knowledge,const std::vector<Soldier>& members,const Map& map,const Config& config,DrillPlan& p,Diagnostics* d,float time){
+     bool incoming=p.effectiveFire||l.understoodSuppression>.3f;
+     for(const auto& s:members)incoming|=s.suppression>.3f;

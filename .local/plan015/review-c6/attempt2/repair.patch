@@ -1,0 +1,240 @@
+--- entry/Sim/BattleSim.cpp
++++ attempt2/Sim/BattleSim.cpp
+@@ -667,7 +667,7 @@
+     if(input.family!=ScenarioFamily::None&&(encounter!=0||input.recoveryFixture||input.terrain!=Terrain::FracturedWorks))throw std::invalid_argument("Generated scenarios cannot combine with encounters, recovery or authored terrain");
+     if(TypedController(input)&&(!input.foundations||input.reportDelay<0||input.reportDelay>10||!std::isfinite(input.reportDelay)))throw std::invalid_argument("Cognition requires foundations and a report delay between 0 and 10 seconds");
+     if(input.cognition)for(float value:{input.officer.judgment,input.officer.risk,input.officer.adaptability})if(!std::isfinite(value)||value<0||value>1)throw std::invalid_argument("Officer profile values must be 0..1");
+-    if(input.drills&&(input.cognition||input.recoveryFixture||!(encounter==0||(encounter>=5&&encounter<=7)||(encounter>=44&&encounter<=98))))throw std::invalid_argument("Drills require encounter 0 or 5..7 and exclusive controller selection");
++    if(input.drills&&(input.cognition||input.recoveryFixture||!(encounter==0||(encounter>=5&&encounter<=7)||(encounter>=44&&encounter<=103))))throw std::invalid_argument("Drills require encounter 0 or 5..7 and exclusive controller selection");
+     if(input.foundations&&((encounter!=8&&!(input.cognition&&(encounter==0||(encounter>=5&&encounter<=43)))&&!input.drills)||input.recoveryFixture))throw std::invalid_argument("Foundations policy requires encounter 8 and cannot combine with recovery");
+     if(encounter>=9&&encounter<=43&&!input.cognition)throw std::invalid_argument("Cognitive scenarios require --cognition");
+     if(encounter==8&&!input.foundations)throw std::invalid_argument("Encounter 8 requires --foundations");
+@@ -681,7 +681,7 @@
+     if(encounter==8){r.encounter=8;MakeMGEncounter(c,1,r.map,f);}
+     if(encounter>=9&&encounter<=43){r.encounter=encounter;MakeCognitiveEncounter(c,encounter,r.map,f);}
+     if(encounter>=44&&encounter<=69){if(!c.drills)throw std::invalid_argument("Drill fixtures require --drills");r.encounter=encounter;MakeDrillEncounter(c,encounter,r.map,f);}
+-    if(encounter>=70&&encounter<=98){r.encounter=encounter;MakePlatoonEncounter(c,encounter,r.map,f);}
++    if(encounter>=70&&encounter<=103){r.encounter=encounter;MakePlatoonEncounter(c,encounter,r.map,f);}
+     if(encounter==10&&geometry.empty()){
+         GeometryEdit change;change.time=2;change.obstacle=r.map.obstacles.front().id;change.remove=false;
+         change.replacement={{0,0},{1,90},false,false,4};geometry.push_back(change);
+@@ -717,7 +717,7 @@
+         auto stageStart=DiagnosticClock::now();
+         f.time=tick*TickSeconds;
+         if(c.drills&&encounter>=56&&encounter<=69)StepDrillEncounter(encounter,f);
+-        if(c.drills&&encounter>=70&&encounter<=98)StepPlatoonEncounter(encounter,f);
++        if(c.drills&&encounter>=70&&encounter<=103)StepPlatoonEncounter(encounter,f);
+         for(size_t g=0;g<geometry.size();++g)if(!applied[g]&&geometry[g].time<=f.time){
+             applied[g]=true;const auto& edit=geometry[g];
+             for(const auto& obstacle:r.map.obstacles)if(obstacle.id==edit.obstacle)changedObstacles[g]=obstacle;
+--- entry/Sim/BattleSim.h
++++ attempt2/Sim/BattleSim.h
+@@ -447,6 +447,8 @@
+ struct SquadActionState {
+     int boundSupportThreat=-1;bool supportPositionReady=false,supportSearchTried=false,supportSearchExhausted=false;
+     bool areaFireOrdered=false,assaultRushRecovered=false;
++    float assaultFireSince=-1;
++    std::array<bool,SquadSize> assaultRoster{},baseRoster{};
+     bool helping=false;bool coveringBound=false,coveringAttempted=false;
+     bool closureFallback=false;
+     std::array<CoverPosition,SquadSize> pauseSlots{};
+--- entry/Sim/Diagnostics.cpp
++++ attempt2/Sim/Diagnostics.cpp
+@@ -166,7 +166,7 @@
+                 for(int n=0;n<SquadsPerTeam;++n){i(t.advanceDoneSeen[n]);i(t.advanceExhausted[n]);v(t.advanceDoneObjectives[n]);}
+                 f(t.observeStarted);v(t.observeObjective);for(float at:t.needSince)f(at);
+             }
+-            for(const auto& command:frame.command){const auto& p=command.battleDrill;i(p.action.assaultRushRecovered);i(p.action.areaFireOrdered);i(p.action.supportSearchTried);i(p.action.supportSearchExhausted);i(p.action.boundSupportThreat);i(p.action.supportPositionReady);i(p.action.helping);i(p.helpApproach);v(p.helpObjective);i(p.radioLaneRevision);i(p.radioSequence);i(p.radioAttackInstance);i(p.radioSupportSquad);i(p.radioLeadSquad);for(const auto& kind:p.radioConsumed)for(int serial:kind)i(serial);i(p.arrivalCheckPending);f(p.radioFireSince);f(p.radioPhaseAt);f(p.radioDoneAt);i(p.radioFixing);i(p.radioNeed);v(p.radioObjective);v(p.radioSupportPosition);for(const auto& message:p.broadcasts)radio(message);}
++            for(const auto& command:frame.command){const auto& p=command.battleDrill;f(p.action.assaultFireSince);for(bool present:p.action.assaultRoster)i(present);for(bool present:p.action.baseRoster)i(present);i(p.action.assaultRushRecovered);i(p.action.areaFireOrdered);i(p.action.supportSearchTried);i(p.action.supportSearchExhausted);i(p.action.boundSupportThreat);i(p.action.supportPositionReady);i(p.action.helping);i(p.helpApproach);v(p.helpObjective);i(p.radioLaneRevision);i(p.radioSequence);i(p.radioAttackInstance);i(p.radioSupportSquad);i(p.radioLeadSquad);for(const auto& kind:p.radioConsumed)for(int serial:kind)i(serial);i(p.arrivalCheckPending);f(p.radioFireSince);f(p.radioPhaseAt);f(p.radioDoneAt);i(p.radioFixing);i(p.radioNeed);v(p.radioObjective);v(p.radioSupportPosition);for(const auto& message:p.broadcasts)radio(message);}
+             for(const auto& unit:frame.soldiers){i(unit.organisation);for(const auto& message:unit.squadRadio)radio(message);directive(unit.platoonOrder);for(const auto& r:unit.platoonReports){i(r.drillSuperiority);f(r.phaseLineAt);f(r.completedAssaultLineAt);v(r.assaultObjective);v(r.assaultOrigin);for(Vec3 at:r.drillMemberPositions)v(at);}}
+             for(const auto& unit:frame.soldiers){const auto& a=unit.assignment;i(a.teamPlan.assaultAreaFire);v(a.teamPlan.assaultFireArea);i(a.teamPlan.assaultFireEnemy);for(const auto& lane:a.teamPlan.friendlyAssaultLanes){v(lane.origin);v(lane.target);f(lane.observedAt);}f(a.areaRouteRadius);if(a.areaRoute){v(a.areaRoute->start);for(Vec3 point:a.areaRoute->points)v(point);}i(a.drillInstance);i(a.element);i(a.baseOfFire);v(a.areaMin);v(a.areaMax);v(a.areaDiscCenter);f(a.areaDiscRadius);i(a.execution.method);i(a.execution.stage);i(a.execution.generation);i(int(a.execution.completion));f(a.execution.deadline);i(a.execution.paused);f(a.execution.rushSeconds);i(a.execution.arrivalCheck);f(a.drillRushPausedAt);f(a.drillRushPausedSeconds);
+                 for(const auto& report:unit.platoonReports){i(report.drillInstance);i(report.drillKind);i(int(report.drillCause));i(report.drillRecovering);bytes(report.drillNote.data(),report.drillNote.size());}
+--- entry/Sim/DrillSim.cpp
++++ attempt2/Sim/DrillSim.cpp
+@@ -287,13 +287,18 @@
+     const auto& higher=observedLeader.platoonOrder;
+     const bool pending=higher.serial>cmd.platoonOrderSerial&&time<higher.expiresAt;
+     const bool same=p.acceptedDirective.intent.id&&higher.intent.id==p.acceptedDirective.intent.id;
++    const bool sameSupport=p.action.active&&p.kind==BattleDrill::SupportByFire&&
++        p.acceptedDirective.intent.purpose==GoalPurpose::Support&&higher.intent.purpose==GoalPurpose::Support&&
++        p.acceptedDirective.issuer==higher.issuer&&Distance(p.action.objective,higher.intent.objective)<=1&&
++        time<p.directiveUntil;
+     const bool retiring=p.action.active&&(p.kind==BattleDrill::BreakContact||p.kind==BattleDrill::Withdraw);
+     const bool boundary=(p.blocked&&p.exhausted)||p.directiveBoundary||arrived||p.stage==DrillStage::Reorganise||p.action.completed;
+-    const bool received=pending&&(same||(higher.task==PlatoonTask::Withdraw||higher.task==PlatoonTask::RetreatThere)||(!retiring&&(p.kind==BattleDrill::MoveTactically||boundary)));
++    const bool received=pending&&(same||sameSupport||(higher.task==PlatoonTask::Withdraw||higher.task==PlatoonTask::RetreatThere)||(!retiring&&(p.kind==BattleDrill::MoveTactically||boundary)));
+     const bool nextLeg=same&&(higher.task==PlatoonTask::Advance||(higher.task==PlatoonTask::FightHere&&higher.enemy<0))&&Distance(higher.position,p.acceptedDirective.position)>1;
+-    const bool directive=received&&(!same||nextLeg||p.platoonLift!=higher.liftFire);
++    const bool directive=received&&!sameSupport&&(!same||nextLeg||p.platoonLift!=higher.liftFire);
+     const bool expired=!received&&p.acceptedDirective.intent.id&&time>=p.directiveUntil;
+     if(received){
++        if(sameSupport){p.intent.parent=higher.intent.id;Trace(d,leader,p,time,"support_directive_retained","same sender and threat sector: renew intent without re-accepting support");}
+         cmd.platoonOrderSerial=higher.serial;p.directiveUntil=higher.expiresAt;p.acceptedDirective=higher;
+         if(directive)p.destination=higher.taskNode?higher.position:higher.intent.objective;
+         if(higher.hasArea){p.areaMin=higher.areaMin;p.areaMax=higher.areaMax;p.platoonArea=true;p.platoonTaskNode=higher.taskNode;}
+--- entry/Sim/PlatoonFixtures.cpp
++++ attempt2/Sim/PlatoonFixtures.cpp
+@@ -3,6 +3,24 @@
+ #include <algorithm>
+ namespace army {
+ void MakePlatoonEncounter(const Config& config,int id,Map& map,Frame& f){
++    if(id==99||id==100){
++        MakeDrillEncounter(config,60,map,f);
++        for(int n=0;n<8;++n)f.soldiers[n].health=10000;
++        f.soldiers[32].health=10000;f.soldiers[32].machineGun=true; // Real automatic fire; isolate controlled attrition.
++        return;
++    }
++    if(id>=101&&id<=103){
++        MakePlatoonEncounter(config,92,map,f);
++        if(id==102)for(int n=8;n<16;++n)f.soldiers[n].reloadUntil=10000;
++        if(id==103){
++            // An already reachable firing station isolates caller response from
++            // the separate unresolved held-slot allocation defect.
++            for(int n=8;n<16;++n){auto& member=f.soldiers[n];member.position={38.f,24.f+(n-8)*4.f};member.goal=member.position;
++                map.obstacles.push_back({{42,member.position.y},{.6f,1.5f},false,true,1.3f});}
++            f.soldiers[8].platoonOrder.intent.objective=f.soldiers[8].position;
++            map.obstacles.erase(std::remove_if(map.obstacles.begin(),map.obstacles.end(),[](const auto& obstacle){return obstacle.half.x>20;}),map.obstacles.end());PrepareGeometry(map);}
++        return;
++    }
+     if(id>=94&&id<=96){
+         MakePlatoonEncounter(config,90,map,f);
+         // Three independent squads, no screened flank. Physical attrition and
+@@ -94,6 +112,13 @@
+     PrepareGeometry(map);
+ }
+ void StepPlatoonEncounter(int id,Frame& f){
++    if(id==99){
++        for(const auto& message:f.command[0].battleDrill.broadcasts)if(message.kind==SquadBroadcastKind::Assaulting&&f.time>=message.sentAt+12){
++            f.soldiers[3].health=0;f.soldiers[3].action=Action::Killed;break;
++        }
++    }
++    if(id>=101&&id<=103&&f.time>=20)for(int n:{2,6,7}){f.soldiers[n].health=0;f.soldiers[n].action=Action::Wounded;}
++
+     if((id==94||id==95)&&f.time>=20)for(int n:{2,6,7}){f.soldiers[n].health=0;f.soldiers[n].action=Action::Wounded;}
+     if(id==97||id==98)for(int n=0;n<8;++n){auto& s=f.soldiers[n];
+         // A physical reload halts movers short of their already accepted end.
+--- entry/Sim/SquadDrillSim.cpp
++++ attempt2/Sim/SquadDrillSim.cpp
+@@ -303,6 +303,17 @@
+     return !Organisation(kind).requiresPlatoonOrder||leader.platoonOrder.task==PlatoonTask::FightHere||
+         (leader.platoonOrder.intent.id&&leader.platoonOrder.intent.purpose==GoalPurpose::Seize);
+ }
++void CommitAssault(const Soldier& leader,const std::vector<Soldier>& members,DrillPlan& p){
++    for(const auto& member:members){int n=member.id%SquadSize;
++        p.action.assaultRoster[n]=p.elements[n]==1;
++        p.action.baseRoster[n]=p.elements[n]==0&&!KnowsWounded(leader,member);
++    }
++}
++bool AnsweredCaller(const DrillPlan& p,const SquadBroadcast& fixing,float time){
++    for(const auto& call:p.broadcasts)if(call.kind==SquadBroadcastKind::NeedSupport&&
++        time-call.sentAt<=60&&Distance(call.objective,fixing.objective)<40)return true;
++    return false;
++}
+ bool RadioAction(const Soldier& l,const Soldier& knowledge,const std::vector<Soldier>& members,const Map& map,
+                  const Config& config,DrillPlan& p,Diagnostics* d,float time){
+     const SquadBroadcast* fixing=nullptr;const SquadBroadcast* need=nullptr;const SquadBroadcast* lead=nullptr;
+@@ -330,7 +341,8 @@
+     const bool compatible=l.platoonOrder.task==PlatoonTask::None||l.platoonOrder.task==PlatoonTask::FightHere||l.platoonOrder.task==PlatoonTask::HelpSquad;
+     if(!compatible)return false;
+     auto consumed=[&](const SquadBroadcast& message)->int&{return p.radioConsumed[int(message.kind)][message.sender];};
+-    if(need&&need->serial>consumed(*need)&&CanVolunteer(l,false)&&
++    const bool answered=fixing&&fixing->serial>consumed(*fixing)&&AnsweredCaller(p,*fixing,time)&&CanVolunteer(l,true);
++    if(!answered&&need&&need->serial>consumed(*need)&&CanVolunteer(l,false)&&
+         (p.target<0||Distance(p.sector,need->objective)<40)&&p.kind!=BattleDrill::SquadAttack){
+         consumed(*need)=need->serial;p.target=need->enemy;p.sector=need->objective;
+         Accept(l,p,BattleDrill::SupportByFire,d,time,"radio NeedSupport: volunteer support by fire within 100 m");
+@@ -340,19 +352,27 @@
+         return true;
+     }
+     if(!fixing||fixing->serial<=consumed(*fixing)||!CanVolunteer(l,true)||p.kind==BattleDrill::SquadAttack||
+-       (p.target>=0&&Distance(p.sector,fixing->objective)>=40)||p.effectiveFire)return false;
++       (p.target>=0&&Distance(p.sector,fixing->objective)>=40)||(p.effectiveFire&&!answered))return false;
+     consumed(*fixing)=fixing->serial;
+     auto candidate=p;candidate.radioSupportSquad=fixing->squad;candidate.radioSupportPosition=fixing->position;
+     candidate.action.objective=fixing->objective;
+     auto route=Flank(l,knowledge,members,map,config,candidate,d,time,false);
+     if(!route){
+         ActionTrace(l,p,d,time,"radio_no_route","received Fixing; no covered own-side route: retain supported fire and movement");
++        if(answered&&!(p.action.helping&&p.exhausted)){
++            p.radioSupportSquad=fixing->squad;p.radioSupportPosition=fixing->position;
++            p.target=fixing->enemy;p.sector=fixing->objective;p.destination=fixing->objective;
++            p.action.objective=fixing->objective;p.action.active=false;p.action.closureFallback=true;
++            p.action.cause=TaskCause::Support;p.blocked=false;p.exhausted=false;p.noProgressBlocked=false;
++            Stage(l,p,d,time,DrillStage::Reorganise,"answered caller: no covered flank; Reorganise then supported fire and movement");
++            return true;
++        }
+         return false;
+     }
+     p.radioSupportSquad=fixing->squad;p.radioSupportPosition=fixing->position;p.target=fixing->enemy;p.sector=fixing->objective;
+     Accept(l,p,BattleDrill::SquadAttack,d,time,lead?"radio opportunity: join existing assault from own side":"radio opportunity: covered route from own side");
+     p.action.attack=true;p.action.route=route;p.action.assault=route->destination;p.action.base=fixing->position;
+-    p.action.angle=Angle(fixing->position,route->destination,p.action.objective);p.action.initialStrength=int(members.size());
++    p.action.angle=Angle(fixing->position,route->destination,p.action.objective);p.action.initialStrength=int(members.size());CommitAssault(l,members,p);
+     Stage(l,p,d,time,DrillStage::SupportPrepare,"radio assault committed: wait for delivered support evidence");
+     Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+     return true;
+@@ -378,9 +398,9 @@
+     }
+     ActionTrace(l,p,d,time,"drill_stage_advanced","assault buddy holds accepted endpoint and covers the other pair on objective");
+ }
+-void BeginRetire(const Soldier& l,const std::vector<Soldier>& members,const Map& map,DrillPlan& p,Diagnostics* d,float time,bool withdraw){
++void BeginRetire(const Soldier& l,const std::vector<Soldier>& members,const Map& map,DrillPlan& p,Diagnostics* d,float time,bool withdraw,const char* evidence=nullptr){
+     Vec3 rally=withdraw?l.platoonOrder.intent.objective:p.center-Direction(p.sector-p.center)*80;
+-    Accept(l,p,withdraw?BattleDrill::Withdraw:BattleDrill::BreakContact,d,time,withdraw?"Withdraw to received rally":"BreakContact: believed ratio at least two without superiority");
++    Accept(l,p,withdraw?BattleDrill::Withdraw:BattleDrill::BreakContact,d,time,withdraw?"Withdraw to received rally":evidence?evidence:"BreakContact: believed ratio at least two without superiority");
+     p.action.rally=rally;p.action.objective=p.sector;p.retreat=true;p.movingElement=1;
+     Stage(l,p,d,time,DrillStage::Retire,"rearward bound: one stationary suppressing element");
+     Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+@@ -413,7 +433,7 @@
+     p.action.initialStrength=int(members.size());p.action.base=Centre(members,p,0);
+     for(int id=0;id<UnitCount;++id)p.action.threats[id]=knowledge.contacts[id].known;
+     p.action.route=(!CanVolunteer(l,true)||l.platoonOrder.fireMovement)?std::shared_ptr<TacticalRoute>{}:Flank(l,knowledge,members,map,config,p,d,time,false);p.action.attack=bool(p.action.route);
+-    if(p.action.attack){p.kind=BattleDrill::SquadAttack;ActionTrace(l,p,d,time,"drill_candidate","SquadAttack: covered flank sector 40-60 degrees, 20-45 m");}
++    if(p.action.attack){CommitAssault(l,members,p);p.kind=BattleDrill::SquadAttack;ActionTrace(l,p,d,time,"drill_candidate","SquadAttack: covered flank sector 40-60 degrees, 20-45 m");}
+     if(!p.action.attack){
+         Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+         p.action.active=false;p.action.closureFallback=true;p.action.cause=TaskCause::Support;p.closeAfterCover=true;
+@@ -441,6 +461,30 @@
+     if((withdrawing&&p.kind!=BattleDrill::Withdraw)||(!p.action.active&&p.target>=0&&((ratioAssessed&&enemy>=2*std::max(int(members.size()),l.platoonOrder.taskNode?l.platoonOrder.committedStrength:0))||recentLosses>=3)&&!p.superiority)){
+         BeginRetire(l,members,map,p,d,time,withdrawing);return true;
+     }
++    if(p.kind==BattleDrill::SquadAttack&&p.action.active&&below){
++        p.action.cause=TaskCause::InsufficientStrength;p.blocked=true;p.exhausted=true;
++        p.lastRejection="frozen element below minStrength";p.action.active=false;p.movers.fill(false);
++        Stage(l,p,d,time,DrillStage::Reorganise,"InsufficientStrength: frozen element failed; Reorganise before retirement assessment");return true;
++    }
++    if(p.kind==BattleDrill::SquadAttack&&p.action.active){
++        bool casualty=false,baseLoss=false;int baseBefore=0,baseNow=0;
++        for(int n=0;n<SquadSize;++n){
++            casualty|=p.action.assaultRoster[n]&&p.lossTimes[n]>p.action.acceptedAt;
++            if(p.action.baseRoster[n]){++baseBefore;for(const auto& member:members)
++                if(member.id%SquadSize==n&&!KnowsWounded(l,member))++baseNow;}
++        }
++        baseLoss=p.radioSupportSquad<0&&baseBefore>=2&&baseNow<2;
++        // Expected-support delay and sustained pressure are both measured after commitment.
++        if(p.effectiveFire&&!p.superiority&&time>=p.action.acceptedAt+config.reportDelay+8){
++            if(p.action.assaultFireSince<0)p.action.assaultFireSince=time;
++        }else p.action.assaultFireSince=-1;
++        const bool sustained=p.action.assaultFireSince>=0&&time-p.action.assaultFireSince>=15;
++        if(casualty||baseLoss||sustained){
++            const char* reason=casualty?"new assault-element casualty":baseLoss?"new loss of own base of fire":"effective fire without superiority for 15 s after expected support";
++            BeginRetire(l,members,map,p,d,time,false,reason);
++            ActionTrace(l,p,d,time,"assault_break_evidence",reason);return true;
++        }
++    }
+     BindSupportThreat(l,knowledge,members,p,d,time);
+     p.action.supportPositionReady=SupportPositionReady(members,map,p);
+     if(RadioAction(l,knowledge,members,map,config,p,d,time))return true;
+@@ -480,7 +524,11 @@
+     }
+     if(!p.action.active)return false;
+     if(below){p.action.cause=TaskCause::InsufficientStrength;p.blocked=true;p.exhausted=true;p.lastRejection="frozen element below minStrength";p.action.active=false;p.movers.fill(false);Stage(l,p,d,time,DrillStage::Reorganise,"InsufficientStrength: frozen element failed; Reorganise before new drill");return true;}
+-    if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Seize){p.action.active=false;return false;}
++    if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Seize){
++        if(p.kind==BattleDrill::SquadAttack&&Distance(l.platoonOrder.intent.objective,p.action.objective)<=40)
++            ActionTrace(l,p,d,time,"assault_intent_retained","same group intent: committed assault retains stage and generation");
++        else {p.action.active=false;return false;}
++    }
+     SupportEvidence(l,p,d,time);
+     RecoverSupport(l,members,map,p,d,time);
+     if(p.stage==DrillStage::Occupation)return true;

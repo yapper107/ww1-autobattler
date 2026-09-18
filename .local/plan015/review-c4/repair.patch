@@ -1,0 +1,136 @@
+--- before/Sim/PositionSim.h
++++ after/Sim/PositionSim.h
+@@ -9,6 +9,10 @@
+     float shelterSpacing=2,peekSpacing=1.8f,preferredSpacing=10;
+     float travelWeight=.25f,anchorWeight=1,coverWeight=12,lineWeight=20;
+     bool firing=false,protectedPosition=false,formation=false;
++    // Halted allocations may retain the best executable slot only after every
++    // separation-compliant candidate is exhausted; emit the measured violation.
++    bool halted=false;
++    std::vector<ReservedPosition> retained;
+     bool preferCover=false,safeEndpoint=false,firingSearch=false,guardObjective=false;
+     float maxPathLength=0;
+     // Permission from received buddy fire; only the named objective area is
+--- before/Sim/PositionSim.cpp
++++ after/Sim/PositionSim.cpp
+@@ -15,7 +15,8 @@
+     const auto knowledge=WithTracks(leader,time);std::vector<Vec3> targets{q.target};
+     for(const auto& ct:knowledge.contacts)if(ct.known&&Distance(ct.position,q.target)<=q.targetRadius)targets.push_back(ct.position);
+     std::vector<ReservedPosition> reserved=q.reserved;
+-    for(const auto& member:members)if(member.Active()){CoverPosition c;c.shelter=c.peek=member.position;reserved.push_back({member.id,c});}
++    for(const auto& member:members)if(member.Active()){CoverPosition c;c.shelter=c.peek=member.position;reserved.push_back({member.id,c});
++        if(q.halted&&member.assignment.hasSlot)reserved.push_back({member.id,member.assignment.slot});}
+     for(int id=0;id<UnitCount;++id)if(id!=leader.id&&leader.allies[id].known&&time-leader.allies[id].observedAt<3&&
+         std::none_of(members.begin(),members.end(),[&](const Soldier& s){return s.id==id;})){
+         CoverPosition c;c.shelter=c.peek=leader.allies[id].position;reserved.push_back({id,c});
+@@ -24,6 +25,7 @@
+     for(const auto& member:members){
+         MemberPositions output;output.soldier=member.id;std::vector<TacticalSlot> candidates;const Vec3 anchor=q.anchors[member.id%SquadSize];
+         std::vector<CoverPosition> points;
++        for(const auto& r:q.retained)if(r.soldier==member.id)points.push_back(r.cover);
+         if(q.firingSearch){
+             // Firing slots may lie on open ground: catalogue cover is preferred,
+             // never a prerequisite for a reachable line within the search radius.
+@@ -95,24 +97,50 @@
+             if(!reason.empty())continue;
+             float score=q.anchorWeight*Distance(anchor,c.shelter)+q.travelWeight*Distance(member.position,c.shelter)-q.coverWeight*protectedHere-q.lineWeight*firing;
+             if(q.preferCover&&c.id&&protectedHere)score-=12;
++            for(const auto& r:q.retained)if(r.soldier==member.id&&Distance(c.shelter,r.cover.shelter)<.01f&&Distance(c.peek,r.cover.peek)<.01f)score-=10000;
+             for(const auto& r:q.reserved)if(r.soldier!=member.id)score+=std::max(0.f,q.preferredSpacing-Distance(c.shelter,r.cover.shelter));
+             candidates.push_back({c,angle,score});
+         }
+         std::stable_sort(candidates.begin(),candidates.end(),[](const auto& a,const auto& b){return a.score<b.score;});choices.push_back(candidates);result.push_back(output);
+     }
+-    auto fits=[&](const CoverPosition& c,int id,bool emit){int close=0;for(const auto& r:reserved)if(r.soldier!=id){
+-        const float shelter=Distance(c.shelter,r.cover.shelter),peek=Distance(c.peek,r.cover.peek);close+=shelter<3;
+-        bool bad=shelter<q.shelterSpacing||peek<q.peekSpacing||close>=2;
+-        if(q.firing)bad|=!TacticalPairLaneClear(map,c,r.cover,targets);
+-        if(bad){if(emit)TracePosition(d,leader,time,c,"position_pair_rejected","reserved shelter/peek spacing, grenade density or friendly firing lane");return false;}
+-    }return true;};
++    const float shelterMinimum=q.halted?std::max(2.f,q.shelterSpacing):q.shelterSpacing;
++    const float peekMinimum=q.halted?std::max(1.8f,q.peekSpacing):q.peekSpacing;
++    auto separation=[&](const CoverPosition& c,int id){
++        float shelter=1e9f,peek=1e9f;
++        for(const auto& r:reserved)if(r.soldier!=id){shelter=std::min(shelter,Distance(c.shelter,r.cover.shelter));peek=std::min(peek,Distance(c.peek,r.cover.peek));}
++        return std::pair<float,float>{shelter,peek};
++    };
++    auto fits=[&](const CoverPosition& c,int id,bool emit,bool crowded=false){int close=0;std::vector<int> counted;
++        for(const auto& r:reserved)if(r.soldier!=id){
++            const float shelter=Distance(c.shelter,r.cover.shelter),peek=Distance(c.peek,r.cover.peek);
++            if(shelter<3&&(r.soldier<0||std::find(counted.begin(),counted.end(),r.soldier)==counted.end())){++close;counted.push_back(r.soldier);}
++            bool bad=!crowded&&(shelter<shelterMinimum||peek<peekMinimum||close>=2);
++            if(q.firing)bad|=!TacticalPairLaneClear(map,c,r.cover,targets);
++            if(bad){if(emit)TracePosition(d,leader,time,c,"position_pair_rejected","reserved shelter/peek spacing, grenade density or friendly firing lane");return false;}
++        }return true;
++    };
+     // Allocate every primary before alternatives; fallbacks cannot steal another member's primary.
+     for(size_t n=0;n<result.size();++n){auto& out=result[n];
+         for(const auto& c:choices[n])if(fits(c.cover,out.soldier,false)&&
+             std::none_of(result.begin(),result.end(),[&](const MemberPositions& assigned){return assigned.valid&&Distance(assigned.primary.cover.shelter,c.cover.shelter)>q.groupCap;})){
+             out.valid=true;out.primary=c;reserved.push_back({out.soldier,c.cover});out.reason="allocated primary";TracePosition(d,leader,time,c.cover,"position_query",out.reason);break;
+         }
+-        if(!out.valid){out.reason="no unreserved position inside area/coherence";if(!choices[n].empty())fits(choices[n][0].cover,out.soldier,true);}
++        if(!out.valid&&q.halted)for(const auto& c:choices[n])if(fits(c.cover,out.soldier,false,true)&&
++            std::none_of(result.begin(),result.end(),[&](const MemberPositions& assigned){return assigned.valid&&Distance(assigned.primary.cover.shelter,c.cover.shelter)>q.groupCap;})){
++            const auto distances=separation(c.cover,out.soldier);
++            out.valid=true;out.primary=c;out.reason="no compliant halted slot: retain best executable slot";
++            TracePosition(d,leader,time,c.cover,"position_spacing_violation",out.reason+"; soldier="+std::to_string(out.soldier)+
++                "; shelter_m="+std::to_string(distances.first)+"; peek_m="+std::to_string(distances.second)+
++                "; required_shelter_m="+std::to_string(shelterMinimum)+"; required_peek_m="+std::to_string(peekMinimum));
++            reserved.push_back({out.soldier,c.cover});break;
++        }
++        if(!out.valid){out.reason="no unreserved position inside area/coherence";if(!choices[n].empty())fits(choices[n][0].cover,out.soldier,true);
++            if(q.halted){CoverPosition held;held.shelter=held.peek=members[n].position;const auto distances=separation(held,out.soldier);
++                if(distances.first<shelterMinimum||distances.second<peekMinimum)TracePosition(d,leader,time,held,"position_spacing_violation",
++                    "no executable query slot; caller holds actual position; soldier="+std::to_string(out.soldier)+
++                    "; shelter_m="+std::to_string(distances.first)+"; peek_m="+std::to_string(distances.second));
++            }
++        }
+     }
+     for(size_t n=0;n<result.size();++n)if(result[n].valid)for(const auto& c:choices[n]){
+         if(result[n].fallbacks.size()==q.maxFallbacks)break;
+--- before/Sim/DrillSim.cpp
++++ after/Sim/DrillSim.cpp
+@@ -156,7 +156,7 @@
+         GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=p.areaMin;query.areaMax=p.areaMax;query.coherenceRadius=90;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
+         if(p.platoonArea&&leader.platoonOrder.areaRouteRadius>0){query.areaRoute=leader.platoonOrder.corridor;query.areaRouteRadius=25;query.areaDiscCenter=leader.platoonOrder.areaDiscCenter;query.areaDiscRadius=60;}
+         const bool protectedBound=p.action.closureFallback&&!coverStage&&!repair&&p.effectiveFire&&!p.superiority;
+-        query.formation=!coverStage&&!repair&&!protectedBound;query.protectedPosition=coverStage||repair||protectedBound;
++        query.formation=!coverStage&&!repair&&!protectedBound;query.protectedPosition=coverStage||repair||protectedBound;query.halted=query.protectedPosition;
+         if(p.action.closureFallback&&!p.platoonArea){query.areaDiscCenter=p.action.objective;query.areaDiscRadius=60;}
+         query.firing=query.protectedPosition&&element==0&&p.target>=0&&Distance(origin,p.sector)<SightRange(group.front());
+         if(p.stage==DrillStage::BoundSetup){query.target=p.center+direction*40;query.firing=element==0;}
+--- before/Sim/SquadDrillSim.cpp
++++ after/Sim/SquadDrillSim.cpp
+@@ -153,15 +153,14 @@
+         q.anchors[s.id%8]=at;++rank;
+     }
+     if(p.platoonArea&&p.acceptedDirective.areaRouteRadius>0){q.areaRoute=p.acceptedDirective.corridor;q.areaRouteRadius=25;q.areaDiscCenter=p.acceptedDirective.areaDiscCenter;q.areaDiscRadius=60;}
++    q.halted=!q.formation||support;
++    // Retention is a preference inside allocation, never an override of its
++    // assigned-ally separation result. The old override bypassed reservations.
++    if(support)for(const auto& s:group){int n=s.id%8;
++        if(p.hasSlot[n]&&p.slotGeometry[n]==map.revision&&ProtectedAt(map,p.slots[n].shelter,p.action.objective,Stance::Crouched)&&
++           ClearLine3D(map,p.slots[n].peek+Vec3{0,0,1.5f},p.action.objective+Vec3{0,0,1.7f}))q.retained.push_back({s.id,p.slots[n]});
++    }
+     auto allocated=QueryPositions(l,group,map,q,time,d);int valid=0;
+-    // Entering support changes the firing contract, not ownership of a valid
+-    // stationary slot. Current friendly firing lanes cannot evict its occupant.
+-    if(support)for(size_t k=0;k<group.size();++k){int n=group[k].id%8;
+-        if(p.hasSlot[n]&&p.slotGeometry[n]==map.revision&&ProtectedAt(map,p.slots[n].shelter,p.action.objective,Stance::Crouched)&&
+-           ClearLine3D(map,p.slots[n].peek+Vec3{0,0,1.5f},p.action.objective+Vec3{0,0,1.7f})){
+-            allocated[k].valid=true;allocated[k].primary.cover=p.slots[n];
+-        }
+-    }
+     for(size_t k=0;k<group.size();++k){const auto& s=group[k];int n=s.id%8;const auto& result=allocated[k];
+         Vec3 at=result.valid?result.primary.cover.shelter:s.position;auto path=FindPath(map,s.position,at);float length=0;Vec3 prior=s.position;for(Vec3 step:path){length+=Distance(prior,step);prior=step;}
+         bool executable=result.valid&&!path.empty()&&(!rush||length<=15.f);
+@@ -232,7 +231,7 @@
+             GroupPositionQuery q;q.center=p.center;q.target=p.action.objective;q.areaMin=p.areaMin;q.areaMax=p.areaMax;
+             q.areaDiscCenter=p.action.objective;q.areaDiscRadius=60;q.coherenceRadius=160;q.radius=15;
+             q.boundCenter=s.position;q.boundRadius=15;q.maxPathLength=15;q.corridor=p.action.route;q.groupCap=40;
+-            q.protectedPosition=true;q.anchors[n]=s.position;q.anchorWeight=1;q.travelWeight=q.coverWeight=q.lineWeight=0;q.reserved=reserved;
++            q.protectedPosition=true;q.halted=true;q.anchors[n]=s.position;q.anchorWeight=1;q.travelWeight=q.coverWeight=q.lineWeight=0;q.reserved=reserved;
+             if(p.platoonArea&&p.acceptedDirective.areaRouteRadius>0){q.areaRoute=p.acceptedDirective.corridor;q.areaRouteRadius=25;q.areaDiscCenter=p.acceptedDirective.areaDiscCenter;q.areaDiscRadius=60;}
+             auto slots=QueryPositions(l,{s},map,q,time,d);p.action.pauseHasSlot[n]=slots.front().valid;
+             if(slots.front().valid){

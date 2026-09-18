@@ -1,0 +1,26 @@
+[
+  {
+    "controller": "candidate90",
+    "seed": 107,
+    "gameplay_digest": "5263252470802575170",
+    "matching_gameplay": true,
+    "differences": {
+      "trace_enabled": [
+        1,
+        0
+      ]
+    }
+  },
+  {
+    "controller": "legacy",
+    "seed": 107,
+    "gameplay_digest": "2434807712546868994",
+    "matching_gameplay": true,
+    "differences": {
+      "trace_enabled": [
+        1,
+        0
+      ]
+    }
+  }
+]

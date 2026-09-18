@@ -1,0 +1,1045 @@
+# After-action report
+
+Run: `.local/plan015/step-b/attempt6/traces/88/battle-107-1789658901852886221`
+
+Outcome: {'winner': 0, 'duration': 240, 'shots': 235}; digest: `8379899329692956010`
+
+## Command timeline
+
+- 0.05s, actor 0, squad 0 (trace 9): SupportByFire: received threat-area order; area = deployment lane UNION objective disc radius 60 m, clipped to map. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 4.8, 'shots': 6, 'casualties': 0, 'mean_displacement': 4.332892570328897, 'next_transition': 6350}.
+- 0.05s, actor 0, squad 0 (trace 10): occupy protected firing positions; wait for element delivered rounds. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 4.8, 'shots': 6, 'casualties': 0, 'mean_displacement': 4.332892570328897, 'next_transition': 6350}.
+- 0.05s, actor 8, squad 1 (trace 4251): Occupy received area and sectors. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 6.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 12.773516900372123, 'next_transition': 6959}.
+- 0.05s, actor 8, squad 1 (trace 4252): occupy mutually supporting slots until superseded. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 6.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 12.773516900372123, 'next_transition': 6959}.
+- 4.80s, actor 0, squad 0 (trace 6350): support established: element delivered fire on threat area. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 24, 'shots': 22, 'casualties': 0, 'mean_displacement': 1.2806268487033372, 'next_transition': 8801}.
+- 4.80s, actor 0, squad 0 (trace 6351): established base of fire; hold and report no covered assault route. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 24, 'shots': 22, 'casualties': 0, 'mean_displacement': 1.2806268487033372, 'next_transition': 8801}.
+- 4.80s, actor 0, squad 0 (trace 6352): Fixing. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 24, 'shots': 22, 'casualties': 0, 'mean_displacement': 1.2806268487033372, 'next_transition': 8801}.
+- 6.60s, actor 8, squad 1 (trace 6959): radio opportunity: covered route from own side; area = deployment lane UNION objective disc radius 60 m, clipped to map. Knowledge: actor memory at 5.00s, trace 6369. Next observer evidence: {'until': 10.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.860304814159291, 'next_transition': 8177}.
+- 6.60s, actor 8, squad 1 (trace 6960): radio assault committed: wait for delivered support evidence. Knowledge: actor memory at 5.00s, trace 6369. Next observer evidence: {'until': 10.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.860304814159291, 'next_transition': 8177}.
+- 6.60s, actor 8, squad 1 (trace 7985): Assaulting. Knowledge: actor memory at 5.00s, trace 6369. Next observer evidence: {'until': 10.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.860304814159291, 'next_transition': 8177}.
+- 10.45s, actor 8, squad 1 (trace 8177): support established: element delivered fire on threat area. Knowledge: actor memory at 10.00s, trace 8117. Next observer evidence: {'until': 15, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.5402803237407683, 'next_transition': 8388}.
+- 10.45s, actor 8, squad 1 (trace 8178): support established: next buddy rush, at most five seconds. Knowledge: actor memory at 10.00s, trace 8117. Next observer evidence: {'until': 15, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.5402803237407683, 'next_transition': 8388}.
+- 15.00s, actor 8, squad 1 (trace 8388): support established: next buddy rush, at most five seconds. Knowledge: actor memory at 15.00s, trace 8376. Next observer evidence: {'until': 22.2, 'shots': 0, 'casualties': 0, 'mean_displacement': 2.5769152491082585, 'next_transition': 8687}.
+- 22.20s, actor 8, squad 1 (trace 8687): support established: next buddy rush, at most five seconds. Knowledge: actor memory at 20.00s, trace 8611. Next observer evidence: {'until': 24.2, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.6241087292649318, 'next_transition': 13207}.
+- 24.00s, actor 0, squad 0 (trace 8801): support lost: eight seconds without element delivery evidence. Knowledge: actor memory at 20.00s, trace 8603. Next observer evidence: {'until': 27, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.9450002501355489, 'next_transition': 204}.
+- 24.00s, actor 0, squad 0 (trace 13200): support_position_exhausted: recovery found no reachable gun or two rifle firing slots within 60 m. Knowledge: actor memory at 20.00s, trace 8603. Next observer evidence: {'until': 27, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.9450002501355489, 'next_transition': 204}.
+- 24.20s, actor 8, squad 1 (trace 13207): support lost: eight seconds without element delivery evidence. Knowledge: actor memory at 20.00s, trace 8611. Next observer evidence: {'until': 45.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.1302295274895473, 'next_transition': 16283}.
+- 24.20s, actor 8, squad 1 (trace 13545): support permission paused. Knowledge: actor memory at 20.00s, trace 8611. Next observer evidence: {'until': 45.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.1302295274895473, 'next_transition': 16283}.
+- 27.00s, actor 29, squad 0 (events line 204): Platoon task-tree directive: FightHere. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 28, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.39374374618049485, 'next_transition': 208}.
+- 27.00s, actor 29, squad 0 (trace 13701): FightHere: nearest known group; squad chooses its drill. Knowledge: actor memory at 27.00s, trace 13701. Next observer evidence: {'until': 28, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.39374374618049485, 'next_transition': 208}.
+- 28.00s, actor 29, squad 0 (events line 208): Platoon task-tree directive: FightHere. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 29.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.6299941512625333, 'next_transition': 13717}.
+- 28.00s, actor 29, squad 0 (trace 13707): FightHere: nearest known group; squad chooses its drill. Knowledge: actor memory at 28.00s, trace 13707. Next observer evidence: {'until': 29.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.6299941512625333, 'next_transition': 13717}.
+- 29.75s, actor 0, squad 0 (trace 13717): MoveTactically. Knowledge: actor memory at 25.00s, trace 13577. Next observer evidence: {'until': 38, 'shots': 0, 'casualties': 0, 'mean_displacement': 9.525158285573555, 'next_transition': 15811}.
+- 29.75s, actor 0, squad 0 (trace 13718): bounding overwatch. Knowledge: actor memory at 25.00s, trace 13577. Next observer evidence: {'until': 38, 'shots': 0, 'casualties': 0, 'mean_displacement': 9.525158285573555, 'next_transition': 15811}.
+- 29.75s, actor 0, squad 0 (trace 13719): superiority lost (8 s hysteresis). Knowledge: actor memory at 25.00s, trace 13577. Next observer evidence: {'until': 38, 'shots': 0, 'casualties': 0, 'mean_displacement': 9.525158285573555, 'next_transition': 15811}.
+- 38.00s, actor 0, squad 0 (trace 15811): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 35.00s, trace 15706. Next observer evidence: {'until': 52.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 9.297074817111156, 'next_transition': 18581}.
+- 45.90s, actor 8, squad 1 (trace 16283): Blocked: support lost beyond 30 s recovery allowance; report cause, Reorganise then supported closure. Knowledge: actor memory at 45.00s, trace 16209. Next observer evidence: {'until': 46.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': 16300}.
+- 46.90s, actor 8, squad 1 (trace 16300): Reorganise: completed/failed drill. Knowledge: actor memory at 45.00s, trace 16209. Next observer evidence: {'until': 57.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 3.7034069146028985, 'next_transition': 19657}.
+- 46.90s, actor 8, squad 1 (trace 16309): MoveTactically. Knowledge: actor memory at 45.00s, trace 16209. Next observer evidence: {'until': 57.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 3.7034069146028985, 'next_transition': 19657}.
+- 46.90s, actor 8, squad 1 (trace 16310): bounding overwatch. Knowledge: actor memory at 45.00s, trace 16209. Next observer evidence: {'until': 57.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 3.7034069146028985, 'next_transition': 19657}.
+- 46.90s, actor 8, squad 1 (trace 16311): Reorganise complete: blocked attack resumes supported closure. Knowledge: actor memory at 45.00s, trace 16209. Next observer evidence: {'until': 57.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 3.7034069146028985, 'next_transition': 19657}.
+- 52.55s, actor 0, squad 0 (trace 18581): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 50.00s, trace 18477. Next observer evidence: {'until': 61.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 8.056076983196938, 'next_transition': 20035}.
+- 57.80s, actor 8, squad 1 (trace 19657): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 55.00s, trace 19545. Next observer evidence: {'until': 65.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 4.081379171643524, 'next_transition': 20394}.
+- 61.90s, actor 0, squad 0 (trace 20035): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 60.00s, trace 19905. Next observer evidence: {'until': 76.2, 'shots': 0, 'casualties': 0, 'mean_displacement': 8.934373706620661, 'next_transition': 24123}.
+- 65.65s, actor 8, squad 1 (trace 20394): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 65.00s, trace 20326. Next observer evidence: {'until': 70.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 2.4457934163106527, 'next_transition': 21627}.
+- 70.85s, actor 8, squad 1 (trace 21627): matching received arrivals: deployment leg complete. Knowledge: actor memory at 70.00s, trace 21551. Next observer evidence: {'until': 71.2, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': 21634}.
+- 71.25s, actor 8, squad 1 (trace 21634): Reorganise: completed/failed drill. Knowledge: actor memory at 70.00s, trace 21551. Next observer evidence: {'until': 74, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.17718416950525495, 'next_transition': 23829}.
+- 71.25s, actor 8, squad 1 (trace 21643): MoveTactically. Knowledge: actor memory at 70.00s, trace 21551. Next observer evidence: {'until': 74, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.17718416950525495, 'next_transition': 23829}.
+- 71.25s, actor 8, squad 1 (trace 21644): Reorganise complete: blocked attack resumes supported closure. Knowledge: actor memory at 70.00s, trace 21551. Next observer evidence: {'until': 74, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.17718416950525495, 'next_transition': 23829}.
+- 74.05s, actor 8, squad 1 (trace 23829): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 70.00s, trace 21551. Next observer evidence: {'until': 91.2, 'shots': 0, 'casualties': 0, 'mean_displacement': 12.296131056238004, 'next_transition': 25805}.
+- 76.35s, actor 0, squad 0 (trace 24123): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 75.00s, trace 24023. Next observer evidence: {'until': 87, 'shots': 0, 'casualties': 0, 'mean_displacement': 8.935582830149865, 'next_transition': 25441}.
+- 87.00s, actor 0, squad 0 (trace 25441): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 85.00s, trace 25333. Next observer evidence: {'until': 88, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.1575005161012819, 'next_transition': 498}.
+- 88.00s, actor 29, squad 0 (events line 498): Platoon task-tree directive: FightHere. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 98, 'shots': 0, 'casualties': 0, 'mean_displacement': 5.932740447208159, 'next_transition': 26615}.
+- 88.00s, actor 29, squad 0 (trace 25674): renew committed intent (75 s lifetime). Knowledge: actor memory at 88.00s, trace 25674. Next observer evidence: {'until': 98, 'shots': 0, 'casualties': 0, 'mean_displacement': 5.932740447208159, 'next_transition': 26615}.
+- 91.20s, actor 8, squad 1 (trace 25805): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 90.00s, trace 25733. Next observer evidence: {'until': 101.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 5.871182512217519, 'next_transition': 27713}.
+- 98.00s, actor 0, squad 0 (trace 26615): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 95.00s, trace 26497. Next observer evidence: {'until': 103, 'shots': 0, 'casualties': 0, 'mean_displacement': 4.915456749094567, 'next_transition': 566}.
+- 101.45s, actor 8, squad 1 (trace 27713): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 100.00s, trace 27612. Next observer evidence: {'until': 112.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 12.789023812385736, 'next_transition': 28606}.
+- 103.00s, actor 29, squad 0 (events line 566): Platoon task-tree directive: FightHere. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 104.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.0989916040148662, 'next_transition': 28041}.
+- 103.00s, actor 29, squad 0 (trace 27976): FightHere: next 60 m leg in own advance lane. Knowledge: actor memory at 103.00s, trace 27976. Next observer evidence: {'until': 104.8, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.0989916040148662, 'next_transition': 28041}.
+- 104.85s, actor 0, squad 0 (trace 28041): traveling overwatch. Knowledge: actor memory at 100.00s, trace 27604. Next observer evidence: {'until': 123.8, 'shots': 5, 'casualties': 0, 'mean_displacement': 12.813081299266385, 'next_transition': 30135}.
+- 104.85s, actor 0, squad 0 (trace 28042): received platoon directive. Knowledge: actor memory at 100.00s, trace 27604. Next observer evidence: {'until': 123.8, 'shots': 5, 'casualties': 0, 'mean_displacement': 12.813081299266385, 'next_transition': 30135}.
+- 112.80s, actor 8, squad 1 (trace 28606): traveling overwatch. Knowledge: actor memory at 110.00s, trace 28476. Next observer evidence: {'until': 123.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 14.643779172892353, 'next_transition': 29212}.
+- 112.80s, actor 8, squad 1 (trace 28607): current contact unknown for 10 s. Knowledge: actor memory at 110.00s, trace 28476. Next observer evidence: {'until': 123.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 14.643779172892353, 'next_transition': 29212}.
+- 123.65s, actor 8, squad 1 (trace 29212): ReactToContact: cover and return fire. Knowledge: actor memory at 120.00s, trace 29074. Next observer evidence: {'until': 127.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 3.692623683944816, 'next_transition': 31959}.
+- 123.65s, actor 8, squad 1 (trace 29213): bounding overwatch. Knowledge: actor memory at 120.00s, trace 29074. Next observer evidence: {'until': 127.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 3.692623683944816, 'next_transition': 31959}.
+- 123.65s, actor 8, squad 1 (trace 29214): new contact inside 100 m. Knowledge: actor memory at 120.00s, trace 29074. Next observer evidence: {'until': 127.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 3.692623683944816, 'next_transition': 31959}.
+- 123.85s, actor 0, squad 0 (trace 30135): ReactToContact: cover and return fire. Knowledge: actor memory at 120.00s, trace 29066. Next observer evidence: {'until': 127, 'shots': 6, 'casualties': 0, 'mean_displacement': 3.0546678601160395, 'next_transition': 700}.
+- 123.85s, actor 0, squad 0 (trace 30136): bounding overwatch. Knowledge: actor memory at 120.00s, trace 29066. Next observer evidence: {'until': 127, 'shots': 6, 'casualties': 0, 'mean_displacement': 3.0546678601160395, 'next_transition': 700}.
+- 123.85s, actor 0, squad 0 (trace 30137): new contact inside 100 m. Knowledge: actor memory at 120.00s, trace 29066. Next observer evidence: {'until': 127, 'shots': 6, 'casualties': 0, 'mean_displacement': 3.0546678601160395, 'next_transition': 700}.
+- 127.00s, actor 29, squad 0 (events line 700): Platoon task-tree directive: FightHere. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 127.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.5999998334756458, 'next_transition': 31962}.
+- 127.00s, actor 29, squad 0 (trace 31940): FightHere: nearest known group; squad chooses its drill. Knowledge: actor memory at 127.00s, trace 31940. Next observer evidence: {'until': 127.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.5999998334756458, 'next_transition': 31962}.
+- 127.45s, actor 8, squad 1 (trace 31959): contact assessment complete (3 s plus reaction). Knowledge: actor memory at 125.00s, trace 31701. Next observer evidence: {'until': 133.8, 'shots': 7, 'casualties': 0, 'mean_displacement': 4.518527649856996, 'next_transition': 32194}.
+- 127.50s, actor 0, squad 0 (trace 31962): contact assessment complete (3 s plus reaction). Knowledge: actor memory at 125.00s, trace 31693. Next observer evidence: {'until': 133.4, 'shots': 30, 'casualties': 0, 'mean_displacement': 3.966020416032222, 'next_transition': 32188}.
+- 133.45s, actor 0, squad 0 (trace 32188): received platoon directive; retain contact cover stage. Knowledge: actor memory at 130.00s, trace 32042. Next observer evidence: {'until': 134.4, 'shots': 8, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': 32936}.
+- 133.80s, actor 8, squad 1 (trace 32194): SupportByFire: contact assessment deploys gun group; area = deployment lane UNION objective disc radius 60 m, clipped to map. Knowledge: actor memory at 130.00s, trace 32050. Next observer evidence: {'until': 137.6, 'shots': 2, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': 38320}.
+- 133.80s, actor 8, squad 1 (trace 32640): prepare element support; assault permission withheld pending delivered rounds. Knowledge: actor memory at 130.00s, trace 32050. Next observer evidence: {'until': 137.6, 'shots': 2, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': 38320}.
+- 133.80s, actor 8, squad 1 (trace 32915): Assaulting. Knowledge: actor memory at 130.00s, trace 32050. Next observer evidence: {'until': 137.6, 'shots': 2, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': 38320}.
+- 134.45s, actor 0, squad 0 (trace 32936): SupportByFire: contact assessment deploys gun group; area = deployment lane UNION objective disc radius 60 m, clipped to map. Knowledge: actor memory at 130.00s, trace 32042. Next observer evidence: {'until': 141, 'shots': 7, 'casualties': 0, 'mean_displacement': 7.8287881697810136, 'next_transition': 38584}.
+- 134.45s, actor 0, squad 0 (trace 37888): no covered route: report upward and continue supported bounding closure. Knowledge: actor memory at 130.00s, trace 32042. Next observer evidence: {'until': 141, 'shots': 7, 'casualties': 0, 'mean_displacement': 7.8287881697810136, 'next_transition': 38584}.
+- 134.45s, actor 0, squad 0 (trace 37889): MoveTactically. Knowledge: actor memory at 130.00s, trace 32042. Next observer evidence: {'until': 141, 'shots': 7, 'casualties': 0, 'mean_displacement': 7.8287881697810136, 'next_transition': 38584}.
+- 134.45s, actor 0, squad 0 (trace 37890): contact cover complete: assessment resumes closure. Knowledge: actor memory at 130.00s, trace 32042. Next observer evidence: {'until': 141, 'shots': 7, 'casualties': 0, 'mean_displacement': 7.8287881697810136, 'next_transition': 38584}.
+- 137.65s, actor 8, squad 1 (trace 38320): support established: element delivered fire on threat area. Knowledge: actor memory at 135.00s, trace 38121. Next observer evidence: {'until': 144.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.816733952127416, 'next_transition': 38893}.
+- 137.65s, actor 8, squad 1 (trace 38321): support established: next buddy rush, at most five seconds. Knowledge: actor memory at 135.00s, trace 38121. Next observer evidence: {'until': 144.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 1.816733952127416, 'next_transition': 38893}.
+- 141.15s, actor 0, squad 0 (trace 38584): superiority established (8 s hysteresis). Knowledge: actor memory at 140.00s, trace 38481. Next observer evidence: {'until': 150.4, 'shots': 1, 'casualties': 0, 'mean_displacement': 11.72516065626491, 'next_transition': 39452}.
+- 144.60s, actor 8, squad 1 (trace 38893): support established: next buddy rush, at most five seconds. Knowledge: actor memory at 140.00s, trace 38489. Next observer evidence: {'until': 147.2, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': 39132}.
+- 147.25s, actor 8, squad 1 (trace 39132): support established: next buddy rush, at most five seconds. Knowledge: actor memory at 145.00s, trace 39019. Next observer evidence: {'until': 149.4, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.4105476763193891, 'next_transition': 39295}.
+- 149.55s, actor 8, squad 1 (trace 39295): support lost: eight seconds without element delivery evidence. Knowledge: actor memory at 145.00s, trace 39019. Next observer evidence: {'until': 162.4, 'shots': 10, 'casualties': 0, 'mean_displacement': 1.1645246776351188, 'next_transition': 40196}.
+- 149.55s, actor 8, squad 1 (trace 39363): support permission paused. Knowledge: actor memory at 145.00s, trace 39019. Next observer evidence: {'until': 162.4, 'shots': 10, 'casualties': 0, 'mean_displacement': 1.1645246776351188, 'next_transition': 40196}.
+- 150.55s, actor 0, squad 0 (trace 39452): superiority lost (8 s hysteresis). Knowledge: actor memory at 150.00s, trace 39376. Next observer evidence: {'until': 156.6, 'shots': 0, 'casualties': 0, 'mean_displacement': 5.055279184284863, 'next_transition': 39855}.
+- 156.75s, actor 0, squad 0 (trace 39855): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 155.00s, trace 39759. Next observer evidence: {'until': 164.6, 'shots': 16, 'casualties': 0, 'mean_displacement': 7.717367684126721, 'next_transition': 40712}.
+- 162.55s, actor 8, squad 1 (trace 40196): support established: element delivered fire on threat area. Knowledge: actor memory at 160.00s, trace 40073. Next observer evidence: {'until': 180.2, 'shots': 9, 'casualties': 0, 'mean_displacement': 0.6571924444720973, 'next_transition': 41431}.
+- 162.55s, actor 8, squad 1 (trace 40198): support permission resumed. Knowledge: actor memory at 160.00s, trace 40073. Next observer evidence: {'until': 180.2, 'shots': 9, 'casualties': 0, 'mean_displacement': 0.6571924444720973, 'next_transition': 41431}.
+- 162.55s, actor 8, squad 1 (trace 40199): Fixing. Knowledge: actor memory at 160.00s, trace 40073. Next observer evidence: {'until': 180.2, 'shots': 9, 'casualties': 0, 'mean_displacement': 0.6571924444720973, 'next_transition': 41431}.
+- 164.60s, actor 0, squad 0 (trace 40712): received Fixing; no covered own-side route: retain supported fire and movement. Knowledge: actor memory at 160.00s, trace 40065. Next observer evidence: {'until': 172.8, 'shots': 15, 'casualties': 0, 'mean_displacement': 3.5860257763437398, 'next_transition': 40968}.
+- 172.85s, actor 0, squad 0 (trace 40968): superiority established (8 s hysteresis). Knowledge: actor memory at 170.00s, trace 40877. Next observer evidence: {'until': 185, 'shots': 5, 'casualties': 0, 'mean_displacement': 6.751025300996971, 'next_transition': 41612}.
+- 180.25s, actor 8, squad 1 (trace 41431): support lost: eight seconds without element delivery evidence. Knowledge: actor memory at 180.00s, trace 41371. Next observer evidence: {'until': 185.6, 'shots': 4, 'casualties': 0, 'mean_displacement': 0.6571924444720973, 'next_transition': 41878}.
+- 180.25s, actor 8, squad 1 (trace 41499): support permission paused. Knowledge: actor memory at 180.00s, trace 41371. Next observer evidence: {'until': 185.6, 'shots': 4, 'casualties': 0, 'mean_displacement': 0.6571924444720973, 'next_transition': 41878}.
+- 185.10s, actor 0, squad 0 (trace 41612): superiority lost (8 s hysteresis). Knowledge: actor memory at 185.00s, trace 41593. Next observer evidence: {'until': 187, 'shots': 4, 'casualties': 0, 'mean_displacement': 1.4235205563679836, 'next_transition': 1097}.
+- 185.65s, actor 8, squad 1 (trace 41878): support established: element delivered fire on threat area. Knowledge: actor memory at 185.00s, trace 41601. Next observer evidence: {'until': 215.6, 'shots': 19, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': None}.
+- 185.65s, actor 8, squad 1 (trace 41880): support permission resumed. Knowledge: actor memory at 185.00s, trace 41601. Next observer evidence: {'until': 215.6, 'shots': 19, 'casualties': 0, 'mean_displacement': 0.0, 'next_transition': None}.
+- 187.00s, actor 29, squad 0 (events line 1097): Platoon task-tree directive: FightHere. Knowledge: no linked actor-memory snapshot. Next observer evidence: {'until': 190.8, 'shots': 1, 'casualties': 0, 'mean_displacement': 0.8969433528448163, 'next_transition': 42068}.
+- 187.00s, actor 29, squad 0 (trace 41929): renew committed intent (75 s lifetime). Knowledge: actor memory at 187.00s, trace 41929. Next observer evidence: {'until': 190.8, 'shots': 1, 'casualties': 0, 'mean_displacement': 0.8969433528448163, 'next_transition': 42068}.
+- 190.95s, actor 0, squad 0 (trace 42068): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 190.00s, trace 42000. Next observer evidence: {'until': 206, 'shots': 8, 'casualties': 0, 'mean_displacement': 7.857080899643416, 'next_transition': 42594}.
+- 206.10s, actor 0, squad 0 (trace 42594): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 205.00s, trace 42521. Next observer evidence: {'until': 215.6, 'shots': 12, 'casualties': 0, 'mean_displacement': 7.988866397781525, 'next_transition': 43072}.
+- 215.60s, actor 0, squad 0 (trace 43072): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 215.00s, trace 43003. Next observer evidence: {'until': 227.6, 'shots': 21, 'casualties': 0, 'mean_displacement': 5.135279003315508, 'next_transition': 43837}.
+- 227.65s, actor 0, squad 0 (trace 43837): matching received arrivals: quorum latched, grace complete. Knowledge: actor memory at 225.00s, trace 43738. Next observer evidence: {'until': 238.2, 'shots': 6, 'casualties': 0, 'mean_displacement': 5.609404923418094, 'next_transition': 44331}.
+- 238.35s, actor 0, squad 0 (trace 44331): matching received arrivals: moving element takes halted cover. Knowledge: actor memory at 235.00s, trace 44230. Next observer evidence: {'until': 240, 'shots': 0, 'casualties': 0, 'mean_displacement': 0.6763781404693243, 'next_transition': None}.
+
+## Net delivery
+
+220 matched order/radio deliveries; 0 explicitly recorded losses; 0 unmatched orders (not classified as lost).
+Matched delay: mean 0.692s; maximum 1.300s. Message-level evidence is in the companion JSON.
+
+## Leader picture versus received reports
+
+- 5.00s leader 0, trace 6361: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 1, trace 6362: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 2, trace 6363: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 3, trace 6364: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 4, trace 6365: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 5, trace 6366: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 6, trace 6367: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 7, trace 6368: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 8, trace 6369: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 9, trace 6370: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 10, trace 6371: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 11, trace 6372: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 12, trace 6373: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 13, trace 6374: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 14, trace 6375: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 15, trace 6376: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 29, trace 6377: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 30, trace 6378: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 5.00s leader 32, trace 6379: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 0, trace 8109: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 1, trace 8110: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 2, trace 8111: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 3, trace 8112: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 4, trace 8113: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 5, trace 8114: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 6, trace 8115: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 7, trace 8116: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 8, trace 8117: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 9, trace 8118: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 10, trace 8119: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 11, trace 8120: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 12, trace 8121: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 13, trace 8122: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 14, trace 8123: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 15, trace 8124: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 29, trace 8125: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 30, trace 8126: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 10.00s leader 32, trace 8127: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 0, trace 8368: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 1, trace 8369: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 2, trace 8370: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 3, trace 8371: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 4, trace 8372: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 5, trace 8373: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 6, trace 8374: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 7, trace 8375: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 8, trace 8376: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 9, trace 8377: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 10, trace 8378: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 11, trace 8379: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 12, trace 8380: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 13, trace 8381: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 14, trace 8382: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 15, trace 8383: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 29, trace 8384: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 30, trace 8385: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 15.00s leader 32, trace 8386: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 0, trace 8603: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 1, trace 8604: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 2, trace 8605: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 3, trace 8606: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 4, trace 8607: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 5, trace 8608: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 6, trace 8609: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 7, trace 8610: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 8, trace 8611: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 9, trace 8612: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 10, trace 8613: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 11, trace 8614: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 12, trace 8615: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 13, trace 8616: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 14, trace 8617: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 15, trace 8618: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 29, trace 8619: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 30, trace 8620: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 20.00s leader 32, trace 8621: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 0, trace 13577: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 1, trace 13578: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 2, trace 13579: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 3, trace 13580: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 4, trace 13581: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 5, trace 13582: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 6, trace 13583: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 7, trace 13584: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 8, trace 13585: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 9, trace 13586: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 10, trace 13587: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 11, trace 13588: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 12, trace 13589: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 13, trace 13590: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 14, trace 13591: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 15, trace 13592: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 29, trace 13593: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 30, trace 13594: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 25.00s leader 32, trace 13595: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 27.00s leader 29, trace 13701: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 28.00s leader 29, trace 13707: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 0, trace 15475: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 1, trace 15476: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 2, trace 15477: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 3, trace 15478: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 4, trace 15479: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 5, trace 15480: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 6, trace 15481: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 7, trace 15482: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 8, trace 15483: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 9, trace 15484: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 10, trace 15485: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 11, trace 15486: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 12, trace 15487: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 13, trace 15488: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 14, trace 15489: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 15, trace 15490: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 29, trace 15491: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 30, trace 15492: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 30.00s leader 32, trace 15493: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 0, trace 15706: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 1, trace 15707: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 2, trace 15708: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 3, trace 15709: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 4, trace 15710: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 5, trace 15711: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 6, trace 15712: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 7, trace 15713: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 8, trace 15714: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 9, trace 15715: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 10, trace 15716: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 11, trace 15717: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 12, trace 15718: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 13, trace 15719: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 14, trace 15720: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 15, trace 15721: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 29, trace 15722: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 30, trace 15723: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 35.00s leader 32, trace 15724: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 0, trace 16053: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 1, trace 16054: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 2, trace 16055: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 3, trace 16056: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 4, trace 16057: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 5, trace 16058: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 6, trace 16059: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 7, trace 16060: estimate 1.34; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 8, trace 16061: estimate 1.34; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 9, trace 16062: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 10, trace 16063: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 11, trace 16064: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 12, trace 16065: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 13, trace 16066: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 14, trace 16067: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 15, trace 16068: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 29, trace 16069: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 30, trace 16070: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 40.00s leader 32, trace 16071: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 0, trace 16201: estimate 1.34; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 1, trace 16202: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 2, trace 16203: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 3, trace 16204: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 4, trace 16205: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 5, trace 16206: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 6, trace 16207: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 7, trace 16208: estimate 1.32; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 8, trace 16209: estimate 1.32; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 9, trace 16210: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 10, trace 16211: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 11, trace 16212: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 12, trace 16213: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 13, trace 16214: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 14, trace 16215: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 15, trace 16216: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 29, trace 16217: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 30, trace 16218: estimate 1.33; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 45.00s leader 32, trace 16219: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 0, trace 18477: estimate 1.31; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 1, trace 18478: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 2, trace 18479: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 3, trace 18480: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 4, trace 18481: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 5, trace 18482: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 6, trace 18483: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 7, trace 18484: estimate 1.30; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 8, trace 18485: estimate 1.30; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 9, trace 18486: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 10, trace 18487: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 11, trace 18488: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 12, trace 18489: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 13, trace 18490: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 14, trace 18491: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 15, trace 18492: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 29, trace 18493: estimate 1.33; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 30, trace 18494: estimate 1.30; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 50.00s leader 32, trace 18495: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 0, trace 19537: estimate 1.29; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 1, trace 19538: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 2, trace 19539: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 3, trace 19540: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 4, trace 19541: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 5, trace 19542: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 6, trace 19543: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 7, trace 19544: estimate 1.28; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 8, trace 19545: estimate 1.28; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 9, trace 19546: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 10, trace 19547: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 11, trace 19548: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 12, trace 19549: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 13, trace 19550: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 14, trace 19551: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 15, trace 19552: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 29, trace 19553: estimate 1.31; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 30, trace 19554: estimate 1.28; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 55.00s leader 32, trace 19555: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 0, trace 19905: estimate 1.27; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 1, trace 19906: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 2, trace 19907: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 3, trace 19908: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 4, trace 19909: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 5, trace 19910: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 6, trace 19911: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 7, trace 19912: estimate 1.26; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 8, trace 19913: estimate 1.26; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 9, trace 19914: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 10, trace 19915: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 11, trace 19916: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 12, trace 19917: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 13, trace 19918: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 14, trace 19919: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 15, trace 19920: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 29, trace 19921: estimate 1.29; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 30, trace 19922: estimate 1.26; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 60.00s leader 32, trace 19923: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 0, trace 20318: estimate 1.25; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 1, trace 20319: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 2, trace 20320: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 3, trace 20321: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 4, trace 20322: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 5, trace 20323: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 6, trace 20324: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 7, trace 20325: estimate 1.23; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 8, trace 20326: estimate 1.24; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 9, trace 20327: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 10, trace 20328: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 11, trace 20329: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 12, trace 20330: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 13, trace 20331: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 14, trace 20332: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 15, trace 20333: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 29, trace 20334: estimate 1.27; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 30, trace 20335: estimate 1.24; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 65.00s leader 32, trace 20336: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 0, trace 21543: estimate 1.23; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 1, trace 21544: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 2, trace 21545: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 3, trace 21546: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 4, trace 21547: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 5, trace 21548: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 6, trace 21549: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 7, trace 21550: estimate 1.21; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 8, trace 21551: estimate 1.22; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 9, trace 21552: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 10, trace 21553: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 11, trace 21554: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 12, trace 21555: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 13, trace 21556: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 14, trace 21557: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 15, trace 21558: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 29, trace 21559: estimate 1.25; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 30, trace 21560: estimate 1.22; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 70.00s leader 32, trace 21561: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 0, trace 24023: estimate 1.21; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 1, trace 24024: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 2, trace 24025: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 3, trace 24026: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 4, trace 24027: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 5, trace 24028: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 6, trace 24029: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 7, trace 24030: estimate 1.19; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 8, trace 24031: estimate 1.19; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 9, trace 24032: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 10, trace 24033: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 11, trace 24034: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 12, trace 24035: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 13, trace 24036: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 14, trace 24037: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 15, trace 24038: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 29, trace 24039: estimate 1.23; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 30, trace 24040: estimate 1.20; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 75.00s leader 32, trace 24041: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 0, trace 25144: estimate 1.19; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 1, trace 25145: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 2, trace 25146: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 3, trace 25147: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 4, trace 25148: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 5, trace 25149: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 6, trace 25150: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 7, trace 25151: estimate 1.17; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 8, trace 25152: estimate 1.17; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 9, trace 25153: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 10, trace 25154: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 11, trace 25155: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 12, trace 25156: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 13, trace 25157: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 14, trace 25158: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 15, trace 25159: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 29, trace 25160: estimate 1.22; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 30, trace 25161: estimate 1.18; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 80.00s leader 32, trace 25162: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 0, trace 25333: estimate 1.17; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 1, trace 25334: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 2, trace 25335: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 3, trace 25336: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 4, trace 25337: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 5, trace 25338: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 6, trace 25339: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 7, trace 25340: estimate 1.15; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 8, trace 25341: estimate 1.15; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 9, trace 25342: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 10, trace 25343: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 11, trace 25344: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 12, trace 25345: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 13, trace 25346: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 14, trace 25347: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 15, trace 25348: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 29, trace 25349: estimate 1.20; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 30, trace 25350: estimate 1.16; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 85.00s leader 32, trace 25351: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 88.00s leader 29, trace 25674: estimate 1.18; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 0, trace 25725: estimate 1.15; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 1, trace 25726: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 2, trace 25727: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 3, trace 25728: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 4, trace 25729: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 5, trace 25730: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 6, trace 25731: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 7, trace 25732: estimate 1.13; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 8, trace 25733: estimate 1.13; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 9, trace 25734: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 10, trace 25735: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 11, trace 25736: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 12, trace 25737: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 13, trace 25738: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 14, trace 25739: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 15, trace 25740: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 29, trace 25741: estimate 1.18; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 30, trace 25742: estimate 1.14; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 90.00s leader 32, trace 25743: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 0, trace 26497: estimate 1.13; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 1, trace 26498: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 2, trace 26499: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 3, trace 26500: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 4, trace 26501: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 5, trace 26502: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 6, trace 26503: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 7, trace 26504: estimate 1.11; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 8, trace 26505: estimate 1.11; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 9, trace 26506: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 10, trace 26507: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 11, trace 26508: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 12, trace 26509: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 13, trace 26510: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 14, trace 26511: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 15, trace 26512: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 29, trace 26513: estimate 1.16; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 30, trace 26514: estimate 1.12; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 95.00s leader 32, trace 26515: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 0, trace 27604: estimate 1.11; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 1, trace 27605: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 2, trace 27606: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 3, trace 27607: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 4, trace 27608: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 5, trace 27609: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 6, trace 27610: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 7, trace 27611: estimate 1.09; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 8, trace 27612: estimate 1.09; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 9, trace 27613: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 10, trace 27614: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 11, trace 27615: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 12, trace 27616: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 13, trace 27617: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 14, trace 27618: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 15, trace 27619: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 29, trace 27620: estimate 1.14; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 30, trace 27621: estimate 1.10; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 100.00s leader 32, trace 27622: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 103.00s leader 29, trace 27976: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 0, trace 28257: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 1, trace 28258: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 2, trace 28259: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 3, trace 28260: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 4, trace 28261: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 5, trace 28262: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 6, trace 28263: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 7, trace 28264: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 8, trace 28265: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 9, trace 28266: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 10, trace 28267: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 11, trace 28268: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 12, trace 28269: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 13, trace 28270: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 14, trace 28271: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 15, trace 28272: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 29, trace 28273: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 30, trace 28274: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 105.00s leader 32, trace 28275: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 0, trace 28468: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 1, trace 28469: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 2, trace 28470: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 3, trace 28471: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 4, trace 28472: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 5, trace 28473: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 6, trace 28474: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 7, trace 28475: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 8, trace 28476: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 9, trace 28477: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 10, trace 28478: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 11, trace 28479: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 12, trace 28480: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 13, trace 28481: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 14, trace 28482: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 15, trace 28483: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 29, trace 28484: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 30, trace 28485: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 110.00s leader 32, trace 28486: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 0, trace 28865: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 1, trace 28866: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 2, trace 28867: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 3, trace 28868: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 4, trace 28869: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 5, trace 28870: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 6, trace 28871: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 7, trace 28872: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 8, trace 28873: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 9, trace 28874: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 10, trace 28875: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 11, trace 28876: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 12, trace 28877: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 13, trace 28878: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 14, trace 28879: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 15, trace 28880: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 29, trace 28881: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 30, trace 28882: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 115.00s leader 32, trace 28883: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 0, trace 29066: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 1, trace 29067: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 2, trace 29068: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 3, trace 29069: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 4, trace 29070: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 5, trace 29071: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 6, trace 29072: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 7, trace 29073: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 8, trace 29074: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 9, trace 29075: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 10, trace 29076: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 11, trace 29077: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 12, trace 29078: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 13, trace 29079: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 14, trace 29080: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 15, trace 29081: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 29, trace 29082: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 30, trace 29083: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 120.00s leader 32, trace 29084: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 0, trace 31693: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 1, trace 31694: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 2, trace 31695: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 3, trace 31696: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 4, trace 31697: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 5, trace 31698: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 6, trace 31699: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 7, trace 31700: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 8, trace 31701: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 9, trace 31702: estimate 1.54; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 10, trace 31703: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 11, trace 31704: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 12, trace 31705: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 13, trace 31706: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 14, trace 31707: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 15, trace 31708: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 29, trace 31709: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 30, trace 31710: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 125.00s leader 32, trace 31711: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 127.00s leader 29, trace 31940: estimate 1.51; 1 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 0, trace 32042: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 1, trace 32043: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 2, trace 32044: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 3, trace 32045: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 4, trace 32046: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 5, trace 32047: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 6, trace 32048: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 7, trace 32049: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 8, trace 32050: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 9, trace 32051: estimate 1.54; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 10, trace 32052: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 11, trace 32053: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 12, trace 32054: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 13, trace 32055: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 14, trace 32056: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 15, trace 32057: estimate 1.54; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 29, trace 32058: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 30, trace 32059: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 130.00s leader 32, trace 32060: estimate 13.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 0, trace 38113: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 1, trace 38114: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 2, trace 38115: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 3, trace 38116: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 4, trace 38117: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 5, trace 38118: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 6, trace 38119: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 7, trace 38120: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 8, trace 38121: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 9, trace 38122: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 10, trace 38123: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 11, trace 38124: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 12, trace 38125: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 13, trace 38126: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 14, trace 38127: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 15, trace 38128: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 29, trace 38129: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 30, trace 38130: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 135.00s leader 32, trace 38131: estimate 13.29; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 0, trace 38481: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 1, trace 38482: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 2, trace 38483: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 3, trace 38484: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 4, trace 38485: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 5, trace 38486: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 6, trace 38487: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 7, trace 38488: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 8, trace 38489: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 9, trace 38490: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 10, trace 38491: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 11, trace 38492: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 12, trace 38493: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 13, trace 38494: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 14, trace 38495: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 15, trace 38496: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 29, trace 38497: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 30, trace 38498: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 140.00s leader 32, trace 38499: estimate 13.07; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 0, trace 39011: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 1, trace 39012: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 2, trace 39013: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 3, trace 39014: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 4, trace 39015: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 5, trace 39016: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 6, trace 39017: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 7, trace 39018: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 8, trace 39019: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 9, trace 39020: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 10, trace 39021: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 11, trace 39022: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 12, trace 39023: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 13, trace 39024: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 14, trace 39025: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 15, trace 39026: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 29, trace 39027: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 30, trace 39028: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 145.00s leader 32, trace 39029: estimate 12.85; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 0, trace 39376: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 1, trace 39377: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 2, trace 39378: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 3, trace 39379: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 4, trace 39380: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 5, trace 39381: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 6, trace 39382: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 7, trace 39383: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 8, trace 39384: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 9, trace 39385: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 10, trace 39386: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 11, trace 39387: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 12, trace 39388: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 13, trace 39389: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 14, trace 39390: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 15, trace 39391: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 29, trace 39392: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 30, trace 39393: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 150.00s leader 32, trace 39394: estimate 12.63; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 0, trace 39759: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 1, trace 39760: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 2, trace 39761: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 3, trace 39762: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 4, trace 39763: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 5, trace 39764: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 6, trace 39765: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 7, trace 39766: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 8, trace 39767: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 9, trace 39768: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 10, trace 39769: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 11, trace 39770: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 12, trace 39771: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 13, trace 39772: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 14, trace 39773: estimate 1.33; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 15, trace 39774: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 29, trace 39775: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 30, trace 39776: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 155.00s leader 32, trace 39777: estimate 12.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 0, trace 40065: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 1, trace 40066: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 2, trace 40067: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 3, trace 40068: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 4, trace 40069: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 5, trace 40070: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 6, trace 40071: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 7, trace 40072: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 8, trace 40073: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 9, trace 40074: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 10, trace 40075: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 11, trace 40076: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 12, trace 40077: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 13, trace 40078: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 14, trace 40079: estimate 1.31; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 15, trace 40080: estimate 1.54; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 29, trace 40081: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 30, trace 40082: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 160.00s leader 32, trace 40083: estimate 15.65; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 0, trace 40722: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 1, trace 40723: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 2, trace 40724: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 3, trace 40725: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 4, trace 40726: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 5, trace 40727: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 6, trace 40728: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 7, trace 40729: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 8, trace 40730: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 9, trace 40731: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 10, trace 40732: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 11, trace 40733: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 12, trace 40734: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 13, trace 40735: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 14, trace 40736: estimate 1.28; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 15, trace 40737: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 29, trace 40738: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 30, trace 40739: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 165.00s leader 32, trace 40740: estimate 15.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 0, trace 40877: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 1, trace 40878: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 2, trace 40879: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 3, trace 40880: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 4, trace 40881: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 5, trace 40882: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 6, trace 40883: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 7, trace 40884: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 8, trace 40885: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 9, trace 40886: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 10, trace 40887: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 11, trace 40888: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 12, trace 40889: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 13, trace 40890: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 14, trace 40891: estimate 1.26; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 15, trace 40892: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 29, trace 40893: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 30, trace 40894: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 170.00s leader 32, trace 40895: estimate 15.13; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 0, trace 41215: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 1, trace 41216: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 2, trace 41217: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 3, trace 41218: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 4, trace 41219: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 5, trace 41220: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 6, trace 41221: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 7, trace 41222: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 8, trace 41223: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 9, trace 41224: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 10, trace 41225: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 11, trace 41226: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 12, trace 41227: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 13, trace 41228: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 14, trace 41229: estimate 1.24; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 15, trace 41230: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 29, trace 41231: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 30, trace 41232: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 175.00s leader 32, trace 41233: estimate 14.87; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 0, trace 41363: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 1, trace 41364: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 2, trace 41365: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 3, trace 41366: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 4, trace 41367: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 5, trace 41368: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 6, trace 41369: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 7, trace 41370: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 8, trace 41371: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 9, trace 41372: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 10, trace 41373: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 11, trace 41374: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 12, trace 41375: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 13, trace 41376: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 14, trace 41377: estimate 1.22; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 15, trace 41378: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 29, trace 41379: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 30, trace 41380: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 180.00s leader 32, trace 41381: estimate 14.60; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 0, trace 41593: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 1, trace 41594: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 2, trace 41595: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 3, trace 41596: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 4, trace 41597: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 5, trace 41598: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 6, trace 41599: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 7, trace 41600: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 8, trace 41601: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 9, trace 41602: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 10, trace 41603: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 11, trace 41604: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 12, trace 41605: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 13, trace 41606: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 14, trace 41607: estimate 1.19; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 15, trace 41608: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 29, trace 41609: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 30, trace 41610: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 185.00s leader 32, trace 41611: estimate 14.70; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 187.00s leader 29, trace 41929: estimate 1.51; 1 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 0, trace 42000: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 1, trace 42001: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 2, trace 42002: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 3, trace 42003: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 4, trace 42004: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 5, trace 42005: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 6, trace 42006: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 7, trace 42007: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 8, trace 42008: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 9, trace 42009: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 10, trace 42010: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 11, trace 42011: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 12, trace 42012: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 13, trace 42013: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 14, trace 42014: estimate 1.17; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 15, trace 42015: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 29, trace 42016: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 30, trace 42017: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 190.00s leader 32, trace 42018: estimate 14.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 0, trace 42258: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 1, trace 42259: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 2, trace 42260: estimate 1.48; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 3, trace 42261: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 4, trace 42262: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 5, trace 42263: estimate 1.44; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 6, trace 42264: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 7, trace 42265: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 8, trace 42266: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 9, trace 42267: estimate 1.52; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 10, trace 42268: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 11, trace 42269: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 12, trace 42270: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 13, trace 42271: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 14, trace 42272: estimate 1.15; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 15, trace 42273: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 29, trace 42274: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 30, trace 42275: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 195.00s leader 32, trace 42276: estimate 14.18; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 0, trace 42392: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 1, trace 42393: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 2, trace 42394: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 3, trace 42395: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 4, trace 42396: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 5, trace 42397: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 6, trace 42398: estimate 1.34; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 7, trace 42399: estimate 1.33; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 8, trace 42400: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 9, trace 42401: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 10, trace 42402: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 11, trace 42403: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 12, trace 42404: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 13, trace 42405: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 14, trace 42406: estimate 1.13; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 15, trace 42407: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 29, trace 42408: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 30, trace 42409: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 200.00s leader 32, trace 42410: estimate 13.91; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 0, trace 42521: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 1, trace 42522: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 2, trace 42523: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 3, trace 42524: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 4, trace 42525: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 5, trace 42526: estimate 1.40; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 6, trace 42527: estimate 1.32; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 7, trace 42528: estimate 1.31; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 8, trace 42529: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 9, trace 42530: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 10, trace 42531: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 11, trace 42532: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 12, trace 42533: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 13, trace 42534: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 14, trace 42535: estimate 1.10; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 15, trace 42536: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 29, trace 42537: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 30, trace 42538: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 205.00s leader 32, trace 42539: estimate 13.65; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 0, trace 42872: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 1, trace 42873: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 2, trace 42874: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 3, trace 42875: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 4, trace 42876: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 5, trace 42877: estimate 1.38; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 6, trace 42878: estimate 1.30; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 7, trace 42879: estimate 1.29; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 8, trace 42880: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 9, trace 42881: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 10, trace 42882: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 11, trace 42883: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 12, trace 42884: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 13, trace 42885: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 14, trace 42886: estimate 1.08; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 15, trace 42887: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 29, trace 42888: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 30, trace 42889: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 210.00s leader 32, trace 42890: estimate 13.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 0, trace 43003: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 1, trace 43004: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 2, trace 43005: estimate 1.41; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 3, trace 43006: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 4, trace 43007: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 5, trace 43008: estimate 1.36; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 6, trace 43009: estimate 1.28; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 7, trace 43010: estimate 1.27; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 8, trace 43011: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 9, trace 43012: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 10, trace 43013: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 11, trace 43014: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 12, trace 43015: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 13, trace 43016: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 14, trace 43017: estimate 1.06; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 15, trace 43018: estimate 1.33; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 29, trace 43019: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 30, trace 43020: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 215.00s leader 32, trace 43021: estimate 13.13; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 0, trace 43621: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 1, trace 43622: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 2, trace 43623: estimate 1.39; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 3, trace 43624: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 4, trace 43625: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 5, trace 43626: estimate 1.34; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 6, trace 43627: estimate 1.26; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 7, trace 43628: estimate 1.25; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 8, trace 43629: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 9, trace 43630: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 10, trace 43631: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 11, trace 43632: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 12, trace 43633: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 13, trace 43634: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 14, trace 43635: estimate 1.04; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 15, trace 43636: estimate 1.31; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 29, trace 43637: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 30, trace 43638: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 220.00s leader 32, trace 43639: estimate 12.86; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 0, trace 43738: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 1, trace 43739: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 2, trace 43740: estimate 1.37; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 3, trace 43741: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 4, trace 43742: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 5, trace 43743: estimate 1.32; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 6, trace 43744: estimate 1.23; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 7, trace 43745: estimate 1.23; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 8, trace 43746: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 9, trace 43747: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 10, trace 43748: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 11, trace 43749: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 12, trace 43750: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 13, trace 43751: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 14, trace 43752: estimate 1.01; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 15, trace 43753: estimate 1.29; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 29, trace 43754: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 30, trace 43755: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 225.00s leader 32, trace 43756: estimate 12.60; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 0, trace 44073: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 1, trace 44074: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 2, trace 44075: estimate 1.35; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 3, trace 44076: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 4, trace 44077: estimate 1.33; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 5, trace 44078: estimate 1.30; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 6, trace 44079: estimate 1.21; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 7, trace 44080: estimate 1.21; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 8, trace 44081: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 9, trace 44082: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 10, trace 44083: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 11, trace 44084: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 12, trace 44085: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 13, trace 44086: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 14, trace 44087: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 15, trace 44088: estimate 1.27; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 29, trace 44089: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 30, trace 44090: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 230.00s leader 32, trace 44091: estimate 11.76; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 0, trace 44230: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 1, trace 44231: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 2, trace 44232: estimate 1.33; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 3, trace 44233: estimate 1.45; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 4, trace 44234: estimate 1.31; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 5, trace 44235: estimate 1.28; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 6, trace 44236: estimate 1.19; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 7, trace 44237: estimate 1.19; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 8, trace 44238: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 9, trace 44239: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 10, trace 44240: estimate 1.47; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 11, trace 44241: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 12, trace 44242: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 13, trace 44243: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 14, trace 44244: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 15, trace 44245: estimate 1.25; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 29, trace 44246: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 30, trace 44247: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 235.00s leader 32, trace 44248: estimate 9.86; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 0, trace 44614: estimate 1.49; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 1, trace 44615: estimate 1.43; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 2, trace 44616: estimate 1.31; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 3, trace 44617: estimate 1.42; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 4, trace 44618: estimate 1.29; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 5, trace 44619: estimate 1.26; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 6, trace 44620: estimate 1.17; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 7, trace 44621: estimate 1.17; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 8, trace 44622: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 9, trace 44623: estimate 1.53; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 10, trace 44624: estimate 1.46; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 11, trace 44625: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 12, trace 44626: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 13, trace 44627: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 14, trace 44628: estimate 0.00; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 15, trace 44629: estimate 1.23; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 29, trace 44630: estimate 1.51; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 30, trace 44631: estimate 1.50; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+- 240.00s leader 32, trace 44632: estimate 9.66; 0 distinct relayed contacts. Estimate includes uncertainty; reported contacts are not observer enemy strength.
+
+## Casualties by recorded cause
+
+No casualty events recorded; see missing-data limitations before interpreting this as zero casualties.
+
+## Outcome attribution
+
+No supported attribution candidate found in recorded transitions.
+
+## Evidence limits
+
+- Broadcast loss is unknown unless an explicit dropped-message event exists; unmatched orders may be in flight at termination.
+- Older traces do not identify every report message; complete radio delay/loss accounting is unavailable.
+- Outcome attribution is temporal evidence and hypotheses, not proof that a leader caused the result.

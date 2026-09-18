@@ -1,0 +1,337 @@
+diff -ruN .local/plan015/step-e/entry/Sim/BattleSim.cpp Unreal/Source/ArmyPrototype/Sim/BattleSim.cpp
+--- .local/plan015/step-e/entry/Sim/BattleSim.cpp	2026-09-17 11:34:40.439825883 -0700
++++ Unreal/Source/ArmyPrototype/Sim/BattleSim.cpp	2026-09-17 12:19:51.463017497 -0700
+@@ -1,4 +1,5 @@
+ #include "BattleSim.h"
++#include "LeaderSim.h"
+ #include "DrillSim.h"
+ #include "PlatoonTaskSim.h"
+ #include "TaskSim.h"
+@@ -180,6 +181,10 @@
+             s.officer={vary(c.officer.judgment,value),vary(c.officer.risk,value/211u),vary(c.officer.adaptability,value/401u)};
+         }
+         if(c.foundations)s.estimateBias=std::clamp(c.estimateBias+(float(value%201)/100.f-1)*.2f,-1.f,1.f);
++        if(c.drills&&c.leaderEffects){
++            s.leaderEffects=true;s.initiativeAllowed=LeaderSettings(c.platoonProfiles[s.team]).initiative;
++            if(s.role==Role::Lieutenant)s.officer=c.platoonProfiles[s.team];
++        }
+         s.action=Action::Hold;s.reason=Reason::AwaitOrders;
+     }
+     for(int team=0;team<2;++team){f.platoon[team].leader=team*TeamSize+5;f.platoon[team].sergeant=team*TeamSize+6;}
+@@ -666,6 +671,9 @@
+     auto geometry=edits;
+     if(input.family!=ScenarioFamily::None&&(encounter!=0||input.recoveryFixture||input.terrain!=Terrain::FracturedWorks))throw std::invalid_argument("Generated scenarios cannot combine with encounters, recovery or authored terrain");
+     if(TypedController(input)&&(!input.foundations||input.reportDelay<0||input.reportDelay>10||!std::isfinite(input.reportDelay)))throw std::invalid_argument("Cognition requires foundations and a report delay between 0 and 10 seconds");
++    if(input.leaderEffects&&!input.drills)throw std::invalid_argument("Leader effects require drills");
++    if(input.equalTroops&&(!input.leaderEffects||input.family!=ScenarioFamily::F1))throw std::invalid_argument("Equal troops requires F1 leader effects");
++    if(input.leaderEffects)for(const auto& profile:input.platoonProfiles)for(float value:{profile.judgment,profile.risk,profile.adaptability,profile.communication})if(!std::isfinite(value)||value<0||value>1)throw std::invalid_argument("Leader profile values must be 0..1");
+     if(input.cognition)for(float value:{input.officer.judgment,input.officer.risk,input.officer.adaptability})if(!std::isfinite(value)||value<0||value>1)throw std::invalid_argument("Officer profile values must be 0..1");
+     if(input.drills&&(input.cognition||input.recoveryFixture||!(encounter==0||(encounter>=5&&encounter<=7)||(encounter>=44&&encounter<=103))))throw std::invalid_argument("Drills require encounter 0 or 5..7 and exclusive controller selection");
+     if(input.foundations&&((encounter!=8&&!(input.cognition&&(encounter==0||(encounter>=5&&encounter<=43)))&&!input.drills)||input.recoveryFixture))throw std::invalid_argument("Foundations policy requires encounter 8 and cannot combine with recovery");
+@@ -676,7 +684,7 @@
+     auto totalStart=DiagnosticClock::now();
+     Config c=input;c.maxSeconds=Clamp(c.maxSeconds,1,600);
+     Record r;r.config=c;r.map=c.family==ScenarioFamily::None?MakeBattleMap(c):Map{};Frame f=InitialFrame(c);
+-    if(c.family!=ScenarioFamily::None){auto generated=std::make_shared<GeneratedScenario>(GenerateScenario(c.family,c.genSeed));ApplyScenario(*generated,c,r.map,f);r.generated=generated;}
++    if(c.family!=ScenarioFamily::None){auto generated=std::make_shared<GeneratedScenario>(GenerateLeaderScenario(c));ApplyScenario(*generated,c,r.map,f);r.generated=generated;}
+     if(encounter>0&&encounter<=7){r.encounter=encounter;MakeMGEncounter(c,encounter,r.map,f);}
+     if(encounter==8){r.encounter=8;MakeMGEncounter(c,1,r.map,f);}
+     if(encounter>=9&&encounter<=43){r.encounter=encounter;MakeCognitiveEncounter(c,encounter,r.map,f);}
+diff -ruN .local/plan015/step-e/entry/Sim/BattleSim.h Unreal/Source/ArmyPrototype/Sim/BattleSim.h
+--- .local/plan015/step-e/entry/Sim/BattleSim.h	2026-09-17 11:32:28.251885682 -0700
++++ Unreal/Source/ArmyPrototype/Sim/BattleSim.h	2026-09-17 12:19:51.460516345 -0700
+@@ -158,7 +158,8 @@
+     Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition };
+ enum class EventKind { Contact, Decision, Shot, Hit, Casualty, Result, OrderIssued, OrderReceived, Report, Succession, Reaction };
+ enum class Terrain { FracturedWorks, Trenches };
+-struct OfficerProfile { float judgment=.7f, risk=.5f, adaptability=.7f; };
++struct OfficerProfile { float judgment=.7f, risk=.5f, adaptability=.7f, communication=.7f; };
++inline bool SameProfile(const OfficerProfile& a,const OfficerProfile& b){return a.judgment==b.judgment&&a.risk==b.risk&&a.adaptability==b.adaptability&&a.communication==b.communication;}
+ enum class CognitiveMethod { None, Observe, SupportedAdvance, AlternateApproach, Hold, Withdraw };
+ enum class MethodStage { Assess, Prepare, Execute, Complete, Blocked };
+ struct FailedAttempt {
+@@ -221,6 +222,8 @@
+     bool cognition=false, fullVision=false;
+     float reportDelay=.75f;
+     OfficerProfile officer;
++    bool leaderEffects=false, equalTroops=false; // Explicit leader comparison; historical configurations unchanged.
++    std::array<OfficerProfile,2> platoonProfiles{};
+ 
+     bool foundations=false; // Opt-in perception/belief experiment; legacy baseline remains reproducible.
+     float estimateBias=0; // Interpretation only: -1 underestimates, +1 overestimates.
+@@ -238,7 +241,7 @@
+     float maxSeconds = 360;
+ };
+ inline bool SameConfig(const Config& a,const Config& b) {
+-    return a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
++    return a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
+ }
+ inline bool TypedController(const Config& c){return c.cognition||c.drills;}
+@@ -306,6 +309,7 @@
+     float sentAt=0,receivedAt=0;Vec3 position{},objective{};Contact contact;
+ };
+ struct PlatoonDirective {
++    bool initiativeAllowed=true; // Command climate carried by own intent; never read another actor's hidden knowledge.
+     int taskNode=0,mergeInto=-1,helpSquad=-1;bool hasArea=false,liftFire=false,fireMovement=false;
+     Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaRouteRadius=0,areaDiscRadius=0;FireLane assaultLane;
+     std::shared_ptr<const TacticalRoute> corridor;
+@@ -345,6 +349,7 @@
+     std::array<ObservationCoverage,8> coverage{};
+     bool cognition=false;
+     OfficerProfile officer;
++    bool leaderEffects=false, initiativeAllowed=true;
+     float attentionUntil=0;
+     int attentionTrack=-1;
+ 
+diff -ruN .local/plan015/step-e/entry/Sim/Diagnostics.cpp Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp
+--- .local/plan015/step-e/entry/Sim/Diagnostics.cpp	2026-09-17 11:32:28.254235358 -0700
++++ Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp	2026-09-17 12:21:20.725348250 -0700
+@@ -156,6 +156,14 @@
+             for(const auto& cmd:frame.command){const auto& p=cmd.accepted;i(p.intent.id);i(p.intent.parent);i(int(p.method));i(int(p.stage));i(p.revision);i(p.directive);i(p.routeStage);i(p.failedMethods);v(p.failedDestination);v(p.destination);v(p.sector);f(p.started);f(p.committedUntil);f(p.supportSince);f(p.reconsiderAt);i(p.safetyOverride);i(p.requiresSupport);i(p.exhausted);f(p.riskAtCommit);bytes(&p.knowledge,sizeof(p.knowledge));for(int slot=0;slot<SquadSize;++slot){v(p.positions[slot]);v(p.holds[slot]);i(p.movers[slot]);}}
+         }
+     }
++    if(r.config.leaderEffects||r.config.equalTroops){
++        i(1501);i(r.config.leaderEffects);i(r.config.equalTroops);
++        for(const auto& p:r.config.platoonProfiles){f(p.judgment);f(p.risk);f(p.adaptability);f(p.communication);}
++        for(const auto& frame:r.frames){
++            for(const auto& unit:frame.soldiers){i(unit.leaderEffects);i(unit.initiativeAllowed);i(unit.platoonOrder.initiativeAllowed);f(unit.officer.judgment);f(unit.officer.risk);f(unit.officer.adaptability);f(unit.officer.communication);}
++            for(const auto& command:frame.platoon)for(const auto& order:command.tasks.assigned)i(order.initiativeAllowed);
++        }
++    }
+     if(r.config.drills){
+         i(r.config.drills);f(r.config.reportDelay);i(r.config.fullVision);
+         auto radio=[&](const SquadBroadcast& message){i(message.serial);i(message.sender);i(message.squad);i(message.enemy);i(message.side);i(int(message.kind));f(message.sentAt);f(message.receivedAt);v(message.position);v(message.objective);f(message.contact.observedAt);v(message.contact.position);};
+@@ -272,7 +280,8 @@
+         for(int id=0;id<UnitCount;++id){if(id)scenario<<',';V(scenario,g.positions[id]);}
+         scenario<<"],\"obstacles\":[";bool first=true;for(const auto& o:g.map.obstacles){if(!first)scenario<<',';first=false;scenario<<"{\"id\":"<<o.id<<",\"center\":";V(scenario,o.center);scenario<<",\"half\":";V(scenario,o.half);scenario<<",\"height\":"<<o.height<<",\"blocks_movement\":"<<o.blocksMovement<<",\"half_cover\":"<<o.halfCover<<'}';}scenario<<"]}";
+     }
+-    auto manifest=write("manifest.json");manifest<<"{\"evaluation_schema\":2,\"shots_schema\":1,\"scenario_family\":"<<Q(ScenarioFamilyName(r.config.family))<<",\"gen_seed\":"<<r.config.genSeed<<",\"schema\":1,\"route_schema\":1,\"geometry_schema\":2,\"build\":"<<Q(build)<<",\"terrain\":"<<int(r.config.terrain)<<",\"cognition_policy\":"<<r.config.cognition<<",\"drills_policy\":"<<r.config.drills<<",\"full_vision\":"<<r.config.fullVision<<",\"report_delay\":"<<r.config.reportDelay<<",\"judgment\":"<<r.config.officer.judgment<<",\"risk\":"<<r.config.officer.risk<<",\"adaptability\":"<<r.config.officer.adaptability<<",\"foundations_policy\":"<<r.config.foundations<<",\"estimate_bias\":"<<r.config.estimateBias<<",\"recovery_policy\":"<<r.config.recoveryFixture<<",\"task_schema\":1,\"encounter\":"<<r.encounter<<",\"seed\":"<<r.config.seed<<",\"doctrine\":"<<int(r.config.doctrine)<<",\"ember_doctrine\":"<<int(r.config.emberDoctrine)<<",\"approach\":"<<int(r.config.approach)<<",\"support_weapon\":"<<r.config.supportWeapon<<",\"duration_limit\":"<<r.config.maxSeconds<<",\"duration\":"<<r.duration<<",\"winner\":"<<r.winner<<",\"shots\":"<<r.shots.size()<<",\"gameplay_digest\":"<<Q(std::to_string(GameplayDigest(r)))<<",\"trace_enabled\":"<<(r.diagnostics&&r.diagnostics->options.enabled)<<"}";
++    auto manifest=write("manifest.json");manifest<<"{\"evaluation_schema\":2,\"shots_schema\":1,\"scenario_family\":"<<Q(ScenarioFamilyName(r.config.family))<<",\"gen_seed\":"<<r.config.genSeed<<",\"schema\":1,\"route_schema\":1,\"geometry_schema\":2,\"build\":"<<Q(build)<<",\"terrain\":"<<int(r.config.terrain)<<",\"cognition_policy\":"<<r.config.cognition<<",\"drills_policy\":"<<r.config.drills<<",\"full_vision\":"<<r.config.fullVision<<",\"report_delay\":"<<r.config.reportDelay<<",\"judgment\":"<<r.config.officer.judgment<<",\"risk\":"<<r.config.officer.risk<<",\"adaptability\":"<<r.config.officer.adaptability<<",\"foundations_policy\":"<<r.config.foundations<<",\"estimate_bias\":"<<r.config.estimateBias<<",\"recovery_policy\":"<<r.config.recoveryFixture<<",\"task_schema\":1,\"encounter\":"<<r.encounter<<",\"seed\":"<<r.config.seed<<",\"doctrine\":"<<int(r.config.doctrine)<<",\"ember_doctrine\":"<<int(r.config.emberDoctrine)<<",\"approach\":"<<int(r.config.approach)<<",\"support_weapon\":"<<r.config.supportWeapon<<",\"duration_limit\":"<<r.config.maxSeconds<<",\"duration\":"<<r.duration<<",\"winner\":"<<r.winner<<",\"shots\":"<<r.shots.size()<<",\"gameplay_digest\":"<<Q(std::to_string(GameplayDigest(r)))<<",\"trace_enabled\":"<<(r.diagnostics&&r.diagnostics->options.enabled)<<",\"leader_effects\":"<<r.config.leaderEffects<<",\"equal_troops\":"<<r.config.equalTroops<<",\"platoon_profiles\":[";
++    for(int team=0;team<2;++team){const auto& p=r.config.platoonProfiles[team];if(team)manifest<<",";manifest<<"["<<p.judgment<<","<<p.risk<<","<<p.adaptability<<","<<p.communication<<"]";}manifest<<"]}";
+     auto profile=write("profile.json");if(r.diagnostics){const auto& d=*r.diagnostics;profile<<"{\"total\":"<<d.total<<",\"perception\":"<<d.perception<<",\"commands\":"<<d.commands<<",\"decisions\":"<<d.decisions<<",\"movement\":"<<d.movement<<",\"ballistics\":"<<d.ballistics<<",\"firing\":"<<d.firing<<",\"recording\":"<<d.recording<<",\"trace\":"<<d.trace<<",\"navigation_inclusive\":"<<(r.map.queryProfile?r.map.queryProfile->navigationSeconds:0)<<",\"tactical_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalSeconds:0)<<",\"corridor_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->corridorSeconds:0)<<",\"tactical_queries\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalQueries:0)<<",\"tactical_expanded\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalExpanded:0)<<",\"path_queries\":"<<(r.map.queryProfile?r.map.queryProfile->paths:0)<<",\"sight_queries\":"<<(r.map.queryProfile?r.map.queryProfile->sight:0)<<",\"collision_queries\":"<<(r.map.queryProfile?r.map.queryProfile->collision:0)<<"}";}
+     std::ofstream latest(fs::path(root)/"latest.json");latest<<"{\"run\":"<<Q(name)<<"}";return dir.string();
+ }
+diff -ruN .local/plan015/step-e/entry/Sim/LeaderSim.cpp Unreal/Source/ArmyPrototype/Sim/LeaderSim.cpp
+--- .local/plan015/step-e/entry/Sim/LeaderSim.cpp	1969-12-31 16:00:00.000000000 -0800
++++ Unreal/Source/ArmyPrototype/Sim/LeaderSim.cpp	2026-09-17 12:21:20.709636232 -0700
+@@ -0,0 +1,64 @@
++#include "LeaderSim.h"
++#include "Diagnostics.h"
++#include <algorithm>
++#include <cmath>
++#include <stdexcept>
++namespace army {
++LeaderDials LeaderSettings(const OfficerProfile& p){
++    LeaderDials d;
++    const float net=.5f*(p.communication+p.adaptability),bad=1-net;
++    d.extraDelay=6*bad*bad;d.lossProbability=.35f*bad*bad;
++    d.pictureRadius=18*(1-p.judgment)*(1-p.judgment);
++    d.enemyScale=std::clamp(1+(1-p.judgment)*(1-2*p.risk),.4f,1.6f);
++    d.retreatRatio=.5f+.35f*(.5f-p.risk)*2;
++    d.assessmentSeconds=1+20*(1-p.adaptability)*(1-p.adaptability);
++    d.initiative=net>=.5f;
++    return d;
++}
++namespace {
++uint32_t Mix(uint32_t x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;return x^(x>>16);}
++void NetTrace(const PlatoonMessage& m,const Soldier& commander,Diagnostics* d,float time,const char* kind,const std::string& reason){
++    if(!d||!d->options.enabled)return;
++    TraceEntry e;e.id=d->nextId++;e.time=time;e.kind=kind;e.soldier=m.recipient;e.squad=m.recipient/8;e.issuer=m.sender;
++    e.order=m.radio?m.broadcast.serial:m.order?m.directive.serial:0;e.goal=m.radio?m.broadcast.objective:m.directive.position;
++    e.reason=reason+"; lieutenant="+std::to_string(commander.id);d->entries.push_back(e);
++}
++}
++bool ProfileMessage(PlatoonMessage& m,const Soldier& commander,const Config& config,float time,Diagnostics* diagnostics){
++    const auto d=LeaderSettings(commander.officer);
++    const uint32_t key=Mix(config.seed^uint32_t(m.sender+1)*7919u^uint32_t(m.recipient+1)*104729u^
++        uint32_t(std::lround(m.arrives*1000))^uint32_t(m.radio?m.broadcast.serial:m.order?m.directive.serial:0)^uint32_t(m.lane)*17u);
++    const bool drop=float(key%1000000)/1000000.f<d.lossProbability;
++    const std::string why="leader net communication="+std::to_string(commander.officer.communication)+
++        " adaptability="+std::to_string(commander.officer.adaptability)+" extra delay="+std::to_string(d.extraDelay)+" loss probability="+std::to_string(d.lossProbability);
++    if(drop){NetTrace(m,commander,diagnostics,time,m.radio?"radio_dropped":"message_dropped",why);return false;}
++    m.arrives+=d.extraDelay;
++    NetTrace(m,commander,diagnostics,time,"leader_net",why);
++    // Only reports entering the platoon commander's picture are degraded. Identity,
++    // source and original observation time remain intact; no true position lookup.
++    if(!m.radio&&!m.order&&!m.lane&&m.recipient==commander.id){
++        auto blur=[&](Contact& contact,int track){
++            if(!contact.known)return;
++            const uint32_t h=Mix(uint32_t(track+1)*2654435761u^uint32_t(std::max(0.f,contact.observedAt)/10));
++            const float angle=float(h%62832)*.0001f;
++            contact.position=contact.position+Vec3{std::cos(angle)*d.pictureRadius,std::sin(angle)*d.pictureRadius};
++        };
++        for(auto& observation:m.situation.observations)blur(observation.contact,observation.track);
++        if(m.situation.enemy>=0)blur(m.situation.contact,m.situation.enemy);
++        NetTrace(m,commander,diagnostics,time,"leader_picture","reported positions blurred by "+std::to_string(d.pictureRadius)+" m; identities and observation times retained");
++    }
++    return true;
++}
++GeneratedScenario GenerateLeaderScenario(const Config& config){
++    auto g=GenerateScenario(config.family,config.genSeed);
++    if(!config.equalTroops)return g;
++    // Match the existing smaller defender roster, preserving every map/deployment
++    // point. No new positions or battle-seed-dependent geometry are introduced.
++    for(int squad=0;squad<SquadsPerTeam;++squad)g.squads[squad]=g.squads[squad+SquadsPerTeam];
++    g.machineGun[0]=g.machineGun[1]=g.machineGun[1]&&config.supportWeapon;
++    for(int id=0;id<UnitCount;++id)if(g.squads[id/8]&(1<<(id%8)))
++        if(!Walkable(g.map,g.positions[id])||FindPath(g.map,g.positions[id],g.objective).empty())throw std::runtime_error("Equal-troop comparison has invalid deployment");
++    g.description="F1 equal-troop leader comparison: original map/deployments, matched defender roster and weapons";
++    return g;
++}
++}
+diff -ruN .local/plan015/step-e/entry/Sim/LeaderSim.h Unreal/Source/ArmyPrototype/Sim/LeaderSim.h
+--- .local/plan015/step-e/entry/Sim/LeaderSim.h	1969-12-31 16:00:00.000000000 -0800
++++ Unreal/Source/ArmyPrototype/Sim/LeaderSim.h	2026-09-17 12:21:20.703740712 -0700
+@@ -0,0 +1,14 @@
++#pragma once
++#include "PlatoonSim.h"
++namespace army {
++// Command effects use the commander's profile and his own net/report state only.
++struct LeaderDials {
++    float extraDelay=0,lossProbability=0,pictureRadius=0,enemyScale=1;
++    float retreatRatio=.5f,assessmentSeconds=1;
++    bool initiative=true;
++};
++LeaderDials LeaderSettings(const OfficerProfile& profile);
++bool ProfileMessage(PlatoonMessage& message,const Soldier& commander,const Config& config,
++                    float time,Diagnostics* diagnostics);
++GeneratedScenario GenerateLeaderScenario(const Config& config);
++}
+diff -ruN .local/plan015/step-e/entry/Sim/PlatoonSim.cpp Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp
+--- .local/plan015/step-e/entry/Sim/PlatoonSim.cpp	2026-09-17 08:01:07.601097140 -0700
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp	2026-09-17 12:19:51.464986510 -0700
+@@ -1,4 +1,5 @@
+ #include "PlatoonSim.h"
++#include "LeaderSim.h"
+ #include "PlatoonTaskSim.h"
+ #include "DrillSim.h"
+ #include "BeliefSim.h"
+@@ -167,7 +168,13 @@
+         }
+     }
+     for(size_t i=0;i<rt.messages.size();) {
+-        auto m=rt.messages[i];if(m.arrives>f.time){++i;continue;}rt.messages.erase(rt.messages.begin()+i);
++        auto& queued=rt.messages[i];
++        if(config.leaderEffects&&!queued.profiled){
++            const int team=f.soldiers[queued.sender].team,commander=f.platoon[team].leader;
++            if(commander>=0&&!ProfileMessage(queued,f.soldiers[commander],config,f.time,reactions.diagnostics)){rt.messages.erase(rt.messages.begin()+i);continue;}
++            queued.profiled=true;
++        }
++        auto m=queued;if(m.arrives>f.time){++i;continue;}rt.messages.erase(rt.messages.begin()+i);
+         auto& recipient=f.soldiers[m.recipient];const auto& sender=f.soldiers[m.sender];
+         if(!recipient.Active()||!sender.Active()||recipient.team!=sender.team){
+             if(m.radio&&reactions.diagnostics&&reactions.diagnostics->options.enabled){TraceEntry e;e.id=reactions.diagnostics->nextId++;e.time=f.time;e.soldier=m.recipient;e.squad=m.recipient/SquadSize;e.issuer=m.sender;e.order=m.broadcast.serial;e.kind="radio_dropped";e.reason="sender or recipient unavailable at transport delivery";reactions.diagnostics->entries.push_back(e);}
+diff -ruN .local/plan015/step-e/entry/Sim/PlatoonSim.h Unreal/Source/ArmyPrototype/Sim/PlatoonSim.h
+--- .local/plan015/step-e/entry/Sim/PlatoonSim.h	2026-09-17 07:50:02.171113364 -0700
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonSim.h	2026-09-17 12:19:51.460622779 -0700
+@@ -3,6 +3,7 @@
+ namespace army {
+ struct PlatoonMessage {
+     bool order=false;bool radio=false;SquadBroadcast broadcast;
++    bool profiled=false;
+     int sender=-1, recipient=-1;
+     float arrives=0;
+     SquadSituation situation;
+diff -ruN .local/plan015/step-e/entry/Sim/PlatoonTaskSim.cpp Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
+--- .local/plan015/step-e/entry/Sim/PlatoonTaskSim.cpp	2026-09-17 08:01:07.600912393 -0700
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp	2026-09-17 12:22:51.853124979 -0700
+@@ -1,4 +1,5 @@
+ #include "PlatoonTaskSim.h"
++#include "LeaderSim.h"
+ #include "TacticalRouteSim.h"
+ #include "CommandSim.h"
+ #include "BeliefSim.h"
+@@ -46,6 +47,7 @@
+         const Config& config, PlatoonTaskState& state, Diagnostics* diagnostics, float time) {
+     std::vector<PlannedPlatoonOrder> orders;
+     const auto knowledge=WithTracks(leader,time);
++    const auto dials=LeaderSettings(leader.officer);
+     std::vector<SquadSituation> squads;
+     int strength=0; bool support=false; Vec3 centre{};
+     for (const auto& report:leader.platoonReports) {
+@@ -64,18 +66,18 @@
+     centre=centre*(1.f/squads.size());
+     const int nearest=Nearest(knowledge,centre);
+     const Vec3 sector=nearest<0?centre:knowledge.contacts[nearest].position;
+-    const float enemy=nearest<0?0:BelievedStrength(leader,sector,120,time);
++    const float enemy=(nearest<0?0:BelievedStrength(leader,sector,120,time))*(config.leaderEffects?dials.enemyScale:1.f);
+     state.believedRatio=enemy>0?strength/enemy:10;
+-    const bool weak=nearest>=0 && state.believedRatio<.5f && !support;
++    const bool weak=nearest>=0 && state.believedRatio<(config.leaderEffects?dials.retreatRatio:.5f) && !support;
+     if (!weak) state.observeStarted=-1;
+     else if (state.observeStarted<0) {
+         state.observeStarted=time; state.observeObjective=sector;
+-        Trace(leader,diagnostics,time,"platoon_observation","believed ratio below one half without support; observe reports for at most 45 s",sector,leader.squad);
++        Trace(leader,diagnostics,time,"platoon_observation",config.leaderEffects?"leader risk threshold crossed without support; bounded 45 s observation":"believed ratio below one half without support; observe reports for at most 45 s",sector,leader.squad);
+     }
+     const bool withdraw=weak && time>=state.observeStarted+45;
+     // Assess received knowledge often; only material changes emit orders.
+     if (time<state.nextAssessment && state.commander==leader.id && withdraw==state.withdrawing) return orders;
+-    state.nextAssessment=time+1; state.commander=leader.id; state.withdrawing=withdraw; ++state.revision;
++    state.nextAssessment=time+(config.leaderEffects?dials.assessmentSeconds:1.f); state.commander=leader.id; state.withdrawing=withdraw; ++state.revision;
+     const float direction=leader.team?-1.f:1.f;
+     const SquadSituation* needing=nullptr;int helper=-1;float helpDistance=1e9f;
+     for(const auto& report:squads){
+@@ -98,6 +100,7 @@
+     for (const auto& report:squads) {
+         const int index=report.squad%SquadsPerTeam;
+         auto& previous=state.assigned[index];
++        if(config.leaderEffects)previous.initiativeAllowed=dials.initiative;
+         const bool matching=previous.intent.id && report.goalId==previous.intent.id && report.directive==previous.serial;
+         const bool done=matching && report.goalStatus==TaskStatus::Done;
+         const bool blocked=matching && report.goalStatus==TaskStatus::Blocked;
+@@ -120,6 +123,7 @@
+             continue;
+         }
+         PlatoonDirective order;
++        if(config.leaderEffects)order.initiativeAllowed=dials.initiative;
+         order.task=task; order.taskNode=1+report.squad; order.committedStrength=strength;
+         order.enemy=target; if (target>=0) order.contact=knowledge.contacts[target];
+         order.position=target<0?report.position+Vec3{direction*60,0}:knowledge.contacts[target].position;
+@@ -127,7 +131,7 @@
+         std::string reason=target<0?"FightHere: next 60 m leg in own advance lane":"FightHere: nearest known group; squad chooses its drill";
+         if (withdraw) {
+             order.position=report.position+Vec3{-direction*60,0};
+-            reason="RetreatThere: believed ratio below one half without support after 45 s observation";
++            reason=config.leaderEffects?"RetreatThere: leader risk threshold crossed without support after 45 s observation":"RetreatThere: believed ratio below one half without support after 45 s observation";
+         }
+         if(task==PlatoonTask::HelpSquad){
+             order.helpSquad=needing->squad;order.position=needing->position;order.sector=needing->goalObjective;
+@@ -155,6 +159,10 @@
+         order.intent.purpose=withdraw?GoalPurpose::Withdraw:task==PlatoonTask::HelpSquad?GoalPurpose::Support:GoalPurpose::Seize;
+         order.intent.objective=task==PlatoonTask::HelpSquad?order.sector:order.position; order.intent.radius=12;
+         Lifetime(order,leader.id,time); previous=order; orders.push_back({report.leader,order});
++        if(config.leaderEffects){
++            reason+="; leader judgement="+std::to_string(leader.officer.judgment)+" risk="+std::to_string(leader.officer.risk)+" picture multiplier="+std::to_string(dials.enemyScale)+" believed ratio="+std::to_string(state.believedRatio)+" retreat threshold="+std::to_string(dials.retreatRatio)+" initiative="+(dials.initiative?"delegated":"requires intent");
++            Trace(leader,diagnostics,time,"leader_call",reason,order.position,report.squad);
++        }
+         Trace(leader,diagnostics,time,"platoon_task",reason,order.position,report.squad);
+     }
+     return orders;
+diff -ruN .local/plan015/step-e/entry/Sim/ReactionSim.cpp Unreal/Source/ArmyPrototype/Sim/ReactionSim.cpp
+--- .local/plan015/step-e/entry/Sim/ReactionSim.cpp	2026-09-17 09:25:47.326964390 -0700
++++ Unreal/Source/ArmyPrototype/Sim/ReactionSim.cpp	2026-09-17 12:19:51.463735294 -0700
+@@ -56,7 +56,7 @@
+             }
+         } else if(p.kind==ReactionKind::PlatoonOrder) {
+             if(p.directive.serial<=s.platoonOrder.serial||f.time>=p.directive.expiresAt)continue;
+-            ++s.knowledgeRevision;s.platoonOrder=p.directive;s.platoonOrder.receivedAt=p.receivedAt;s.platoonOrder.activatedAt=f.time;
++            ++s.knowledgeRevision;s.platoonOrder=p.directive;if(s.leaderEffects)s.initiativeAllowed=p.directive.initiativeAllowed;s.platoonOrder.receivedAt=p.receivedAt;s.platoonOrder.activatedAt=f.time;
+             if(s.directionalSight||s.cognition)ReceiveObservations(s,{{p.directive.enemy,p.directive.contact}},p.source,f.time);
+             else if(p.directive.enemy>=0&&p.directive.enemy<UnitCount&&p.directive.contact.known&&f.time-p.directive.contact.observedAt<=120&&p.directive.contact.observedAt>s.reports[p.directive.enemy].observedAt) {
+                 s.reports[p.directive.enemy]=p.directive.contact;s.reports[p.directive.enemy].visible=false;s.reports[p.directive.enemy].reportSource=p.source;
+diff -ruN .local/plan015/step-e/entry/Sim/SquadDrillSim.cpp Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+--- .local/plan015/step-e/entry/Sim/SquadDrillSim.cpp	2026-09-17 11:40:57.551873737 -0700
++++ Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp	2026-09-17 12:19:51.464313645 -0700
+@@ -298,6 +298,10 @@
+     ActionTrace(l,p,d,time,"support_area_fire",permission?"Fixing and received/own assault: sustained last-known-area fire until phase line":"area-fire permission ends: visible target, phase line or assault completion");
+ }
+ bool CanVolunteer(const Soldier& leader,bool assault){
++    if(leader.leaderEffects&&!leader.initiativeAllowed){
++        const auto& order=leader.platoonOrder;
++        if(!order.intent.id || (assault ? order.enemy<0||order.intent.purpose!=GoalPurpose::Seize : order.task!=PlatoonTask::HelpSquad))return false;
++    }
+     const auto kind=OrganisationKind(leader.organisation);
+     if(!assault)return kind!=OrganisationKind::Rush||leader.platoonOrder.task==PlatoonTask::HelpSquad;
+     return !Organisation(kind).requiresPlatoonOrder||leader.platoonOrder.task==PlatoonTask::FightHere||

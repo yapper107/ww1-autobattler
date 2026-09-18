@@ -1,0 +1,133 @@
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.0
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+BattleSim.cpp
+BeliefSim.cpp
+CognitiveSim.cpp
+CommandSim.cpp
+CoordinationSim.cpp
+Diagnostics.cpp
+DrillFixtures.cpp
+DrillSim.cpp
+EnvironmentSim.cpp
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\utility(277): warning C4244: 'initializing': conversion from '_Ty' to '_Ty1', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+        and
+        [
+            _Ty1=float
+        ]
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\utility(277): note: the template instantiation context (the oldest one first) is
+Sim\EnvironmentSim.cpp(268): note: see reference to function template instantiation 'std::pair<float,int>::pair<int,int&,0>(_Other1 &&,_Other2) noexcept' being compiled
+        with
+        [
+            _Other1=int,
+            _Other2=int &
+        ]
+Sim\EnvironmentSim.cpp(268): note: see the first reference to 'std::pair<float,int>::pair' in 'army::FindFloorPath'
+LeaderSim.cpp
+ManeuverSim.cpp
+PerceptionSim.cpp
+PlanSim.cpp
+PlatoonFixtures.cpp
+PlatoonSim.cpp
+PlatoonTaskSim.cpp
+PositionSim.cpp
+ReactionSim.cpp
+RecoverySim.cpp
+ScenarioGen.cpp
+Generating Code...
+Compiling...
+SpatialSim.cpp
+SquadDrillSim.cpp
+TacticalRouteSim.cpp
+TaskSim.cpp
+TerrainSim.cpp
+TrafficSim.cpp
+battle_cli.cpp
+Generating Code...
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.0
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+BattleSim.cpp
+BeliefSim.cpp
+CognitiveSim.cpp
+CommandSim.cpp
+CoordinationSim.cpp
+Diagnostics.cpp
+DrillFixtures.cpp
+DrillSim.cpp
+EnvironmentSim.cpp
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\utility(277): warning C4244: 'initializing': conversion from '_Ty' to '_Ty1', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+        and
+        [
+            _Ty1=float
+        ]
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\utility(277): note: the template instantiation context (the oldest one first) is
+Sim\EnvironmentSim.cpp(268): note: see reference to function template instantiation 'std::pair<float,int>::pair<int,int&,0>(_Other1 &&,_Other2) noexcept' being compiled
+        with
+        [
+            _Other1=int,
+            _Other2=int &
+        ]
+Sim\EnvironmentSim.cpp(268): note: see the first reference to 'std::pair<float,int>::pair' in 'army::FindFloorPath'
+LeaderSim.cpp
+ManeuverSim.cpp
+PerceptionSim.cpp
+PlanSim.cpp
+PlatoonFixtures.cpp
+PlatoonSim.cpp
+PlatoonTaskSim.cpp
+PositionSim.cpp
+ReactionSim.cpp
+RecoverySim.cpp
+ScenarioGen.cpp
+Generating Code...
+Compiling...
+SpatialSim.cpp
+SquadDrillSim.cpp
+TacticalRouteSim.cpp
+TaskSim.cpp
+TerrainSim.cpp
+TrafficSim.cpp
+sim_tests.cpp
+Generating Code...
+Route fixture: status=complete expansions=41 exposed=15.2381 -> 4.06868 seconds
+Route arrival: claims assigned cover and takes its firing peek
+Trenches: recessed floor, raised earth, ramps, connected detour and deployment verified
+Geometry knowledge: hidden mutation preserves received orders and movement before observation
+Deathmatch: elimination/timer results, sector search, no centre capture, protected regroup and 136 individual cover objects verified
+Platoon: report/relay/order reactions, north/south coordination, stale knowledge, local danger veto, expiry and succession verified
+Reassessment: delayed covered push/withdrawal, heavier resistance, quiet search, stale cover release, suppression veto and support follow verified
+Tracks: confidence, uncertainty, negative observation, occlusion, passed-position decay and stale-report rejection verified
+Prepared assault: eight seconds of crossing-specific fire, reset on gap, pause on lost support verified
+Commitments: one pause, no unchanged-fire retries, cleared-track search, delayed fire evidence verified
+Rifle suppression: remembered fire, expiry, specific track/crossing delivery evidence verified
+Lab: geometry revisions/IDs, spatial equivalence, trace on/off/detail determinism, causal order links, tick-boundary changes and stable cover verified
+MG encounter matrix: 3 layouts x 3 seeds, covering rounds=3209 flank-group hits on MG=0 pauses=20 blocked frames=4129 (individual outcomes vary)
+MG encounter group closure: 9/9
+Fixed defender: 3/3 eliminated within six minutes
+Recorded vertical dispersion: above and below aim; longest stationary MG burst: 18 rounds
+Coordination integration: paired move/cover frames=5022 completed bounds=229 window-team rounds=66 passage waits=1650 useful support reports=17312
+Hold-and-engage firing samples=94846
+Building integration: upper window shots=539 ground window shots=836 stair samples=1831
+Squad integration: wounded rear rounds=1526 holding-fire samples=2963 lane-clearance samples=7624 flank frames=26490 fallback frames=4250 friendly hits=57
+PASS: delayed officer/NCO orders, overwatch assignments, reports up the chain, succession, aim acquisition and suppression, crouched hitboxes, protected low-cover positions, pop-up firing, reload shelter, default observation, suppression/reload shelter, active wounded support, minimal corner clearance, gravity, finite cover, moving-target collisions, replay timing, cover commitment/settling/peeking, suppression response, reservations, personal knowledge, navigation, determinism, health invariants
+4 large-battle sweep: draw=1 azure=2 ember=1 shots=7351 hits=459 MG-overwatch rounds=2471 crouched samples=32125 pop-up samples=96942 settling samples=1339 cover-fire samples=27671 remembered-contact samples=207189
+Default battle: 360s; 1878 shots; winner=-1; Time limit: equal surviving soldiers. Draw.
+Elapsed: 534.255s
+tests exit=0

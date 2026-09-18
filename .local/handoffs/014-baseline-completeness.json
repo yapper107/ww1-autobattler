@@ -1,0 +1,74 @@
+[
+  {
+    "controller": "legacy",
+    "map": "works",
+    "runs": 10,
+    "seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109
+    ],
+    "duration": 360
+  },
+  {
+    "controller": "legacy",
+    "map": "trenches",
+    "runs": 10,
+    "seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109
+    ],
+    "duration": 360
+  },
+  {
+    "controller": "candidate90",
+    "map": "works",
+    "runs": 10,
+    "seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109
+    ],
+    "duration": 360
+  },
+  {
+    "controller": "candidate90",
+    "map": "trenches",
+    "runs": 10,
+    "seeds": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109
+    ],
+    "duration": 360
+  }
+]

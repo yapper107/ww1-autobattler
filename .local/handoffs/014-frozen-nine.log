@@ -1,0 +1,10 @@
+seed=107 repeat=0 simulation=1.65813 export=0.821155 total=2.48002 peak_memory_bytes=1594396672 digest=15678663449688379852 run=.local/baselines/frozen-nine/battle-107-1789614234803144478
+seed=108 repeat=0 simulation=1.13237 export=0.816755 total=1.94999 peak_memory_bytes=1505964032 digest=17591794158810576876 run=.local/baselines/frozen-nine/battle-108-1789614237759769031
+seed=109 repeat=0 simulation=0.678604 export=0.576773 total=1.25619 peak_memory_bytes=1052499968 digest=10427417090208827538 run=.local/baselines/frozen-nine/battle-109-1789614240296167033
+seed=107 repeat=0 simulation=0.60166 export=0.44375 total=1.04642 peak_memory_bytes=823259136 digest=6315912987036190295 run=.local/baselines/frozen-nine/battle-107-1789614242188294146
+seed=108 repeat=0 simulation=0.601657 export=0.456914 total=1.05951 peak_memory_bytes=835358720 digest=1271569200418558059 run=.local/baselines/frozen-nine/battle-108-1789614243717327223
+seed=109 repeat=0 simulation=1.24307 export=0.780489 total=2.02436 peak_memory_bytes=1481080832 digest=5542763778965809355 run=.local/baselines/frozen-nine/battle-109-1789614245904170473
+seed=107 repeat=0 simulation=1.69516 export=1.6297 total=3.32556 peak_memory_bytes=2851045376 digest=3436618294263527273 run=.local/baselines/frozen-nine/battle-107-1789614249287559447
+seed=108 repeat=0 simulation=2.01487 export=1.52132 total=3.53691 peak_memory_bytes=2838634496 digest=1974679827266076182 run=.local/baselines/frozen-nine/battle-108-1789614254750480288
+seed=109 repeat=0 simulation=0.451876 export=0.33903 total=0.791708 peak_memory_bytes=693649408 digest=11210482370588503483 run=.local/baselines/frozen-nine/battle-109-1789614258498117233
+{"build": "d0e577abab5319b6-linux", "per_layout": {"5": 3, "6": 3, "7": 2}, "passed": true}

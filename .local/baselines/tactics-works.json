@@ -1,0 +1,3656 @@
+{
+  "schema": 1,
+  "method": "Offline Phase 0 tactics: exposure, friendly hits, losses and command evidence.\n\nExposure follows investigate_engagement.observer_holds: living Fire/Hold action,\n<=0.1 m 3D movement to next frame, observer_exposed and no actor firing solution.\nReport soldier-seconds, seconds per initial active, and share of living time.\nReversals use per-recipient issued assignments A-B-A within 30 s, with A/C within\n5 m and B more than 5 m from A; refreshes and duplicate serials are not reversals.\nSuccession joins casualty actor, explicit succession events, and successor's first\nOrderIssued event with a recipient; absence of an order is right-censored, not zero.\n",
+  "cases": [
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 100,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "5829277675107842405",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-100-1789614255495445136",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 348.00000000000153,
+        "living_soldier_seconds": 15120.600000019946,
+        "seconds_per_initial_active": 5.437500000000024,
+        "share_living_time": 0.023014959723790227
+      },
+      "friendly_fire": {
+        "hits": 22,
+        "per_100_soldier_minutes": 8.72981230902384
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          5,
+          22
+        ],
+        "casualties": [
+          27,
+          10
+        ],
+        "casualty_fractions": [
+          0.84375,
+          0.3125
+        ],
+        "casualty_exchange_azure": 0.37037037037037035,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 100.26,
+            "loss_observed_time": 100.35,
+            "successor": 1,
+            "first_order_time": 110.65,
+            "latency_seconds": 10.39,
+            "censored": false,
+            "assumed_time": 103.35
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 119.64,
+            "loss_observed_time": 119.7,
+            "successor": 17,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 122.7,
+            "censor_time": 216.292,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 96.652
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 142.208,
+            "loss_observed_time": 142.3,
+            "successor": 6,
+            "first_order_time": 162.65,
+            "latency_seconds": 20.442000000000007,
+            "censored": false,
+            "assumed_time": 145.3
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 171.201,
+            "loss_observed_time": 171.3,
+            "successor": 28,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 174.3,
+            "censor_time": 179.631,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 8.430000000000007
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 28,
+            "casualty_time": 179.631,
+            "loss_observed_time": 179.7,
+            "successor": 29,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 182.7,
+            "censor_time": 303.22,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 123.58900000000003
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 17,
+            "casualty_time": 216.292,
+            "loss_observed_time": 216.35,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 143.708
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 228.939,
+            "loss_observed_time": 229,
+            "successor": 51,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 232,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 131.061
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 29,
+            "casualty_time": 303.22,
+            "loss_observed_time": 303.3,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 56.77999999999997
+          }
+        ],
+        "completed": 2,
+        "censored": 6,
+        "missing_casualty": 0,
+        "median_seconds": 15.416000000000004
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 101,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "1971960706594479811",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-101-1789614310055218045",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 722.4000000000551,
+        "living_soldier_seconds": 14789.20000001874,
+        "seconds_per_initial_active": 11.287500000000861,
+        "share_living_time": 0.04884645552153867
+      },
+      "friendly_fire": {
+        "hits": 42,
+        "per_100_soldier_minutes": 17.039461228442423
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          3,
+          20
+        ],
+        "casualties": [
+          29,
+          12
+        ],
+        "casualty_fractions": [
+          0.90625,
+          0.375
+        ],
+        "casualty_exchange_azure": 0.41379310344827586,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 81.6308,
+            "loss_observed_time": 81.7,
+            "successor": 17,
+            "first_order_time": 112.2,
+            "latency_seconds": 30.56920000000001,
+            "censored": false,
+            "assumed_time": 84.7
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 104.183,
+            "loss_observed_time": 104.25,
+            "successor": 0,
+            "first_order_time": 110.7,
+            "latency_seconds": 6.516999999999996,
+            "censored": false,
+            "assumed_time": 107.25
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 182.952,
+            "loss_observed_time": 183.05,
+            "successor": 11,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 186.05,
+            "censor_time": 220.786,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 37.834
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 183.138,
+            "loss_observed_time": 183.2,
+            "successor": 27,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 186.2,
+            "censor_time": 349.419,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 166.28099999999998
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 188.206,
+            "loss_observed_time": 188.3,
+            "successor": 4,
+            "first_order_time": 197.45,
+            "latency_seconds": 9.244,
+            "censored": false,
+            "assumed_time": 191.3
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 188.206,
+            "loss_observed_time": 188.3,
+            "successor": 4,
+            "first_order_time": 197.45,
+            "latency_seconds": 9.244,
+            "censored": false,
+            "assumed_time": 191.3
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 17,
+            "casualty_time": 218.183,
+            "loss_observed_time": 218.25,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 141.817
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 11,
+            "casualty_time": 220.786,
+            "loss_observed_time": 220.85,
+            "successor": 13,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 223.85,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 139.214
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 4,
+            "casualty_time": 234.655,
+            "loss_observed_time": 234.75,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 125.345
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 4,
+            "casualty_time": 234.655,
+            "loss_observed_time": 234.75,
+            "successor": 13,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 237.75,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 125.345
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 27,
+            "casualty_time": 349.419,
+            "loss_observed_time": 349.5,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 10.581000000000017
+          }
+        ],
+        "completed": 4,
+        "censored": 7,
+        "missing_casualty": 0,
+        "median_seconds": 9.244
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 102,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "14527445679953100956",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-102-1789614366870400095",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 411.1999999999997,
+        "living_soldier_seconds": 14064.400000016103,
+        "seconds_per_initial_active": 6.424999999999995,
+        "share_living_time": 0.029236938653588413
+      },
+      "friendly_fire": {
+        "hits": 48,
+        "per_100_soldier_minutes": 20.477233298233145
+      },
+      "outcome": {
+        "winner": 0,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          10,
+          9
+        ],
+        "casualties": [
+          22,
+          23
+        ],
+        "casualty_fractions": [
+          0.6875,
+          0.71875
+        ],
+        "casualty_exchange_azure": 1.0454545454545454,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 92.912,
+            "loss_observed_time": 93,
+            "successor": 26,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 96,
+            "censor_time": 148.451,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 55.53899999999999
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 121.441,
+            "loss_observed_time": 121.5,
+            "successor": 1,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 124.5,
+            "censor_time": 160.14,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 38.698999999999984
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 144.382,
+            "loss_observed_time": 144.45,
+            "successor": 49,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 147.45,
+            "censor_time": 165.069,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 20.686999999999983
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 145.601,
+            "loss_observed_time": 145.7,
+            "successor": 10,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 148.7,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 214.399
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 26,
+            "casualty_time": 148.451,
+            "loss_observed_time": 148.55,
+            "successor": 28,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 151.55,
+            "censor_time": 166.401,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 17.950000000000017
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 154.175,
+            "loss_observed_time": 154.25,
+            "successor": 19,
+            "first_order_time": 157.25,
+            "latency_seconds": 3.0749999999999886,
+            "censored": false,
+            "assumed_time": 157.25
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 1,
+            "casualty_time": 160.14,
+            "loss_observed_time": 160.2,
+            "successor": 3,
+            "first_order_time": 194.1,
+            "latency_seconds": 33.96000000000001,
+            "censored": false,
+            "assumed_time": 163.2
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 49,
+            "casualty_time": 165.069,
+            "loss_observed_time": 165.15,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 194.931
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 28,
+            "casualty_time": 166.401,
+            "loss_observed_time": 166.5,
+            "successor": 29,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 169.5,
+            "censor_time": 324.022,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 157.62099999999998
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 211.186,
+            "loss_observed_time": 211.25,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 148.814
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 264.32,
+            "loss_observed_time": 264.4,
+            "successor": 33,
+            "first_order_time": 309.1,
+            "latency_seconds": 44.78000000000003,
+            "censored": false,
+            "assumed_time": 267.4
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 29,
+            "casualty_time": 324.022,
+            "loss_observed_time": 324.1,
+            "successor": 30,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 327.1,
+            "censor_time": 328.625,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 4.603000000000009
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 30,
+            "casualty_time": 328.625,
+            "loss_observed_time": 328.7,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 31.375
+          }
+        ],
+        "completed": 3,
+        "censored": 10,
+        "missing_casualty": 0,
+        "median_seconds": 33.96000000000001
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 103,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "13092649520133397376",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-103-1789614440195195493",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 572.0000000000232,
+        "living_soldier_seconds": 14815.000000018834,
+        "seconds_per_initial_active": 8.937500000000362,
+        "share_living_time": 0.03860951738098522
+      },
+      "friendly_fire": {
+        "hits": 41,
+        "per_100_soldier_minutes": 16.60479244007339
+      },
+      "outcome": {
+        "winner": 0,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          14,
+          8
+        ],
+        "casualties": [
+          18,
+          24
+        ],
+        "casualty_fractions": [
+          0.5625,
+          0.75
+        ],
+        "casualty_exchange_azure": 1.3333333333333333,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 78.3847,
+            "loss_observed_time": 78.45,
+            "successor": 9,
+            "first_order_time": 94.1,
+            "latency_seconds": 15.7153,
+            "censored": false,
+            "assumed_time": 81.45
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 85.0151,
+            "loss_observed_time": 85.1,
+            "successor": 33,
+            "first_order_time": 110.25,
+            "latency_seconds": 25.234899999999996,
+            "censored": false,
+            "assumed_time": 88.1
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 9,
+            "casualty_time": 113.966,
+            "loss_observed_time": 114.05,
+            "successor": 14,
+            "first_order_time": 118.55,
+            "latency_seconds": 4.584000000000003,
+            "censored": false,
+            "assumed_time": 117.05
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 132.902,
+            "loss_observed_time": 133,
+            "successor": 26,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 136,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 227.098
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 33,
+            "casualty_time": 140.218,
+            "loss_observed_time": 140.3,
+            "successor": 34,
+            "first_order_time": 156.8,
+            "latency_seconds": 16.582000000000022,
+            "censored": false,
+            "assumed_time": 143.3
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 143.325,
+            "loss_observed_time": 143.4,
+            "successor": 6,
+            "first_order_time": 148.15,
+            "latency_seconds": 4.825000000000017,
+            "censored": false,
+            "assumed_time": 146.4
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 148.744,
+            "loss_observed_time": 148.8,
+            "successor": 1,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 151.8,
+            "censor_time": 163.896,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 15.151999999999987
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 14,
+            "casualty_time": 162.342,
+            "loss_observed_time": 162.4,
+            "successor": 15,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 165.4,
+            "censor_time": 172.312,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 9.969999999999999
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 1,
+            "casualty_time": 163.896,
+            "loss_observed_time": 163.95,
+            "successor": 3,
+            "first_order_time": 291.1,
+            "latency_seconds": 127.20400000000004,
+            "censored": false,
+            "assumed_time": 166.95
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 15,
+            "casualty_time": 172.312,
+            "loss_observed_time": 172.4,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 187.688
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 215.782,
+            "loss_observed_time": 215.85,
+            "successor": 57,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 218.85,
+            "censor_time": 242.429,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 26.64699999999999
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 57,
+            "casualty_time": 242.429,
+            "loss_observed_time": 242.5,
+            "successor": 59,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 245.5,
+            "censor_time": 263.077,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 20.647999999999996
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 59,
+            "casualty_time": 263.077,
+            "loss_observed_time": 263.15,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 96.923
+          }
+        ],
+        "completed": 6,
+        "censored": 7,
+        "missing_casualty": 0,
+        "median_seconds": 16.14865000000001
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 104,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "194486597079528566",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-104-1789614496524252729",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 428.00000000000233,
+        "living_soldier_seconds": 15053.600000019702,
+        "seconds_per_initial_active": 6.687500000000036,
+        "share_living_time": 0.028431737258824613
+      },
+      "friendly_fire": {
+        "hits": 28,
+        "per_100_soldier_minutes": 11.160121167015207
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          7,
+          16
+        ],
+        "casualties": [
+          25,
+          16
+        ],
+        "casualty_fractions": [
+          0.78125,
+          0.5
+        ],
+        "casualty_exchange_azure": 0.64,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 101.64,
+            "loss_observed_time": 101.7,
+            "successor": 6,
+            "first_order_time": 108.15,
+            "latency_seconds": 6.510000000000005,
+            "censored": false,
+            "assumed_time": 104.7
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 160.086,
+            "loss_observed_time": 160.15,
+            "successor": 34,
+            "first_order_time": 170.7,
+            "latency_seconds": 10.613999999999976,
+            "censored": false,
+            "assumed_time": 163.15
+          },
+          {
+            "level": "platoon",
+            "unit": 1,
+            "leader": 37,
+            "casualty_time": 165.66,
+            "loss_observed_time": 165.75,
+            "successor": 38,
+            "first_order_time": 180.15,
+            "latency_seconds": 14.490000000000009,
+            "censored": false,
+            "assumed_time": 168.75
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 176.908,
+            "loss_observed_time": 177,
+            "successor": 26,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 180,
+            "censor_time": 224.186,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 47.27800000000002
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 34,
+            "casualty_time": 179.539,
+            "loss_observed_time": 179.6,
+            "successor": 36,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 182.6,
+            "censor_time": 207.586,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 28.047000000000025
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 36,
+            "casualty_time": 207.586,
+            "loss_observed_time": 207.65,
+            "successor": 39,
+            "first_order_time": 211.85,
+            "latency_seconds": 4.263999999999982,
+            "censored": false,
+            "assumed_time": 210.65
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 26,
+            "casualty_time": 224.186,
+            "loss_observed_time": 224.25,
+            "successor": 29,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 227.25,
+            "censor_time": 234.54,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 10.353999999999985
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 29,
+            "casualty_time": 234.54,
+            "loss_observed_time": 234.6,
+            "successor": 30,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 237.6,
+            "censor_time": 272.242,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 37.70200000000003
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 261.007,
+            "loss_observed_time": 261.1,
+            "successor": 17,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 264.1,
+            "censor_time": 283.759,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 22.75200000000001
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 30,
+            "casualty_time": 272.242,
+            "loss_observed_time": 272.3,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 87.75799999999998
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 17,
+            "casualty_time": 283.759,
+            "loss_observed_time": 283.85,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 76.24099999999999
+          }
+        ],
+        "completed": 4,
+        "censored": 7,
+        "missing_casualty": 0,
+        "median_seconds": 8.56199999999999
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 105,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "360867339261719594",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-105-1789614558626483046",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 578.0000000000193,
+        "living_soldier_seconds": 16642.00000002548,
+        "seconds_per_initial_active": 9.031250000000302,
+        "share_living_time": 0.03473140247561197
+      },
+      "friendly_fire": {
+        "hits": 29,
+        "per_100_soldier_minutes": 10.455474101654463
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          11,
+          19
+        ],
+        "casualties": [
+          21,
+          13
+        ],
+        "casualty_fractions": [
+          0.65625,
+          0.40625
+        ],
+        "casualty_exchange_azure": 0.6190476190476191,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 80.4507,
+            "loss_observed_time": 80.55,
+            "successor": 26,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 83.55,
+            "censor_time": 183.687,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 103.23630000000001
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 88.1149,
+            "loss_observed_time": 88.2,
+            "successor": 17,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 91.2,
+            "censor_time": 222.31,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 134.1951
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 109.535,
+            "loss_observed_time": 109.6,
+            "successor": 57,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 112.6,
+            "censor_time": 270.291,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 160.756
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 26,
+            "casualty_time": 183.687,
+            "loss_observed_time": 183.75,
+            "successor": 27,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 186.75,
+            "censor_time": 189.584,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 5.896999999999991
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 27,
+            "casualty_time": 189.584,
+            "loss_observed_time": 189.65,
+            "successor": 29,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 192.65,
+            "censor_time": 273.019,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 83.435
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 17,
+            "casualty_time": 222.31,
+            "loss_observed_time": 222.4,
+            "successor": 18,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 225.4,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 137.69
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 260.9,
+            "loss_observed_time": 261,
+            "successor": 49,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 264,
+            "censor_time": 305.133,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 44.233000000000004
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 57,
+            "casualty_time": 270.291,
+            "loss_observed_time": 270.35,
+            "successor": 59,
+            "first_order_time": 360,
+            "latency_seconds": 89.709,
+            "censored": false,
+            "assumed_time": 273.35
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 29,
+            "casualty_time": 273.019,
+            "loss_observed_time": 273.1,
+            "successor": 30,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 276.1,
+            "censor_time": 299.071,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 26.05200000000002
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 279.681,
+            "loss_observed_time": 279.75,
+            "successor": 6,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 282.75,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 80.31900000000002
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 30,
+            "casualty_time": 299.071,
+            "loss_observed_time": 299.15,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 60.928999999999974
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 49,
+            "casualty_time": 305.133,
+            "loss_observed_time": 305.2,
+            "successor": 52,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 308.2,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 54.86700000000002
+          }
+        ],
+        "completed": 1,
+        "censored": 11,
+        "missing_casualty": 0,
+        "median_seconds": 89.709
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 106,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "8908172834854909776",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-106-1789614618800405598",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 641.4000000000326,
+        "living_soldier_seconds": 14383.200000017263,
+        "seconds_per_initial_active": 10.02187500000051,
+        "share_living_time": 0.04459369264136373
+      },
+      "friendly_fire": {
+        "hits": 25,
+        "per_100_soldier_minutes": 10.42883363923327
+      },
+      "outcome": {
+        "winner": -1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          12,
+          12
+        ],
+        "casualties": [
+          20,
+          20
+        ],
+        "casualty_fractions": [
+          0.625,
+          0.625
+        ],
+        "casualty_exchange_azure": 1.0,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 93.7513,
+            "loss_observed_time": 93.85,
+            "successor": 1,
+            "first_order_time": 197.6,
+            "latency_seconds": 103.8487,
+            "censored": false,
+            "assumed_time": 96.85
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 110.734,
+            "loss_observed_time": 110.8,
+            "successor": 57,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 113.8,
+            "censor_time": 143.73,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 32.995999999999995
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 134.017,
+            "loss_observed_time": 134.1,
+            "successor": 9,
+            "first_order_time": 137.1,
+            "latency_seconds": 3.0829999999999984,
+            "censored": false,
+            "assumed_time": 137.1
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 57,
+            "casualty_time": 143.73,
+            "loss_observed_time": 143.8,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 216.27
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 9,
+            "casualty_time": 150.251,
+            "loss_observed_time": 150.35,
+            "successor": 13,
+            "first_order_time": 156.45,
+            "latency_seconds": 6.198999999999984,
+            "censored": false,
+            "assumed_time": 153.35
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 150.865,
+            "loss_observed_time": 150.95,
+            "successor": 49,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 153.95,
+            "censor_time": 165.911,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 15.045999999999992
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 49,
+            "casualty_time": 165.911,
+            "loss_observed_time": 166,
+            "successor": 53,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 169,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 194.089
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 13,
+            "casualty_time": 171.189,
+            "loss_observed_time": 171.25,
+            "successor": 15,
+            "first_order_time": 174.25,
+            "latency_seconds": 3.061000000000007,
+            "censored": false,
+            "assumed_time": 174.25
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 175.739,
+            "loss_observed_time": 175.8,
+            "successor": 26,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 178.8,
+            "censor_time": 180.436,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 4.697000000000003
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 26,
+            "casualty_time": 180.436,
+            "loss_observed_time": 180.5,
+            "successor": 27,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 183.5,
+            "censor_time": 208.835,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 28.399
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 27,
+            "casualty_time": 208.835,
+            "loss_observed_time": 208.9,
+            "successor": 30,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 211.9,
+            "censor_time": 318.421,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 109.58599999999998
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 30,
+            "casualty_time": 318.421,
+            "loss_observed_time": 318.5,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 41.57900000000001
+          }
+        ],
+        "completed": 4,
+        "censored": 8,
+        "missing_casualty": 0,
+        "median_seconds": 4.640999999999991
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 107,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "5263252470802575170",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-107-1789614676903212528",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 614.4000000000333,
+        "living_soldier_seconds": 14588.80000001801,
+        "seconds_per_initial_active": 9.60000000000052,
+        "share_living_time": 0.042114498793545375
+      },
+      "friendly_fire": {
+        "hits": 41,
+        "per_100_soldier_minutes": 16.862250493508466
+      },
+      "outcome": {
+        "winner": 0,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          15,
+          8
+        ],
+        "casualties": [
+          17,
+          24
+        ],
+        "casualty_fractions": [
+          0.53125,
+          0.75
+        ],
+        "casualty_exchange_azure": 1.411764705882353,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 71.7773,
+            "loss_observed_time": 71.85,
+            "successor": 9,
+            "first_order_time": 121.95,
+            "latency_seconds": 50.172700000000006,
+            "censored": false,
+            "assumed_time": 74.85
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 90.9917,
+            "loss_observed_time": 91.05,
+            "successor": 1,
+            "first_order_time": 124,
+            "latency_seconds": 33.008300000000006,
+            "censored": false,
+            "assumed_time": 94.05
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 96.5411,
+            "loss_observed_time": 96.6,
+            "successor": 6,
+            "first_order_time": 108.15,
+            "latency_seconds": 11.608900000000006,
+            "censored": false,
+            "assumed_time": 99.6
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 6,
+            "casualty_time": 122.484,
+            "loss_observed_time": 122.55,
+            "successor": 1,
+            "first_order_time": 133.55,
+            "latency_seconds": 11.066000000000017,
+            "censored": false,
+            "assumed_time": 125.55
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 127.956,
+            "loss_observed_time": 128.05,
+            "successor": 26,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 131.05,
+            "censor_time": 184.186,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 56.230000000000004
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 160.303,
+            "loss_observed_time": 160.4,
+            "successor": 57,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 163.4,
+            "censor_time": 234.685,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 74.382
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 162.883,
+            "loss_observed_time": 162.95,
+            "successor": 49,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 165.95,
+            "censor_time": 194.811,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 31.927999999999997
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 26,
+            "casualty_time": 184.186,
+            "loss_observed_time": 184.25,
+            "successor": 30,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 187.25,
+            "censor_time": 295.571,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 111.38500000000002
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 49,
+            "casualty_time": 194.811,
+            "loss_observed_time": 194.9,
+            "successor": 50,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 197.9,
+            "censor_time": 221.509,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 26.69799999999998
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 50,
+            "casualty_time": 221.509,
+            "loss_observed_time": 221.6,
+            "successor": 51,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 224.6,
+            "censor_time": 240.262,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 18.753000000000014
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 57,
+            "casualty_time": 234.685,
+            "loss_observed_time": 234.75,
+            "successor": 58,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 237.75,
+            "censor_time": 238.178,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 3.492999999999995
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 58,
+            "casualty_time": 238.178,
+            "loss_observed_time": 238.25,
+            "successor": 63,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 241.25,
+            "censor_time": 265.683,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 27.504999999999995
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 51,
+            "casualty_time": 240.262,
+            "loss_observed_time": 240.35,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 119.738
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 63,
+            "casualty_time": 265.683,
+            "loss_observed_time": 265.75,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 94.31700000000001
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 30,
+            "casualty_time": 295.571,
+            "loss_observed_time": 295.65,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 64.42899999999997
+          }
+        ],
+        "completed": 4,
+        "censored": 11,
+        "missing_casualty": 0,
+        "median_seconds": 22.308600000000006
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 108,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "11805616872944264260",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-108-1789614733340768813",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 512.4000000000106,
+        "living_soldier_seconds": 14793.000000018754,
+        "seconds_per_initial_active": 8.006250000000165,
+        "share_living_time": 0.03463800446152646
+      },
+      "friendly_fire": {
+        "hits": 30,
+        "per_100_soldier_minutes": 12.167917258147218
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          9,
+          16
+        ],
+        "casualties": [
+          23,
+          16
+        ],
+        "casualty_fractions": [
+          0.71875,
+          0.5
+        ],
+        "casualty_exchange_azure": 0.6956521739130435,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 89.9505,
+            "loss_observed_time": 90.05,
+            "successor": 1,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 93.05,
+            "censor_time": 123.146,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 33.195499999999996
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 92.3388,
+            "loss_observed_time": 92.4,
+            "successor": 18,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 95.4,
+            "censor_time": 136.238,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 43.89919999999999
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 1,
+            "casualty_time": 123.146,
+            "loss_observed_time": 123.2,
+            "successor": 2,
+            "first_order_time": 128.15,
+            "latency_seconds": 5.004000000000005,
+            "censored": false,
+            "assumed_time": 126.2
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 18,
+            "casualty_time": 136.238,
+            "loss_observed_time": 136.3,
+            "successor": 20,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 139.3,
+            "censor_time": 147.392,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 11.153999999999996
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 138.387,
+            "loss_observed_time": 138.45,
+            "successor": 6,
+            "first_order_time": 141.45,
+            "latency_seconds": 3.062999999999988,
+            "censored": false,
+            "assumed_time": 141.45
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 145.351,
+            "loss_observed_time": 145.45,
+            "successor": 28,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 148.45,
+            "censor_time": 222.181,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 76.83000000000001
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 20,
+            "casualty_time": 147.392,
+            "loss_observed_time": 147.45,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 212.608
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 2,
+            "casualty_time": 168.29,
+            "loss_observed_time": 168.35,
+            "successor": 4,
+            "first_order_time": 174.4,
+            "latency_seconds": 6.110000000000014,
+            "censored": false,
+            "assumed_time": 171.35
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 187.57,
+            "loss_observed_time": 187.65,
+            "successor": 33,
+            "first_order_time": 210.45,
+            "latency_seconds": 22.879999999999995,
+            "censored": false,
+            "assumed_time": 190.65
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 6,
+            "casualty_time": 204.32,
+            "loss_observed_time": 204.4,
+            "successor": 4,
+            "first_order_time": 290.3,
+            "latency_seconds": 85.98000000000002,
+            "censored": false,
+            "assumed_time": 207.4
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 28,
+            "casualty_time": 222.181,
+            "loss_observed_time": 222.25,
+            "successor": 30,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 225.25,
+            "censor_time": 231.883,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 9.701999999999998
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 30,
+            "casualty_time": 231.883,
+            "loss_observed_time": 231.95,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 128.117
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 233.03,
+            "loss_observed_time": 233.1,
+            "successor": 63,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 236.1,
+            "censor_time": 266.431,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 33.40099999999998
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 63,
+            "casualty_time": 266.431,
+            "loss_observed_time": 266.5,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 93.56900000000002
+          }
+        ],
+        "completed": 5,
+        "censored": 9,
+        "missing_casualty": 0,
+        "median_seconds": 6.110000000000014
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 109,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "18282413268036947796",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-109-1789614790081576655",
+      "controller": "candidate90",
+      "exposed_without_firing": {
+        "soldier_seconds": 572.0000000000198,
+        "living_soldier_seconds": 16816.000000026113,
+        "seconds_per_initial_active": 8.937500000000309,
+        "share_living_time": 0.03401522359652304
+      },
+      "friendly_fire": {
+        "hits": 26,
+        "per_100_soldier_minutes": 9.276879162687782
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          14,
+          22
+        ],
+        "casualties": [
+          18,
+          10
+        ],
+        "casualty_fractions": [
+          0.5625,
+          0.3125
+        ],
+        "casualty_exchange_azure": 0.5555555555555556,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 65.3968,
+            "loss_observed_time": 65.45,
+            "successor": 9,
+            "first_order_time": 122.45,
+            "latency_seconds": 57.053200000000004,
+            "censored": false,
+            "assumed_time": 68.45
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 0,
+            "casualty_time": 100.059,
+            "loss_observed_time": 100.15,
+            "successor": 1,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 103.15,
+            "censor_time": 114.658,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 14.599000000000004
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 106.979,
+            "loss_observed_time": 107.05,
+            "successor": 26,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 110.05,
+            "censor_time": 188.502,
+            "censor_reason": "Successor became a casualty before issuing an order",
+            "observed_without_order_seconds": 81.52300000000001
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 109.751,
+            "loss_observed_time": 109.85,
+            "successor": 33,
+            "first_order_time": 163.4,
+            "latency_seconds": 53.649,
+            "censored": false,
+            "assumed_time": 112.85
+          },
+          {
+            "level": "squad",
+            "unit": 0,
+            "leader": 1,
+            "casualty_time": 114.658,
+            "loss_observed_time": 114.75,
+            "successor": 2,
+            "first_order_time": 122.95,
+            "latency_seconds": 8.292000000000002,
+            "censored": false,
+            "assumed_time": 117.75
+          },
+          {
+            "level": "squad",
+            "unit": 5,
+            "leader": 40,
+            "casualty_time": 146.788,
+            "loss_observed_time": 146.85,
+            "successor": 41,
+            "first_order_time": 149.85,
+            "latency_seconds": 3.0619999999999834,
+            "censored": false,
+            "assumed_time": 149.85
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 26,
+            "casualty_time": 188.502,
+            "loss_observed_time": 188.6,
+            "successor": 28,
+            "first_order_time": 360,
+            "latency_seconds": 171.498,
+            "censored": false,
+            "assumed_time": 191.6
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 198.845,
+            "loss_observed_time": 198.9,
+            "successor": 57,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "assumed_time": 201.9,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 161.155
+          },
+          {
+            "level": "platoon",
+            "unit": 0,
+            "leader": 5,
+            "casualty_time": 252.476,
+            "loss_observed_time": 252.55,
+            "successor": 2,
+            "first_order_time": 260.55,
+            "latency_seconds": 8.074000000000012,
+            "censored": false,
+            "assumed_time": 255.55
+          }
+        ],
+        "completed": 6,
+        "censored": 3,
+        "missing_casualty": 0,
+        "median_seconds": 30.9705
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 100,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "16546876874370873500",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-100-1789614246933525683",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 268.40000000000003,
+        "living_soldier_seconds": 17370.00000002813,
+        "seconds_per_initial_active": 4.1937500000000005,
+        "share_living_time": 0.015451928612525354
+      },
+      "friendly_fire": {
+        "hits": 16,
+        "per_100_soldier_minutes": 5.5267702936007215
+      },
+      "outcome": {
+        "winner": -1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          14,
+          14
+        ],
+        "casualties": [
+          18,
+          18
+        ],
+        "casualty_fractions": [
+          0.5625,
+          0.5625
+        ],
+        "casualty_exchange_azure": 1.0,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 70.15,
+            "loss_observed_time": 70.25,
+            "successor": 33,
+            "first_order_time": 73.25,
+            "latency_seconds": 3.0999999999999943,
+            "censored": false,
+            "assumed_time": 73.25
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 33,
+            "casualty_time": 216.394,
+            "loss_observed_time": 216.45,
+            "successor": 34,
+            "first_order_time": 219.45,
+            "latency_seconds": 3.055999999999983,
+            "censored": false,
+            "assumed_time": 219.45
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 224.479,
+            "loss_observed_time": 224.55,
+            "successor": 50,
+            "first_order_time": 227.55,
+            "latency_seconds": 3.070999999999998,
+            "censored": false,
+            "assumed_time": 227.55
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 251.662,
+            "loss_observed_time": 251.75,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 108.338
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 281.14,
+            "loss_observed_time": 281.2,
+            "successor": 57,
+            "first_order_time": 284.2,
+            "latency_seconds": 3.0600000000000023,
+            "censored": false,
+            "assumed_time": 284.2
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 57,
+            "casualty_time": 286.249,
+            "loss_observed_time": 286.3,
+            "successor": 59,
+            "first_order_time": 289.3,
+            "latency_seconds": 3.0509999999999877,
+            "censored": false,
+            "assumed_time": 289.3
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 59,
+            "casualty_time": 310.781,
+            "loss_observed_time": 310.85,
+            "successor": 60,
+            "first_order_time": 313.85,
+            "latency_seconds": 3.069000000000017,
+            "censored": false,
+            "assumed_time": 313.85
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 60,
+            "casualty_time": 315.635,
+            "loss_observed_time": 315.7,
+            "successor": 63,
+            "first_order_time": 318.7,
+            "latency_seconds": 3.0649999999999977,
+            "censored": false,
+            "assumed_time": 318.7
+          }
+        ],
+        "completed": 7,
+        "censored": 1,
+        "missing_casualty": 0,
+        "median_seconds": 3.0649999999999977
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 101,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "14005458306916058010",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-101-1789614302267745387",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 204.1999999999995,
+        "living_soldier_seconds": 16890.000000026383,
+        "seconds_per_initial_active": 3.1906249999999923,
+        "share_living_time": 0.012089994079317972
+      },
+      "friendly_fire": {
+        "hits": 12,
+        "per_100_soldier_minutes": 4.262877442266876
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          12,
+          17
+        ],
+        "casualties": [
+          20,
+          15
+        ],
+        "casualty_fractions": [
+          0.625,
+          0.46875
+        ],
+        "casualty_exchange_azure": 0.75,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 138.189,
+            "loss_observed_time": 138.25,
+            "successor": 25,
+            "first_order_time": 141.25,
+            "latency_seconds": 3.061000000000007,
+            "censored": false,
+            "assumed_time": 141.25
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 165.214,
+            "loss_observed_time": 165.3,
+            "successor": 9,
+            "first_order_time": 168.3,
+            "latency_seconds": 3.0860000000000127,
+            "censored": false,
+            "assumed_time": 168.3
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 256.701,
+            "loss_observed_time": 256.8,
+            "successor": 57,
+            "first_order_time": 259.8,
+            "latency_seconds": 3.0989999999999895,
+            "censored": false,
+            "assumed_time": 259.8
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 268.719,
+            "loss_observed_time": 268.8,
+            "successor": 22,
+            "first_order_time": 271.8,
+            "latency_seconds": 3.0810000000000173,
+            "censored": false,
+            "assumed_time": 271.8
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 25,
+            "casualty_time": 310.085,
+            "loss_observed_time": 310.15,
+            "successor": 28,
+            "first_order_time": 313.15,
+            "latency_seconds": 3.0649999999999977,
+            "censored": false,
+            "assumed_time": 313.15
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 28,
+            "casualty_time": 313.23,
+            "loss_observed_time": 313.3,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 46.76999999999998
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 22,
+            "casualty_time": 315.32,
+            "loss_observed_time": 315.4,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 44.68000000000001
+          }
+        ],
+        "completed": 5,
+        "censored": 2,
+        "missing_casualty": 0,
+        "median_seconds": 3.0810000000000173
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 102,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "16313752152682010791",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-102-1789614358455837455",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 399.5999999999977,
+        "living_soldier_seconds": 16723.000000025775,
+        "seconds_per_initial_active": 6.243749999999964,
+        "share_living_time": 0.023895234108675584
+      },
+      "friendly_fire": {
+        "hits": 13,
+        "per_100_soldier_minutes": 4.6642348860778435
+      },
+      "outcome": {
+        "winner": 0,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          20,
+          9
+        ],
+        "casualties": [
+          12,
+          23
+        ],
+        "casualty_fractions": [
+          0.375,
+          0.71875
+        ],
+        "casualty_exchange_azure": 1.9166666666666667,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 190.418,
+            "loss_observed_time": 190.5,
+            "successor": 60,
+            "first_order_time": 193.5,
+            "latency_seconds": 3.0819999999999936,
+            "censored": false,
+            "assumed_time": 193.5
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 60,
+            "casualty_time": 203.294,
+            "loss_observed_time": 203.35,
+            "successor": 63,
+            "first_order_time": 206.35,
+            "latency_seconds": 3.055999999999983,
+            "censored": false,
+            "assumed_time": 206.35
+          },
+          {
+            "level": "squad",
+            "unit": 5,
+            "leader": 40,
+            "casualty_time": 336.252,
+            "loss_observed_time": 336.35,
+            "successor": 43,
+            "first_order_time": 339.35,
+            "latency_seconds": 3.098000000000013,
+            "censored": false,
+            "assumed_time": 339.35
+          },
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 355.274,
+            "loss_observed_time": 355.35,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 4.725999999999999
+          }
+        ],
+        "completed": 3,
+        "censored": 1,
+        "missing_casualty": 0,
+        "median_seconds": 3.0819999999999936
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 103,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "17591371289034251358",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-103-1789614431544615935",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 336.80000000000155,
+        "living_soldier_seconds": 16133.800000023632,
+        "seconds_per_initial_active": 5.262500000000024,
+        "share_living_time": 0.020875429223091164
+      },
+      "friendly_fire": {
+        "hits": 10,
+        "per_100_soldier_minutes": 3.7189006929497155
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          10,
+          14
+        ],
+        "casualties": [
+          22,
+          18
+        ],
+        "casualty_fractions": [
+          0.6875,
+          0.5625
+        ],
+        "casualty_exchange_azure": 0.8181818181818182,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 153.384,
+            "loss_observed_time": 153.45,
+            "successor": 57,
+            "first_order_time": 156.45,
+            "latency_seconds": 3.0660000000000025,
+            "censored": false,
+            "assumed_time": 156.45
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 162.099,
+            "loss_observed_time": 162.15,
+            "successor": 26,
+            "first_order_time": 165.15,
+            "latency_seconds": 3.051000000000016,
+            "censored": false,
+            "assumed_time": 165.15
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 26,
+            "casualty_time": 230.934,
+            "loss_observed_time": 231,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 129.066
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 57,
+            "casualty_time": 251.856,
+            "loss_observed_time": 251.95,
+            "successor": 60,
+            "first_order_time": 254.95,
+            "latency_seconds": 3.093999999999994,
+            "censored": false,
+            "assumed_time": 254.95
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 261.995,
+            "loss_observed_time": 262.05,
+            "successor": 54,
+            "first_order_time": 265.05,
+            "latency_seconds": 3.055000000000007,
+            "censored": false,
+            "assumed_time": 265.05
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 60,
+            "casualty_time": 299.185,
+            "loss_observed_time": 299.25,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 60.815
+          }
+        ],
+        "completed": 4,
+        "censored": 2,
+        "missing_casualty": 0,
+        "median_seconds": 3.0605000000000047
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 104,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "10552861161580534726",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-104-1789614488719085899",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 354.4000000000007,
+        "living_soldier_seconds": 15732.800000022173,
+        "seconds_per_initial_active": 5.537500000000011,
+        "share_living_time": 0.02252618732835231
+      },
+      "friendly_fire": {
+        "hits": 5,
+        "per_100_soldier_minutes": 1.9068442998040858
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          8,
+          16
+        ],
+        "casualties": [
+          24,
+          16
+        ],
+        "casualty_fractions": [
+          0.75,
+          0.5
+        ],
+        "casualty_exchange_azure": 0.6666666666666666,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 4,
+            "leader": 32,
+            "casualty_time": 64.6172,
+            "loss_observed_time": 64.7,
+            "successor": 33,
+            "first_order_time": 67.7,
+            "latency_seconds": 3.082800000000006,
+            "censored": false,
+            "assumed_time": 67.7
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 142.437,
+            "loss_observed_time": 142.5,
+            "successor": 60,
+            "first_order_time": 145.5,
+            "latency_seconds": 3.062999999999988,
+            "censored": false,
+            "assumed_time": 145.5
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 170.089,
+            "loss_observed_time": 170.15,
+            "successor": 17,
+            "first_order_time": 173.15,
+            "latency_seconds": 3.061000000000007,
+            "censored": false,
+            "assumed_time": 173.15
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 60,
+            "casualty_time": 256.277,
+            "loss_observed_time": 256.35,
+            "successor": 61,
+            "first_order_time": 259.35,
+            "latency_seconds": 3.073000000000036,
+            "censored": false,
+            "assumed_time": 259.35
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 61,
+            "casualty_time": 280.193,
+            "loss_observed_time": 280.25,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 79.80700000000002
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 17,
+            "casualty_time": 295.234,
+            "loss_observed_time": 295.3,
+            "successor": 23,
+            "first_order_time": 298.3,
+            "latency_seconds": 3.066000000000031,
+            "censored": false,
+            "assumed_time": 298.3
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 321.643,
+            "loss_observed_time": 321.7,
+            "successor": 15,
+            "first_order_time": 324.7,
+            "latency_seconds": 3.0570000000000164,
+            "censored": false,
+            "assumed_time": 324.7
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 23,
+            "casualty_time": 345.766,
+            "loss_observed_time": 345.85,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 14.23399999999998
+          }
+        ],
+        "completed": 6,
+        "censored": 2,
+        "missing_casualty": 0,
+        "median_seconds": 3.0645000000000095
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 105,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "7986430955412003384",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-105-1789614550631794886",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 244.19999999999982,
+        "living_soldier_seconds": 15599.800000021689,
+        "seconds_per_initial_active": 3.815624999999997,
+        "share_living_time": 0.015654046846732668
+      },
+      "friendly_fire": {
+        "hits": 7,
+        "per_100_soldier_minutes": 2.6923422095117635
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          10,
+          13
+        ],
+        "casualties": [
+          22,
+          19
+        ],
+        "casualty_fractions": [
+          0.6875,
+          0.59375
+        ],
+        "casualty_exchange_azure": 0.8636363636363636,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 266.577,
+            "loss_observed_time": 266.65,
+            "successor": 25,
+            "first_order_time": 269.65,
+            "latency_seconds": 3.072999999999979,
+            "censored": false,
+            "assumed_time": 269.65
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 25,
+            "casualty_time": 274.691,
+            "loss_observed_time": 274.75,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 85.30900000000003
+          }
+        ],
+        "completed": 1,
+        "censored": 1,
+        "missing_casualty": 0,
+        "median_seconds": 3.072999999999979
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 106,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "5417485951075306499",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-106-1789614609044595663",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 294.7999999999989,
+        "living_soldier_seconds": 16229.40000002398,
+        "seconds_per_initial_active": 4.606249999999982,
+        "share_living_time": 0.018164565541521148
+      },
+      "friendly_fire": {
+        "hits": 11,
+        "per_100_soldier_minutes": 4.066693777952511
+      },
+      "outcome": {
+        "winner": 1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          7,
+          16
+        ],
+        "casualties": [
+          25,
+          16
+        ],
+        "casualty_fractions": [
+          0.78125,
+          0.5
+        ],
+        "casualty_exchange_azure": 0.64,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 5,
+            "leader": 40,
+            "casualty_time": 166.937,
+            "loss_observed_time": 167,
+            "successor": 42,
+            "first_order_time": 170,
+            "latency_seconds": 3.062999999999988,
+            "censored": false,
+            "assumed_time": 170
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 258.872,
+            "loss_observed_time": 258.95,
+            "successor": 49,
+            "first_order_time": 261.95,
+            "latency_seconds": 3.0779999999999745,
+            "censored": false,
+            "assumed_time": 261.95
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 16,
+            "casualty_time": 267.529,
+            "loss_observed_time": 267.6,
+            "successor": 17,
+            "first_order_time": 270.6,
+            "latency_seconds": 3.0710000000000264,
+            "censored": false,
+            "assumed_time": 270.6
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 319.118,
+            "loss_observed_time": 319.2,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 40.882000000000005
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 17,
+            "casualty_time": 321.068,
+            "loss_observed_time": 321.15,
+            "successor": 20,
+            "first_order_time": 324.15,
+            "latency_seconds": 3.0819999999999936,
+            "censored": false,
+            "assumed_time": 324.15
+          },
+          {
+            "level": "squad",
+            "unit": 2,
+            "leader": 20,
+            "casualty_time": 329.876,
+            "loss_observed_time": 329.95,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 30.124000000000024
+          }
+        ],
+        "completed": 4,
+        "censored": 2,
+        "missing_casualty": 0,
+        "median_seconds": 3.0745000000000005
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 107,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "2434807712546868994",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-107-1789614669182114354",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 209.4000000000003,
+        "living_soldier_seconds": 16251.80000002406,
+        "seconds_per_initial_active": 3.2718750000000045,
+        "share_living_time": 0.012884726614878984
+      },
+      "friendly_fire": {
+        "hits": 15,
+        "per_100_soldier_minutes": 5.537848115277493
+      },
+      "outcome": {
+        "winner": -1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          13,
+          13
+        ],
+        "casualties": [
+          19,
+          19
+        ],
+        "casualty_fractions": [
+          0.59375,
+          0.59375
+        ],
+        "casualty_exchange_azure": 1.0,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 242.813,
+            "loss_observed_time": 242.9,
+            "successor": 10,
+            "first_order_time": 245.9,
+            "latency_seconds": 3.0870000000000175,
+            "censored": false,
+            "assumed_time": 245.9
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 341.335,
+            "loss_observed_time": 341.4,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 18.66500000000002
+          },
+          {
+            "level": "squad",
+            "unit": 5,
+            "leader": 40,
+            "casualty_time": 345.093,
+            "loss_observed_time": 345.15,
+            "successor": 41,
+            "first_order_time": 348.15,
+            "latency_seconds": 3.0569999999999595,
+            "censored": false,
+            "assumed_time": 348.15
+          }
+        ],
+        "completed": 2,
+        "censored": 1,
+        "missing_casualty": 0,
+        "median_seconds": 3.0719999999999885
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 108,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "8044544947865889629",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-108-1789614725388855001",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 343.40000000000117,
+        "living_soldier_seconds": 17151.000000027332,
+        "seconds_per_initial_active": 5.365625000000018,
+        "share_living_time": 0.02002215614246714
+      },
+      "friendly_fire": {
+        "hits": 13,
+        "per_100_soldier_minutes": 4.547839776099102
+      },
+      "outcome": {
+        "winner": 0,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          17,
+          15
+        ],
+        "casualties": [
+          15,
+          17
+        ],
+        "casualty_fractions": [
+          0.46875,
+          0.53125
+        ],
+        "casualty_exchange_azure": 1.1333333333333333,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "platoon",
+            "unit": 1,
+            "leader": 37,
+            "casualty_time": 68.3,
+            "loss_observed_time": 68.4,
+            "successor": 38,
+            "first_order_time": 71.4,
+            "latency_seconds": 3.1000000000000085,
+            "censored": false,
+            "assumed_time": 71.4
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 242.792,
+            "loss_observed_time": 242.85,
+            "successor": 49,
+            "first_order_time": 245.85,
+            "latency_seconds": 3.0579999999999927,
+            "censored": false,
+            "assumed_time": 245.85
+          },
+          {
+            "level": "squad",
+            "unit": 1,
+            "leader": 8,
+            "casualty_time": 268.189,
+            "loss_observed_time": 268.25,
+            "successor": 11,
+            "first_order_time": 271.25,
+            "latency_seconds": 3.0609999999999786,
+            "censored": false,
+            "assumed_time": 271.25
+          }
+        ],
+        "completed": 3,
+        "censored": 0,
+        "missing_casualty": 0,
+        "median_seconds": 3.0609999999999786
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 109,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "9342583190922837000",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-109-1789614782651213793",
+      "controller": "legacy",
+      "exposed_without_firing": {
+        "soldier_seconds": 344.3999999999982,
+        "living_soldier_seconds": 15829.400000022524,
+        "seconds_per_initial_active": 5.381249999999972,
+        "share_living_time": 0.021756983840165018
+      },
+      "friendly_fire": {
+        "hits": 7,
+        "per_100_soldier_minutes": 2.65329071221526
+      },
+      "outcome": {
+        "winner": -1,
+        "initial_actives": [
+          32,
+          32
+        ],
+        "survivors": [
+          11,
+          11
+        ],
+        "casualties": [
+          21,
+          21
+        ],
+        "casualty_fractions": [
+          0.65625,
+          0.65625
+        ],
+        "casualty_exchange_azure": 1.0,
+        "exchange_definition": "Ember casualty fraction / Azure casualty fraction; null if denominator zero",
+        "time_of_decision": 360
+      },
+      "order_reversals": null,
+      "succession": {
+        "episodes": [
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 56,
+            "casualty_time": 128.967,
+            "loss_observed_time": 129.05,
+            "successor": 57,
+            "first_order_time": 132.05,
+            "latency_seconds": 3.0829999999999984,
+            "censored": false,
+            "assumed_time": 132.05
+          },
+          {
+            "level": "squad",
+            "unit": 5,
+            "leader": 40,
+            "casualty_time": 130.694,
+            "loss_observed_time": 130.75,
+            "successor": 41,
+            "first_order_time": 133.75,
+            "latency_seconds": 3.0560000000000116,
+            "censored": false,
+            "assumed_time": 133.75
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 57,
+            "casualty_time": 178.917,
+            "loss_observed_time": 179,
+            "successor": 61,
+            "first_order_time": 182,
+            "latency_seconds": 3.0829999999999984,
+            "censored": false,
+            "assumed_time": 182
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 61,
+            "casualty_time": 218.65,
+            "loss_observed_time": 218.75,
+            "successor": 63,
+            "first_order_time": 221.75,
+            "latency_seconds": 3.0999999999999943,
+            "censored": false,
+            "assumed_time": 221.75
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 24,
+            "casualty_time": 232.987,
+            "loss_observed_time": 233.05,
+            "successor": 29,
+            "first_order_time": 236.05,
+            "latency_seconds": 3.0630000000000166,
+            "censored": false,
+            "assumed_time": 236.05
+          },
+          {
+            "level": "squad",
+            "unit": 7,
+            "leader": 63,
+            "casualty_time": 241.82,
+            "loss_observed_time": 241.9,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 118.18
+          },
+          {
+            "level": "squad",
+            "unit": 3,
+            "leader": 29,
+            "casualty_time": 256.891,
+            "loss_observed_time": 256.95,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 103.10899999999998
+          },
+          {
+            "level": "squad",
+            "unit": 6,
+            "leader": 48,
+            "casualty_time": 343.493,
+            "loss_observed_time": 343.55,
+            "successor": null,
+            "first_order_time": null,
+            "latency_seconds": null,
+            "censored": true,
+            "censor_time": 360,
+            "censor_reason": "Battle ended before a successor issued an order",
+            "observed_without_order_seconds": 16.507000000000005
+          }
+        ],
+        "completed": 5,
+        "censored": 3,
+        "missing_casualty": 0,
+        "median_seconds": 3.0829999999999984
+      },
+      "unavailable": {
+        "order_reversals": "Tracing disabled"
+      },
+      "deferred": [
+        "area_of_operation_compliance",
+        "covered_movement_share",
+        "assault_arrival_angle",
+        "suppression_before_assault",
+        "break_contact_when_outnumbered",
+        "gun_silent_seconds",
+        "contact_to_drill_latency",
+        "directive_churn"
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "build": "d0e577abab5319b6-linux",
+      "controller": "candidate90",
+      "terrain": 0,
+      "encounter": 0,
+      "runs": 10,
+      "wins_azure_draw_ember": [
+        3,
+        1,
+        6
+      ],
+      "mean_casualty_fractions": [
+        0.6875,
+        0.525
+      ],
+      "mean_exposed_seconds_per_initial_active": 8.43718750000031,
+      "friendly_hits": 332,
+      "friendly_hits_per_100_soldier_minutes": 13.18630689406455,
+      "succession_completed": 39,
+      "succession_censored": 79,
+      "succession_median_seconds": 11.066000000000017,
+      "reversal_available_runs": 0
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "controller": "legacy",
+      "terrain": 0,
+      "encounter": 0,
+      "runs": 10,
+      "wins_azure_draw_ember": [
+        2,
+        3,
+        5
+      ],
+      "mean_casualty_fractions": [
+        0.61875,
+        0.56875
+      ],
+      "mean_exposed_seconds_per_initial_active": 4.686874999999997,
+      "friendly_hits": 109,
+      "friendly_hits_per_100_soldier_minutes": 3.9899701667308465,
+      "succession_completed": 40,
+      "succession_censored": 15,
+      "succession_median_seconds": 3.067500000000024,
+      "reversal_available_runs": 0
+    }
+  ]
+}

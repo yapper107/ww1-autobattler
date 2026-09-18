@@ -1,0 +1,31 @@
+--- entry/drills_tests.h
++++ tests/drills_tests.h
+@@ -168,9 +168,28 @@
+     assert(continued>100&&retained>0&&latched>0);
+     std::cout<<"Progress clock paused="<<paused<<" running="<<clocked<<"\n";assert(paused>0&&clocked>0);
+ }
++static void DrillClockArrivalTests(){
++    auto c=DrillConfig();c.maxSeconds=100;
++    for(int encounter:{97,98}){auto r=Simulate(c,{}, {},encounter);int requests=0,certified=0,failed=0,received=0;
++        for(const auto& e:r.diagnostics->entries){
++            requests+=e.kind=="drill_stage_advanced"&&e.reason.find("actual-position arrival certification")!=std::string::npos;
++            if(e.squad!=0||!e.execution.arrivalCheck)continue;
++            if(e.kind=="task_status"&&e.taskStatus==int(TaskStatus::Done)){
++                ++certified;assert(Distance(e.position,e.goal)<=3);assert(Distance(e.position,e.goal)>.75f);
++            }
++            if(e.kind=="task_status"&&e.taskStatus==int(TaskStatus::Failed)&&e.taskCause==int(TaskCause::Timeout)){++failed;assert(Distance(e.position,e.goal)>3);}
++            received+=e.kind=="task_status_received"&&e.taskStatus==int(TaskStatus::Done);
++        }
++        // Match the actual production receipt in the leader's own memory.
++        for(const auto& f:r.frames)for(const auto& receipt:f.soldiers[0].taskReports)if(receipt.execution.arrivalCheck&&receipt.status==TaskStatus::Done){++received;assert(Distance(receipt.position,receipt.goal)<=3);}
++        std::cout<<"Clock arrival encounter="<<encounter<<" requests="<<requests<<" certified="<<certified<<" failed="<<failed<<" received="<<received<<"\n";
++        assert(requests>0);if(encounter==97)assert(certified>0&&received>0);else assert(certified==0&&failed>0);
++    }
++}
+ #include "squad_drills_tests.h"
+ static void DrillsTests(const std::string& name="all"){
+     std::cout.setf(std::ios::unitbuf);
++    if(name=="clock-arrival"){DrillClockArrivalTests();return;}
+     if(name=="close"){DrillCloseAssaultPositions();return;}
+     if(name=="sprint"){DrillSprintContracts();return;}
+     if(name=="projection"){DrillProjectedRushPositions();return;}

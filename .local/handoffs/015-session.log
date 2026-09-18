@@ -1,0 +1,970 @@
+OpenAI Codex v0.154.0-alpha.6.2
+--------
+workdir: /home/jchan/ww1-autobattler
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, /mnt/c/Users/Jordan Chan/Documents/Codex/ArmyPrototype]
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0ad4f-920e-7312-900e-04e2688842e8
+--------
+user
+Fable architect response to steps C6, E and D: read plans/015-step-e-fable-review.md first. C6 is accepted as bounded and F1's disclosed status stands. Step E is not failed on the 50 % figure: the harness measured attackers against F1's scripted defender, which has no platoon commander, so the role decided 82 of 90 pairs and the dials had nothing to act on. Re-run the paired leader comparison where both platoons are active drills platoons with equal troops: Fractured Works and Trenches, seeds 100-109 and 200-209, each with both role swaps (80 battles, 40 pairs), same profiles as the contract, no masking, 360 s, AAR per battle with the attribution section. Pass: bad loses more than half of the 80 and good wins more pairs than it loses by win-count difference, paired interval reported. If it does not pass, one calibration of the four dial magnitudes on the generic profiles (never per seed or map) and one re-measurement are permitted. Then prepare step D regardless of the leader result, because the user wants the after-action report in the game now: the in-game after-action summary screen fed by the existing offline summary logic and leader profile controls for both sides in BattleGameMode, opt-in, legacy default, not built by you; write 015-step-d-report.md with exactly what the architect must build, smoke and check. Update 015-step-e-report.md with the new measurement. Rules unchanged: officer memory, own orders, received reports and permitted squad-member fields only; no hidden enemy state in policy; protected files untouched; no commit, reset or stash; no Fable launcher; Windows and Unreal stay with the architect.
+codex
+I’ll read the review, run the corrected comparison with two active platoons, and then prepare the in-game summary and both sides’ leader controls regardless of the leader result.
+
+exec
+/bin/bash -lc "cat plans/015-step-e-fable-review.md; cat tools/run_leader_pairs.py; sed -n '290,335p' tools/after_action.py" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+# Plan 015 step E review — Fable
+
+Actual Claude Fable 5.1 (`claude-fable-5-1`) response, direct architect session, 17 September 2026. Reviewed the C6 continuation (`26145f87ae81a257`: authored guards pass, F1 61/1/28 against 75/5/10, continued under the sixth review's rule), the step E report on `4c2ca48bb9c1add9` and the step D stop note. 35 selectors, full suite, 77 Python tests, 40 authored digests and trace parity pass. Advisory review, not acceptance.
+
+## Reading
+
+Step E's measurement does not test what the user asked. In 82 of 90 role-swap pairs each profile won exactly once: the attacker beat F1's scripted defender whichever leader it had, because that defender has no platoon commander (fixed-defender branch, `BattleSim.cpp:697`, `CommandSim.cpp:635`). The role decided every battle and the dials had nothing to act on. Astra's own limitation section says the same. The dials themselves are implemented and visible on the wire (409 dropped messages for the bad leader against 21 for the good one in pair 8/108), so the mechanism exists; only the harness is wrong. The 50 % figure is therefore not evidence about leaders and the step is not failed on it.
+
+The C6 repairs are accepted as bounded: the diagnosis found no double counting, the stale-ratio reading of 10/108 is corrected on Astra's evidence (a frozen-element strength failure, not the ratio test), and the new assault-retention and attack-after-Fixing contracts pass with fixtures. F1 remains below the squad-only reference and is disclosed at the head of the step C report as ruled.
+
+## Ruling
+
+1. **Harness.** The paired leader comparison runs where both platoons are active drills platoons with equal troops: Fractured Works and Trenches, seeds 100 to 109 and 200 to 209, each seed with both role swaps (good Azure against bad Ember, then reversed). That is 80 battles, 40 pairs. Same profiles as the contract; no equal-troops masking is needed. F1 is not used for this comparison until it has an active defender.
+2. **Pass reading.** Bad loses more than half of the 80 battles, and good wins more pairs than it loses by win-count difference, with the paired interval reported. Draws count for neither.
+3. **Calibration allowance.** If the first measurement does not pass, one calibration of the dial magnitudes is permitted (the four mappings from profile to delay, loss, blur, perceived force, thresholds and initiative), applied to the generic good and bad profiles, never to a seed or map, followed by one re-measurement. The user's requirement is a visible, majority effect; the magnitudes are a design choice, not a fit.
+4. **Step D regardless.** The user asked for the after-action report in the game now. Prepare step D for the architect after the leader measurement whatever its result: the in-game after-action summary screen fed by the existing offline summary logic, and leader profile controls in BattleGameMode for the two sides, both opt-in with legacy still default. Not built by Astra; the Unreal build, smoke and replay setup remain with the architect.
+5. Every other guard and rule stands: no hidden enemy state, protected files untouched, no commit, reset or stash.
+#!/usr/bin/env python3
+"""One matched, role-swapped equal-roster F1 leader comparison; incremental checkpoints."""
+import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import json
+import multiprocessing
+from pathlib import Path
+import subprocess
+import sys
+from run_family import atomic_json, memory_jobs, seed_list
+from family_metrics import evaluate
+import leader_metrics
+import after_action
+
+GOOD=(.9,.5,.9,.9)
+BAD=(.15,.9,.2,.2)
+
+def run_case(binary,out,draw,seed,good_side,seconds):
+    dest=Path(out)/str(draw)/str(seed)/('good-azure' if good_side==0 else 'good-ember')
+    profiles=[GOOD,BAD] if good_side==0 else [BAD,GOOD]
+    cmd=[binary,'--drills','--generated','F1','--gen-seed',str(draw),'--seed',str(seed),'--seconds',str(seconds),'--equal-troops','--azure-leader',','.join(map(str,profiles[0])),'--ember-leader',','.join(map(str,profiles[1])),'--evaluate','--out',str(dest)]
+    p=subprocess.run(cmd,capture_output=True,text=True)
+    if p.returncode:return dict(gen_seed=draw,seed=seed,good_side=good_side,status='failed',command=cmd,error=p.stderr)
+    run=dest/json.loads((dest/'latest.json').read_text())['run'];manifest=json.loads((run/'manifest.json').read_text())
+    result=dict(gen_seed=draw,seed=seed,good_side=good_side,status='complete',command=cmd,run=str(run),winner=manifest['winner'],**evaluate(run))
+    assert result['initial_actives'][0]==result['initial_actives'][1]
+    result['leader_metrics']=leader_metrics.evaluate(run)
+    report=after_action.build_report(run);aar=dest/'after-action.md';aar.write_text(after_action.render(report));aar.with_suffix('.json').write_text(json.dumps(report,indent=2)+'\n');result['after_action']=str(aar)
+    return result
+
+def paired_summary(cases):
+    groups={}
+    for c in cases:
+        groups.setdefault((c['gen_seed'],c['seed']),[]).append(c)
+    pairs=[]
+    for (g,s),rows in sorted(groups.items()):
+        if len(rows)!=2 or any(r['status']!='complete' for r in rows):continue
+        assert {r['good_side'] for r in rows}=={0,1}
+        assert rows[0]['scenario_digest']==rows[1]['scenario_digest']
+        assert rows[0]['initial_actives']==rows[1]['initial_actives']
+        good=sum(r['winner']==r['good_side'] for r in rows);bad=sum(r['winner']==1-r['good_side'] for r in rows)
+        pairs.append(dict(gen_seed=g,seed=s,good_wins=good,bad_wins=bad,score=good-bad,runs=[r['run'] for r in sorted(rows,key=lambda x:x['good_side'])]))
+    return pairs
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--binary',required=True);p.add_argument('--out',required=True);p.add_argument('--gen-seeds',type=seed_list,default=seed_list('1-30'));p.add_argument('--seeds',type=seed_list,default=seed_list('107-109'));p.add_argument('--jobs',type=int,default=2);p.add_argument('--seconds',type=float,default=360);a=p.parse_args()
+    root=Path(a.out).resolve();root.mkdir(parents=True,exist_ok=True);path=root/'pairs.json';binary=str(Path(a.binary).resolve());build=subprocess.check_output([binary,'--version'],text=True).strip()
+    assert not path.exists(),'One measured paired set only: refuse to overwrite/repeat'
+    report=dict(build=build,good_profile=GOOD,bad_profile=BAD,expected=2*len(a.gen_seeds)*len(a.seeds),cases=[],pairs=[],jobs=memory_jobs(a.jobs))
+    atomic_json(path,report)
+    # Bound the in-flight pool. A process failure or zero-shot battle stops further dispatch.
+    keys=iter((g,s,side) for g in a.gen_seeds for s in a.seeds for side in (0,1));failed=None
+    from concurrent.futures import wait,FIRST_COMPLETED
+    with ProcessPoolExecutor(max_workers=report['jobs'],mp_context=multiprocessing.get_context('spawn')) as pool:
+        active={}
+        def fill():
+            while len(active)<report['jobs'] and not failed:
+                key=next(keys,None)
+                if key is None:break
+                active[pool.submit(run_case,binary,str(root),*key,a.seconds)]=key
+        fill()
+        while active:
+            ready,_=wait(active,return_when=FIRST_COMPLETED)
+            for future in ready:
+                key=active.pop(future)
+                try:row=future.result()
+                except Exception as exc:row=dict(gen_seed=key[0],seed=key[1],good_side=key[2],status='failed',error=str(exc))
+                report['cases'].append(row)
+                if row['status']!='complete' or row['metrics']['shots']==0:failed='process/zero-shot guard'
+                report['failed_guard']=failed;report['pairs']=paired_summary(report['cases']);atomic_json(path,report)
+                print(key,row['status'],len(report['cases']),flush=True)
+            fill()
+    report['good_battle_wins']=sum(r.get('winner')==r['good_side'] for r in report['cases'] if r['status']=='complete')
+    report['good_pair_wins']=sum(r['score']>0 for r in report['pairs'])
+    report['passed']=not failed and len(report['cases'])==report['expected'] and report['good_battle_wins']>report['expected']/2 and report['good_pair_wins']>len(report['pairs'])/2
+    atomic_json(path,report);print(json.dumps({k:v for k,v in report.items() if k not in ('cases','pairs')},indent=2));return 0 if report['passed'] else 2
+if __name__=='__main__':raise SystemExit(main())
+        out.append('No supported attribution candidate found in recorded transitions.')
+    out.extend(['', '## Evidence limits', ''])
+    out.extend('- ' + item for item in report['limitations'])
+    return '\n'.join(out) + '\n'
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('run', type=Path)
+    parser.add_argument('--out', type=Path, help='Markdown output; defaults to RUN/after-action.md')
+    args = parser.parse_args()
+    report = build_report(args.run)
+    output = args.out or resolve_run(args.run) / 'after-action.md'
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(render(report))
+    output.with_suffix('.json').write_text(json.dumps(report, indent=2) + '\n')
+    print(output)
+
+
+if __name__ == '__main__':
+    main()
+
+context compacted
+exec
+/bin/bash -lc "cat plans/015-step-e-fable-review.md; python3 tools/source_id.py; sed -n '1,260p' tools/run_leader_pairs.py" in /home/jchan/ww1-autobattler
+ succeeded in 56ms:
+4c2ca48bb9c1add9
+#!/usr/bin/env python3
+"""One matched, role-swapped equal-roster F1 leader comparison; incremental checkpoints."""
+import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import json
+import multiprocessing
+from pathlib import Path
+import subprocess
+import sys
+from run_family import atomic_json, memory_jobs, seed_list
+from family_metrics import evaluate
+import leader_metrics
+import after_action
+
+GOOD=(.9,.5,.9,.9)
+BAD=(.15,.9,.2,.2)
+
+def run_case(binary,out,draw,seed,good_side,seconds):
+    dest=Path(out)/str(draw)/str(seed)/('good-azure' if good_side==0 else 'good-ember')
+    profiles=[GOOD,BAD] if good_side==0 else [BAD,GOOD]
+    cmd=[binary,'--drills','--generated','F1','--gen-seed',str(draw),'--seed',str(seed),'--seconds',str(seconds),'--equal-troops','--azure-leader',','.join(map(str,profiles[0])),'--ember-leader',','.join(map(str,profiles[1])),'--evaluate','--out',str(dest)]
+    p=subprocess.run(cmd,capture_output=True,text=True)
+    if p.returncode:return dict(gen_seed=draw,seed=seed,good_side=good_side,status='failed',command=cmd,error=p.stderr)
+    run=dest/json.loads((dest/'latest.json').read_text())['run'];manifest=json.loads((run/'manifest.json').read_text())
+    result=dict(gen_seed=draw,seed=seed,good_side=good_side,status='complete',command=cmd,run=str(run),winner=manifest['winner'],**evaluate(run))
+    assert result['initial_actives'][0]==result['initial_actives'][1]
+    result['leader_metrics']=leader_metrics.evaluate(run)
+    report=after_action.build_report(run);aar=dest/'after-action.md';aar.write_text(after_action.render(report));aar.with_suffix('.json').write_text(json.dumps(report,indent=2)+'\n');result['after_action']=str(aar)
+    return result
+
+def paired_summary(cases):
+    groups={}
+    for c in cases:
+        groups.setdefault((c['gen_seed'],c['seed']),[]).append(c)
+    pairs=[]
+    for (g,s),rows in sorted(groups.items()):
+        if len(rows)!=2 or any(r['status']!='complete' for r in rows):continue
+        assert {r['good_side'] for r in rows}=={0,1}
+        assert rows[0]['scenario_digest']==rows[1]['scenario_digest']
+        assert rows[0]['initial_actives']==rows[1]['initial_actives']
+        good=sum(r['winner']==r['good_side'] for r in rows);bad=sum(r['winner']==1-r['good_side'] for r in rows)
+        pairs.append(dict(gen_seed=g,seed=s,good_wins=good,bad_wins=bad,score=good-bad,runs=[r['run'] for r in sorted(rows,key=lambda x:x['good_side'])]))
+    return pairs
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--binary',required=True);p.add_argument('--out',required=True);p.add_argument('--gen-seeds',type=seed_list,default=seed_list('1-30'));p.add_argument('--seeds',type=seed_list,default=seed_list('107-109'));p.add_argument('--jobs',type=int,default=2);p.add_argument('--seconds',type=float,default=360);a=p.parse_args()
+    root=Path(a.out).resolve();root.mkdir(parents=True,exist_ok=True);path=root/'pairs.json';binary=str(Path(a.binary).resolve());build=subprocess.check_output([binary,'--version'],text=True).strip()
+    assert not path.exists(),'One measured paired set only: refuse to overwrite/repeat'
+    report=dict(build=build,good_profile=GOOD,bad_profile=BAD,expected=2*len(a.gen_seeds)*len(a.seeds),cases=[],pairs=[],jobs=memory_jobs(a.jobs))
+    atomic_json(path,report)
+    # Bound the in-flight pool. A process failure or zero-shot battle stops further dispatch.
+    keys=iter((g,s,side) for g in a.gen_seeds for s in a.seeds for side in (0,1));failed=None
+    from concurrent.futures import wait,FIRST_COMPLETED
+    with ProcessPoolExecutor(max_workers=report['jobs'],mp_context=multiprocessing.get_context('spawn')) as pool:
+        active={}
+        def fill():
+            while len(active)<report['jobs'] and not failed:
+                key=next(keys,None)
+                if key is None:break
+                active[pool.submit(run_case,binary,str(root),*key,a.seconds)]=key
+        fill()
+        while active:
+            ready,_=wait(active,return_when=FIRST_COMPLETED)
+            for future in ready:
+                key=active.pop(future)
+                try:row=future.result()
+                except Exception as exc:row=dict(gen_seed=key[0],seed=key[1],good_side=key[2],status='failed',error=str(exc))
+                report['cases'].append(row)
+                if row['status']!='complete' or row['metrics']['shots']==0:failed='process/zero-shot guard'
+                report['failed_guard']=failed;report['pairs']=paired_summary(report['cases']);atomic_json(path,report)
+                print(key,row['status'],len(report['cases']),flush=True)
+            fill()
+    report['good_battle_wins']=sum(r.get('winner')==r['good_side'] for r in report['cases'] if r['status']=='complete')
+    report['good_pair_wins']=sum(r['score']>0 for r in report['pairs'])
+    report['passed']=not failed and len(report['cases'])==report['expected'] and report['good_battle_wins']>report['expected']/2 and report['good_pair_wins']>len(report['pairs'])/2
+    atomic_json(path,report);print(json.dumps({k:v for k,v in report.items() if k not in ('cases','pairs')},indent=2));return 0 if report['passed'] else 2
+if __name__=='__main__':raise SystemExit(main())
+
+exec
+/bin/bash -lc "df -h .; sed -n '1,170p' tests/test_leader_metrics.py; cat Unreal/Source/ArmyPrototype/ArmyPrototype.Build.cs; cat Unreal/Source/ArmyPrototype/BattleGameMode.h; grep -n 'terrain\\|--map' tools/battle_cli.cpp | head; head -40 tools/after_action.py; tail -45 tools/after_action.py" in /home/jchan/ww1-autobattler
+ succeeded in 3ms:
+exec
+/bin/bash -lc "tail -120 AGENTS.md; cat docs/DESIGN_VISION.md; sed -n '1,120p' tools/report_family.py; sed -n '1,120p' tools/leader_metrics.py" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+codex
+The review changes the test, not the leader profiles. I’ll run all 80 battles with active commanders on both sides, preserve the earlier F1 evidence as an invalid comparison, and use the revised pair-count pass rule. The in-game report will consume the existing Python summary so its interpretation matches the offline report.
+exec
+/bin/bash -lc "mkdir -p .local/plan015/step-e-review/entry; cp .local/handoffs/015-step-e-report.md .local/handoffs/015-step-d-report.md tools/run_leader_pairs.py .local/plan015/step-e-review/entry/; git status --short > .local/plan015/step-e-review/entry/git-status.txt; sed -n '1,85p' tools/family_metrics.py; grep -n 'seconds\\|terrain' .local/plan015/review-c6/measurement/authored-results.json | head; sed -n '1,120p' scripts/battle-lab.sh" in /home/jchan/ww1-autobattler
+ succeeded in 3ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('tools/run_leader_pairs.py');s=p.read_text().replace('One matched, role-swapped equal-roster F1 leader comparison','One matched, role-swapped authored-map leader comparison')
+s=s.replace('from report_family import','from report_family import')
+s=s.replace('import after_action\\n','import after_action\\nfrom report_family import summarize\\n')
+s=s.replace(\"'--generated','F1','--gen-seed',str(draw)\",\"'--terrain',str(draw)\").replace(\",'--equal-troops'\",'')
+s=s.replace('gen_seed=draw','terrain=draw').replace(\"(c['gen_seed'],c['seed'])\",\"(c.get('terrain', c.get('gen_seed')),c['seed'])\")
+s=s.replace('dict(gen_seed=g,seed=s','dict(terrain=g,seed=s')
+s=s.replace(\"p.add_argument('--gen-seeds',type=seed_list,default=seed_list('1-30'))\",\"p.add_argument('--terrains',type=seed_list,default=[0,1])\").replace(\"default=seed_list('107-109')\",\"default=seed_list('100-109,200-209')\")
+s=s.replace('a.gen_seeds','a.terrains').replace('gen_seed=key[0]','terrain=key[0]')
+s=s.replace(\"    report['passed']=\", \"    report['bad_battle_wins']=sum(r.get('winner')==1-r['good_side'] for r in report['cases'] if r['status']=='complete')\\n    report['bad_pair_wins']=sum(r['score']<0 for r in report['pairs'])\\n    report['paired_score']=summarize([((r['terrain'],r['seed']),r['score']) for r in report['pairs']])\\n    report['bootstrap']='2000 resamples, RNG 1729; matched map/seed role-swap pair is the sampling unit; mean good minus bad wins per pair'\\n    report['passed']=\")
+s=s.replace(\"report['good_pair_wins']>len(report['pairs'])/2\",\"report['good_pair_wins']>report['bad_pair_wins']\")
+s=s.replace(\"    assert result['initial_actives'][0]==result['initial_actives'][1]\",\"    assert result['initial_actives']==[32,32], 'Authored comparison requires full equal platoons'\\n    assert manifest['config']['family']=='none' if 'config' in manifest else True\")
+# Manifest config checked using actual format below; active commander evidence also exported.
+s=s.replace(\"    assert manifest['config']['family']=='none' if 'config' in manifest else True\\n\",'')
+s=s.replace(\"    report=after_action.build_report(run);\", \"    assert all(x['profile_decisions']>0 for x in result['leader_metrics']['sides']), 'Both commanders must exercise the leader dials'\\n    report=after_action.build_report(run);\")
+p.write_text(s)
+p=Path('tests/test_leader_metrics.py');s=p.read_text();s += '''\\n    def test_authored_pairs_keep_maps_distinct(self):\\n        from run_leader_pairs import paired_summary\\n        cases=[dict(terrain=m,seed=100,good_side=side,winner=side,status='complete',scenario_digest=None,initial_actives=[32,32],run=f'{m}/{side}') for m in (0,1) for side in (0,1)]\\n        self.assertEqual(len(paired_summary(cases)),2)\\n        self.assertEqual([p['score'] for p in paired_summary(cases)],[2,2])\\n''';p.write_text(s)
+PY
+python3 -m unittest discover -s tests -p 'test_leader_metrics.py' -v" in /home/jchan/ww1-autobattler
+ succeeded in 66ms:
+test_received_coordination_censored_help_and_observer_only_staleness (test_leader_metrics.LeaderMetricsTests.test_received_coordination_censored_help_and_observer_only_staleness) ... ok
+test_authored_pairs_keep_maps_distinct (test_leader_metrics.LeaderPairTests.test_authored_pairs_keep_maps_distinct) ... ok
+test_role_swap_scores_and_scenario_mismatch (test_leader_metrics.LeaderPairTests.test_role_swap_scores_and_scenario_mismatch) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.011s
+
+OK
+
+exec
+/bin/bash -lc 'python3 tools/run_leader_pairs.py --binary .local/plan015/step-e/final/battle-lab --out .local/plan015/step-e-review/measurement-1 --jobs 2 > .local/plan015/step-e-review/measurement-1.log 2>&1' in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc "sed -n '1,150p' Unreal/Source/ArmyPrototype/BattleGameMode.cpp; sed -n '230,370p' Unreal/Source/ArmyPrototype/BattleGameMode.cpp; sed -n '480,640p' Unreal/Source/ArmyPrototype/BattleGameMode.cpp; grep -n 'render_summary\\|human_summary' tools/after_action.py; cat scripts/build-windows.ps1 2>/dev/null | head; ls scripts" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+#include "BattleGameMode.h"
+#include "Sim/ReactionSim.h"
+#include "Sim/CognitiveSim.h"
+#include "Sim/TaskSim.h"
+#include "Sim/BeliefSim.h"
+#include "Sim/Diagnostics.h"
+#include "Sim/ManeuverSim.h"
+#include "Sim/CoordinationSim.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/Canvas.h"
+#include "CanvasItem.h"
+#include "RenderUtils.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/Engine.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "DrawDebugHelpers.h"
+#include "Sim/TacticalRouteSim.h"
+#include "HighResScreenshot.h"
+#include "Misc/CommandLine.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Misc/Parse.h"
+#include "HAL/FileManager.h"
+#include "HAL/PlatformMisc.h"
+#include "UnrealClient.h"
+#include <algorithm>
+
+namespace {
+const FLinearColor Ink(0.026f,0.044f,0.052f,0.97f);
+const FLinearColor Paper(0.91f,0.94f,0.91f,1);
+const FLinearColor Muted(0.50f,0.61f,0.62f,1);
+const FLinearColor Azure(0.18f,0.84f,0.77f,1);
+const FLinearColor Ember(0.98f,0.39f,0.22f,1);
+const FLinearColor Gold(0.90f,0.75f,0.39f,1);
+FVector World(army::Vec3 P,float Z=0) {return FVector(P.x*100,P.y*100,P.z*100+Z);}
+FString TimeLabel(float T) {int S=FMath::FloorToInt(T);return FString::Printf(TEXT("%02d:%02d"),S/60,S%60);}
+}
+ABattleGameMode::ABattleGameMode() {
+    PrimaryActorTick.bCanEverTick=true;
+    HUDClass=ABattleHUD::StaticClass();
+    DefaultPawnClass=nullptr;
+}
+void ABattleGameMode::BeginPlay() {
+    Super::BeginPlay();
+    // An explicit replay seed lets integration checks exercise rare building use.
+    FParse::Value(FCommandLine::Get(),TEXT("ArmySeed="),Settings.seed);
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyTrenches")))Settings.terrain=army::Terrain::Trenches;
+    Settings.drills=FParse::Param(FCommandLine::Get(),TEXT("ArmyDrills"))&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacy"));
+    Settings.cognition=!Settings.drills&&FParse::Param(FCommandLine::Get(),TEXT("ArmyCognition"))&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacy"));
+    if(army::TypedController(Settings)){Settings.foundations=true;FParse::Value(FCommandLine::Get(),TEXT("ArmyScenario="),CognitiveScenario);CognitiveScenario=FMath::Clamp(CognitiveScenario,0,Settings.drills?7:43);}
+    FString GeneratedFamily; if(FParse::Value(FCommandLine::Get(),TEXT("ArmyGenerated="),GeneratedFamily)&&GeneratedFamily==TEXT("F1")){Settings.family=army::ScenarioFamily::F1;CognitiveScenario=0;Settings.terrain=army::Terrain::FracturedWorks;}
+    FParse::Value(FCommandLine::Get(),TEXT("ArmyGenSeed="),Settings.genSeed);
+    FParse::Value(FCommandLine::Get(),TEXT("ArmyBattleSeconds="),Settings.maxSeconds);
+    Settings.maxSeconds=FMath::Clamp(Settings.maxSeconds,1.f,600.f);
+    Preparation=MakeUnique<army::Frame>(army::InitialFrame(Settings));
+    Battle.map=army::MakeBattleMap(Settings);
+    if(army::TypedController(Settings)){if(CognitiveScenario>=1&&CognitiveScenario<=7)army::MakeMGEncounter(Settings,CognitiveScenario,Battle.map,*Preparation);else if(CognitiveScenario==8)army::MakeMGEncounter(Settings,1,Battle.map,*Preparation);else if(CognitiveScenario>=9)army::MakeCognitiveEncounter(Settings,CognitiveScenario,Battle.map,*Preparation);}
+    if(Settings.family!=army::ScenarioFamily::None)army::ApplyScenario(army::GenerateScenario(Settings.family,Settings.genSeed),Settings,Battle.map,*Preparation);
+    bSmoke=FParse::Param(FCommandLine::Get(),TEXT("ArmySmokeTest"));
+    bCapture=FParse::Param(FCommandLine::Get(),TEXT("ArmyCapture"));
+    BuildScene();
+    auto* PC=GetWorld()->GetFirstPlayerController();
+    PC->bShowMouseCursor=true;PC->bEnableClickEvents=true;
+    PC->SetViewTarget(Camera);
+    FInputModeGameAndUI Input;Input.SetHideCursorDuringCapture(false);
+    Input.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);PC->SetInputMode(Input);
+    ShowUnits();
+    UE_LOG(LogTemp,Display,TEXT("ARMY_READY: preparation, 64 units, authoritative simulation separate from playback"));
+}
+AActor* ABattleGameMode::Shape(const TCHAR* MeshPath,FVector Location,FVector Scale,FLinearColor Color) {
+    auto* Actor=GetWorld()->SpawnActor<AActor>();SceneActors.Add(Actor);
+    auto* Mesh=NewObject<UStaticMeshComponent>(Actor);
+    Actor->SetRootComponent(Mesh);Actor->AddInstanceComponent(Mesh);
+    Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,MeshPath));
+    Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Mesh->SetMobility(EComponentMobility::Movable);Mesh->RegisterComponent();
+    auto* Mat=UMaterialInstanceDynamic::Create(BaseMaterial,Actor);
+    Mat->SetVectorParameterValue(TEXT("Color"),Color);Mesh->SetMaterial(0,Mat);
+    Actor->SetActorLocation(Location);Actor->SetActorScale3D(Scale);
+    return Actor;
+}
+void ABattleGameMode::BuildScene() {
+    for(auto Actor:SceneActors)if(Actor)Actor->Destroy();SceneActors.Empty();Units.Empty();UpperStructure.Empty();
+    BaseMaterial=LoadObject<UMaterialInterface>(nullptr,TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+    const TCHAR* Cube=TEXT("/Engine/BasicShapes/Cube.Cube");
+    const TCHAR* Cylinder=TEXT("/Engine/BasicShapes/Cylinder.Cylinder");
+    Shape(Cube,FVector(0,0,Battle.map.groundBase*100-80),FVector(Battle.map.halfWidth*2+5,Battle.map.halfHeight*2+5,1.3f),FLinearColor(0.045f,0.068f,0.062f));
+    Shape(Cube,FVector(0,0,Battle.map.groundBase*100-9),FVector(Battle.map.halfWidth*2,Battle.map.halfHeight*2,0.12f),FLinearColor(0.16f,0.205f,0.17f));
+    if(Settings.terrain==army::Terrain::FracturedWorks){
+    // A pale gravel road and inset grid give the greybox a readable tactical scale.
+    Shape(Cube,FVector(0,0,0),FVector(Battle.map.halfWidth*2-3,6,0.025f),FLinearColor(0.26f,0.28f,0.235f));
+    Shape(Cube,FVector(0,0,1),FVector(4,Battle.map.halfHeight*2-3,0.025f),FLinearColor(0.24f,0.26f,0.22f));
+    for(int X=-int(Battle.map.halfWidth)+5;X<int(Battle.map.halfWidth);X+=10) Shape(Cube,FVector(X*100,0,2),FVector(0.018f,Battle.map.halfHeight*2-2,0.012f),FLinearColor(0.20f,0.25f,0.20f));
+    for(int Y=-int(Battle.map.halfHeight)+5;Y<int(Battle.map.halfHeight);Y+=10) Shape(Cube,FVector(0,Y*100,2),FVector(Battle.map.halfWidth*2-2,0.018f,0.012f),FLinearColor(0.20f,0.25f,0.20f));
+    }
+    for(const auto& O:Battle.map.obstacles) {
+        float Height=army::ObstacleHeight(O);
+        auto* Piece=Shape(Cube,World(O.center,Height*50),FVector(O.half.x*2,O.half.y*2,Height),
+            O.building?(O.blocksMovement?FLinearColor(0.32f,0.35f,0.33f):FLinearColor(0.30f,0.24f,0.16f)):
+            O.halfCover?FLinearColor(0.48f,0.39f,0.21f):Height>=5?FLinearColor(0.23f,0.27f,0.25f):FLinearColor(0.34f,0.38f,0.37f));
+        if(O.building&&O.center.z>2.9f)UpperStructure.Add(Piece);
+    }
+    for(int I=0;I<army::UnitCount;++I) {
+        auto* Body=Shape(Cylinder,FVector::ZeroVector,FVector(0.65f,0.65f,1.12f),I<army::TeamSize?Azure:Ember);
+        // Root scaling is kept on the mesh so attached head and weapon remain in metres.
+        Body->SetActorScale3D(FVector::OneVector);
+        auto* RootMesh=Cast<UStaticMeshComponent>(Body->GetRootComponent());
+        RootMesh->SetRelativeScale3D(FVector(0.65f,0.65f,1.12f));
+        auto AddPart=[&](const TCHAR* Path,FVector Loc,FVector Scale,FLinearColor Color) {
+            auto* Part=NewObject<UStaticMeshComponent>(Body);Body->AddInstanceComponent(Part);
+            Part->SetupAttachment(Body->GetRootComponent());Part->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,Path));
+            Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);Part->RegisterComponent();
+            Part->SetRelativeLocation(Loc);Part->SetRelativeScale3D(Scale);
+            auto* M=UMaterialInstanceDynamic::Create(BaseMaterial,Body);M->SetVectorParameterValue(TEXT("Color"),Color);Part->SetMaterial(0,M);
+        };
+        AddPart(TEXT("/Engine/BasicShapes/Sphere.Sphere"),FVector(0,0,76),FVector(0.72f,0.72f,0.40f),FLinearColor(0.16f,0.20f,0.19f));
+        AddPart(Cube,FVector(66,0,66),FVector(1.4f,0.18f,0.15f),FLinearColor(0.09f,0.105f,0.10f));
+        const auto UnitRank=Preparation->soldiers[I].role;
+        if(UnitRank==army::Role::Lieutenant)AddPart(Cube,FVector(0,0,99),FVector(0.48f,0.14f,0.08f),Gold);
+        const int Stripes=UnitRank==army::Role::Sergeant||UnitRank==army::Role::PlatoonSergeant?3:UnitRank==army::Role::Corporal?2:0;
+        for(int Stripe=0;Stripe<Stripes;++Stripe)AddPart(Cube,FVector((Stripe-(Stripes-1)*0.5f)*13,0,98),FVector(0.07f,0.40f,0.07f),UnitRank==army::Role::PlatoonSergeant?Gold:Paper);
+        Units.Add(Body);
+    }
+    auto* Sun=GetWorld()->SpawnActor<ADirectionalLight>();SceneActors.Add(Sun);
+    Sun->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+    Sun->SetActorRotation(FRotator(-58,-32,0));
+    Sun->GetLightComponent()->SetIntensity(2.2f);
+    CastChecked<UDirectionalLightComponent>(Sun->GetLightComponent())->SetForwardShadingPriority(1);
+    Sun->GetLightComponent()->SetLightColor(FLinearColor(1.f,0.94f,0.80f));
+    auto* Fill=GetWorld()->SpawnActor<ADirectionalLight>();SceneActors.Add(Fill);
+    Fill->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+    Fill->SetActorRotation(FRotator(-70,145,0));
+    Fill->GetLightComponent()->SetIntensity(0.7f);Fill->GetLightComponent()->SetCastShadows(false);
+    Camera=GetWorld()->SpawnActor<ACameraActor>();SceneActors.Add(Camera);
+    Camera->GetCameraComponent()->ProjectionMode=ECameraProjectionMode::Orthographic;
+    Camera->GetCameraComponent()->bConstrainAspectRatio=false;
+    Camera->SetActorRotation(FRotator(-60,-90,0));
+}
+const army::Frame& ABattleGameMode::Frame() const {
+    if(bPreparation||Battle.frames.empty()) return *Preparation;
+    // Binary search supports seeking to a final snapshot that is off the normal sample interval.
+    auto It=std::upper_bound(Battle.frames.begin(),Battle.frames.end(),ReplayTime,
+        [](float T,const army::Frame& F){return T<F.time;});
+    return It==Battle.frames.begin()?Battle.frames.front():*(It-1);
+        if(PC->WasInputKeyJustPressed(EKeys::N)) Command(TEXT("setup"));
+        if(PC->WasInputKeyJustPressed(EKeys::Left)) Command(TEXT("back"));
+        if(PC->WasInputKeyJustPressed(EKeys::Right)) Command(TEXT("forward"));
+        if(PC->WasInputKeyJustPressed(EKeys::Tab)) Command(TEXT("speed"));
+        if(PC->WasInputKeyJustPressed(EKeys::Comma)) Command(TEXT("stepback"));
+        if(PC->WasInputKeyJustPressed(EKeys::Period)) Command(TEXT("stepforward"));
+        if(PC->WasInputKeyJustPressed(EKeys::F)) Command(TEXT("floors"));
+        if(PC->WasInputKeyJustPressed(EKeys::Home)) Command(TEXT("center"));
+        if(PC->WasInputKeyJustPressed(EKeys::MouseScrollUp)) Command(TEXT("zoomin"));
+        if(PC->WasInputKeyJustPressed(EKeys::MouseScrollDown)) Command(TEXT("zoomout"));
+        if(PC->IsInputKeyDown(EKeys::Q))AdjustCamera(-60*Dt,0);
+        if(PC->IsInputKeyDown(EKeys::E))AdjustCamera(60*Dt,0);
+        if(PC->IsInputKeyDown(EKeys::PageUp))AdjustCamera(0,35*Dt);
+        if(PC->IsInputKeyDown(EKeys::PageDown))AdjustCamera(0,-35*Dt);
+        if(PC->WasInputKeyJustPressed(EKeys::C)) Command(TEXT("focus"));
+        const float PanSpeed=4000*Dt*Zoom;
+        const FVector Forward=FRotator(0,CameraYaw,0).Vector();
+        const FVector Right=FVector::CrossProduct(FVector::UpVector,Forward);
+        if(PC->IsInputKeyDown(EKeys::A))CameraPan-=Right*PanSpeed;
+        if(PC->IsInputKeyDown(EKeys::D))CameraPan+=Right*PanSpeed;
+        if(PC->IsInputKeyDown(EKeys::W))CameraPan+=Forward*PanSpeed;
+        if(PC->IsInputKeyDown(EKeys::S))CameraPan-=Forward*PanSpeed;
+    }
+    int W,H;PC->GetViewportSize(W,H);float Frac=FMath::Min(0.35f,320.f/FMath::Max(800,W));
+    const float FitWidth=Battle.map.halfWidth*240/(1-Frac);
+    const float FitHeight=Battle.map.halfHeight*240*FMath::Sin(FMath::DegreesToRadians(CameraPitch))*W/FMath::Max(320,H-280);
+    float Width=FMath::Max(FitWidth,FitHeight)*Zoom;
+    const FRotator ViewRotation(-CameraPitch,CameraYaw,0);
+    const FVector ViewRight=FVector::CrossProduct(FVector::UpVector,FRotator(0,CameraYaw,0).Vector());
+    Camera->SetActorRotation(ViewRotation);
+    Camera->SetActorLocation(CameraPan-ViewRight*(Width*Frac*0.5f)-ViewRotation.Vector()*22000);
+    Camera->GetCameraComponent()->OrthoWidth=Width;
+    ShowUnits();
+    const auto& F=Frame();
+    if(Selected>=0&&Selected<army::UnitCount) {
+        if(bRoutes){const auto& Cmd=F.command[F.soldiers[Selected].squad];if(Cmd.route){army::Vec3 Prev=Cmd.route->start;
+            for(auto Point:Cmd.route->points){DrawDebugLine(GetWorld(),World(Prev,30),World(Point,30),FColor::Cyan,false,-1,0,5);Prev=Point;}
+            DrawDebugSphere(GetWorld(),World(Cmd.waypoint,40),100,12,FColor::Yellow,false,-1,0,4);
+        }}
+        FVector P=UnitPosition(Selected);P.Z=F.soldiers[Selected].position.z*100+24;
+        DrawDebugCircle(GetWorld(),P,95,24,FColor::White,false,-1,0,3,FVector(1,0,0),FVector(0,1,0),false);
+    }
+    SmokeTest(Dt);
+}
+void ABattleGameMode::AdjustCamera(float YawDelta,float PitchDelta) {
+    CameraYaw=FMath::UnwindDegrees(CameraYaw+YawDelta);
+    CameraPitch=FMath::Clamp(CameraPitch+PitchDelta,25.f,80.f);
+}
+void ABattleGameMode::SmokeTest(float Dt) {
+    if(!bSmoke&&!bCapture)return;
+    if(bSmoke&&Settings.cognition){
+        FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
+        if(!bDurationSmokeChecked&&RealSeconds>3){
+            const float Original=Settings.maxSeconds;SetBattleDuration(10);check(Settings.maxSeconds==60);
+            SetBattleDuration(800);check(Settings.maxSeconds==600);SetBattleDuration(367);check(Settings.maxSeconds==360);
+            Settings.maxSeconds=Original;bDurationSmokeChecked=true;
+            FScreenshotRequest::RequestScreenshot(Dir/TEXT("ai-duration-preparation.png"),true,false);
+        }
+        if(SmokeStage==0&&RealSeconds>7){RunBattle();++SmokeStage;}
+        else if(SmokeStage==1&&RealSeconds>12){Seek(FMath::Min(30.f,Battle.duration));Selected=0;bPaused=true;Zoom=.7f;
+            const auto Before=Frame().soldiers[0].look;const int Goal=Frame().command[0].accepted.intent.id;
+            const auto Contract=Frame().soldiers[0].assignment.execution;const auto Coverage=Frame().soldiers[0].coverage;const auto Support=Frame().command[0].accepted.support;
+            const auto Deployment=Frame().soldiers[0].supportProgress;
+            const auto TaskReceipts=Frame().soldiers[0].taskReports;
+            const auto Accepted=Frame().command[0].accepted;
+            Seek(2);Seek(FMath::Min(30.f,Battle.duration));check(Frame().soldiers[0].look.x==Before.x&&Frame().command[0].accepted.intent.id==Goal);
+            check(Frame().soldiers[0].assignment.execution.method==Contract.method&&Frame().command[0].accepted.support==Support);
+            const auto& RestoredDeployment=Frame().soldiers[0].supportProgress;
+            check(RestoredDeployment.assignment==Deployment.assignment&&RestoredDeployment.route==Deployment.route&&RestoredDeployment.stage==Deployment.stage&&RestoredDeployment.observedAt==Deployment.observedAt&&RestoredDeployment.statusAt==Deployment.statusAt&&RestoredDeployment.deadline==Deployment.deadline);
+            const auto& RestoredPlan=Frame().command[0].accepted;
+            check(RestoredPlan.executionDeadline==Accepted.executionDeadline&&RestoredPlan.supportThreat==Accepted.supportThreat&&RestoredPlan.requestedThreat==Accepted.requestedThreat);
+            check(RestoredPlan.generations==Accepted.generations&&RestoredPlan.unavailable==Accepted.unavailable);
+            check(RestoredPlan.holders==Accepted.holders&&RestoredPlan.holderDeadline==Accepted.holderDeadline);
+            check(RestoredPlan.injuries==Accepted.injuries);
+            check(RestoredPlan.attempts.size()==Accepted.attempts.size());
+            for(size_t I=0;I<Accepted.attempts.size();++I)check(RestoredPlan.attempts[I].at==Accepted.attempts[I].at&&RestoredPlan.attempts[I].geometry==Accepted.attempts[I].geometry&&army::Distance(RestoredPlan.attempts[I].objective,Accepted.attempts[I].objective)==0);
+            for(int Slot=0;Slot<army::SquadSize;++Slot)check(army::Distance(RestoredPlan.holds[Slot],Accepted.holds[Slot])==0);
+            for(int Slot=0;Slot<army::SquadSize;++Slot){const auto& Restored=Frame().soldiers[0].taskReports[Slot];
+                check(Restored.id==TaskReceipts[Slot].id&&Restored.at==TaskReceipts[Slot].at&&Restored.remaining==TaskReceipts[Slot].remaining);}
+            check(RestoredPlan.prepareDeadline==Accepted.prepareDeadline&&RestoredPlan.supportFailures.size()==Accepted.supportFailures.size());
+            for(size_t i=0;i<Accepted.supportFailures.size();++i)check(RestoredPlan.supportFailures[i].soldier==Accepted.supportFailures[i].soldier&&RestoredPlan.supportFailures[i].observedAt==Accepted.supportFailures[i].observedAt&&RestoredPlan.supportFailures[i].cause==Accepted.supportFailures[i].cause);
+            check(RestoredPlan.scouts==Accepted.scouts&&RestoredPlan.scouted==Accepted.scouted&&RestoredPlan.scoutDeadline==Accepted.scoutDeadline);
+            check(RestoredPlan.localSupport==Accepted.localSupport&&RestoredPlan.localThreat==Accepted.localThreat&&RestoredPlan.localUseful==Accepted.localUseful&&RestoredPlan.localAssignedAt==Accepted.localAssignedAt&&RestoredPlan.localDeadline==Accepted.localDeadline);
+            for(size_t I=0;I<Coverage.size();++I)check(Frame().soldiers[0].coverage[I].observedAt==Coverage[I].observedAt&&Frame().soldiers[0].coverage[I].samples==Coverage[I].samples);
+            Seek(Battle.duration);Seek(FMath::Min(30.f,Battle.duration));check(Frame().soldiers[0].assignment.execution.method==Contract.method);++SmokeStage;}
+        else if(SmokeStage==2&&RealSeconds>16){FScreenshotRequest::RequestScreenshot(Dir/TEXT("cognition-actor-memory.png"),true,false);++SmokeStage;}
+        else if(SmokeStage==3&&RealSeconds>20){check(Battle.config.cognition&&Frame().command[0].accepted.intent.id>0);
+            FFileHelper::SaveStringToFile(TEXT("Cognition scenario playback, recorded actor look/goal seek equality, and inspector capture passed."),*(FPaths::ProjectSavedDir()/TEXT("cognition-smoke-test.txt")));FGenericPlatformMisc::RequestExit(false);++SmokeStage;}
+        return;
+    }
+    if(bSmoke&&Settings.terrain==army::Terrain::Trenches){
+        FString TrenchDir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*TrenchDir,true);
+        if(SmokeStage==0&&RealSeconds>7){FScreenshotRequest::RequestScreenshot(TrenchDir/TEXT("trench-preparation.png"),true,false);++SmokeStage;}
+        else if(SmokeStage==1&&RealSeconds>10){Settings.maxSeconds=120;RunBattle();check(Battle.config.terrain==army::Terrain::Trenches&&Battle.map.groundBase<0);++SmokeStage;}
+        else if(SmokeStage==2&&RealSeconds>16){
+            bool Below=false,Moving=false;for(const auto& Sample:Battle.frames)for(const auto& Unit:Sample.soldiers)if(Unit.Active()){Below|=Unit.position.z<-1;Moving|=army::Distance(Unit.position,Battle.frames.front().soldiers[Unit.id].position)>3;}
+            check(Below&&Moving);Seek(FMath::Min(70.f,Battle.duration));bPaused=true;bRoutes=true;Zoom=.6f;++SmokeStage;
+        } else if(SmokeStage==3&&RealSeconds>18){FScreenshotRequest::RequestScreenshot(TrenchDir/TEXT("trench-battle.png"),true,false);++SmokeStage;}
+        else if(SmokeStage==4&&RealSeconds>21){FFileHelper::SaveStringToFile(TEXT("Trench map, below-ground rendering, production simulation, movement and replay passed."),*(FPaths::ProjectSavedDir()/TEXT("trench-smoke-test.txt")));FGenericPlatformMisc::RequestExit(false);++SmokeStage;}
+        return;
+    }
+    FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
+    if(SmokeStage==0&&RealSeconds>7) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("01-preparation.png"),true,false);++SmokeStage;}
+    if(!bSmoke)return;
+    if(SmokeStage==1&&RealSeconds>10) {
+        const auto OriginalSettings=Settings;
+        Command(TEXT("doctrine"));Command(TEXT("approach"));Command(TEXT("support"));Command(TEXT("seed"));
+        check(Settings.doctrine==army::Doctrine::Cautious&&Settings.approach==army::Approach::North&&!Settings.supportWeapon);
+        Command(TEXT("support"));check(Settings.supportWeapon); // exercise the option, then test an actual MG
+        // The short north-flank win does not exercise the late replay checks.
+        // Restore the standard long battle after verifying every preparation control.
+        Settings=OriginalSettings;RefreshPreparation();
+        Command(TEXT("start"));check(!Battle.frames.empty()&&!bPreparation);++SmokeStage;
+        check(Frame().soldiers.size()==64&&Frame().command.size()==8);
+    }
+    if(SmokeStage==2&&RealSeconds>16) {
+        Seek(FMath::Min(24.f,Battle.duration*0.6f));bPaused=true;
+        for(const auto& Unit:Frame().soldiers) if(Unit.team==0&&Unit.Active()){Selected=Unit.id;break;}
+        Command(TEXT("forward"));Command(TEXT("back"));Command(TEXT("speed"));
+        check(bPaused&&ReplaySpeed==2);
+        Command(TEXT("speed"));Command(TEXT("speed"));check(ReplaySpeed==0.1f);
+        bool FlightChecked=false;
+        for(const auto& Shot:Battle.shots) if(Shot.time>12&&Shot.impactTime-Shot.time>0.03f) {
+            Seek((Shot.time+Shot.impactTime)*0.5f);Selected=Shot.owner;
+            army::Vec3 P;check(army::ProjectilePosition(Shot,ReplayTime,P));
+            check(ReplayTime<Shot.impactTime);
+            const float Before=ReplayTime;Command(TEXT("stepforward"));Command(TEXT("stepback"));
+            check(FMath::Abs(ReplayTime-Before)<0.0001f&&bPaused);
+            FlightChecked=true;break;
+        }
+        check(FlightChecked);
+        ++SmokeStage;
+    }
+    if(SmokeStage==3&&RealSeconds>17) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("02-battle.png"),true,false);++SmokeStage;}
+    if(SmokeStage==4&&RealSeconds>18) {
+        for(const auto& Shot:Battle.shots) if(Shot.time>12&&Shot.impactTime-Shot.time>0.03f) {
+            Seek(Shot.impactTime+0.06f);ReplaySpeed=1;break;
+        }
+        ++SmokeStage;
+    }
+    if(SmokeStage==5&&RealSeconds>19) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("04-visible-trails.png"),true,false);++SmokeStage;}
+}
+void ABattleHUD::Button(FName Id,const FString& Text,float X,float Y,float W,float H,bool Primary) {
+    FLinearColor Fill=Primary?Azure:FLinearColor(0.10f,0.17f,0.18f,1);
+    float Mx,My;if(PlayerOwner&&PlayerOwner->GetMousePosition(Mx,My)&&Mx>=X*UiScale&&Mx<(X+W)*UiScale&&My>=Y*UiScale&&My<(Y+H)*UiScale)
+        Fill=Primary?FLinearColor(0.37f,0.96f,0.86f):FLinearColor(0.17f,0.26f,0.27f);
+    DrawRect(Fill,X*UiScale,Y*UiScale,W*UiScale,H*UiScale);
+    Label(Text,X+12,Y+(H-15)*0.5f,Primary?Ink:Paper,1.05f);
+    AddHitBox(FVector2D(X,Y)*UiScale,FVector2D(W,H)*UiScale,Id,true,10);
+}
+float ABattleHUD::Wrapped(const FString& Text,float X,float Y,int Columns) {
+    TArray<FString> Words;Text.ParseIntoArray(Words,TEXT(" "),true);FString Line;
+    for(const auto& Word:Words) {
+        if(Line.Len()+Word.Len()+1>Columns) {Label(Line,X,Y,Muted);Y+=18;Line=Word;}
+        else {if(!Line.IsEmpty())Line+=TEXT(" ");Line+=Word;}
+    }
+    if(!Line.IsEmpty()){Label(Line,X,Y,Muted);Y+=18;}return Y;
+}
+void ABattleHUD::DrawProjectiles(const ABattleGameMode& Game) {
+    if(Game.bPreparation)return;
+    // Observer overlays retain a fixed pixel width at every camera distance.
+    // The fading trail contains only already-travelled trajectory samples.
+    for(const auto& Shot:Game.Battle.shots) {
+        if(Shot.time>Game.ReplayTime)break;
+        if(Shot.flight.size()<2||Game.ReplayTime>Shot.impactTime+0.18f)continue;
+        const float FlightTime=FMath::Min(Game.ReplayTime,Shot.impactTime);
+        const float Fade=1-FMath::Clamp((Game.ReplayTime-Shot.impactTime)/0.18f,0.f,1.f);
+        const FLinearColor Color=Shot.owner<army::TeamSize?FLinearColor(0.25f,1.f,0.90f,Fade):FLinearColor(1.f,0.65f,0.16f,Fade);
+        auto Screen=[&](army::Vec3 P){return Project(FVector(P.x*100,P.y*100,P.z*100));};
+        // Canvas debug lines are opaque; translucent quads allow a real fade.
+        auto Line=[&](FVector A,FVector B,FLinearColor Tint,float Width){
+            const FVector2D From(A.X,A.Y),To(B.X,B.Y);
+            const FVector2D Delta=To-From;
+            if(Delta.SizeSquared()<0.001f)return;
+            const FVector2D Offset=FVector2D(-Delta.Y,Delta.X).GetSafeNormal()*(Width*0.5f);
+            FCanvasTriangleItem First(From-Offset,From+Offset,To+Offset,GWhiteTexture);
+            FCanvasTriangleItem Second(From-Offset,To+Offset,To-Offset,GWhiteTexture);
+            First.BlendMode=Second.BlendMode=SE_BLEND_Translucent;
+            First.SetColor(Tint);Second.SetColor(Tint);
+            Canvas->DrawItem(First);Canvas->DrawItem(Second);
+        };
+        auto Stroke=[&](FVector A,FVector B,FLinearColor Tint,float Width){
+            Line(A,B,FLinearColor(0.015f,0.025f,0.03f,Tint.A),Width+3*UiScale);
+            Line(A,B,Tint,Width);
+        };
+        const float TailTime=FMath::Max(Shot.time,FlightTime-0.022f);
+        army::Vec3 Previous;
+        if(!army::ProjectilePosition(Shot,TailTime,Previous))continue;
+        TArray<FVector> Trail;Trail.Add(Screen(Previous));
+        for(int Segment=1;Segment<=8;++Segment) {
+            army::Vec3 Next;
+            const float Time=FMath::Lerp(TailTime,FlightTime,Segment/8.f);
+            if(!army::ProjectilePosition(Shot,Time,Next))break;
+            Trail.Add(Screen(Next));Previous=Next;
+        }
+        for(int Pass=0;Pass<2;++Pass) for(int Segment=1;Segment<Trail.Num();++Segment) {
+            FLinearColor Tint=Pass==0?FLinearColor(0.015f,0.025f,0.03f,Fade):Color;
+            Tint.A*=0.25f+0.75f*Segment/8.f;
+            Line(Trail[Segment-1],Trail[Segment],Tint,(Pass==0?6.f:3.f)*UiScale);
+        }
+        const FVector Head=Screen(Previous);
+        if(Game.ReplayTime<=Shot.impactTime) {
+            // An exaggerated bright head makes the moving round legible at battle scale.
+            Stroke(Head-FVector(3*UiScale,0,0),Head+FVector(3*UiScale,0,0),FLinearColor(1,1,0.85f,1),4*UiScale);
+        } else if(Shot.impact!=army::Shot::Impact::None&&Shot.impact!=army::Shot::Impact::OutOfBounds) {
+            const float Radius=(4+8*(1-Fade))*UiScale;
+            const FLinearColor Flash=Shot.hit?FLinearColor(1,0.35f,0.12f,Fade):FLinearColor(1,0.94f,0.60f,Fade);
+            for(int Ray=0;Ray<4;++Ray) {
+                float Angle=Ray*PI/2+PI/4;
+                FVector Dir(FMath::Cos(Angle),FMath::Sin(Angle),0);
+                Stroke(Head+Dir*Radius*0.35f,Head+Dir*Radius,Flash,2*UiScale);
+            }
+        }
+    }
+}
+void ABattleHUD::DrawHUD() {
+    Super::DrawHUD();auto* G=Cast<ABattleGameMode>(GetWorld()->GetAuthGameMode());if(!G||!Canvas)return;
+    CachedCanvasSize=FVector2D(Canvas->SizeX,Canvas->SizeY);
+    UiScale=FMath::Clamp(Canvas->SizeY/900.f,0.72f,1.3f);
+    if(bDraggingDuration){
+        float MouseX,MouseY;
+        if(G->bPreparation&&PlayerOwner&&PlayerOwner->GetMousePosition(MouseX,MouseY))G->SetBattleDuration(60+540*FMath::Clamp((MouseX/UiScale-44)/240.f,0.f,1.f));
+        if(!PlayerOwner||!PlayerOwner->IsInputKeyDown(EKeys::LeftMouseButton))bDraggingDuration=false;
+    }
+    DrawProjectiles(*G);
+    float W=Canvas->SizeX/UiScale,H=Canvas->SizeY/UiScale;
+    auto Rect=[&](FLinearColor C,float X,float Y,float A,float B){DrawRect(C,X*UiScale,Y*UiScale,A*UiScale,B*UiScale);};
+    const auto& F=G->Frame();int Active[2]={0,0},Down[2]={0,0},Killed[2]={0,0};
+    if(G->Settings.cognition&&!G->bPreparation){
+        // Project recorded knowledge onto the HUD so terrain cannot obscure it.
+        // These are field boundaries, not a claim that everything inside is visible.
+        const auto& Actor=F.soldiers[G->Selected];
+        auto KnowledgeLine=[&](army::Vec3 From,army::Vec3 To,FLinearColor Color,float Thickness){
+            const FVector A=Project(World(From,80)),B=Project(World(To,80));
+            DrawLine(A.X,A.Y,B.X,B.Y,Color,Thickness*UiScale);
+        };
+        const float Heading=FMath::Atan2(Actor.look.y,Actor.look.x);
+        const float Half=Actor.directionalSight?70.f:180.f;
+        auto Edge=[&](float Degrees){const float Angle=Heading+FMath::DegreesToRadians(Degrees);return Actor.position+army::Vec3{FMath::Cos(Angle),FMath::Sin(Angle),0}*army::SightRange(Actor);};
+        if(Actor.directionalSight){KnowledgeLine(Actor.position,Edge(-Half),FLinearColor(0,1,1),2);KnowledgeLine(Actor.position,Edge(Half),FLinearColor(0,1,1),2);}
+        for(int Segment=0;Segment<48;++Segment)KnowledgeLine(Edge(-Half+2*Half*Segment/48),Edge(-Half+2*Half*(Segment+1)/48),FLinearColor(0,1,1),1);
+        if(Actor.assignment.hasSlot){KnowledgeLine(Actor.assignment.slot.shelter,Actor.assignment.slot.peek,Paper,3);KnowledgeLine(Actor.position,Actor.assignment.slot.peek,Gold,1);}
+        for(const auto& Area:Actor.coverage)if(Area.observer>=0&&F.time-Area.observedAt<30){int Bit=0;
+            for(float X:{-4.f,0.f,4.f})for(float Y:{-4.f,0.f,4.f}){if(Area.samples&(1u<<Bit))KnowledgeLine(Area.position,Area.sector+army::Vec3{X,Y,0},FLinearColor(.3f,.65f,.4f,.5f),1);++Bit;}}
+        const auto Memory=army::WithTracks(Actor,F.time);
+        for(const auto& Contact:Memory.contacts)if(Contact.known){
+            const float Radius=army::TrackUncertainty(Contact,F.time);
+            auto EdgeAt=[&](int Segment){const float Angle=2*PI*Segment/48;return Contact.position+army::Vec3{FMath::Cos(Angle),FMath::Sin(Angle),0}*Radius;};
+            for(int Segment=0;Segment<48;Segment+=2)KnowledgeLine(EdgeAt(Segment),EdgeAt(Segment+1),Gold,2);
+        }
+    }
+    for(const auto& S:F.soldiers) {if(S.Active())++Active[S.team];if(S.action==army::Action::Wounded)++Down[S.team];if(S.action==army::Action::Killed)++Killed[S.team];}
+    Rect(Ink,18,18,W-36,83);Rect(Azure,18,18,4,83);
+    Label(TEXT("F R O N T L I N E"),36,30,Paper,1.65f);
+    Label(G->Settings.terrain==army::Terrain::Trenches?TEXT("COMMUNICATION TRENCHES   /   DEATHMATCH"):TEXT("FRACTURED WORKS   /   DEATHMATCH   /   FIRST PLAYABLE"),37,67,Muted,0.90f);
+    Label(FString::Printf(TEXT("AZURE   %d / 32"),Active[0]),W-450,35,Azure,1.3f);
+    Label(FString::Printf(TEXT("EMBER   %d / 32"),Active[1]),W-238,35,Ember,1.3f);
+    Label(TEXT("Observer view - all soldiers visible"),W-450,70,Muted,0.9f);
+    Rect(Ink,18,115,292,H-275);
+    Label(G->bPreparation?TEXT("PREPARE YOUR FORCE"):TEXT("SOLDIER INSPECTOR"),34,132,Gold,1.15f);
+    if(G->bPreparation) {
+        Label(TEXT("4 SQUADS x 8 / 32 SOLDIERS"),34,165,Azure);
+        Wrapped(TEXT("Eliminate the enemy. At the limit, the larger surviving force wins. Equal survivors draw."),34,194);
+        Label(TEXT("AZURE / EMBER DOCTRINE"),34,268,Muted,0.85f);
+        Button(TEXT("doctrine"),UTF8_TO_TCHAR(army::DoctrineName(G->Settings.doctrine)),34,289,128,38);
+        Button(TEXT("ember_doctrine"),UTF8_TO_TCHAR(army::DoctrineName(G->Settings.emberDoctrine)),166,289,128,38);
+        Label(TEXT("APPROACH"),34,342,Muted,0.85f);
+        Button(TEXT("approach"),UTF8_TO_TCHAR(army::ApproachName(G->Settings.approach)),34,363,260,38);
+        Label(TEXT("EQUIPMENT"),34,416,Muted,0.85f);
+        Button(TEXT("support"),G->Settings.supportWeapon?TEXT("1 machine gun / platoon"):TEXT("All rifles"),34,437,260,38);
+        Button(TEXT("seed"),FString::Printf(TEXT("Battle seed: %u   +"),G->Settings.seed),34,491,260,34);
+        Button(TEXT("terrain"),G->Settings.terrain==army::Terrain::Trenches?TEXT("Map: Communication trenches"):TEXT("Map: Fractured Works"),34,533,260,34);
+        Label(TEXT("BATTLE LIMIT   ")+TimeLabel(G->Settings.maxSeconds),34,578,Gold,.9f);
+        const float DurationFraction=(G->Settings.maxSeconds-60)/540;
+        Rect(Muted,44,612,240,4);Rect(Azure,44,612,240*DurationFraction,4);
+        Rect(Paper,40+240*DurationFraction,604,8,20);
+        AddHitBox(FVector2D(34,596)*UiScale,FVector2D(260,35)*UiScale,TEXT("duration"),true,3);
+        Label(TEXT("1 MIN"),44,635,Muted,.75f);Label(TEXT("10 MIN"),250,635,Muted,.75f);
+        Label(TEXT("30-second steps / ends early on elimination"),34,657,Muted,.65f);
+        Button(TEXT("start"),TEXT("RUN BATTLE    >"),34,H-216,260,40,true);
+    } else {
+        const auto& S=F.soldiers[G->Selected];
+        Label(FString::Printf(TEXT("%02d  /  %s"),S.id%army::SquadSize+1,UTF8_TO_TCHAR(army::Name(S.id))),34,166,S.team?Ember:Azure,1.5f);
+        FString RoleLabel= UTF8_TO_TCHAR(army::RoleName(S.role));
+        if(F.platoon[S.team].leader==S.id&&S.role!=army::Role::Lieutenant)RoleLabel=FString(UTF8_TO_TCHAR(army::RankTag(S.role)))+TEXT(" / ACTING PLATOON LEADER");
+        else if(F.command[S.squad].leader==S.id&&S.role!=army::Role::Sergeant)RoleLabel+=TEXT(" / ACTING COMMANDER");
+        RoleLabel+=army::OnStairs(G->Battle.map,S.position)?TEXT(" / STAIRS"):S.position.z>1?TEXT(" / 2ND FLOOR"):S.position.z<-.1f?TEXT(" / TRENCH"):TEXT(" / GROUND");
+        Label(RoleLabel,34,199,Muted,0.80f);
+        Label(FString::Printf(TEXT("SIGHT %.0fm / %s"),army::SightRange(S),S.directionalSight?TEXT("140 DEGREE FIELD"):TEXT("ALL DIRECTIONS")),34,213,Muted,0.70f);
+        Label(FString(TEXT("ORDER: "))+UTF8_TO_TCHAR(army::TaskName(S.assignment.task)),34,225,Gold,0.95f);
+        if(S.assignment.issuer>=0)Label(FString::Printf(TEXT("From %s / received %.1fs"),UTF8_TO_TCHAR(army::Name(S.assignment.issuer)),S.assignment.receivedAt),34,247,Muted,0.85f);
+        Label(FString::Printf(TEXT("HEALTH  %.0f%s"),S.health,S.Active()&&S.health<100?TEXT(" / WOUNDED"):TEXT("")),34,275,Muted,0.85f);
+        Rect(Ink,34,294,260,4);Rect(Azure,34,294,260*S.health/100,4);
+        Label(FString::Printf(TEXT("SUPPRESSION  %.0f%%"),S.suppression*100),34,307,Muted,0.85f);
+        Rect(Ink,34,326,260,4);Rect(Ember,34,326,260*S.suppression,4);
+        Label(FString::Printf(TEXT("AIM  %.0f%%   /   %s"),S.aim*100,S.aim>=1?TEXT("READY"):S.aimTarget>=0?TEXT("ACQUIRING"):TEXT("NO FIRING SOLUTION")),34,339,Muted,0.8f);
+        Rect(Ink,34,358,260,4);Rect(Gold,34,358,260*S.aim,4);
+        Label(UTF8_TO_TCHAR(army::ActionName(S.action)),34,376,Gold,1.05f);
+        Label(S.stance==army::Stance::Crouched?TEXT("CROUCHED / LOW PROFILE"):TEXT("STANDING"),34,400,Azure,0.8f);
+        float Y=Wrapped(S.holdingFire?TEXT("Holding fire: friendly troops in the firing lane. Requesting clearance if blocked."):UTF8_TO_TCHAR(army::ReasonText(S.reason)),34,423);
+        Label(FString::Printf(TEXT("Rounds fired: %d"),S.rounds),34,Y+10,Muted,0.85f);
+        Label(S.pendingReactions>0?FString::Printf(TEXT("Registering %s / %.2fs"),UTF8_TO_TCHAR(army::ReactionName(S.reactingTo)),FMath::Max(0.f,S.reactionUntil-F.time)):FString::Printf(TEXT("Reaction time: %.2fs base"),S.reactionBase),34,Y+29,Gold,0.8f);
+139:    report['summary'] = human_summary(report, frames, events)
+164:def human_summary(report, frames, events):
+231:def render_summary(report):
+265:           render_summary(report), '## Appendix: complete turning-point register', '', '<a id="turning-point-register"></a>', '']
+battle-lab.sh
+build-lab-windows.sh
+build.sh
+launch.sh
+test-sim-windows.sh
+test-sim.sh
+
+exec
+/bin/bash -lc "sed -n '158,236p' Unreal/Source/ArmyPrototype/BattleGameMode.cpp; grep -n 'void ABattleGameMode::Command' Unreal/Source/ArmyPrototype/BattleGameMode.cpp; sed -n '375,448p' Unreal/Source/ArmyPrototype/BattleGameMode.cpp; sed -n '231,266p' tools/after_action.py; cat scripts/build.sh; cat scripts/launch.sh | head -85; tail -3 .local/plan015/step-e-review/measurement-1.log" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+            float A=FMath::Clamp((ReplayTime-F.time)/(It->time-F.time),0.f,1.f);
+            P=P+(It->soldiers[Id].position-P)*A;
+        }
+    }
+    return World(P,S.Active()?(S.stance==army::Stance::Crouched?34:70):15);
+}
+bool ABattleGameMode::IsFinished() const {return !bPreparation&&ReplayTime>=Battle.duration;}
+void ABattleGameMode::ShowUnits() {
+    const auto& F=Frame();
+    for(int I=0;I<Units.Num();++I) {
+        const auto& S=F.soldiers[I];auto* A=Units[I].Get();
+        A->SetActorHiddenInGame(!Preparation->soldiers[I].Active());
+        A->SetActorLocation(UnitPosition(I));
+        A->SetActorRotation(FRotator(0,FMath::RadiansToDegrees(FMath::Atan2(S.facing.y,S.facing.x)),0));
+        A->SetActorScale3D(S.Active()?FVector(0.88f,0.88f,S.stance==army::Stance::Crouched?0.58f:1.2f):FVector(1.25f,0.65f,0.18f));
+    }
+}
+void ABattleGameMode::RefreshPreparation() {
+    *Preparation=army::InitialFrame(Settings);
+    if(army::TypedController(Settings)){if(CognitiveScenario>=1&&CognitiveScenario<=7)army::MakeMGEncounter(Settings,CognitiveScenario,Battle.map,*Preparation);else if(CognitiveScenario==8)army::MakeMGEncounter(Settings,1,Battle.map,*Preparation);else if(CognitiveScenario>=9)army::MakeCognitiveEncounter(Settings,CognitiveScenario,Battle.map,*Preparation);}
+    if(Settings.family!=army::ScenarioFamily::None)army::ApplyScenario(army::GenerateScenario(Settings.family,Settings.genSeed),Settings,Battle.map,*Preparation);
+}
+void ABattleGameMode::RunBattle() {
+    const double Start=FPlatformTime::Seconds();
+    const bool Reused=!Battle.frames.empty()&&army::SameConfig(Battle.config,Settings);
+    if(!Reused)Battle=army::Simulate(Settings,{}, {},army::TypedController(Settings)?CognitiveScenario:0);
+    ReplayTime=0;bPaused=false;bPreparation=false;
+    ReplaySpeed=1;Selected=0;Notice=TEXT("");
+    if(Reused){UE_LOG(LogTemp,Display,TEXT("ARMY_REPLAY_REUSED: identical seed and settings, no simulation needed"));return;}
+    UE_LOG(LogTemp,Display,TEXT("ARMY_SIM: seed=%u duration=%.2f frames=%d shots=%d winner=%d compute=%.3fs"),
+        Settings.seed,Battle.duration,int(Battle.frames.size()),int(Battle.shots.size()),Battle.winner,FPlatformTime::Seconds()-Start);
+    FString Dir=FPaths::ProjectSavedDir()/TEXT("BattleReports");IFileManager::Get().MakeDirectory(*Dir,true);
+    const double ExportStart=FPlatformTime::Seconds();
+    const std::string Run=army::ExportBattle(Battle,TCHAR_TO_UTF8(*Dir),army::BuildIdentifier());
+    UE_LOG(LogTemp,Display,TEXT("ARMY_REPORT: %s / export %.3fs / run-to-ready %.3fs"),UTF8_TO_TCHAR(Run.c_str()),FPlatformTime::Seconds()-ExportStart,FPlatformTime::Seconds()-Start);
+
+}
+void ABattleGameMode::Seek(float T) {ReplayTime=FMath::Clamp(T,0.f,Battle.duration);ShowUnits();}
+void ABattleGameMode::SetBattleDuration(float Seconds){
+    if(!bPreparation)return;
+    Settings.maxSeconds=FMath::Clamp(FMath::RoundToFloat(Seconds/30.f)*30.f,60.f,600.f);
+}
+void ABattleGameMode::Command(FName Id) {
+    if(Id==TEXT("start")) {if(bPreparation)RunBattle();else if(IsFinished()){Seek(0);bPaused=false;}else bPaused=!bPaused;}
+    else if(Id==TEXT("setup")) {bPreparation=true;bPaused=false;RefreshPreparation();}
+    else if(Id==TEXT("restart")) {if(!bPreparation){Seek(0);bPaused=false;}}
+    else if(Id==TEXT("speed")) ReplaySpeed=ReplaySpeed<0.25f?0.25f:ReplaySpeed<0.5f?0.5f:ReplaySpeed<1?1:ReplaySpeed<2?2:ReplaySpeed<4?4:0.1f;
+    else if(Id==TEXT("back")) {if(!bPreparation){Seek(ReplayTime-5);bPaused=true;}}
+    else if(Id==TEXT("forward")) {if(!bPreparation){Seek(ReplayTime+5);bPaused=true;}}
+    else if(Id==TEXT("stepback")) {if(!bPreparation){Seek(ReplayTime-0.01f);bPaused=true;}}
+    else if(Id==TEXT("stepforward")) {if(!bPreparation){Seek(ReplayTime+0.01f);bPaused=true;}}
+    else if(Id==TEXT("ember_doctrine")&&bPreparation) Settings.emberDoctrine=army::Doctrine((int(Settings.emberDoctrine)+1)%3);
+    else if(Id==TEXT("doctrine")&&bPreparation) Settings.doctrine=army::Doctrine((int(Settings.doctrine)+1)%3);
+    else if(Id==TEXT("approach")&&bPreparation) Settings.approach=army::Approach((int(Settings.approach)+1)%3);
+    else if(Id==TEXT("support")&&bPreparation) {Settings.supportWeapon=!Settings.supportWeapon;RefreshPreparation();}
+    else if(Id==TEXT("routes")) bRoutes=!bRoutes;
+    else if(Id==TEXT("terrain")&&bPreparation){Settings.terrain=Settings.terrain==army::Terrain::Trenches?army::Terrain::FracturedWorks:army::Terrain::Trenches;Battle={};Battle.map=army::MakeBattleMap(Settings);RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}
+    else if(Id==TEXT("seed")&&bPreparation) {++Settings.seed;RefreshPreparation();}
+    else if(Id==TEXT("zoomin")) Zoom=FMath::Max(0.055f,Zoom/1.18f);
+    else if(Id==TEXT("zoomout")) Zoom=FMath::Min(1.65f,Zoom*1.18f);
+    else if(Id==TEXT("focus")) CameraPan=UnitPosition(Selected);
+    else if(Id==TEXT("center")) {CameraPan=FVector::ZeroVector;Zoom=1;CameraYaw=-90;CameraPitch=60;}
+    else if(Id==TEXT("floors")) {bShowUpperFloor=!bShowUpperFloor;for(auto& A:UpperStructure)A->SetActorHiddenInGame(!bShowUpperFloor);}
+    else if(Id==TEXT("quit")) GetWorld()->GetFirstPlayerController()->ConsoleCommand(TEXT("quit"));
+}
+void ABattleGameMode::Tick(float Dt) {
+    Super::Tick(Dt);RealSeconds+=Dt;
+    auto* PC=GetWorld()->GetFirstPlayerController();if(!PC||!Camera)return;
+    if(!bPreparation&&!bPaused) ReplayTime=FMath::Min(Battle.duration,ReplayTime+Dt*ReplaySpeed);
+    if(!bSmoke) {
+        if(PC->WasInputKeyJustPressed(EKeys::SpaceBar)) Command(TEXT("start"));
+        if(PC->WasInputKeyJustPressed(EKeys::R)) Command(TEXT("restart"));
+        if(PC->WasInputKeyJustPressed(EKeys::N)) Command(TEXT("setup"));
+        if(PC->WasInputKeyJustPressed(EKeys::Left)) Command(TEXT("back"));
+        if(PC->WasInputKeyJustPressed(EKeys::Right)) Command(TEXT("forward"));
+        if(PC->WasInputKeyJustPressed(EKeys::Tab)) Command(TEXT("speed"));
+        if(PC->WasInputKeyJustPressed(EKeys::Comma)) Command(TEXT("stepback"));
+        if(PC->WasInputKeyJustPressed(EKeys::Period)) Command(TEXT("stepforward"));
+        if(PC->WasInputKeyJustPressed(EKeys::F)) Command(TEXT("floors"));
+200:void ABattleGameMode::Command(FName Id) {
+            if(!DuckFound&&S.reason==army::Reason::Duck&&S.Active()) {
+                Seek(F.time);Selected=S.id;Zoom=0.3f;CameraPan=World(S.position);DuckFound=true;
+                check(Frame().soldiers[Selected].stance==army::Stance::Crouched);
+                check(FMath::Abs(Units[Selected]->GetActorScale3D().Z-0.58f)<0.001f);
+            }
+        }
+        Command(TEXT("focus"));for(int I=0;I<30;++I)Command(TEXT("zoomin"));
+        check(FMath::IsNearlyEqual(Zoom,0.055f)&&CameraPan.Equals(UnitPosition(Selected),0.01f));
+        AdjustCamera(45,-20);check(CameraYaw==-45&&CameraPitch==40);
+        check(DuckFound&&PopFound);++SmokeStage;
+    }
+    if(SmokeStage==7&&RealSeconds>21) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("05-low-cover.png"),true,false);++SmokeStage;}
+    if(SmokeStage==8&&RealSeconds>22) {
+        check(FMath::Abs(Camera->GetActorRotation().Yaw+45)<0.01f&&FMath::Abs(Camera->GetActorRotation().Pitch+40)<0.01f);
+        Command(TEXT("center"));check(CameraYaw==-90&&CameraPitch==60&&Zoom==1);
+        bool Found=false;
+        for(const auto& F:Battle.frames)for(const auto& S:F.soldiers)if(!Found&&S.machineGun&&S.assignment.task==army::Task::Overwatch&&S.aim>0.05f) {
+            Seek(F.time);Selected=S.id;Zoom=0.35f;CameraPan=World(S.position);Found=true;
+        }
+        check(Found);
+        bool NcoOrder=false;for(const auto& E:Battle.events)if(E.kind==army::EventKind::OrderReceived&&E.actor%army::SquadSize==1)NcoOrder=true;
+        bool ReactionFound=false;for(const auto& F:Battle.frames)for(const auto& S:F.soldiers)if(S.pendingReactions>0)ReactionFound=true;
+        check(NcoOrder&&ReactionFound);++SmokeStage;
+    }
+    if(SmokeStage==9&&RealSeconds>23) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("06-command-overwatch.png"),true,false);++SmokeStage;}
+    if(SmokeStage==10&&RealSeconds>24) {
+        bool Found=false;
+        for(const auto& F:Battle.frames)for(const auto& S:F.soldiers)if(!Found&&S.Active()&&S.health<100&&S.assignment.task==army::Task::RearGuard&&S.action==army::Action::Fire) {
+            Seek(F.time);Selected=S.id;Zoom=0.35f;CameraPan=World(S.position);Found=true;
+        }
+        check(Found);++SmokeStage;
+    }
+    if(SmokeStage==11&&RealSeconds>25) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("07-wounded-rear-guard.png"),true,false);++SmokeStage;}
+    if(SmokeStage==12&&RealSeconds>26) {
+        bool Found=false;
+        for(const auto& F:Battle.frames)for(const auto& S:F.soldiers)if(!Found&&S.Active()&&S.reason==army::Reason::ProtectedHold) {
+            Seek(F.time);Selected=S.id;Zoom=0.35f;CameraPan=World(S.position);Found=true;
+        }
+        check(Found);++SmokeStage;
+    }
+    if(SmokeStage==13&&RealSeconds>27) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("08-automatic-shelter.png"),true,false);++SmokeStage;}
+    if(SmokeStage==14&&RealSeconds>28) {
+        bool Found=false;
+        for(const auto& F:Battle.frames)for(const auto& C:F.command)if(!Found&&C.planId>0&&C.hasWaypoint&&C.leader>=0) {
+            for(const auto& S:F.soldiers)if(S.Active()&&S.squad==F.soldiers[C.leader].squad&&(S.assignment.task==army::Task::Flank||S.assignment.task==army::Task::BoundMove)&&S.assignment.receivedAt>=F.time-5) {
+                Seek(F.time);Selected=S.id;Zoom=0.55f;CameraPan=World(S.position);Found=true;break;
+            }
+        }
+        check(Found);++SmokeStage;
+    }
+    if(SmokeStage==15&&RealSeconds>29) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("09-squad-progress.png"),true,false);++SmokeStage;}
+    if(SmokeStage==16&&RealSeconds>30) {
+        bool Found=false,Stairs=false;
+        for(const auto& F:Battle.frames)for(const auto& S:F.soldiers)if(S.position.z>0.1f&&S.position.z<army::UpperFloor-0.1f&&army::OnStairs(Battle.map,S.position))Stairs=true;
+        for(const auto& Shot:Battle.shots)if(!Found&&Shot.start.z>3)for(const auto& Window:Battle.map.windows)if(army::Distance(Shot.start,Window.peek)<0.7f) {
+            Seek(Shot.time);Selected=Shot.owner;Zoom=0.3f;CameraPan=World(Shot.start);CameraPitch=40;CameraYaw=-35;Found=true;break;
+        }
+        check(Found&&Stairs);++SmokeStage;
+    }
+    if(SmokeStage==17&&RealSeconds>31) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("10-upstairs-window.png"),true,false);++SmokeStage;}
+    if(SmokeStage==18&&RealSeconds>32) {
+        bool Found=false;
+        for(const auto& Shot:Battle.shots)if(!Found&&Shot.start.z<0.1f)for(const auto& Window:Battle.map.windows)if(army::Distance(Shot.start,Window.peek)<0.7f) {
+            Seek(Shot.time);Selected=Shot.owner;CameraPan=World(Shot.start);Command(TEXT("floors"));Found=true;break;
+        }
+        check(Found);++SmokeStage;
+    }
+    if(SmokeStage==19&&RealSeconds>33) {FScreenshotRequest::RequestScreenshot(Dir/TEXT("11-ground-floor.png"),true,false);++SmokeStage;}
+    if(SmokeStage==20&&RealSeconds>34) {
+        bool Engaged=false,Window=false,Useful=false;
+        for(const auto& F:Battle.frames) {
+            for(const auto& S:F.soldiers){Window|=S.assignment.task==army::Task::Window;
+                if(!Engaged&&S.Active()&&!S.machineGun&&S.rounds>3&&S.aim>0.2f&&S.position.z<0.1f&&S.action==army::Action::Fire&&F.command[S.squad].engaged){Selected=S.id;Seek(F.time);Engaged=true;}}
+            for(const auto& C:F.command)Useful|=C.supportUseful;
+def render_summary(report):
+    summary=report['summary']; outcome=summary['outcome'];winner={0:'Azure',1:'Ember',-1:'Draw'}.get(outcome.get('winner'),'Unknown')
+    out=['## Battle summary','',f"**{winner}** · {outcome.get('duration', 'unknown')} s · {outcome.get('shots','unknown')} shots.", '', '### Turning points', '']
+    # A bounded overview; every episode remains in the linked appendix and JSON.
+    for point in summary['turning_points'][:10]:
+        evidence=point['evidence'];link=f"[trace {evidence}](#trace-{evidence})" if isinstance(evidence,int) else str(evidence)
+        out.append(f"- {point['time']:.1f}s, squad {point['squad']}: {point['kind']} ({link}). {point.get('result',point['text'])}.")
+    if len(summary['turning_points'])>10:out.append(f"- {len(summary['turning_points'])-10} further episodes: see the complete [turning-point register](#turning-point-register).")
+    if not summary['turning_points']:out.append('No turning-point evidence recorded.')
+    out.extend(['','### Squads',''])
+    for squad in summary['squads']:
+        choices=', '.join(brief_decision(x) for x in squad['choices'][-2:]) or 'no drill recorded'
+        if len(squad['choices'])>2:choices+=f" and {len(squad['choices'])-2} further drill types"
+        out.append(f"- **{squad['squad']}** — {squad['intent'].split(';')[0].replace('Platoon task-tree directive: ', '')}; chose {choices}; {squad['achievement']}; {squad['shots']} shots, {squad['losses']}/{squad['initial']} lost.")
+    out.extend(['','### Decisions and attribution',''])
+    phrases=[]
+    for d in summary['decisive']:
+        belief=d.get('knowledge');estimate=sum(r.get('estimate',0) for r in belief.get('regions',[])) if belief else None
+        reports=len({c['enemy'] for c in belief.get('contacts',[]) if not c.get('personal',False)}) if belief else None
+        observed=d.get('observed_next');effect=f"followed by {observed['shots']} shots and {observed['casualties']} own casualties" if observed else 'subsequent effect unavailable'
+        picture=f"estimate {estimate:.1f} against {reports} distinct squad-reported contacts" if estimate is not None else 'leader picture unavailable'
+        phrases.append(f"At {d['time']:.1f}s, squad {d['squad']} chose {brief_decision(d['reason'])} ([trace {d['trace_id']}](#trace-{d['trace_id']})), {effect}; {picture}")
+    out.append('; '.join(phrases)+'. These are observed sequences, not proof of causation.' if phrases else 'No decision attribution can be supported by the available trace.')
+    if report.get('leader_profiles'):
+        out.extend(['', '### Platoon leader effects', '', f"Judgement/risk/adaptability/communication: Azure {report['leader_profiles'][0]}, Ember {report['leader_profiles'][1]}."])
+        for decision in report.get('leader_attribution', [])[:2]:
+            out.append(f"- {decision['time']:.1f}s: {decision['decision']} ([trace {decision['trace_id']}](#trace-{decision['trace_id']})). Following evidence: {decision['observed_next']}.")
+    net=summary['net'];delay=f"mean {net['mean_delay']:.2f}s, max {net['max_delay']:.2f}s" if net['mean_delay'] is not None else 'delay unknown'
+    out.extend(['','### Communication','',f"{net['matched']} matched deliveries ({delay}); {net['explicit_drops']} explicit drops; {net['unmatched']} unmatched messages, not classified as lost. Unrecorded loss remains unknown."])
+    return '\n'.join(out)+'\n'
+
+
+def render(report):
+    out = ['# After-action report', '', f"Run: `{report['run']}`", '',
+           render_summary(report), '## Appendix: complete turning-point register', '', '<a id="turning-point-register"></a>', '']
+    for point in report['summary']['turning_points']:
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$repo_root/.local/paths.env" ]]; then source "$repo_root/.local/paths.env"; fi
+: "${ARMY_ENGINE_DIR:=/mnt/c/Program Files/Epic Games/UE_5.8}"
+if [[ -z "${ARMY_WINDOWS_BUILD_DIR:-}" ]]; then
+  printf 'Set ARMY_WINDOWS_BUILD_DIR to a dedicated Windows-local build directory.\n' >&2
+  exit 1
+fi
+build_dir="$ARMY_WINDOWS_BUILD_DIR"
+if [[ "$build_dir" != /mnt/[a-z]/* || "$build_dir" == "$repo_root" ]]; then
+  printf 'The Unreal build mirror must be a dedicated directory on a Windows drive.\n' >&2; exit 1
+fi
+if [[ -d "$build_dir" && ! -f "$build_dir/.army-build-mirror" && -n "$(ls -A "$build_dir")" ]]; then
+  printf 'Refusing to synchronize into a nonempty directory that is not an Army build mirror.\n' >&2; exit 1
+fi
+mkdir -p "$build_dir/Source" "$build_dir/Config"
+touch "$build_dir/.army-build-mirror"
+rsync -a --delete "$repo_root/Unreal/Source/" "$build_dir/Source/"
+rsync -a --delete "$repo_root/Unreal/Config/" "$build_dir/Config/"
+cp "$repo_root/Unreal/ArmyPrototype.uproject" "$build_dir/ArmyPrototype.uproject"
+project_win="$(wslpath -w "$build_dir/ArmyPrototype.uproject")"
+# Let the selected engine locate its bundled .NET runtime (versions differ by engine).
+python3 - "$build_dir" "$ARMY_ENGINE_DIR" <<'PY'
+import subprocess, sys
+from pathlib import Path
+root, engine = map(Path, sys.argv[1:])
+def windows(path):
+    return subprocess.check_output(['wslpath', '-w', str(path)], text=True).strip()
+command = ('@echo off\ncall "' + windows(engine / 'Engine/Build/BatchFiles/Build.bat') +
+           '" ArmyPrototypeEditor Win64 Development "-Project=' +
+           windows(root / 'ArmyPrototype.uproject') +
+           '" -WaitMutex -NoHotReloadFromIDE -NoUBTMakefiles\nexit /b %errorlevel%\n')
+(root / 'build-editor.cmd').write_bytes(command.replace('\n', '\r\n').encode())
+PY
+(cd "$build_dir" && /mnt/c/Windows/System32/cmd.exe /d /c build-editor.cmd)
+printf '\nBuilt: %s\n' "$project_win"
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -f "$repo_root/.local/paths.env" ]]; then source "$repo_root/.local/paths.env"; fi
+: "${ARMY_ENGINE_DIR:=/mnt/c/Program Files/Epic Games/UE_5.8}"
+: "${ARMY_WINDOWS_BUILD_DIR:?Set ARMY_WINDOWS_BUILD_DIR or .local/paths.env}"
+"$ARMY_ENGINE_DIR/Engine/Binaries/Win64/UnrealEditor.exe" \
+  "$(wslpath -w "$ARMY_WINDOWS_BUILD_DIR/ArmyPrototype.uproject")" \
+  -game -windowed -ResX=1440 -ResY=900 -NoSplash -NoSound \
+  -stdout -FullStdOutLogOutput "$@"
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     

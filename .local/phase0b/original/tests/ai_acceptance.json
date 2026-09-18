@@ -1,0 +1,29 @@
+{
+  "source_before": "c8bac9e44840cd47",
+  "seconds": 360,
+  "layouts": [
+    5,
+    6,
+    7
+  ],
+  "development_seeds": [
+    107,
+    108,
+    109
+  ],
+  "held_out_seeds": [
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119
+  ],
+  "required_original": 8,
+  "required_held_out_per_layout": 8,
+  "evaluator_sha256": "3ade284789f519b1d4c6d377b091b075b177f14b183d2329464a1bfaa8d86dca"
+}

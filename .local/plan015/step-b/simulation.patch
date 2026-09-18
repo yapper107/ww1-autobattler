@@ -1,0 +1,563 @@
+--- entry/BattleSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/BattleSim.cpp
+@@ -240,7 +240,19 @@
+ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
+     Vec3 direction=Normal(Vec3{aim.x-s.position.x,aim.y-s.position.y,0});
+     const float range=Length({aim.x-s.position.x,aim.y-s.position.y,0});if(range<0.5f)return 0;
+-    float risk=0;const float muzzle=s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f);
++    float risk=0;
++    if(s.assignment.drillInstance>0)for(const auto& lane:s.assignment.teamPlan.friendlyAssaultLanes){
++        // Received assault intent, not a hidden friendly position. The shared
++        // objective disc is covered by the existing close-assault fire contract.
++        const Vec3 shot=aim-s.position,other=lane.target-lane.origin;
++        const float denominator=shot.x*other.y-shot.y*other.x;
++        if(std::abs(denominator)<1e-5f)continue;
++        const Vec3 offset=lane.origin-s.position;
++        const float along=(offset.x*other.y-offset.y*other.x)/denominator;
++        const float cross=(offset.x*shot.y-offset.y*shot.x)/denominator;
++        if(along>0&&along<1&&cross>0&&cross<1&&Distance(s.position+shot*along,lane.target)>12)risk=1;
++    }
++    const float muzzle=s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f);
+     for(int id=0;id<UnitCount;++id) {
+         const auto& ct=s.allies[id];float age=time-ct.observedAt;
+         if(id==s.id||!ct.known||age<0||age>1.5f)continue;
+@@ -642,7 +654,7 @@
+     if(input.family!=ScenarioFamily::None&&(encounter!=0||input.recoveryFixture||input.terrain!=Terrain::FracturedWorks))throw std::invalid_argument("Generated scenarios cannot combine with encounters, recovery or authored terrain");
+     if(TypedController(input)&&(!input.foundations||input.reportDelay<0||input.reportDelay>10||!std::isfinite(input.reportDelay)))throw std::invalid_argument("Cognition requires foundations and a report delay between 0 and 10 seconds");
+     if(input.cognition)for(float value:{input.officer.judgment,input.officer.risk,input.officer.adaptability})if(!std::isfinite(value)||value<0||value>1)throw std::invalid_argument("Officer profile values must be 0..1");
+-    if(input.drills&&(input.cognition||input.recoveryFixture||!(encounter==0||(encounter>=5&&encounter<=7)||(encounter>=44&&encounter<=85))))throw std::invalid_argument("Drills require encounter 0 or 5..7 and exclusive controller selection");
++    if(input.drills&&(input.cognition||input.recoveryFixture||!(encounter==0||(encounter>=5&&encounter<=7)||(encounter>=44&&encounter<=93))))throw std::invalid_argument("Drills require encounter 0 or 5..7 and exclusive controller selection");
+     if(input.foundations&&((encounter!=8&&!(input.cognition&&(encounter==0||(encounter>=5&&encounter<=43)))&&!input.drills)||input.recoveryFixture))throw std::invalid_argument("Foundations policy requires encounter 8 and cannot combine with recovery");
+     if(encounter>=9&&encounter<=43&&!input.cognition)throw std::invalid_argument("Cognitive scenarios require --cognition");
+     if(encounter==8&&!input.foundations)throw std::invalid_argument("Encounter 8 requires --foundations");
+@@ -656,7 +668,7 @@
+     if(encounter==8){r.encounter=8;MakeMGEncounter(c,1,r.map,f);}
+     if(encounter>=9&&encounter<=43){r.encounter=encounter;MakeCognitiveEncounter(c,encounter,r.map,f);}
+     if(encounter>=44&&encounter<=69){if(!c.drills)throw std::invalid_argument("Drill fixtures require --drills");r.encounter=encounter;MakeDrillEncounter(c,encounter,r.map,f);}
+-    if(encounter>=70&&encounter<=85){r.encounter=encounter;MakePlatoonEncounter(c,encounter,r.map,f);}
++    if(encounter>=70&&encounter<=93){r.encounter=encounter;MakePlatoonEncounter(c,encounter,r.map,f);}
+     if(encounter==10&&geometry.empty()){
+         GeometryEdit change;change.time=2;change.obstacle=r.map.obstacles.front().id;change.remove=false;
+         change.replacement={{0,0},{1,90},false,false,4};geometry.push_back(change);
+@@ -692,7 +704,7 @@
+         auto stageStart=DiagnosticClock::now();
+         f.time=tick*TickSeconds;
+         if(c.drills&&encounter>=56&&encounter<=69)StepDrillEncounter(encounter,f);
+-        if(c.drills&&encounter>=70&&encounter<=85)StepPlatoonEncounter(encounter,f);
++        if(c.drills&&encounter>=70&&encounter<=93)StepPlatoonEncounter(encounter,f);
+         for(size_t g=0;g<geometry.size();++g)if(!applied[g]&&geometry[g].time<=f.time){
+             applied[g]=true;const auto& edit=geometry[g];
+             for(const auto& obstacle:r.map.obstacles)if(obstacle.id==edit.obstacle)changedObstacles[g]=obstacle;
+--- entry/BattleSim.h
++++ Unreal/Source/ArmyPrototype/Sim/BattleSim.h
+@@ -86,7 +86,9 @@
+ enum class Task { None, Overwatch, Advance, Hold, Rally, RearGuard, ClearLane, Flank, PullBack, BoundMove, BoundCover, Window };
+ struct TacticalRoute;
+ struct ManeuverAssessment;
++struct FireLane { Vec3 origin{}, target{}; float spread=0.06f, observedAt=-100; };
+ struct TeamPlan {
++    std::vector<FireLane> friendlyAssaultLanes;
+     bool liftFire=false;Vec3 liftedSector{};int targetEnemy=-1;
+     std::shared_ptr<const TacticalRoute> route;
+     bool bounding=false, released=false;
+@@ -148,7 +150,7 @@
+     int drillInstance=0,element=-1;bool baseOfFire=false;Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaDiscRadius=0;
+     float drillRushPausedAt=0,drillRushPausedSeconds=0;
+ };
+-enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector, Coverage, SupportProgress };
++enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector, Coverage, SupportProgress, SquadRadio };
+ enum class Action { Advance, Cover, Fire, Retreat, Hold, Wounded, Killed };
+ enum class Reason { Search, Contact, Suppressed, Injury, ClearShot, Watching, LostContact, Down,
+     Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition };
+@@ -261,7 +263,6 @@
+     TaskStatus status=TaskStatus::Issued;TaskCause cause=TaskCause::None;
+ };
+ struct FireArea { Vec3 position{}; float intensity=0, observedAt=-100; };
+-struct FireLane { Vec3 origin{}, target{}; float spread=0.06f, observedAt=-100; };
+ struct ReportedContact { int track=-1; Contact contact; };
+ struct RegionEstimate {
+     int x=0,y=0,observations=0,automaticWeapons=0;
+@@ -295,6 +296,12 @@
+     bool drillSuperiority=false;bool drillRecovering=false;std::string drillNote;
+     float phaseLineAt=-1,completedAssaultLineAt=-1;Vec3 assaultObjective{},assaultOrigin{};
+     std::vector<Vec3> drillMemberPositions;
++};
++enum class SquadBroadcastKind { Fixing, Assaulting, NeedSupport, PhaseLine, Done };
++struct SquadBroadcast {
++    int serial=0,sender=-1,squad=-1,enemy=-1,side=0;
++    SquadBroadcastKind kind=SquadBroadcastKind::Fixing;
++    float sentAt=0,receivedAt=0;Vec3 position{},objective{};Contact contact;
+ };
+ struct PlatoonDirective {
+     int taskNode=0,mergeInto=-1,helpSquad=-1;bool hasArea=false,liftFire=false,fireMovement=false;
+@@ -392,6 +399,8 @@
+     std::array<FireLane, UnitCount> blockedLanes{};
+     std::array<SquadSituation,SquadsPerTeam> platoonReports{};
+     PlatoonDirective platoonOrder;
++    int organisation=1; // Section; only the drills controller uses organisation templates.
++    std::vector<SquadBroadcast> squadRadio;
+     bool Active() const { return health > 0; }
+ };
+ inline bool IsPlatoonStaff(const Soldier& s){return s.role==Role::Lieutenant||s.role==Role::PlatoonSergeant;}
+@@ -434,7 +443,7 @@
+ struct KnownSquadMember {bool known=false;Vec3 position{};float health=0,suppression=0,observedAt=-100;Role role=Role::Rifleman;bool machineGun=false;};
+ enum class DrillStage { None, Travel, BoundSetup, Bound, ContactCover, ContactHold, Reorganise, BoundCover, SupportPrepare, SupportHold, AttackMove, AssaultLine, Assault, Consolidate, Retire, Occupation, Observation };
+ struct SquadActionState {
+-    bool coveringBound=false,coveringAttempted=false;
++    bool helping=false;bool coveringBound=false,coveringAttempted=false;
+     bool closureFallback=false;
+     std::array<CoverPosition,SquadSize> pauseSlots{};
+     std::array<bool,SquadSize> pauseHasSlot{},resumeMovers{};
+@@ -452,6 +461,12 @@
+ };
+ struct DrillPlan {
+     PlatoonDirective acceptedDirective;bool directiveBoundary=true;
++    std::vector<SquadBroadcast> broadcasts;
++    bool helpApproach=false;Vec3 helpObjective{};
++    int radioLaneRevision=0;
++    int radioSequence=0,radioAttackInstance=0,radioSupportSquad=-1,radioLeadSquad=-1,radioHandled=0;
++    float radioFireSince=-1,radioPhaseAt=-1,radioDoneAt=-1;bool radioFixing=false,radioNeed=false;
++    Vec3 radioObjective{},radioSupportPosition{};
+     bool platoonArea=false,platoonLift=false;int platoonTaskNode=0;float directiveUntil=0;
+     SquadActionState action;
+     float believedEnemy=0;
+--- entry/Diagnostics.cpp
++++ Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp
+@@ -158,6 +158,7 @@
+     }
+     if(r.config.drills){
+         i(r.config.drills);f(r.config.reportDelay);i(r.config.fullVision);
++        auto radio=[&](const SquadBroadcast& message){i(message.serial);i(message.sender);i(message.squad);i(message.enemy);i(message.side);i(int(message.kind));f(message.sentAt);f(message.receivedAt);v(message.position);v(message.objective);f(message.contact.observedAt);v(message.contact.position);};
+         for(const auto& frame:r.frames){
+             auto directive=[&](const PlatoonDirective& a){f(a.areaRouteRadius);f(a.areaDiscRadius);v(a.areaDiscCenter);i(a.taskNode);i(a.fireMovement);i(a.committedStrength);i(a.mergeInto);i(a.helpSquad);i(a.hasArea);i(a.liftFire);v(a.areaMin);v(a.areaMax);v(a.assaultLane.origin);v(a.assaultLane.target);f(a.assaultLane.observedAt);i(a.intent.id);f(a.expiresAt);if(a.corridor){v(a.corridor->start);v(a.corridor->destination);for(Vec3 point:a.corridor->points)v(point);}};
+             for(const auto& command:frame.platoon){const auto& t=command.tasks;i(t.revision);i(t.commander);f(t.nextAssessment);i(t.withdrawing);f(t.believedRatio);
+@@ -165,8 +166,9 @@
+                 for(int n=0;n<SquadsPerTeam;++n){i(t.advanceDoneSeen[n]);i(t.advanceExhausted[n]);v(t.advanceDoneObjectives[n]);}
+                 f(t.observeStarted);v(t.observeObjective);for(float at:t.needSince)f(at);
+             }
+-            for(const auto& unit:frame.soldiers){directive(unit.platoonOrder);for(const auto& r:unit.platoonReports){i(r.drillSuperiority);f(r.phaseLineAt);f(r.completedAssaultLineAt);v(r.assaultObjective);v(r.assaultOrigin);for(Vec3 at:r.drillMemberPositions)v(at);}}
+-            for(const auto& unit:frame.soldiers){const auto& a=unit.assignment;f(a.areaRouteRadius);if(a.areaRoute){v(a.areaRoute->start);for(Vec3 point:a.areaRoute->points)v(point);}i(a.drillInstance);i(a.element);i(a.baseOfFire);v(a.areaMin);v(a.areaMax);v(a.areaDiscCenter);f(a.areaDiscRadius);i(a.execution.method);i(a.execution.stage);i(a.execution.generation);i(int(a.execution.completion));f(a.execution.deadline);i(a.execution.paused);f(a.execution.rushSeconds);f(a.drillRushPausedAt);f(a.drillRushPausedSeconds);
++            for(const auto& command:frame.command){const auto& p=command.battleDrill;i(p.action.helping);i(p.helpApproach);v(p.helpObjective);i(p.radioLaneRevision);i(p.radioSequence);i(p.radioAttackInstance);i(p.radioSupportSquad);i(p.radioLeadSquad);i(p.radioHandled);f(p.radioFireSince);f(p.radioPhaseAt);f(p.radioDoneAt);i(p.radioFixing);i(p.radioNeed);v(p.radioObjective);v(p.radioSupportPosition);for(const auto& message:p.broadcasts)radio(message);}
++            for(const auto& unit:frame.soldiers){i(unit.organisation);for(const auto& message:unit.squadRadio)radio(message);directive(unit.platoonOrder);for(const auto& r:unit.platoonReports){i(r.drillSuperiority);f(r.phaseLineAt);f(r.completedAssaultLineAt);v(r.assaultObjective);v(r.assaultOrigin);for(Vec3 at:r.drillMemberPositions)v(at);}}
++            for(const auto& unit:frame.soldiers){const auto& a=unit.assignment;for(const auto& lane:a.teamPlan.friendlyAssaultLanes){v(lane.origin);v(lane.target);f(lane.observedAt);}f(a.areaRouteRadius);if(a.areaRoute){v(a.areaRoute->start);for(Vec3 point:a.areaRoute->points)v(point);}i(a.drillInstance);i(a.element);i(a.baseOfFire);v(a.areaMin);v(a.areaMax);v(a.areaDiscCenter);f(a.areaDiscRadius);i(a.execution.method);i(a.execution.stage);i(a.execution.generation);i(int(a.execution.completion));f(a.execution.deadline);i(a.execution.paused);f(a.execution.rushSeconds);f(a.drillRushPausedAt);f(a.drillRushPausedSeconds);
+                 for(const auto& report:unit.platoonReports){i(report.drillInstance);i(report.drillKind);i(int(report.drillCause));i(report.drillRecovering);bytes(report.drillNote.data(),report.drillNote.size());}
+             }
+             for(const auto& cmd:frame.command){const auto& p=cmd.battleDrill;
+--- entry/DrillSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+@@ -8,7 +8,7 @@
+ const SquadOrganisation& Organisation(OrganisationKind kind){
+     static const std::array<SquadOrganisation,4> data{{
+         {"Gun-centric",{{{"gun group",Role::Sergeant,2},{"rifle group",Role::Corporal,2}}},5,AttritionRule::GunNest,true,.5f,1,false},
+-        {"Section",{{{"gun group",Role::Sergeant,2},{"rifle group",Role::Corporal,3}}},5,AttritionRule::HaltAndMerge,true,.5f,3,false},
++        {"Section",{{{"gun group",Role::Sergeant,2},{"rifle group",Role::Corporal,3}}},5,AttritionRule::HaltAndMerge,true,.5f,3,true},
+         {"Teams",{{{"first team",Role::Sergeant,2},{"second team",Role::Corporal,2}}},5,AttritionRule::SingleElement,true,.5f,2,false},
+         {"Rush",{{{"assault group",Role::Sergeant,2},{"reserve",Role::Corporal,0}}},3,AttritionRule::SingleElement,true,2,5,true}
+     }};return data[int(kind)];
+@@ -436,8 +436,9 @@
+     if(directive)p.intent.parent=leader.platoonOrder.intent.id;
+     p.directiveBoundary=p.stage!=entryStage||p.generation!=entryGeneration;
+     p.intent.objective=p.action.active?p.action.objective:p.destination;p.intent.expiresAt=config.maxSeconds;
+-}
+-std::vector<PlannedOrder> DrillOrders(const Soldier&,const std::vector<Soldier>& squad,const SquadCommand& cmd,float){
++    UpdateSquadBroadcasts(leader,p,d,time,below);
++}
++std::vector<PlannedOrder> DrillOrders(const Soldier& leader,const std::vector<Soldier>& squad,const SquadCommand& cmd,float){
+     const auto& p=cmd.battleDrill;std::vector<PlannedOrder> out;
+     for(const auto& s:squad)if(s.Active()&&!IsPlatoonStaff(s)&&p.issue[s.id%SquadSize]&&p.elements[s.id%SquadSize]>=0){const int n=s.id%SquadSize;
+         PlannedOrder o{};o.recipient=s.id;o.task=p.retreat?Task::PullBack:p.stage==DrillStage::Travel?Task::BoundMove:Task::Overwatch;
+@@ -453,7 +454,14 @@
+             o.execution.rushSeconds=p.action.rushOrders[n]?5.f:0.f;
+             o.teamPlan.liftFire=p.action.liftOrders[n];o.teamPlan.liftedSector=p.action.objective;
+         }
++        if(p.action.lifted&&p.action.closureFallback&&p.elements[n]==0){o.teamPlan.liftFire=true;o.teamPlan.liftedSector=p.action.objective;}
+         if(p.platoonLift){o.teamPlan.liftFire=true;o.teamPlan.liftedSector=p.acceptedDirective.assaultLane.target;}
++        for(const auto& message:leader.squadRadio)if(message.squad!=leader.squad&&
++            (message.kind==SquadBroadcastKind::Assaulting||message.kind==SquadBroadcastKind::PhaseLine)){
++            bool current=true;for(const auto& other:leader.squadRadio)if(other.squad==message.squad&&other.sentAt>message.sentAt&&
++                (other.kind==SquadBroadcastKind::Done||other.kind==SquadBroadcastKind::PhaseLine))current=false;
++            if(current)o.teamPlan.friendlyAssaultLanes.push_back({message.position,message.objective,.06f,message.sentAt});
++        }
+         out.push_back(o);
+     }return out;
+ }
+--- entry/DrillSim.h
++++ Unreal/Source/ArmyPrototype/Sim/DrillSim.h
+@@ -17,6 +17,7 @@
+ bool BeginContactAction(const Soldier&,const Soldier&,const std::vector<Soldier>&,const Map&,const Config&,DrillPlan&,Diagnostics*,float);
+ bool UpdateSquadAction(const Soldier&,const Soldier&,const std::vector<Soldier>&,const Map&,const Config&,DrillPlan&,Diagnostics*,float,bool,bool,bool);
+ 
++void UpdateSquadBroadcasts(const Soldier&,DrillPlan&,Diagnostics*,float,bool);
+ void UpdateDrillPlan(const Soldier&,const std::vector<Soldier>&,const Map&,const Config&,const std::vector<Vec3>&,const std::vector<int>&,SquadCommand&,Diagnostics*,float);
+ std::vector<PlannedOrder> DrillOrders(const Soldier&,const std::vector<Soldier>&,const SquadCommand&,float);
+ 
+--- entry/PlatoonFixtures.cpp
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonFixtures.cpp
+@@ -36,11 +36,45 @@
+         for(int n=0;n<32;++n){auto& s=f.soldiers[n];s.health=(id==84||n%8<4||IsPlatoonStaff(s))?10000:0;s.reloadUntil=id==85?10000:0;}
+         for(int n=32;n<64;++n){auto& s=f.soldiers[n];s.health=n<32+(id==84?30:24)?10000:0;s.position={(id==85?5.f:35.f)+float((n-32)/8)*3,(n%8-3.5f)*8};s.goal=s.position;s.reloadUntil=10000;s.machineGun=false;s.role=Role::Rifleman;}
+     }
++    if(id>=86&&id<=93){
++        map=Map{};map.halfWidth=260;map.halfHeight=140;
++        for(auto& s:f.soldiers){s.health=0;s.assignment={};s.contacts={};s.reports={};s.platoonOrder={};}
++        const int count=(id==90||id==91)?24:16;
++        for(int n=0;n<count;++n){auto& s=f.soldiers[n];const int squad=n/8,slot=n%8;
++            s.health=10000;s.reloadUntil=0;s.machineGun=slot==7;s.role=slot==0?Role::Sergeant:slot==1?Role::Corporal:slot==7?Role::MachineGunner:Role::Rifleman;
++            const float y=squad==0?-18.f:squad==1?34.f:-42.f;
++            s.position={-6.f-float(slot/2)*2,y+(slot-3.5f)*4};s.goal=s.position;s.organisation=0;
++            map.obstacles.push_back({{2,s.position.y},{.6f,1.5f},false,true,1.3f});
++        }
++        for(int n:{29,30}){auto& s=f.soldiers[n];s.health=10000;s.reloadUntil=10000;s.position={-55,float(n-29)*8};s.role=n==29?Role::Lieutenant:Role::PlatoonSergeant;s.machineGun=false;}
++        f.platoon[0].leader=29;f.platoon[0].sergeant=30;
++        auto& target=f.soldiers[32];target.health=10000;target.position={70,0};target.goal=target.position;target.reloadUntil=10000;target.role=Role::Sergeant;target.machineGun=false;
++        auto& hold=target.platoonOrder;hold.serial=1;hold.issuer=32;hold.expiresAt=600;hold.intent={1,0,GoalPurpose::Support,target.position,8,600};
++        f.platoon[1].leader=32;f.platoon[1].sergeant=-1;
++        map.obstacles.push_back({{68,0},{.6f,3},false,true,1.3f});
++        if(id!=87){map.obstacles.push_back({{30,12},{30,1},false,false,4});for(float y:{22.f,36.f})map.obstacles.push_back({{49,y},{.6f,3},false,true,1.3f});}
++        if(id==90){map.obstacles.push_back({{30,-12},{30,1},false,false,4});for(float y:{-22.f,-36.f})map.obstacles.push_back({{49,y},{.6f,3},false,true,1.3f});}
++        for(int squad=0;squad<count/8;++squad){f.command[squad].leader=squad*8;f.command[squad].mission={70,0};}
++        if(id>=88&&id<=91){
++            for(int squad=0;squad<count/8;++squad){auto& s=f.soldiers[squad*8];auto& order=s.platoonOrder;
++                order.serial=1;order.issuer=29;order.expiresAt=600;order.intent={1,0,GoalPurpose::Support,squad?s.position:Vec3{70,0},8,600};
++                order.task=squad?PlatoonTask::None:PlatoonTask::HelpSquad;order.helpSquad=squad?-1:1;
++            }
++            if(id==89)f.soldiers[8].organisation=3;
++        }
++        if(id==92||id==93){
++            auto& idle=f.soldiers[8].platoonOrder;idle.serial=1;idle.issuer=29;idle.expiresAt=600;
++            idle.intent={1,0,GoalPurpose::Support,f.soldiers[8].position,8,600};
++            for(int n=0;n<8;++n)f.soldiers[n].reloadUntil=10000;
++            if(id==93){for(int n=8;n<16;++n){f.soldiers[n].position.x-=120;f.soldiers[n].goal=f.soldiers[n].position;}idle.intent.objective=f.soldiers[8].position;}
++        }
++    }
+     for(auto& s:f.soldiers){s.facing=s.look={s.team?-1.f:1.f,0};}
+     PrepareGeometry(map);
+ }
+ void StepPlatoonEncounter(int id,Frame& f){
+     if(id==76&&f.time>=20){f.soldiers[5].health=0;f.soldiers[5].action=Action::Killed;}
++    if((id==92||id==93)&&f.time>=20)for(int n:{2,6,7}){f.soldiers[n].health=0;f.soldiers[n].action=Action::Wounded;}
+     // Negative expiry control removes the reporting/renewal endpoint physically.
+     if(id==81&&f.time>=20){f.soldiers[5].health=0;f.soldiers[6].health=0;}
+ }
+--- entry/PlatoonSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp
+@@ -145,12 +145,37 @@
+             if(cmd.leader>=0){cmd.nextPlanAt=f.time;events.push_back({f.time,EventKind::Succession,cmd.leader,-1,std::string(Name(cmd.leader))+" assumes platoon command using their own received reports"});}
+         }
+     }
++    if(config.drills)for(int squad=0;squad<SquadCount;++squad){
++        const int sender=f.command[squad].leader;if(sender<0||!f.soldiers[sender].Active())continue;
++        const auto& plan=f.command[squad].battleDrill;
++        for(const auto& message:plan.broadcasts)if(message.serial>rt.radioSent[squad]){
++            std::vector<int> recipients;
++            for(int other=squad/SquadsPerTeam*SquadsPerTeam;other<(squad/SquadsPerTeam+1)*SquadsPerTeam;++other)
++                if(f.command[other].leader>=0)recipients.push_back(f.command[other].leader);
++            const int commander=f.platoon[squad/SquadsPerTeam].leader;
++            if(commander>=0&&std::find(recipients.begin(),recipients.end(),commander)==recipients.end())recipients.push_back(commander);
++            for(int recipient:recipients){
++                PlatoonMessage packet;packet.radio=true;packet.sender=sender;packet.recipient=recipient;
++                packet.arrives=f.time+config.reportDelay;packet.broadcast=message;rt.messages.push_back(packet);
++                if(message.kind==SquadBroadcastKind::Assaulting||message.kind==SquadBroadcastKind::PhaseLine){
++                    PlatoonMessage lane;lane.lane=true;lane.sender=sender;lane.recipient=recipient;lane.arrives=packet.arrives;
++                    lane.subject=sender;lane.fireLane={message.position,message.objective,.06f,message.sentAt};rt.messages.push_back(lane);
++                }
++                if(reactions.diagnostics&&reactions.diagnostics->options.enabled){TraceEntry e;e.id=reactions.diagnostics->nextId++;e.time=f.time;e.soldier=recipient;e.squad=recipient/SquadSize;e.issuer=sender;e.order=message.serial;e.kind="radio_sent";e.reason=std::to_string(int(message.kind));e.goal=message.objective;reactions.diagnostics->entries.push_back(e);}
++            }
++            rt.radioSent[squad]=message.serial;
++        }
++    }
+     for(size_t i=0;i<rt.messages.size();) {
+         auto m=rt.messages[i];if(m.arrives>f.time){++i;continue;}rt.messages.erase(rt.messages.begin()+i);
+         auto& recipient=f.soldiers[m.recipient];const auto& sender=f.soldiers[m.sender];
+-        if(!recipient.Active()||!sender.Active()||recipient.team!=sender.team)continue;
++        if(!recipient.Active()||!sender.Active()||recipient.team!=sender.team){
++            if(m.radio&&reactions.diagnostics&&reactions.diagnostics->options.enabled){TraceEntry e;e.id=reactions.diagnostics->nextId++;e.time=f.time;e.soldier=m.recipient;e.squad=m.recipient/SquadSize;e.issuer=m.sender;e.order=m.broadcast.serial;e.kind="radio_dropped";e.reason="sender or recipient unavailable at transport delivery";reactions.diagnostics->entries.push_back(e);}
++            continue;
++        }
+         if(m.order&&(f.platoon[sender.team].leader!=sender.id||f.command[recipient.squad].leader!=recipient.id))continue;
+-        PendingReaction p;p.source=m.sender;p.kind=m.lane?ReactionKind::LaneReport:m.order?ReactionKind::PlatoonOrder:ReactionKind::PlatoonReport;
++        PendingReaction p;p.source=m.sender;p.kind=m.radio?ReactionKind::SquadRadio:m.lane?ReactionKind::LaneReport:m.order?ReactionKind::PlatoonOrder:ReactionKind::PlatoonReport;
++        if(m.radio)p.broadcast=m.broadcast;
+         if(m.lane){p.subject=m.subject;p.fireLane=m.fireLane;}
+         p.directive=m.directive;p.situation=m.situation;QueueReaction(recipient,p,f.time,reactions);
+         if(m.order)events.push_back({f.time,EventKind::OrderReceived,m.sender,m.recipient,std::string(Name(m.recipient))+" hears "+PlatoonTaskName(m.directive.task)});
+--- entry/PlatoonSim.h
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonSim.h
+@@ -2,7 +2,7 @@
+ #include "ReactionSim.h"
+ namespace army {
+ struct PlatoonMessage {
+-    bool order=false;
++    bool order=false;bool radio=false;SquadBroadcast broadcast;
+     int sender=-1, recipient=-1;
+     float arrives=0;
+     SquadSituation situation;
+@@ -21,6 +21,7 @@
+     std::array<uint64_t,2> lastSituation{};
+     std::array<float,2> lastPlan{};
+     std::array<float,SquadCount> feedbackObserved{};
++    std::array<int,SquadCount> radioSent{};
+     int nextSerial=1;
+ };
+ struct PlannedPlatoonOrder { int recipient=-1; PlatoonDirective directive; };
+--- entry/PlatoonTaskSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
+@@ -52,8 +52,11 @@
+         if (report.squad<0 || report.leader<0 || report.active<=0 || report.drillInstance<=0 ||
+             report.observedAt>time || time-report.observedAt>=15) continue;
+         const auto& previous=state.assigned[report.squad%SquadsPerTeam];
+-        // External pre-battle missions retain their ownership.
+-        if (report.goalId && !previous.taskNode && report.directive && report.goalStatus==TaskStatus::Executing) continue;
++        // External executing drills retain ownership; idle staging can answer a received need.
++        bool helpIdle=false;
++        if(report.drillKind==int(BattleDrill::Observe)||report.drillKind==int(BattleDrill::Occupy))
++            for(const auto& message:leader.squadRadio)helpIdle|=message.kind==SquadBroadcastKind::NeedSupport&&time-message.sentAt<60;
++        if (report.goalId && !previous.taskNode && report.directive && report.goalStatus==TaskStatus::Executing && !helpIdle) continue;
+         squads.push_back(report); strength+=report.active; centre=centre+report.position;
+         support|=report.supportUseful || report.drillSuperiority;
+     }
+@@ -77,12 +80,14 @@
+     const SquadSituation* needing=nullptr;int helper=-1;float helpDistance=1e9f;
+     for(const auto& report:squads){
+         const int index=report.squad%SquadsPerTeam;
+-        const bool need=report.drillCause==TaskCause::InsufficientStrength;
++        bool need=report.drillCause==TaskCause::InsufficientStrength;
++        for(const auto& message:leader.squadRadio)if(message.kind==SquadBroadcastKind::NeedSupport&&message.squad==report.squad&&time-message.sentAt<60)need=true;
+         if(!need){state.needSince[index]=-1;continue;}
+         if(state.needSince[index]<0)state.needSince[index]=time;
+         if(time-state.needSince[index]<2*config.reportDelay)continue;
+         bool answered=false;
+         for(const auto& other:squads)if(other.squad!=report.squad&&other.supportUseful&&Distance(other.goalObjective,report.goalObjective)<40)answered=true;
++        for(const auto& message:leader.squadRadio)if(message.kind==SquadBroadcastKind::Fixing&&message.squad!=report.squad&&message.sentAt>=state.needSince[index]&&Distance(message.objective,report.goalObjective)<40)answered=true;
+         if(answered)continue;
+         for(const auto& other:squads)if(other.squad!=report.squad&&other.active>=3&&
+             other.drillKind!=int(BattleDrill::BreakContact)&&other.drillKind!=int(BattleDrill::Withdraw)){
+--- entry/ReactionSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/ReactionSim.cpp
+@@ -13,7 +13,7 @@
+     return s.reactionBase*factor*(1+s.suppression*1.5f)*(s.health<55?1.3f:1.f);
+ }
+ const char* ReactionName(ReactionKind k) {
+-    const char* names[]={"SIGHTING","ORDER","REPORT","READINESS","UNDER FIRE","INJURY REPORT","FIRE REPORT","FRIENDLY","BLOCKED LANE","SQUAD REPORT","PLATOON ORDER","MOVEMENT BLOCKED","COVERING FIRE REPORT","TASK STATUS","SUPPORT SECTOR","AREA OBSERVATION","SUPPORT DEPLOYMENT"};return names[int(k)];
++    const char* names[]={"SIGHTING","ORDER","REPORT","READINESS","UNDER FIRE","INJURY REPORT","FIRE REPORT","FRIENDLY","BLOCKED LANE","SQUAD REPORT","PLATOON ORDER","MOVEMENT BLOCKED","COVERING FIRE REPORT","TASK STATUS","SUPPORT SECTOR","AREA OBSERVATION","SUPPORT DEPLOYMENT","SQUAD RADIO"};return names[int(k)];
+ }
+ void QueueReaction(const Soldier& s,PendingReaction reaction,float time,ReactionRuntime& rt) {
+     reaction.recipient=s.id;reaction.receivedAt=time;reaction.readyAt=time+ReactionSeconds(s,reaction.kind)+(s.cognition&&reaction.kind==ReactionKind::Sight?reaction.contact.detectionDelay:0);
+@@ -28,7 +28,16 @@
+         if(p.readyAt>f.time){rt.pending[retained++]=p;continue;}
+         auto& s=f.soldiers[p.recipient];
+         if(!s.Active())continue;
+-        if(p.kind==ReactionKind::PlatoonReport) {
++        if(p.kind==ReactionKind::SquadRadio){
++            auto incoming=p.broadcast;
++            if(incoming.squad<0||incoming.squad/SquadsPerTeam!=s.team||incoming.sentAt>f.time)continue;
++            auto old=std::find_if(s.squadRadio.begin(),s.squadRadio.end(),[&](const auto& message){return message.squad==incoming.squad&&message.kind==incoming.kind;});
++            if(old!=s.squadRadio.end()&&old->serial>=incoming.serial)continue;
++            incoming.receivedAt=f.time;
++            if(old==s.squadRadio.end())s.squadRadio.push_back(incoming);else *old=incoming;
++            ReceiveObservations(s,{{incoming.enemy,incoming.contact}},incoming.sender,f.time);
++            if(rt.diagnostics&&rt.diagnostics->options.enabled){TraceEntry e;e.id=rt.diagnostics->nextId++;e.time=f.time;e.soldier=s.id;e.squad=s.squad;e.issuer=incoming.sender;e.order=incoming.serial;e.orderIssued=incoming.sentAt;e.kind="radio_received";e.reason=std::to_string(int(incoming.kind));e.goal=incoming.objective;rt.diagnostics->entries.push_back(e);}
++        } else if(p.kind==ReactionKind::PlatoonReport) {
+             const auto& report=p.situation;
+             if(report.squad<0||report.squad/SquadsPerTeam!=s.team||report.observedAt>f.time||f.time-report.observedAt>15)continue;
+             auto& old=s.platoonReports[report.squad%SquadsPerTeam];
+--- entry/ReactionSim.h
++++ Unreal/Source/ArmyPrototype/Sim/ReactionSim.h
+@@ -3,6 +3,7 @@
+ namespace army {
+ struct PendingReaction {
+     ObservationCoverage coverage;
++    SquadBroadcast broadcast;
+     ReactionKind kind=ReactionKind::Sight;
+     int recipient=-1, source=-1, enemy=-1;
+     int subject=-1;
+--- entry/SquadDrillSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+@@ -41,7 +41,7 @@
+ }
+ std::shared_ptr<TacticalRoute> Flank(const Soldier& l,const Soldier& knowledge,const std::vector<Soldier>& members,const Map& map,const Config& config,DrillPlan& p,Diagnostics* d,float time,bool alternate){
+     auto group=Element(members,p,1);if(group.empty())return {};
+-    Vec3 base=Centre(members,p,0);float best=1e9f;std::shared_ptr<TacticalRoute> chosen;
++    Vec3 base=p.radioSupportSquad>=0?p.radioSupportPosition:Centre(members,p,0);float best=1e9f;std::shared_ptr<TacticalRoute> chosen;
+     TacticalRoutePlanner planner(map,knowledge,time,l.team?config.emberDoctrine:config.doctrine,Stance::Crouched);
+     GroupPositionQuery q;q.center=p.center;q.target=p.action.objective;q.support=base;
+     q.areaMin=p.areaMin;q.areaMax=p.areaMax;q.areaDiscCenter=q.target;q.areaDiscRadius=p.platoonArea?0.f:60.f;
+@@ -55,6 +55,11 @@
+         auto candidates=positions[n].fallbacks;candidates.push_back(positions[n].primary);
+         for(const auto& slot:candidates){
+             Vec3 goal=slot.cover.shelter;
++            if(p.radioSupportSquad>=0){
++                const Vec3 axis=Direction(p.action.objective-base),start=p.center-p.action.objective,finish=goal-p.action.objective;
++                const float ownSide=axis.x*start.y-axis.y*start.x,goalSide=axis.x*finish.y-axis.y*finish.x;
++                if(std::abs(ownSide)>3&&ownSide*goalSide<0)continue;
++            }
+             if(alternate&&Distance(goal,p.action.assault)<8)continue;
+             auto candidate=planner.Evaluate(group[n].position,goal);
+             if(!Covered(map,knowledge,candidate)){
+@@ -117,6 +122,7 @@
+     if(group.empty())return 0;
+     ++p.generation;p.waiting.fill(false);p.arrivals.fill(false);p.arrivalConsumed=false;p.arrivalQuorumAt=-1;p.movers.fill(false);p.slotWaiting.fill(false);
+     GroupPositionQuery q;q.center=p.center;q.target=p.stage==DrillStage::Consolidate?p.sector:p.action.objective;q.areaMin=p.areaMin;q.areaMax=p.areaMax;q.areaDiscCenter=p.action.objective;q.areaDiscRadius=!p.platoonArea&&(p.kind==BattleDrill::SupportByFire||p.kind==BattleDrill::SquadAttack)?60.f:0.f;q.coherenceRadius=160;q.groupCap=40;q.radius=cover?25:3;q.formation=!cover;q.protectedPosition=cover&&completion!=Completion::Observe;q.firing=completion==Completion::Observe;q.anchorWeight=3;q.coverWeight=cover?12:0;
++    if(support&&p.action.helping){q.firing=true;q.radius=60;}
+     if(rush){q.formation=true;q.preferCover=true;q.safeEndpoint=true;q.radius=3;q.maxPathLength=15.f;}
+     if(reposition){q.formation=true;q.preferCover=true;q.protectedPosition=false;q.firing=true;
+         q.safeEndpoint=true;q.radius=15;q.maxPathLength=15;}
+@@ -172,7 +178,7 @@
+ }
+ void SupportEvidence(const Soldier& l,DrillPlan& p,Diagnostics* d,float time){
+     bool useful=false;float newest=-100;
+-    for(const auto& e:l.deliveries)if(e.shooter>=0&&((e.shooter/8==l.squad&&p.elements[e.shooter%8]==0)||(l.platoonOrder.hasArea&&e.shooter==l.platoonOrder.supportSoldier))&&Distance(e.target,p.action.objective)<=12&&e.observedAt<=time){
++    for(const auto& e:l.deliveries)if(e.shooter>=0&&((e.shooter/8==l.squad&&p.elements[e.shooter%8]==0)||(l.platoonOrder.hasArea&&e.shooter==l.platoonOrder.supportSoldier)||(p.radioSupportSquad>=0&&e.shooter/8==p.radioSupportSquad))&&Distance(e.target,p.action.objective)<=12&&e.observedAt<=time){
+         int count=0;for(float at:e.times)if(at>=p.action.acceptedAt&&time-at<=6&&at<=time){++count;newest=std::max(newest,at);}
+         useful|=count>=(e.supportWeapon?2:3);
+     }
+@@ -220,6 +226,70 @@
+         Stage(l,p,d,time,DrillStage::Reorganise,std::string(reason)+"; report cause, Reorganise then supported closure");
+     }else Stage(l,p,d,time,DrillStage::SupportHold,reason);
+ }
++bool RadioCurrent(const Soldier& leader,const SquadBroadcast& message){
++    for(const auto& later:leader.squadRadio)if(later.squad==message.squad&&later.kind==SquadBroadcastKind::Done&&later.sentAt>message.sentAt&&Distance(later.objective,message.objective)<40)return false;
++    return true;
++}
++bool CanVolunteer(const Soldier& leader,bool assault){
++    const auto kind=OrganisationKind(leader.organisation);
++    if(!assault)return kind!=OrganisationKind::Rush||leader.platoonOrder.task==PlatoonTask::HelpSquad;
++    return !Organisation(kind).requiresPlatoonOrder||leader.platoonOrder.task==PlatoonTask::FightHere||
++        (leader.platoonOrder.intent.id&&leader.platoonOrder.intent.purpose==GoalPurpose::Seize);
++}
++bool RadioAction(const Soldier& l,const Soldier& knowledge,const std::vector<Soldier>& members,const Map& map,
++                 const Config& config,DrillPlan& p,Diagnostics* d,float time){
++    const SquadBroadcast* fixing=nullptr;const SquadBroadcast* need=nullptr;const SquadBroadcast* lead=nullptr;
++    for(const auto& message:l.squadRadio){
++        if(!RadioCurrent(l,message))continue;
++        if(message.kind==SquadBroadcastKind::Assaulting&&Distance(message.objective,p.action.objective)<40&&
++            (!lead||message.sentAt<lead->sentAt||(message.sentAt==lead->sentAt&&message.squad<lead->squad)))lead=&message;
++        if(message.squad==l.squad)continue;
++        if(message.kind==SquadBroadcastKind::Fixing&&time-message.sentAt<60&&(!fixing||message.sentAt<fixing->sentAt))fixing=&message;
++        if(message.kind==SquadBroadcastKind::NeedSupport&&time-message.sentAt<60&&Distance(p.center,message.position)<=100&&(!need||Distance(p.center,message.position)<Distance(p.center,need->position)))need=&message;
++    }
++    if(lead)p.radioLeadSquad=lead->squad;
++    int laneRevision=0;for(const auto& message:l.squadRadio)if(message.squad!=l.squad&&
++        (message.kind==SquadBroadcastKind::Assaulting||message.kind==SquadBroadcastKind::PhaseLine||message.kind==SquadBroadcastKind::Done))laneRevision+=message.serial;
++    if(laneRevision!=p.radioLaneRevision){p.radioLaneRevision=laneRevision;for(const auto& member:members)p.issue[member.id%8]=true;}
++    for(const auto& message:l.squadRadio)if(message.kind==SquadBroadcastKind::PhaseLine&&message.squad!=l.squad&&
++        message.squad==p.radioLeadSquad&&RadioCurrent(l,message)&&Distance(message.objective,p.action.objective)<40&&
++        !p.action.lifted&&(p.kind==BattleDrill::SupportByFire||p.action.closureFallback)){
++        p.action.lifted=true;
++        for(const auto& member:members){int n=member.id%8;if(p.elements[n]==0){p.issue[n]=true;p.action.liftOrders[n]=true;}}
++        ActionTrace(l,p,d,time,"radio_lift","first assault announcer's received phase line: lift original sector via member orders");
++        return true;
++    }
++    if(p.kind==BattleDrill::BreakContact||p.kind==BattleDrill::Withdraw)return false;
++    const bool compatible=l.platoonOrder.task==PlatoonTask::None||l.platoonOrder.task==PlatoonTask::FightHere||l.platoonOrder.task==PlatoonTask::HelpSquad;
++    if(!compatible)return false;
++    if(need&&need->serial!=p.radioHandled&&CanVolunteer(l,false)&&
++        (p.target<0||Distance(p.sector,need->objective)<40)&&p.kind!=BattleDrill::SquadAttack){
++        p.radioHandled=need->serial;p.target=need->enemy;p.sector=need->objective;
++        Accept(l,p,BattleDrill::SupportByFire,d,time,"radio NeedSupport: volunteer support by fire within 100 m");
++        p.action.objective=need->objective;p.action.helping=true;
++        Stage(l,p,d,time,DrillStage::SupportPrepare,"help: occupy protected slots covering neighbour's group");
++        Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
++        return true;
++    }
++    if(!fixing||fixing->serial==p.radioHandled||!CanVolunteer(l,true)||p.kind==BattleDrill::SquadAttack||
++       (p.target>=0&&Distance(p.sector,fixing->objective)>=40)||p.effectiveFire)return false;
++    p.radioHandled=fixing->serial;
++    auto candidate=p;candidate.radioSupportSquad=fixing->squad;candidate.radioSupportPosition=fixing->position;
++    candidate.action.objective=fixing->objective;
++    auto route=Flank(l,knowledge,members,map,config,candidate,d,time,false);
++    if(!route){
++        ActionTrace(l,p,d,time,"radio_no_route","received Fixing; no covered own-side route: retain supported fire and movement");
++        return false;
++    }
++    p.radioSupportSquad=fixing->squad;p.radioSupportPosition=fixing->position;p.target=fixing->enemy;p.sector=fixing->objective;
++    Accept(l,p,BattleDrill::SquadAttack,d,time,lead?"radio opportunity: join existing assault from own side":"radio opportunity: covered route from own side");
++    p.action.attack=true;p.action.route=route;p.action.assault=route->destination;p.action.base=fixing->position;
++    p.action.angle=Angle(fixing->position,route->destination,p.action.objective);p.action.initialStrength=int(members.size());
++    Stage(l,p,d,time,DrillStage::SupportPrepare,"radio assault committed: wait for delivered support evidence");
++    Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
++    return true;
++}
++
+ bool Rush(const Soldier& l,const std::vector<Soldier>& members,const Map& map,DrillPlan& p,Diagnostics* d,float time){
+     auto group=Element(members,p,1,p.action.buddy);if(group.empty())return false;
+     Vec3 from=Centre(group,p,-1);Vec3 target=p.action.assault;
+@@ -269,7 +339,7 @@
+     Accept(l,p,BattleDrill::SupportByFire,d,time,"SupportByFire: contact assessment deploys gun group");
+     p.action.initialStrength=int(members.size());p.action.base=Centre(members,p,0);
+     for(int id=0;id<UnitCount;++id)p.action.threats[id]=knowledge.contacts[id].known;
+-    p.action.route=l.platoonOrder.fireMovement?std::shared_ptr<TacticalRoute>{}:Flank(l,knowledge,members,map,config,p,d,time,false);p.action.attack=bool(p.action.route);
++    p.action.route=(!CanVolunteer(l,true)||l.platoonOrder.fireMovement)?std::shared_ptr<TacticalRoute>{}:Flank(l,knowledge,members,map,config,p,d,time,false);p.action.attack=bool(p.action.route);
+     if(p.action.attack){p.kind=BattleDrill::SquadAttack;ActionTrace(l,p,d,time,"drill_candidate","SquadAttack: covered flank sector 40-60 degrees, 20-45 m");}
+     if(!p.action.attack){
+         Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+@@ -298,14 +368,30 @@
+     if((withdrawing&&p.kind!=BattleDrill::Withdraw)||(!p.action.active&&p.target>=0&&((ratioAssessed&&enemy>=2*std::max(int(members.size()),l.platoonOrder.taskNode?l.platoonOrder.committedStrength:0))||recentLosses>=3)&&!p.superiority)){
+         BeginRetire(l,members,map,p,d,time,withdrawing);return true;
+     }
++    if(RadioAction(l,knowledge,members,map,config,p,d,time))return true;
+     if(directive&&l.platoonOrder.liftFire){
+         p.action.lifted=true;
+         for(const auto& s:members){int n=s.id%8;p.issue[n]=true;p.action.liftOrders[n]=true;}
+         ActionTrace(l,p,d,time,"drill_stage_advanced","received platoon phase-line/fire-lane amendment: lift original area; shift to remaining known threats");
+         return true;
+     }
++    if(directive&&l.platoonOrder.task==PlatoonTask::HelpSquad&&Distance(p.center,l.platoonOrder.intent.objective)>90){
++        p.action.active=false;p.helpApproach=true;p.helpObjective=l.platoonOrder.intent.objective;
++        p.destination=l.platoonOrder.position;
++        ActionTrace(l,p,d,time,"drill_stage_advanced","HelpSquad outside weapon range: approach neighbour before allocating firing slots");
++        return false;
++    }
++    if(p.helpApproach){
++        if(Distance(p.center,p.helpObjective)>85)return false;
++        p.helpApproach=false;p.sector=p.helpObjective;
++        Accept(l,p,BattleDrill::SupportByFire,d,time,"HelpSquad arrived within support range");p.action.objective=p.helpObjective;p.action.helping=true;
++        Stage(l,p,d,time,DrillStage::SupportPrepare,"help approach complete: allocate protected slots with a line");
++        Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
++        return true;
++    }
+     if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Support&&(l.platoonOrder.task==PlatoonTask::Support||l.platoonOrder.task==PlatoonTask::HelpSquad)){
+-        Accept(l,p,BattleDrill::SupportByFire,d,time,"SupportByFire: received threat-area order");p.action.objective=l.platoonOrder.intent.objective;
++        p.sector=l.platoonOrder.intent.objective;
++        Accept(l,p,BattleDrill::SupportByFire,d,time,"SupportByFire: received threat-area order");p.action.objective=l.platoonOrder.intent.objective;p.action.helping=l.platoonOrder.task==PlatoonTask::HelpSquad;
+         Stage(l,p,d,time,DrillStage::SupportPrepare,"occupy protected firing positions; wait for element delivered rounds");
+         int slots=Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+         if(slots<2)Fail(l,p,d,time,TaskCause::Support,"Blocked/Support: fewer than two executable support slots");
+@@ -425,4 +511,36 @@
+     if(p.stage==DrillStage::Consolidate&&arrived){p.completedAssaultLineAt=p.action.phaseLineAt;p.action.active=false;Stage(l,p,d,time,DrillStage::Reorganise,"consolidation receipts: Reorganise once at completion");}
+     return true;
+ }
+-}
++void UpdateSquadBroadcasts(const Soldier& leader,DrillPlan& p,Diagnostics* diagnostics,float time,bool below){
++    const auto knowledge=WithTracks(leader,time);
++    Vec3 objective=p.kind==BattleDrill::SquadAttack||p.action.active||p.action.closureFallback?p.action.objective:p.sector;
++    if(Distance(objective,p.radioObjective)>40){p.radioFixing=false;p.radioNeed=false;p.radioObjective=objective;}
++    auto send=[&](SquadBroadcastKind kind){
++        SquadBroadcast message;message.serial=(leader.squad+1)*1000000+(++p.radioSequence);
++        message.sender=leader.id;message.squad=leader.squad;message.kind=kind;message.sentAt=time;
++        message.position=p.center;message.objective=objective;message.enemy=p.target;
++        if(p.target>=0)message.contact=knowledge.contacts[p.target];
++        const Vec3 axis=Direction(objective-p.radioSupportPosition),side=p.center-objective;
++        message.side=(axis.x*side.y-axis.y*side.x)>=0?1:-1;
++        if(kind==SquadBroadcastKind::PhaseLine)message.position=p.action.assault;
++        p.broadcasts.push_back(message);
++        const char* names[]={"Fixing","Assaulting","NeedSupport","PhaseLine","Done"};
++        ActionTrace(leader,p,diagnostics,time,"radio_broadcast",names[int(kind)]);
++    };
++    bool useful=false;
++    for(const auto& delivery:leader.deliveries)if(delivery.shooter>=0&&delivery.shooter/8==leader.squad&&
++        p.elements[delivery.shooter%8]==0&&Distance(delivery.target,objective)<18){
++        int count=0;for(float at:delivery.times)count+=at<=time&&time-at<=6;
++        useful|=count>=(delivery.supportWeapon?2:3);
++    }
++    if(useful&&!p.radioFixing&&p.target>=0){p.radioFixing=true;send(SquadBroadcastKind::Fixing);}
++    if(p.kind==BattleDrill::SquadAttack&&p.action.attack&&p.instance!=p.radioAttackInstance){p.radioAttackInstance=p.instance;send(SquadBroadcastKind::Assaulting);}
++    if(p.effectiveFire&&!p.superiority){if(p.radioFireSince<0)p.radioFireSince=time;}else p.radioFireSince=-1;
++    const bool need=below||(p.radioFireSince>=0&&time-p.radioFireSince>=15);
++    if(need&&!p.radioNeed){p.radioNeed=true;send(SquadBroadcastKind::NeedSupport);}
++    if(!need)p.radioNeed=false;
++    if(p.action.phaseLineAt>p.radioPhaseAt){p.radioPhaseAt=p.action.phaseLineAt;send(SquadBroadcastKind::PhaseLine);}
++    if(p.completedAssaultLineAt>p.radioDoneAt){p.radioDoneAt=p.completedAssaultLineAt;send(SquadBroadcastKind::Done);}
++}
++
++}

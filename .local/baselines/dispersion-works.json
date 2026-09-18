@@ -1,0 +1,857 @@
+{
+  "schema": 1,
+  "method": "Measure duration-weighted spatial distributions from battle observer exports.\n\nAll spatial distances are horizontal. Frames represent [time, next time); the\nterminal frame has zero weight. Singletons have radius zero but no nearest mate.\nEach living squad contributes one RMS radius per interval. Inter-squad separation\nuses one global minimum over same-team centroid pairs per interval. These choices\nand denominators are explicit because the Phase 0 specification is ambiguous.\n",
+  "aggregation": "Equal-run summary of per-run metrics",
+  "cases": [
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 100,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "5829277675107842405",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-100-1789614255495445136",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 74015,
+        "weight_seconds": 14803.0,
+        "mean": 2.8574145407650846,
+        "p10": 0.2986166941080174,
+        "median": 0.9940024346046783,
+        "p90": 5.164421510682492,
+        "share_below": 0.7681415929203539,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13399,
+        "weight_seconds": 2679.8,
+        "mean": 5.213447479462004,
+        "p10": 0.0,
+        "median": 2.2515832100713036,
+        "p90": 10.544903326423201
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 14.462993277606824,
+        "p10": 7.038924842655702,
+        "median": 14.779396996156507,
+        "p90": 22.336343438948465,
+        "share_below": 0.3238888888888889,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 101,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "1971960706594479811",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-101-1789614310055218045",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 72757,
+        "weight_seconds": 14551.4,
+        "mean": 2.8767396754969776,
+        "p10": 0.6062311852750565,
+        "median": 1.0026001097147303,
+        "p90": 3.8272096624041922,
+        "share_below": 0.8107536044641753,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13013,
+        "weight_seconds": 2602.6,
+        "mean": 5.535083988434108,
+        "p10": 0.3784570286043046,
+        "median": 2.47760348005386,
+        "p90": 15.239017848931866
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 15.794179556281815,
+        "p10": 9.33536146779128,
+        "median": 14.444589015056431,
+        "p90": 22.294752287996495,
+        "share_below": 0.19611111111111118,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 102,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "14527445679953100956",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-102-1789614366870400095",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 70245,
+        "weight_seconds": 14049.0,
+        "mean": 3.5623193026212236,
+        "p10": 0.6465718598887503,
+        "median": 1.1549859306502421,
+        "p90": 5.526267725146874,
+        "share_below": 0.7359954445156239,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 12526,
+        "weight_seconds": 2505.2,
+        "mean": 6.941838728150053,
+        "p10": 1.1672782075195274,
+        "median": 2.251096142438169,
+        "p90": 25.534619917648076
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 19.984145637728922,
+        "p10": 14.303955305990987,
+        "median": 19.72939026152073,
+        "p90": 24.686997092153593,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 103,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "13092649520133397376",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-103-1789614440195195493",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 73925,
+        "weight_seconds": 14785.0,
+        "mean": 2.8673571149665973,
+        "p10": 0.575681205182175,
+        "median": 1.0514678692190313,
+        "p90": 5.855852048165149,
+        "share_below": 0.8041663848495096,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 12978,
+        "weight_seconds": 2595.6,
+        "mean": 5.5809585279265645,
+        "p10": 1.0197169421799124,
+        "median": 2.701580929925568,
+        "p90": 9.354310950772911
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 17.80455133294485,
+        "p10": 14.163762798544209,
+        "median": 16.032952122645533,
+        "p90": 22.41194288296003,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 104,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "194486597079528566",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-104-1789614496524252729",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 73885,
+        "weight_seconds": 14777.0,
+        "mean": 3.0748456257834453,
+        "p10": 0.6016984626870827,
+        "median": 0.8996544225423463,
+        "p90": 4.6773018130114306,
+        "share_below": 0.8363537930567774,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13581,
+        "weight_seconds": 2716.2,
+        "mean": 5.36102505129059,
+        "p10": 0.0,
+        "median": 1.8990901025227847,
+        "p90": 14.771714835840452
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 18.97767104481537,
+        "p10": 15.083322614296378,
+        "median": 17.90494215707092,
+        "p90": 22.222008201196903,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 105,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "360867339261719594",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-105-1789614558626483046",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 82632,
+        "weight_seconds": 16526.4,
+        "mean": 2.748196480229801,
+        "p10": 0.5354534900437203,
+        "median": 0.9189900978791878,
+        "p90": 5.8384531590139455,
+        "share_below": 0.8173709942879271,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 14096,
+        "weight_seconds": 2819.2,
+        "mean": 5.159185817828267,
+        "p10": 0.9516380129676414,
+        "median": 2.2842956019033536,
+        "p90": 9.746619584053233
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 19.748251947657785,
+        "p10": 16.58439496590603,
+        "median": 18.892219833868243,
+        "p90": 22.496528171409718,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 106,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "8908172834854909776",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-106-1789614618800405598",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 70314,
+        "weight_seconds": 14062.8,
+        "mean": 2.415251953810495,
+        "p10": 0.5374511140559672,
+        "median": 0.9120022806988991,
+        "p90": 5.327175466417454,
+        "share_below": 0.8227095599738318,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13112,
+        "weight_seconds": 2622.4,
+        "mean": 4.222905762885955,
+        "p10": 0.0,
+        "median": 1.9042582128203487,
+        "p90": 11.156833349484218
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 8.879730545877015,
+        "p10": 1.6480955004204854,
+        "median": 1.934006419445283,
+        "p90": 22.23160639367478,
+        "share_below": 0.6294444444444445,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 107,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "5263252470802575170",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-107-1789614676903212528",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 72641,
+        "weight_seconds": 14528.2,
+        "mean": 2.9007989853604514,
+        "p10": 0.47287260440841494,
+        "median": 0.9517362355716005,
+        "p90": 4.009191763934473,
+        "share_below": 0.7618149529879819,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13009,
+        "weight_seconds": 2601.8,
+        "mean": 5.42793109282695,
+        "p10": 0.23023018915858964,
+        "median": 2.0361585026847884,
+        "p90": 8.924522958555139
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 17.31514921920523,
+        "p10": 14.436872583634504,
+        "median": 15.56453991821233,
+        "p90": 22.229564051709662,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 108,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "11805616872944264260",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-108-1789614733340768813",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 73694,
+        "weight_seconds": 14738.8,
+        "mean": 3.3121044552954,
+        "p10": 0.452085033594345,
+        "median": 0.8999838054098486,
+        "p90": 5.9174726446347,
+        "share_below": 0.7903628517925476,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 12230,
+        "weight_seconds": 2446.0,
+        "mean": 6.453846161913962,
+        "p10": 0.7283662880721485,
+        "median": 2.364803853625801,
+        "p90": 20.643362483094595
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 17.7207992025697,
+        "p10": 10.480603253339297,
+        "median": 17.59471446776062,
+        "p90": 21.7089012905457,
+        "share_below": 0.05333333333333342,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 109,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "18282413268036947796",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/candidate90/works/battle-109-1789614790081576655",
+      "controller": "candidate90",
+      "nearest_squadmate_m": {
+        "samples": 83543,
+        "weight_seconds": 16708.6,
+        "mean": 3.2138267835898673,
+        "p10": 0.5886443408374902,
+        "median": 0.9779851174736752,
+        "p90": 3.813900000000004,
+        "share_below": 0.8255987934357158,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 14400,
+        "weight_seconds": 2880.0,
+        "mean": 6.543434666754027,
+        "p10": 1.0179066868793765,
+        "median": 2.2718726790221977,
+        "p90": 23.355372073684556
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 15.776199672837434,
+        "p10": 9.82292746154232,
+        "median": 15.657034530035448,
+        "p90": 21.845881803789847,
+        "share_below": 0.33444444444444443,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 100,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "16546876874370873500",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-100-1789614246933525683",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 86628,
+        "weight_seconds": 17325.6,
+        "mean": 9.169319975882699,
+        "p10": 1.2472541080309214,
+        "median": 7.271508886744211,
+        "p90": 18.766105787829293,
+        "share_below": 0.16214157085468903,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13859,
+        "weight_seconds": 2771.8,
+        "mean": 15.832206922180834,
+        "p10": 8.166872651746425,
+        "median": 16.59977339506006,
+        "p90": 22.788561092501357
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 32.80054750739638,
+        "p10": 20.25155851948328,
+        "median": 33.48267188854107,
+        "p90": 42.93584827701162,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 101,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "14005458306916058010",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-101-1789614302267745387",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 83946,
+        "weight_seconds": 16789.2,
+        "mean": 9.648143235524465,
+        "p10": 0.8674589154536375,
+        "median": 5.036693846165364,
+        "p90": 22.53705344582561,
+        "share_below": 0.23521073070783596,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13944,
+        "weight_seconds": 2788.8,
+        "mean": 16.671932427886944,
+        "p10": 5.308328974106991,
+        "median": 15.62866258395592,
+        "p90": 28.480072683263995
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 28.612176601694312,
+        "p10": 11.560126626144708,
+        "median": 33.37205091228138,
+        "p90": 40.839605264270276,
+        "share_below": 0.07222222222222222,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 102,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "16313752152682010791",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-102-1789614358455837455",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 82832,
+        "weight_seconds": 16566.4,
+        "mean": 9.435431816440044,
+        "p10": 0.9553965729475914,
+        "median": 5.98205650257502,
+        "p90": 22.780465707706682,
+        "share_below": 0.1650569828085764,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 14400,
+        "weight_seconds": 2880.0,
+        "mean": 15.234194590766757,
+        "p10": 4.190014063744296,
+        "median": 15.712530575409017,
+        "p90": 25.134275772227358
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 29.15569702981475,
+        "p10": 12.720690575681115,
+        "median": 34.45408089336879,
+        "p90": 44.250125336420105,
+        "share_below": 0.03333333333333326,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 103,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "17591371289034251358",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-103-1789614431544615935",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 79681,
+        "weight_seconds": 15936.2,
+        "mean": 8.44565313067345,
+        "p10": 0.8939016780384682,
+        "median": 5.5103818824106945,
+        "p90": 21.707625418041474,
+        "share_below": 0.19156386089532007,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13451,
+        "weight_seconds": 2690.2,
+        "mean": 13.207861146992549,
+        "p10": 3.5533538460446077,
+        "median": 14.168891121766332,
+        "p90": 20.832801175136503
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 28.82546378013517,
+        "p10": 6.379204436977703,
+        "median": 33.08800187333608,
+        "p90": 40.09391523357251,
+        "share_below": 0.15111111111111106,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 104,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "10552861161580534726",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-104-1789614488719085899",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 78129,
+        "weight_seconds": 15625.8,
+        "mean": 9.196835941053926,
+        "p10": 1.2609917882365393,
+        "median": 7.556019566544278,
+        "p90": 19.645537915007573,
+        "share_below": 0.1420343278424145,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13930,
+        "weight_seconds": 2786.0,
+        "mean": 14.668563589142074,
+        "p10": 6.038810852771889,
+        "median": 16.12022188117668,
+        "p90": 21.290004211242472
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 32.73565103993027,
+        "p10": 25.02316679403753,
+        "median": 32.36770652118232,
+        "p90": 39.73976162601507,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 105,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "7986430955412003384",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-105-1789614550631794886",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 77910,
+        "weight_seconds": 15582.0,
+        "mean": 9.098904323756736,
+        "p10": 1.5027033240130978,
+        "median": 6.795996634048603,
+        "p90": 18.722246125932646,
+        "share_below": 0.13307662687716598,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13974,
+        "weight_seconds": 2794.8,
+        "mean": 13.170803073199231,
+        "p10": 4.122120172920726,
+        "median": 14.105135418596467,
+        "p90": 20.54927898951418
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 36.837487452673265,
+        "p10": 31.034085555678423,
+        "median": 36.97314252628373,
+        "p90": 43.62093129109052,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 106,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "5417485951075306499",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-106-1789614609044595663",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 81033,
+        "weight_seconds": 16206.6,
+        "mean": 9.760786593254734,
+        "p10": 1.348902524276683,
+        "median": 6.876297604089,
+        "p90": 21.758221240257665,
+        "share_below": 0.16527834339096414,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 14046,
+        "weight_seconds": 2809.2,
+        "mean": 15.80247465959597,
+        "p10": 6.4902910209933955,
+        "median": 15.560629903348373,
+        "p90": 26.839087220719502
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 26.24019640829618,
+        "p10": 7.478443213532079,
+        "median": 27.627368655500064,
+        "p90": 42.154139638046296,
+        "share_below": 0.15833333333333324,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 107,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "2434807712546868994",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-107-1789614669182114354",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 81015,
+        "weight_seconds": 16203.0,
+        "mean": 10.382986925139095,
+        "p10": 1.6686229801845551,
+        "median": 7.5600000000000005,
+        "p90": 23.410452084699266,
+        "share_below": 0.12540887489970995,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 14307,
+        "weight_seconds": 2861.4,
+        "mean": 16.316808265093062,
+        "p10": 6.839712246951166,
+        "median": 17.114266915806493,
+        "p90": 23.709855333753094
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 36.699627126495,
+        "p10": 22.438796588355874,
+        "median": 37.98480497798593,
+        "p90": 43.674195820567576,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 108,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "8044544947865889629",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-108-1789614725388855001",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 85755,
+        "weight_seconds": 17151.0,
+        "mean": 9.46602530354083,
+        "p10": 1.0346793053405514,
+        "median": 6.28466416922973,
+        "p90": 21.54360154895184,
+        "share_below": 0.1733310011078071,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 14400,
+        "weight_seconds": 2880.0,
+        "mean": 15.849568416632183,
+        "p10": 6.395575894551539,
+        "median": 16.181487969736352,
+        "p90": 26.051432252631283
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 31.73527263178849,
+        "p10": 21.927197838378717,
+        "median": 30.67381272133627,
+        "p90": 40.84276322067775,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "seed": 109,
+      "terrain": 0,
+      "encounter": 0,
+      "duration": 360,
+      "gameplay_digest": "9342583190922837000",
+      "run": "/home/jchan/ww1-autobattler/.local/baselines/legacy/works/battle-109-1789614782651213793",
+      "controller": "legacy",
+      "nearest_squadmate_m": {
+        "samples": 78848,
+        "weight_seconds": 15769.6,
+        "mean": 8.912475897246296,
+        "p10": 1.2659311553161157,
+        "median": 6.513000000000005,
+        "p90": 18.988923003951545,
+        "share_below": 0.15085988230519476,
+        "threshold": 2
+      },
+      "squad_rms_radius_m": {
+        "samples": 13213,
+        "weight_seconds": 2642.6,
+        "mean": 14.864101924288551,
+        "p10": 6.352483352548041,
+        "median": 15.55762876544182,
+        "p90": 21.061746805965402
+      },
+      "minimum_friendly_squad_centroid_m": {
+        "samples": 1800,
+        "weight_seconds": 360.0,
+        "mean": 35.604211650969425,
+        "p10": 30.43738452527926,
+        "median": 34.904375785595015,
+        "p90": 40.64625502450418,
+        "share_below": 0.0,
+        "threshold": 10
+      }
+    }
+  ],
+  "summary": [
+    {
+      "build": "d0e577abab5319b6-linux",
+      "controller": "candidate90",
+      "terrain": 0,
+      "encounter": 0,
+      "runs": 10,
+      "metrics": {
+        "nearest_squadmate_m.median": {
+          "samples": 10,
+          "mean": 0.976340830376424,
+          "p10": 0.8996544225423463,
+          "median": 0.9517362355716005,
+          "p90": 1.0514678692190313
+        },
+        "nearest_squadmate_m.share_below": {
+          "samples": 10,
+          "mean": 0.7973267972284445,
+          "p10": 0.7359954445156239,
+          "median": 0.8041663848495096,
+          "p90": 0.8255987934357158
+        },
+        "squad_rms_radius_m.mean": {
+          "samples": 10,
+          "mean": 5.643965727747248,
+          "p10": 4.222905762885955,
+          "median": 5.42793109282695,
+          "p90": 6.543434666754027
+        },
+        "minimum_friendly_squad_centroid_m.median": {
+          "samples": 10,
+          "mean": 15.253378572177203,
+          "p10": 1.934006419445283,
+          "median": 15.657034530035448,
+          "p90": 18.892219833868243
+        },
+        "minimum_friendly_squad_centroid_m.share_below": {
+          "samples": 10,
+          "mean": 0.15372222222222226,
+          "p10": 0.0,
+          "median": 0.0,
+          "p90": 0.33444444444444443
+        }
+      }
+    },
+    {
+      "build": "d0e577abab5319b6-linux",
+      "controller": "legacy",
+      "terrain": 0,
+      "encounter": 0,
+      "runs": 10,
+      "metrics": {
+        "nearest_squadmate_m.median": {
+          "samples": 10,
+          "mean": 6.538661909180691,
+          "p10": 5.036693846165364,
+          "median": 6.513000000000005,
+          "p90": 7.556019566544278
+        },
+        "nearest_squadmate_m.share_below": {
+          "samples": 10,
+          "mean": 0.1643962201689678,
+          "p10": 0.12540887489970995,
+          "median": 0.16214157085468903,
+          "p90": 0.19156386089532007
+        },
+        "squad_rms_radius_m.mean": {
+          "samples": 10,
+          "mean": 15.161851501577814,
+          "p10": 13.170803073199231,
+          "median": 15.234194590766757,
+          "p90": 16.316808265093062
+        },
+        "minimum_friendly_squad_centroid_m.median": {
+          "samples": 10,
+          "mean": 33.49280167554107,
+          "p10": 27.627368655500064,
+          "median": 33.37205091228138,
+          "p90": 36.97314252628373
+        },
+        "minimum_friendly_squad_centroid_m.share_below": {
+          "samples": 10,
+          "mean": 0.041499999999999974,
+          "p10": 0.0,
+          "median": 0.0,
+          "p90": 0.15111111111111106
+        }
+      }
+    }
+  ]
+}

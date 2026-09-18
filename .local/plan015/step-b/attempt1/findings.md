@@ -1,0 +1,8 @@
+# Attempt 1: c74b185f91aecf77
+
+25/28 selectors pass; all thirteen D pairs, all seven pins, P04-P07 and Q01 pass.
+Q02: Fixing 132.15 s, no assault/phase/lift. Trace 88: Observe accepted by squad1 at0.05 (1835), MoveTactically at5.9 (5988); both squads choose closure, Fixing at131.6/132.15 (27352/27374), radio_no_route at133.15/134.2 (27844/28317).
+Q03: two opposite-side assaults, lanes installed and no crossed reported lane; no lift. Trace90: squad0 itself announces Assaulting at9.85 (13067), then Fixing14.85 (18214); squads2/1 accept lateral opportunity16.25/16.45 (19156/21177). The fixture did not isolate a fixing squad; initial Observe orders also complete early.
+Q04: NeedSupport21.3, neighbour accepts22.8, no delivered fire by60; distant control also volunteers22.85 rather than receiving HelpSquad. The far actor was moved after creating its Observe objective, so it walked back toward the near fixture. The commander also excludes an executing external idle mission before considering HelpSquad.
+
+Next attempt: keep assertions and physical geometry, replace transient Observe staging with persistent own Occupy intentions; keep the target in its own area, and stage the fixing squad through the approved HelpSquad intent (not a removed Support directive). Set the distant idle objective after placement. Permit a received NeedSupport request to make an idle external Observe/Occupy squad eligible for help. No production receipt/contact injection. Correct Done broadcast group selection and log physical radio drops. These are local fixture/implementation corrections, not distribution tuning.

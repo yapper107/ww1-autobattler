@@ -1,0 +1,198 @@
+--- 4786fc9830d0c1c0/PositionSim.h
++++ attempt2/PositionSim.h
+@@ -9,6 +9,11 @@
+     float shelterSpacing=2,peekSpacing=1.8f,preferredSpacing=10;
+     float travelWeight=.25f,anchorWeight=1,coverWeight=12,lineWeight=20;
+     bool firing=false,protectedPosition=false,formation=false;
++    // Halted allocations without cover use a separated projected hold, never a
++    // shared shelter. Projected holds do not grant a cover slot.
++    bool halted=false;
++    float firingHeight=1.3f;
++    std::vector<ReservedPosition> retained;
+     bool preferCover=false,safeEndpoint=false,firingSearch=false,guardObjective=false;
+     float maxPathLength=0;
+     // Permission from received buddy fire; only the named objective area is
+@@ -22,6 +27,6 @@
+     std::vector<ReservedPosition> reserved;
+     std::shared_ptr<const TacticalRoute> corridor,areaRoute;float areaRouteRadius=0;
+ };
+-struct MemberPositions {int soldier=-1;bool valid=false;TacticalSlot primary;std::vector<TacticalSlot> fallbacks;std::string reason;};
++struct MemberPositions {int soldier=-1;bool valid=false,projectedHold=false;TacticalSlot primary;std::vector<TacticalSlot> fallbacks;std::string reason;};
+ std::vector<MemberPositions> QueryPositions(const Soldier& leader,const std::vector<Soldier>& members,const Map& map,const GroupPositionQuery& query,float time,Diagnostics* diagnostics);
+ }
+--- 4786fc9830d0c1c0/PositionSim.cpp
++++ attempt2/PositionSim.cpp
+@@ -15,7 +15,8 @@
+     const auto knowledge=WithTracks(leader,time);std::vector<Vec3> targets{q.target};
+     for(const auto& ct:knowledge.contacts)if(ct.known&&Distance(ct.position,q.target)<=q.targetRadius)targets.push_back(ct.position);
+     std::vector<ReservedPosition> reserved=q.reserved;
+-    for(const auto& member:members)if(member.Active()){CoverPosition c;c.shelter=c.peek=member.position;reserved.push_back({member.id,c});}
++    for(const auto& member:members)if(member.Active()){CoverPosition c;c.shelter=c.peek=member.position;reserved.push_back({member.id,c});
++        if(q.halted&&member.assignment.hasSlot)reserved.push_back({member.id,member.assignment.slot});}
+     for(int id=0;id<UnitCount;++id)if(id!=leader.id&&leader.allies[id].known&&time-leader.allies[id].observedAt<3&&
+         std::none_of(members.begin(),members.end(),[&](const Soldier& s){return s.id==id;})){
+         CoverPosition c;c.shelter=c.peek=leader.allies[id].position;reserved.push_back({id,c});
+@@ -24,6 +25,7 @@
+     for(const auto& member:members){
+         MemberPositions output;output.soldier=member.id;std::vector<TacticalSlot> candidates;const Vec3 anchor=q.anchors[member.id%SquadSize];
+         std::vector<CoverPosition> points;
++        for(const auto& r:q.retained)if(r.soldier==member.id)points.push_back(r.cover);
+         if(q.firingSearch){
+             // Firing slots may lie on open ground: catalogue cover is preferred,
+             // never a prerequisite for a reachable line within the search radius.
+@@ -53,7 +55,7 @@
+             std::string reason;float angle=Angle(c.peek,q.support,q.target);
+             if(q.minAngle>0)for(Vec3 delta:{Vec3{q.angleProbe,0},Vec3{-q.angleProbe,0},Vec3{0,q.angleProbe},Vec3{0,-q.angleProbe}})angle=std::min(angle,Angle(c.peek,q.support,q.target+delta));
+             bool protectedHere=ProtectedAt(map,c.shelter,q.target,c.crouch?Stance::Crouched:Stance::Standing);
+-            bool firing=Distance(c.peek,q.target)<SightRange(member)&&ClearLine3D(map,c.peek+Vec3{0,0,1.5f},q.target+Vec3{0,0,1.3f});
++            bool firing=Distance(c.peek,q.target)<SightRange(member)&&ClearLine3D(map,c.peek+Vec3{0,0,1.5f},q.target+Vec3{0,0,q.firingHeight});
+             if(!InArea(c.shelter,q)||Distance(c.shelter,q.center)>q.coherenceRadius)reason="outside assigned area or coherence radius";
+             else if(q.boundRadius>0&&(Distance(c.shelter,q.boundCenter)>q.boundRadius||Distance(c.peek,q.boundCenter)>q.boundRadius))reason="outside overwatch bound radius";
+             else if(Distance(c.shelter,anchor)>q.radius)reason="outside anchor radius";
+@@ -95,24 +97,63 @@
+             if(!reason.empty())continue;
+             float score=q.anchorWeight*Distance(anchor,c.shelter)+q.travelWeight*Distance(member.position,c.shelter)-q.coverWeight*protectedHere-q.lineWeight*firing;
+             if(q.preferCover&&c.id&&protectedHere)score-=12;
++            for(const auto& r:q.retained)if(r.soldier==member.id&&Distance(c.shelter,r.cover.shelter)<.01f&&Distance(c.peek,r.cover.peek)<.01f)score-=10000;
+             for(const auto& r:q.reserved)if(r.soldier!=member.id)score+=std::max(0.f,q.preferredSpacing-Distance(c.shelter,r.cover.shelter));
+             candidates.push_back({c,angle,score});
+         }
+         std::stable_sort(candidates.begin(),candidates.end(),[](const auto& a,const auto& b){return a.score<b.score;});choices.push_back(candidates);result.push_back(output);
+     }
+-    auto fits=[&](const CoverPosition& c,int id,bool emit){int close=0;for(const auto& r:reserved)if(r.soldier!=id){
+-        const float shelter=Distance(c.shelter,r.cover.shelter),peek=Distance(c.peek,r.cover.peek);close+=shelter<3;
+-        bool bad=shelter<q.shelterSpacing||peek<q.peekSpacing||close>=2;
+-        if(q.firing)bad|=!TacticalPairLaneClear(map,c,r.cover,targets);
+-        if(bad){if(emit)TracePosition(d,leader,time,c,"position_pair_rejected","reserved shelter/peek spacing, grenade density or friendly firing lane");return false;}
+-    }return true;};
++    const float shelterMinimum=q.halted?std::max(2.f,q.shelterSpacing):q.shelterSpacing;
++    const float peekMinimum=q.halted?std::max(1.8f,q.peekSpacing):q.peekSpacing;
++    auto fits=[&](const CoverPosition& c,int id,bool emit){int close=0;std::vector<int> counted;
++        for(const auto& r:reserved)if(r.soldier!=id){
++            const float shelter=Distance(c.shelter,r.cover.shelter),peek=Distance(c.peek,r.cover.peek);
++            if(shelter<3&&(r.soldier<0||std::find(counted.begin(),counted.end(),r.soldier)==counted.end())){++close;counted.push_back(r.soldier);}
++            bool bad=shelter<shelterMinimum||peek<peekMinimum||close>=2;
++            if(q.firing)bad|=!TacticalPairLaneClear(map,c,r.cover,targets);
++            if(bad){if(emit)TracePosition(d,leader,time,c,"position_pair_rejected","reserved shelter/peek spacing, grenade density or friendly firing lane");return false;}
++        }return true;
++    };
+     // Allocate every primary before alternatives; fallbacks cannot steal another member's primary.
+     for(size_t n=0;n<result.size();++n){auto& out=result[n];
+         for(const auto& c:choices[n])if(fits(c.cover,out.soldier,false)&&
+             std::none_of(result.begin(),result.end(),[&](const MemberPositions& assigned){return assigned.valid&&Distance(assigned.primary.cover.shelter,c.cover.shelter)>q.groupCap;})){
+             out.valid=true;out.primary=c;reserved.push_back({out.soldier,c.cover});out.reason="allocated primary";TracePosition(d,leader,time,c.cover,"position_query",out.reason);break;
+         }
++        if(!out.valid&&q.halted){
++            // Same walkable projection as formation endpoints, around the hold
++            // anchor. Keep spacing and density hard even when cover is scarce.
++            const Vec3 anchor=q.anchors[out.soldier%SquadSize];
++            for(int ring=0;ring<=3&&!out.valid;++ring)for(int ray=0;ray<(ring?16:1);++ray){
++                const float angle=ray*2*3.14159265f/16;CoverPosition hold;
++                hold.shelter=hold.peek=anchor+Vec3{ring*std::cos(angle),ring*std::sin(angle)};
++                if(!Walkable(map,hold.shelter)||!InArea(hold.shelter,q)||Distance(hold.shelter,q.center)>q.coherenceRadius||
++                   Distance(hold.shelter,anchor)>q.radius||!fits(hold,out.soldier,false)||
++                   (q.boundRadius>0&&Distance(hold.shelter,q.boundCenter)>q.boundRadius)||
++                   (q.corridor&&CorridorDistance(*q.corridor,hold.shelter)>q.groupCap))continue;
++                if(q.firing&&(Distance(hold.peek,q.target)>=SightRange(members[n])||
++                   !ClearLine3D(map,hold.peek+Vec3{0,0,1.5f},q.target+Vec3{0,0,q.firingHeight})))continue;
++                if(InReportedFireLane(leader,out.soldier,hold.peek,time))continue;
++                auto path=FindPath(map,members[n].position,hold.shelter);if(path.empty())continue;
++                float length=0;Vec3 prior=members[n].position;bool inside=true;
++                for(Vec3 at:path){length+=Distance(prior,at);prior=at;inside&=InArea(at,q)&&(!q.corridor||CorridorDistance(*q.corridor,at)<=q.groupCap);}
++                if(!inside||(q.maxPathLength>0&&length>q.maxPathLength))continue;
++                // Rush safety still applies; no-cover does not imply safe.
++                bool safe=true;if(q.safeEndpoint)for(const auto& ct:knowledge.contacts)if(ct.known){
++                    bool close=q.supportedAssaultRadius>0&&Distance(hold.shelter,q.supportedObjective)<=q.supportedAssaultRadius&&Distance(ct.position,q.supportedObjective)<=q.targetRadius;
++                    if(!close&&!ProtectedAt(map,hold.shelter,ct.position,Stance::Crouched)&&ClearLine3D(map,hold.shelter+Vec3{0,0,1.3f},ct.position+Vec3{0,0,1.7f}))safe=false;
++                }
++                if(!safe)continue;
++                out.valid=true;out.projectedHold=true;out.primary={hold,0,0};reserved.push_back({out.soldier,hold});break;
++            }
++            out.reason=out.valid?"no compliant cover: separated projected hold":"no compliant cover or projected hold";
++            CoverPosition at=out.valid?out.primary.cover:CoverPosition{};if(!out.valid)at.shelter=at.peek=members[n].position;
++            TracePosition(d,leader,time,at,"position_spacing_unfilled",out.reason+"; soldier="+std::to_string(out.soldier)+
++                "; area_min="+std::to_string(q.areaMin.x)+","+std::to_string(q.areaMin.y)+
++                "; area_max="+std::to_string(q.areaMax.x)+","+std::to_string(q.areaMax.y));
++        }
+         if(!out.valid){out.reason="no unreserved position inside area/coherence";if(!choices[n].empty())fits(choices[n][0].cover,out.soldier,true);}
++
+     }
+     for(size_t n=0;n<result.size();++n)if(result[n].valid)for(const auto& c:choices[n]){
+         if(result[n].fallbacks.size()==q.maxFallbacks)break;
+--- 4786fc9830d0c1c0/DrillSim.cpp
++++ attempt2/DrillSim.cpp
+@@ -156,7 +156,7 @@
+         GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=p.areaMin;query.areaMax=p.areaMax;query.coherenceRadius=90;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
+         if(p.platoonArea&&leader.platoonOrder.areaRouteRadius>0){query.areaRoute=leader.platoonOrder.corridor;query.areaRouteRadius=25;query.areaDiscCenter=leader.platoonOrder.areaDiscCenter;query.areaDiscRadius=60;}
+         const bool protectedBound=p.action.closureFallback&&!coverStage&&!repair&&p.effectiveFire&&!p.superiority;
+-        query.formation=!coverStage&&!repair&&!protectedBound;query.protectedPosition=coverStage||repair||protectedBound;
++        query.formation=!coverStage&&!repair&&!protectedBound;query.protectedPosition=coverStage||repair||protectedBound;query.halted=query.protectedPosition;
+         if(p.action.closureFallback&&!p.platoonArea){query.areaDiscCenter=p.action.objective;query.areaDiscRadius=60;}
+         query.firing=query.protectedPosition&&element==0&&p.target>=0&&Distance(origin,p.sector)<SightRange(group.front());
+         if(p.stage==DrillStage::BoundSetup){query.target=p.center+direction*40;query.firing=element==0;}
+--- 4786fc9830d0c1c0/SquadDrillSim.cpp
++++ attempt2/SquadDrillSim.cpp
+@@ -124,6 +124,19 @@
+     if(support)std::stable_sort(group.begin(),group.end(),[](const Soldier& a,const Soldier& b){return a.machineGun>b.machineGun;});
+     ++p.generation;p.waiting.fill(false);p.arrivals.fill(false);p.arrivalConsumed=false;p.arrivalQuorumAt=-1;p.movers.fill(false);p.slotWaiting.fill(false);
+     GroupPositionQuery q;q.center=p.center;q.target=p.stage==DrillStage::Consolidate?p.sector:p.action.objective;q.areaMin=p.areaMin;q.areaMax=p.areaMax;q.areaDiscCenter=p.action.objective;q.areaDiscRadius=!p.platoonArea&&(p.kind==BattleDrill::SupportByFire||p.kind==BattleDrill::SquadAttack)?60.f:0.f;q.coherenceRadius=160;q.groupCap=40;q.radius=cover?25:3;q.formation=!cover;q.protectedPosition=cover&&completion!=Completion::Observe;q.firing=completion==Completion::Observe;q.anchorWeight=3;q.coverWeight=cover?12:0;
++    if(support){
++        q.firing=true;q.firingHeight=1.5f;
++        // A fresh report supplies a complete aim point. A stale sector must
++        // also expose crouched ground; an old standing-height ray is not proof
++        // that support from this slot can still reach the bound threat area.
++        const auto picture=WithTracks(l,time);const Contact* bound=nullptr;float nearest=q.targetRadius;
++        for(const auto& ct:picture.contacts)if(ct.known&&Distance(ct.position,q.target)<nearest){nearest=Distance(ct.position,q.target);bound=&ct;}
++        if(bound){
++            q.target=bound->position;
++            if(time-bound->observedAt<=6){q.target.x+=bound->aimOffset.x;q.target.y+=bound->aimOffset.y;q.firingHeight=bound->aimHeight-q.target.z;}
++            else q.firingHeight=BodyHeight(Stance::Crouched)*.5f;
++        }
++    }
+     if(support&&p.kind==BattleDrill::SupportByFire){q.firing=true;q.radius=60;q.firingSearch=true;q.protectedPosition=false;q.preferCover=true;}
+     if(rush){q.formation=true;q.preferCover=true;q.safeEndpoint=true;q.guardObjective=true;q.radius=3;q.maxPathLength=15.f;}
+     if(reposition){q.formation=true;q.preferCover=true;q.protectedPosition=false;q.firing=true;
+@@ -153,15 +166,14 @@
+         q.anchors[s.id%8]=at;++rank;
+     }
+     if(p.platoonArea&&p.acceptedDirective.areaRouteRadius>0){q.areaRoute=p.acceptedDirective.corridor;q.areaRouteRadius=25;q.areaDiscCenter=p.acceptedDirective.areaDiscCenter;q.areaDiscRadius=60;}
++    q.halted=!q.formation||support;
++    // Retention is a preference inside allocation, never an override of its
++    // assigned-ally separation result. The old override bypassed reservations.
++    if(support)for(const auto& s:group){int n=s.id%8;
++        if(p.hasSlot[n]&&p.slotGeometry[n]==map.revision&&ProtectedAt(map,p.slots[n].shelter,p.action.objective,Stance::Crouched)&&
++           ClearLine3D(map,p.slots[n].peek+Vec3{0,0,1.5f},p.action.objective+Vec3{0,0,1.7f}))q.retained.push_back({s.id,p.slots[n]});
++    }
+     auto allocated=QueryPositions(l,group,map,q,time,d);int valid=0;
+-    // Entering support changes the firing contract, not ownership of a valid
+-    // stationary slot. Current friendly firing lanes cannot evict its occupant.
+-    if(support)for(size_t k=0;k<group.size();++k){int n=group[k].id%8;
+-        if(p.hasSlot[n]&&p.slotGeometry[n]==map.revision&&ProtectedAt(map,p.slots[n].shelter,p.action.objective,Stance::Crouched)&&
+-           ClearLine3D(map,p.slots[n].peek+Vec3{0,0,1.5f},p.action.objective+Vec3{0,0,1.7f})){
+-            allocated[k].valid=true;allocated[k].primary.cover=p.slots[n];
+-        }
+-    }
+     for(size_t k=0;k<group.size();++k){const auto& s=group[k];int n=s.id%8;const auto& result=allocated[k];
+         Vec3 at=result.valid?result.primary.cover.shelter:s.position;auto path=FindPath(map,s.position,at);float length=0;Vec3 prior=s.position;for(Vec3 step:path){length+=Distance(prior,step);prior=step;}
+         bool executable=result.valid&&!path.empty()&&(!rush||length<=15.f);
+@@ -170,7 +182,7 @@
+         if(rush&&Distance(at,p.action.objective)<=18)executable&=closePermission;
+         if(p.stage==DrillStage::Retire&&!support){float bound=Distance(Centre(group,p,-1),at);executable&=(bound>=25||(p.kind==BattleDrill::Withdraw&&Distance(at,p.action.rally)<=12))&&bound<=50;}
+         if(!executable)at=s.position;else ++valid;
+-        p.positions[n]=at;p.hasSlot[n]=executable&&(result.primary.cover.id!=0||(support&&q.firingSearch));if(p.hasSlot[n]){p.slots[n]=result.primary.cover;p.slotGeometry[n]=map.revision;}
++        p.positions[n]=at;p.hasSlot[n]=executable&&!result.projectedHold&&(result.primary.cover.id!=0||(support&&q.firingSearch));if(p.hasSlot[n]){p.slots[n]=result.primary.cover;p.slotGeometry[n]=map.revision;}
+         auto route=std::make_shared<TacticalRoute>();route->start=s.position;route->destination=at;route->geometry=map.revision;route->owner=l.id;route->plan=p.instance;route->id=810000000ULL+l.squad*1000000ULL+p.generation*16+n;route->points=executable?path:std::vector<Vec3>{s.position};p.memberRoutes[n]=route;
+         p.issue[n]=true;p.expected[n]=0;p.orderMethods[n]=p.instance;p.orderGenerations[n]=p.generation;p.waiting[n]=executable;p.movers[n]=executable&&Distance(s.position,at)>.75f;
+         p.action.tasks[n]=task;p.action.completions[n]=completion;p.action.supportOrders[n]=support;p.action.rushOrders[n]=rush;p.action.pausedOrders[n]=false;p.action.liftOrders[n]=false;
+@@ -232,9 +244,9 @@
+             GroupPositionQuery q;q.center=p.center;q.target=p.action.objective;q.areaMin=p.areaMin;q.areaMax=p.areaMax;
+             q.areaDiscCenter=p.action.objective;q.areaDiscRadius=60;q.coherenceRadius=160;q.radius=15;
+             q.boundCenter=s.position;q.boundRadius=15;q.maxPathLength=15;q.corridor=p.action.route;q.groupCap=40;
+-            q.protectedPosition=true;q.anchors[n]=s.position;q.anchorWeight=1;q.travelWeight=q.coverWeight=q.lineWeight=0;q.reserved=reserved;
++            q.protectedPosition=true;q.halted=true;q.anchors[n]=s.position;q.anchorWeight=1;q.travelWeight=q.coverWeight=q.lineWeight=0;q.reserved=reserved;
+             if(p.platoonArea&&p.acceptedDirective.areaRouteRadius>0){q.areaRoute=p.acceptedDirective.corridor;q.areaRouteRadius=25;q.areaDiscCenter=p.acceptedDirective.areaDiscCenter;q.areaDiscRadius=60;}
+-            auto slots=QueryPositions(l,{s},map,q,time,d);p.action.pauseHasSlot[n]=slots.front().valid;
++            auto slots=QueryPositions(l,{s},map,q,time,d);p.action.pauseHasSlot[n]=slots.front().valid&&!slots.front().projectedHold;
+             if(slots.front().valid){
+                 p.action.pauseSlots[n]=slots.front().primary.cover;reserved.push_back({s.id,p.action.pauseSlots[n]});
+                 p.movers[n]=Distance(s.position,p.action.pauseSlots[n].shelter)>.75f;

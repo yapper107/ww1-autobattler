@@ -1,0 +1,55 @@
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+**********************************************************************
+** Visual Studio 2026 Developer Command Prompt v18.0
+** Copyright (c) 2026 Microsoft Corporation
+**********************************************************************
+[vcvarsall.bat] Environment initialized for: 'x64'
+BattleSim.cpp
+BeliefSim.cpp
+CognitiveSim.cpp
+CommandSim.cpp
+CoordinationSim.cpp
+Diagnostics.cpp
+DrillFixtures.cpp
+DrillSim.cpp
+EnvironmentSim.cpp
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\utility(277): warning C4244: 'initializing': conversion from '_Ty' to '_Ty1', possible loss of data
+        with
+        [
+            _Ty=int
+        ]
+        and
+        [
+            _Ty1=float
+        ]
+C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include\utility(277): note: the template instantiation context (the oldest one first) is
+Sim\EnvironmentSim.cpp(268): note: see reference to function template instantiation 'std::pair<float,int>::pair<int,int&,0>(_Other1 &&,_Other2) noexcept' being compiled
+        with
+        [
+            _Other1=int,
+            _Other2=int &
+        ]
+Sim\EnvironmentSim.cpp(268): note: see the first reference to 'std::pair<float,int>::pair' in 'army::FindFloorPath'
+LeaderSim.cpp
+ManeuverSim.cpp
+PerceptionSim.cpp
+PlanSim.cpp
+PlatoonFixtures.cpp
+PlatoonSim.cpp
+PlatoonTaskSim.cpp
+PositionSim.cpp
+ReactionSim.cpp
+RecoverySim.cpp
+ScenarioGen.cpp
+Generating Code...
+Compiling...
+SpatialSim.cpp
+SquadDrillSim.cpp
+TacticalRouteSim.cpp
+TaskSim.cpp
+TerrainSim.cpp
+TrafficSim.cpp
+battle_cli.cpp
+Generating Code...
+build exit=0

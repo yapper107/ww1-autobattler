@@ -1,0 +1,1 @@
+Second clock-pin attempt. Receipt evidence in attempt1 proves near members Done but legitimately distant members fail. Correct the newly authored blanket failed==0 check to per-receipt >3 m; release the physical reload after leaving the accepted endpoint band. No existing selector assertion or fixture changes. Radio algorithm unchanged; Q05 passed on attempt1.

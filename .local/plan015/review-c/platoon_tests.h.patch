@@ -1,0 +1,35 @@
+--- entry/platoon_tests.h
++++ tests/platoon_tests.h
+@@ -120,11 +120,32 @@
+     std::cout<<"Q04 need="<<need<<" neighbour_help="<<help<<" delivered_by60="<<delivered<<" distant_order="<<ordered<<" distant_receipt="<<received<<"\n";
+     assert(need>=0&&help>=need+c.reportDelay&&help<=need+60&&delivered&&ordered&&received);
+ }
++static void PlatoonQ05(){
++    auto c=DrillConfig();c.maxSeconds=65;
++    for(int encounter:{94,95,96}){auto r=Simulate(c,{}, {},encounter);int helps=0,opportunities=0;bool receivedNeed=false,receivedFix=false,exhaustionRetained=true;int exhaustedInstance=-1;float exhaustedAt=-1,noRouteAt=-1;bool checkedAfterOpportunity=false;
++        for(const auto& e:r.diagnostics->entries)if(e.squad==1){
++            helps+=e.kind=="drill_accepted"&&e.reason.find("radio NeedSupport")!=std::string::npos;
++            if(e.kind=="radio_no_route")noRouteAt=e.time;
++            opportunities+=e.kind=="radio_no_route"||(e.kind=="drill_accepted"&&e.reason.find("radio opportunity")!=std::string::npos);
++        }
++        for(const auto& f:r.frames){const auto& p=f.command[1].battleDrill;
++            for(const auto& message:f.soldiers[8].squadRadio){receivedNeed|=message.kind==SquadBroadcastKind::NeedSupport;receivedFix|=message.kind==SquadBroadcastKind::Fixing;}
++            if(p.action.helping&&p.action.supportSearchExhausted){if(exhaustedInstance<0){exhaustedInstance=p.instance;exhaustedAt=f.time;}exhaustionRetained&=p.instance==exhaustedInstance;}
++            if(exhaustedAt>=0&&noRouteAt>exhaustedAt&&f.time>=noRouteAt){checkedAfterOpportunity=true;exhaustionRetained&=p.instance==exhaustedInstance&&p.action.helping&&p.action.supportSearchExhausted;}
++        }
++        std::cout<<"Q05 encounter="<<encounter<<" need="<<receivedNeed<<" fixing="<<receivedFix<<" help_accepts="<<helps<<" opportunity_evaluations="<<opportunities<<" exhausted_at="<<exhaustedAt<<" no_route_at="<<noRouteAt<<" checked_after="<<checkedAfterOpportunity<<" exhaustion_retained="<<exhaustionRetained<<"\n";
++        assert(exhaustionRetained);
++        if(encounter==94)assert(receivedNeed&&receivedFix&&helps==1&&opportunities==1&&checkedAfterOpportunity);
++        if(encounter==95)assert(receivedNeed&&!receivedFix&&helps==1&&opportunities==0);
++        if(encounter==96)assert(!receivedNeed&&receivedFix&&helps==0&&opportunities==1);
++    }
++}
+ static void PlatoonTests(const std::string& name){std::cout.setf(std::ios::unitbuf);
+     if(name=="all"||name=="Q01")PlatoonQ01();
+     if(name=="all"||name=="Q02")PlatoonQ02();
+     if(name=="all"||name=="Q03")PlatoonQ03();
+     if(name=="all"||name=="Q04")PlatoonQ04();
++    if(name=="all"||name=="Q05")PlatoonQ05();
+     if(name=="all"||name=="P04")PlatoonP04();
+     if(name=="all"||name=="P05")PlatoonP05();
+     if(name=="all"||name=="P06")PlatoonP06();

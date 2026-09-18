@@ -1,0 +1,664 @@
+--- entry/BattleSim.h
++++ Unreal/Source/ArmyPrototype/Sim/BattleSim.h
+@@ -214,9 +214,6 @@
+ };
+ enum class ScenarioFamily { None, F1, F2, F3 };
+ struct Config {
+-#ifdef ARMY_TEST_CONTROLS
+-    bool testNoCorridorClaims=false; // Only assert-based test binaries expose this control.
+-#endif
+     bool cognition=false, fullVision=false;
+     float reportDelay=.75f;
+     OfficerProfile officer;
+@@ -271,7 +268,7 @@
+     float low=0,high=0,estimate=0,observedAt=-100,confidence=0;
+     float unseen=0, uncertainty=0;
+ };
+-enum class PlatoonTask { None, Support, FlankNorth, FlankSouth, Consolidate, Reserve, Observe, Withdraw, Advance, Merge };
++enum class PlatoonTask { None, Support, FlankNorth, FlankSouth, Consolidate, Reserve, Observe, Withdraw, Advance, Merge, FightHere, RetreatThere, HelpSquad };
+ struct FireDelivery;
+ struct SquadSituation {
+     std::vector<ObservationCoverage> coverage;
+@@ -300,7 +297,7 @@
+     std::vector<Vec3> drillMemberPositions;
+ };
+ struct PlatoonDirective {
+-    int taskNode=0,mergeInto=-1;bool hasArea=false,liftFire=false,fireMovement=false;
++    int taskNode=0,mergeInto=-1,helpSquad=-1;bool hasArea=false,liftFire=false,fireMovement=false;
+     Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaRouteRadius=0,areaDiscRadius=0;FireLane assaultLane;
+     std::shared_ptr<const TacticalRoute> corridor;
+     int supportSoldier=-1,supportSquad=-1,committedStrength=0;
+@@ -315,29 +312,15 @@
+     Contact contact;
+     float issuedAt=0, receivedAt=0, activatedAt=0, expiresAt=0;
+ };
+-enum class PlatoonNodeKind { Advance, Fix, Flank, Secure, Reserve, Merge, Withdraw, Observe };
+-enum class PlatoonNodeStatus { Dormant, Active, Assigned, Complete, Blocked };
+-struct PlatoonTaskNode {
+-    int id=0,parent=0,priority=0,capacity=1,assigned=0,enemy=-1,side=0;
+-    PlatoonNodeKind kind=PlatoonNodeKind::Advance;PlatoonNodeStatus status=PlatoonNodeStatus::Dormant;
+-    bool active=false,needsWeapon=false,fireMovement=false;Vec3 objective{},areaMin{},areaMax{};
+-    std::string activation;
+-};
+-struct CorridorClaim {int squad=-1,task=0;float width=10,expiresAt=0;std::shared_ptr<const TacticalRoute> route;};
+-struct PlatoonFireControl {
+-    int assaultSquad=-1;float phaseLineAt=-1,lastReportAt=-1;bool active=false;
+-    FireLane lane;
+-};
++// Intent persistence and reported advance progress; no platoon roles or corridor claims.
+ struct PlatoonTaskState {
+-    int revision=0,commander=-1;uint64_t activation=0;float nextAssessment=0;
+-    std::vector<PlatoonTaskNode> nodes;std::vector<CorridorClaim> claims;
+-    std::vector<PlatoonFireControl> fireControl;
++    int revision=0,commander=-1;float nextAssessment=0;
+     std::array<PlatoonDirective,SquadsPerTeam> assigned{};
+     std::array<Vec3,SquadsPerTeam> advanceDoneObjectives{};
+     std::array<bool,SquadsPerTeam> advanceDoneSeen{},advanceExhausted{};
+-    float observeStarted=-1;Vec3 observeObjective{};bool observeSuperiority=false;int noFlankBranch=0;
+-    std::array<float,SquadsPerTeam> phaseLines{{-1,-1,-1,-1}};
+-    bool noCoveredRoute=false;float believedRatio=1;
++    float observeStarted=-1;Vec3 observeObjective{};
++    bool withdrawing=false;float believedRatio=1;
++    std::array<float,SquadsPerTeam> needSince{{-1,-1,-1,-1}};
+ };
+ struct PlatoonCommand {
+     int leader=-1, sergeant=-1, supportSquad=-1, flankSquad=-1, mainEffortSquad=-1, reserveSquad=-1, plans=0;
+--- entry/Diagnostics.cpp
++++ Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp
+@@ -159,15 +159,11 @@
+     if(r.config.drills){
+         i(r.config.drills);f(r.config.reportDelay);i(r.config.fullVision);
+         for(const auto& frame:r.frames){
+-            auto directive=[&](const PlatoonDirective& a){f(a.areaRouteRadius);f(a.areaDiscRadius);v(a.areaDiscCenter);i(a.taskNode);i(a.fireMovement);i(a.committedStrength);i(a.mergeInto);i(a.hasArea);i(a.liftFire);v(a.areaMin);v(a.areaMax);v(a.assaultLane.origin);v(a.assaultLane.target);f(a.assaultLane.observedAt);i(a.intent.id);f(a.expiresAt);if(a.corridor){v(a.corridor->start);v(a.corridor->destination);for(Vec3 point:a.corridor->points)v(point);}};
+-            for(const auto& command:frame.platoon){const auto& t=command.tasks;i(t.revision);i(t.commander);bytes(&t.activation,sizeof(t.activation));f(t.nextAssessment);i(t.noCoveredRoute);f(t.believedRatio);
+-                for(const auto& n:t.nodes){i(n.id);i(n.parent);i(int(n.kind));i(int(n.status));i(n.priority);i(n.capacity);i(n.assigned);i(n.active);i(n.needsWeapon);i(n.fireMovement);v(n.objective);v(n.areaMin);v(n.areaMax);}
++            auto directive=[&](const PlatoonDirective& a){f(a.areaRouteRadius);f(a.areaDiscRadius);v(a.areaDiscCenter);i(a.taskNode);i(a.fireMovement);i(a.committedStrength);i(a.mergeInto);i(a.helpSquad);i(a.hasArea);i(a.liftFire);v(a.areaMin);v(a.areaMax);v(a.assaultLane.origin);v(a.assaultLane.target);f(a.assaultLane.observedAt);i(a.intent.id);f(a.expiresAt);if(a.corridor){v(a.corridor->start);v(a.corridor->destination);for(Vec3 point:a.corridor->points)v(point);}};
++            for(const auto& command:frame.platoon){const auto& t=command.tasks;i(t.revision);i(t.commander);f(t.nextAssessment);i(t.withdrawing);f(t.believedRatio);
+                 for(const auto& a:t.assigned)directive(a);
+-                for(const auto& c:t.claims){i(c.squad);i(c.task);f(c.width);f(c.expiresAt);if(c.route)for(Vec3 point:c.route->points)v(point);}
+                 for(int n=0;n<SquadsPerTeam;++n){i(t.advanceDoneSeen[n]);i(t.advanceExhausted[n]);v(t.advanceDoneObjectives[n]);}
+-                f(t.observeStarted);v(t.observeObjective);i(t.observeSuperiority);i(t.noFlankBranch);
+-                for(float at:t.phaseLines)f(at);
+-                for(const auto& c:t.fireControl){i(c.assaultSquad);f(c.phaseLineAt);f(c.lastReportAt);i(c.active);v(c.lane.origin);v(c.lane.target);f(c.lane.observedAt);}
++                f(t.observeStarted);v(t.observeObjective);for(float at:t.needSince)f(at);
+             }
+             for(const auto& unit:frame.soldiers){directive(unit.platoonOrder);for(const auto& r:unit.platoonReports){i(r.drillSuperiority);f(r.phaseLineAt);f(r.completedAssaultLineAt);v(r.assaultObjective);v(r.assaultOrigin);for(Vec3 at:r.drillMemberPositions)v(at);}}
+             for(const auto& unit:frame.soldiers){const auto& a=unit.assignment;f(a.areaRouteRadius);if(a.areaRoute){v(a.areaRoute->start);for(Vec3 point:a.areaRoute->points)v(point);}i(a.drillInstance);i(a.element);i(a.baseOfFire);v(a.areaMin);v(a.areaMax);v(a.areaDiscCenter);f(a.areaDiscRadius);i(a.execution.method);i(a.execution.stage);i(a.execution.generation);i(int(a.execution.completion));f(a.execution.deadline);i(a.execution.paused);f(a.execution.rushSeconds);f(a.drillRushPausedAt);f(a.drillRushPausedSeconds);
+--- entry/DrillSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+@@ -288,14 +288,19 @@
+     const bool same=p.acceptedDirective.intent.id&&higher.intent.id==p.acceptedDirective.intent.id;
+     const bool retiring=p.action.active&&(p.kind==BattleDrill::BreakContact||p.kind==BattleDrill::Withdraw);
+     const bool boundary=(p.blocked&&p.exhausted)||p.directiveBoundary||arrived||p.stage==DrillStage::Reorganise||p.action.completed;
+-    const bool received=pending&&(same||higher.task==PlatoonTask::Withdraw||(!retiring&&(p.kind==BattleDrill::MoveTactically||boundary)));
+-    const bool nextLeg=same&&higher.task==PlatoonTask::Advance&&Distance(higher.position,p.acceptedDirective.position)>1;
++    const bool received=pending&&(same||(higher.task==PlatoonTask::Withdraw||higher.task==PlatoonTask::RetreatThere)||(!retiring&&(p.kind==BattleDrill::MoveTactically||boundary)));
++    const bool nextLeg=same&&(higher.task==PlatoonTask::Advance||(higher.task==PlatoonTask::FightHere&&higher.enemy<0))&&Distance(higher.position,p.acceptedDirective.position)>1;
+     const bool directive=received&&(!same||nextLeg||p.platoonLift!=higher.liftFire);
+-    const bool expired=!received&&p.platoonArea&&time>=p.directiveUntil;
++    const bool expired=!received&&p.acceptedDirective.intent.id&&time>=p.directiveUntil;
+     if(received){
+         cmd.platoonOrderSerial=higher.serial;p.directiveUntil=higher.expiresAt;p.acceptedDirective=higher;
+         if(directive)p.destination=higher.taskNode?higher.position:higher.intent.objective;
+         if(higher.hasArea){p.areaMin=higher.areaMin;p.areaMax=higher.areaMax;p.platoonArea=true;p.platoonTaskNode=higher.taskNode;}
++        if(!higher.hasArea&&directive){
++            p.platoonArea=false;p.platoonTaskNode=0;
++            p.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,p.deployment.y-24)};
++            p.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,p.deployment.y+24)};
++        }
+         p.platoonLift=higher.liftFire;
+     }
+     // Only the accepted order is visible to stage policy; a pending receipt cannot leak its area or objective.
+@@ -359,7 +364,7 @@
+         p.blocked=true;p.exhausted=true;p.lastRejection="element below minStrength";p.deadline=0;Advance(leader,p,DrillStage::Reorganise,d,time,"minStrength crossed: drill failed; Reorganise next tick");
+         Trace(d,leader,p,time,"drill_stage","Blocked/Support: element below minStrength");
+     }else if(p.stage==DrillStage::Reorganise&&p.action.completed&&p.platoonArea&&
+-             p.acceptedDirective.task==PlatoonTask::Advance&&!directive&&!expired&&target<0){
++             (p.acceptedDirective.task==PlatoonTask::Advance||p.acceptedDirective.task==PlatoonTask::FightHere)&&!directive&&!expired&&target<0){
+         // Keep Done available to ordinary report transport until the next leg is received.
+         p.deadline=0;
+     }else if(p.stage==DrillStage::Reorganise){
+--- entry/PlatoonSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp
+@@ -20,7 +20,7 @@
+     const char* tags[]={"SGT","CPL","","MG","LT","PSG"};return tags[int(r)];
+ }
+ const char* PlatoonTaskName(PlatoonTask t) {
+-    const char* names[]={"LOCAL INITIATIVE","SUPPORT ENGAGED SQUAD","PLATOON FLANK NORTH","PLATOON FLANK SOUTH","CONSOLIDATE ON MAIN EFFORT","PLATOON RESERVE","OBSERVE BEFORE COMMITTING","WITHDRAW","ADVANCE SECTOR","MERGE REMNANTS"};return names[int(t)];
++    const char* names[]={"LOCAL INITIATIVE","SUPPORT ENGAGED SQUAD","PLATOON FLANK NORTH","PLATOON FLANK SOUTH","CONSOLIDATE ON MAIN EFFORT","PLATOON RESERVE","OBSERVE BEFORE COMMITTING","WITHDRAW","ADVANCE SECTOR","MERGE REMNANTS","FightHere","RetreatThere","HelpSquad"};return names[int(t)];
+ }
+ bool GoalAlternative(const SquadSituation& report,const PlatoonDirective& previous,float time,PlatoonDirective& next,bool cognition){
+     if(!previous.intent.id||!previous.hasAlternative||report.goalId!=previous.intent.id||
+@@ -232,11 +232,7 @@
+                 cmd.tasks.assigned[order.recipient/SquadSize%SquadsPerTeam]=directive;
+                 rt.lastOrders[order.recipient/SquadSize]=directive;
+                 rt.messages.push_back({true,cmd.leader,order.recipient,f.time+config.reportDelay,{},directive});
+-                if(directive.liftFire){PlatoonMessage lane;lane.sender=cmd.leader;lane.recipient=order.recipient;lane.arrives=f.time+config.reportDelay;lane.lane=true;lane.subject=cmd.leader;lane.fireLane=directive.assaultLane;rt.messages.push_back(lane);}
+                 ++cmd.plans;cmd.sector=directive.sector;
+-                if(directive.task==PlatoonTask::Support)cmd.supportSquad=order.recipient/SquadSize;
+-                if(directive.task==PlatoonTask::Reserve)cmd.reserveSquad=order.recipient/SquadSize;
+-                if(directive.task==PlatoonTask::FlankNorth||directive.task==PlatoonTask::FlankSouth)cmd.flankSquad=order.recipient/SquadSize;
+                 events.push_back({f.time,EventKind::OrderIssued,cmd.leader,order.recipient,"Platoon task-tree directive: "+std::string(PlatoonTaskName(directive.task))});
+             }
+             continue;
+--- entry/PlatoonTaskSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
+@@ -4,361 +4,154 @@
+ #include "BeliefSim.h"
+ #include "Diagnostics.h"
+ #include <algorithm>
+-#include <cmath>
+-#include <numeric>
++
+ namespace army {
+ namespace {
+-Vec3 Unit(Vec3 p){p.z=0;return Length(p)>.01f?p*(1/Length(p)):Vec3{1,0};}
+-void Trace(const Soldier& l,Diagnostics* d,float time,const char* kind,const std::string& why,Vec3 goal={},int squad=-1){
+-    if(!d||!d->options.enabled)return;
+-    TraceEntry e;e.id=d->nextId++;e.time=time;e.soldier=l.id;e.squad=squad<0?l.squad:squad;e.kind=kind;e.reason=why;e.goal=goal;d->entries.push_back(e);
++void Trace(const Soldier& leader, Diagnostics* diagnostics, float time,
++           const char* kind, const std::string& reason, Vec3 goal, int squad) {
++    if (!diagnostics || !diagnostics->options.enabled) return;
++    TraceEntry entry;
++    entry.id=diagnostics->nextId++; entry.time=time; entry.soldier=leader.id;
++    entry.squad=squad; entry.kind=kind; entry.reason=reason; entry.goal=goal;
++    entry.foundations=true;entry.regions=BuildMentalMap(leader,time);
++    for(int id=0;id<UnitCount;++id){
++        if(leader.contacts[id].known)entry.knowledge.push_back({id,true,leader.contacts[id]});
++        else if(leader.reports[id].known)entry.knowledge.push_back({id,false,leader.reports[id]});
++    }
++    diagnostics->entries.push_back(entry);
+ }
+-// Kruskal's minimum spanning forest cut at20 m; contacts retain their original timestamps.
+-std::vector<std::vector<int>> Groups(const Soldier& k){
+-    std::vector<int> ids;for(int n=0;n<UnitCount;++n)if(k.contacts[n].known)ids.push_back(n);
+-    struct Edge{float distance;int a,b;};std::vector<Edge> edges;
+-    for(size_t a=0;a<ids.size();++a)for(size_t b=a+1;b<ids.size();++b)edges.push_back({Distance(k.contacts[ids[a]].position,k.contacts[ids[b]].position),int(a),int(b)});
+-    std::stable_sort(edges.begin(),edges.end(),[](const Edge&a,const Edge&b){return a.distance<b.distance;});
+-    std::vector<int> parent(ids.size());std::iota(parent.begin(),parent.end(),0);
+-    auto root=[&](int n){while(parent[n]!=n)n=parent[n];return n;};
+-    for(auto e:edges)if(e.distance<=20){int a=root(e.a),b=root(e.b);if(a!=b)parent[b]=a;}
+-    std::vector<std::vector<int>> out;std::vector<int> roots;
+-    for(size_t i=0;i<ids.size();++i){int r=root(int(i));auto at=std::find(roots.begin(),roots.end(),r);if(at==roots.end()){roots.push_back(r);out.push_back({});at=roots.end()-1;}out[size_t(at-roots.begin())].push_back(ids[i]);}return out;
++int Nearest(const Soldier& knowledge, Vec3 position) {
++    int target=-1; float nearest=1e9f;
++    for (int id=0; id<UnitCount; ++id) if (knowledge.contacts[id].known) {
++        float distance=Distance(position,knowledge.contacts[id].position);
++        if (distance<nearest) { nearest=distance; target=id; }
++    }
++    return target;
+ }
+-bool Covered(const Map& map,const Soldier& k,const TacticalRoute& route){
+-    if(route.points.empty())return false;
+-    float total=0,exposed=0,stretch=0,longest=0;Vec3 before=route.start;
+-    for(Vec3 end:route.points){float length=Distance(before,end);int count=std::max(1,int(std::ceil(length)));
+-        for(int n=1;n<=count;++n){Vec3 at=before+(end-before)*(float(n)/count);bool seen=false;
+-            for(const auto& ct:k.contacts)if(ct.known)seen|=!ProtectedAt(map,at,ct.position,Stance::Crouched)&&ClearLine3D(map,at+Vec3{0,0,1.3f},ct.position+Vec3{0,0,1.7f});
+-            float d=length/count;total+=d;if(seen){exposed+=d;stretch+=d;longest=std::max(longest,stretch);}else stretch=0;
+-        }before=end;
+-    }return total>0&&exposed<=total*.4f&&longest<=10;
++bool ResolveLeg(const Soldier& knowledge, const Map& map, const Config& config,
++                Vec3 start, Vec3 wanted, float minimum, float time, Vec3& goal) {
++    if (!ResolveOrderPosition(map,start,wanted,goal)) return false;
++    const float direction=knowledge.team?-1.f:1.f;
++    if ((goal.x-start.x)*direction<minimum) return false;
++    TacticalRoutePlanner planner(map,knowledge,time,knowledge.team?config.emberDoctrine:config.doctrine,Stance::Crouched);
++    return !planner.Evaluate(start,goal).points.empty();
+ }
+-// Exact planar segment separation, including the route starts and crossings.
+-float SegmentDistance(Vec3 a,Vec3 b,Vec3 c,Vec3 d){
+-    auto cross=[](Vec3 x,Vec3 y){return x.x*y.y-x.y*y.x;};
+-    const Vec3 u=b-a,v=d-c;const float den=cross(u,v);
+-    if(std::abs(den)>1e-6f){float t=cross(c-a,v)/den,q=cross(c-a,u)/den;if(t>=0&&t<=1&&q>=0&&q<=1)return 0;}
+-    auto point=[](Vec3 p,Vec3 a,Vec3 b){Vec3 v=b-a;v.z=0;Vec3 w=p-a;w.z=0;float n=v.x*v.x+v.y*v.y;return Length(w-v*(n>0?std::clamp((w.x*v.x+w.y*v.y)/n,0.f,1.f):0.f));};
+-    return std::min({point(a,c,d),point(b,c,d),point(c,a,b),point(d,a,b)});
++void Lifetime(PlatoonDirective& order, int issuer, float time) {
++    order.issuer=issuer; order.issuedAt=time; order.expiresAt=time+75;
++    order.intent.expiresAt=order.expiresAt;
+ }
+-bool Separated(const TacticalRoute& a,const TacticalRoute& b){
+-    Vec3 from=a.start;for(Vec3 to:a.points){Vec3 other=b.start;for(Vec3 end:b.points){if(SegmentDistance(from,to,other,end)<20)return false;other=end;}from=to;}return true;
+ }
+-std::shared_ptr<TacticalRoute> Route(const Soldier& k,const Map& map,const Config& c,Vec3 start,Vec3 goal,float time,const std::vector<CorridorClaim>& claims,int squad,bool claimCosts){
+-    TacticalRoutePlanner planner(map,k,time,k.team?c.emberDoctrine:c.doctrine,Stance::Crouched);
+-    Vec3 resolved;if(!ResolveOrderPosition(map,start,goal,resolved))return {};
+-    auto r=std::make_shared<TacticalRoute>(planner.Evaluate(start,resolved));
+-    if(r->points.empty()&&Distance(start,resolved)<.1f)r->points.push_back(resolved);
+-    if(claimCosts&&!claims.empty()){
+-        int expanded=0;RouteStatus status;auto points=FindCostPath(map,start,resolved,[&](Vec3 at){float cost=planner.Sample(at).Total();for(const auto& claim:claims)if(claim.squad!=squad&&claim.route&&time<claim.expiresAt)if(CorridorDistance(*claim.route,at)<20)cost+=1e8f;return cost;},1024,expanded,status);
+-        if(!points.empty()){r->points=points;r->cost=planner.Measure(start,points,&r->exposedSeconds);r->status=status;}
++
++std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const Map& map,
++        const Config& config, PlatoonTaskState& state, Diagnostics* diagnostics, float time) {
++    std::vector<PlannedPlatoonOrder> orders;
++    const auto knowledge=WithTracks(leader,time);
++    std::vector<SquadSituation> squads;
++    int strength=0; bool support=false; Vec3 centre{};
++    for (const auto& report:leader.platoonReports) {
++        if (report.squad<0 || report.leader<0 || report.active<=0 || report.drillInstance<=0 ||
++            report.observedAt>time || time-report.observedAt>=15) continue;
++        const auto& previous=state.assigned[report.squad%SquadsPerTeam];
++        // External pre-battle missions retain their ownership.
++        if (report.goalId && !previous.taskNode && report.directive && report.goalStatus==TaskStatus::Executing) continue;
++        squads.push_back(report); strength+=report.active; centre=centre+report.position;
++        support|=report.supportUseful || report.drillSuperiority;
+     }
+-    if(r->points.empty())return {};
+-    r->owner=k.id;r->start=start;r->destination=resolved;r->evaluatedAt=time;
+-    if(claimCosts)for(const auto& claim:claims)if(claim.squad!=squad&&claim.route&&time<claim.expiresAt&&!Separated(*r,*claim.route))return {};
+-    return r;
+-}
+-void Area(PlatoonDirective& d,const Map& map,Vec3 start,Vec3 goal,float half=16){
+-    d.hasArea=true;d.areaMin={std::max(-map.halfWidth+2,std::min(start.x,goal.x)-half),std::max(-map.halfHeight+2,std::min(start.y,goal.y)-half)};
+-    d.areaMax={std::min(map.halfWidth-2,std::max(start.x,goal.x)+half),std::min(map.halfHeight-2,std::max(start.y,goal.y)+half)};
+-}
+-bool Lines(const Map& map,Vec3 at,Vec3 target,float range){return Distance(at,target)<=range&&ClearLine3D(map,at+Vec3{0,0,1.5f},target+Vec3{0,0,1.7f});}
+-}
+-std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& l,const Map& map,const Config& config,PlatoonTaskState& state,Diagnostics* d,float time,bool claimsEnabled){
+-    #ifdef ARMY_TEST_CONTROLS
+-    claimsEnabled=claimsEnabled&&!config.testNoCorridorClaims;
+-#endif
+-    std::vector<PlannedPlatoonOrder> out;auto knowledge=WithTracks(l,time);std::vector<SquadSituation> squads;
+-    uint64_t signature=uint64_t(l.id+1);Vec3 centroid{};int strength=0;bool support=false;
+-    for(const auto& report:l.platoonReports)if(report.squad>=0&&report.leader>=0&&report.active>0&&report.drillInstance>0&&time-report.observedAt<15){
+-        // Pre-battle external missions retain ownership until completion/expiry.
+-        const auto& owned=state.assigned[report.squad%SquadsPerTeam];
+-        if(report.goalId>0&&!owned.taskNode&&report.directive>0&&report.goalStatus==TaskStatus::Executing)continue;
+-        squads.push_back(report);centroid=centroid+report.position;strength+=report.active;support|=report.supportUseful;
+-        signature=signature*131+uint64_t(report.squad*64+report.active+int(report.goalStatus));
++    if (squads.empty()) return orders;
++    centre=centre*(1.f/squads.size());
++    const int nearest=Nearest(knowledge,centre);
++    const Vec3 sector=nearest<0?centre:knowledge.contacts[nearest].position;
++    const float enemy=nearest<0?0:BelievedStrength(leader,sector,120,time);
++    state.believedRatio=enemy>0?strength/enemy:10;
++    const bool weak=nearest>=0 && state.believedRatio<.5f && !support;
++    if (!weak) state.observeStarted=-1;
++    else if (state.observeStarted<0) {
++        state.observeStarted=time; state.observeObjective=sector;
++        Trace(leader,diagnostics,time,"platoon_observation","believed ratio below one half without support; observe reports for at most 45 s",sector,leader.squad);
+     }
+-    if(squads.empty())return out;
+-    centroid=centroid*(1.f/squads.size());
+-    auto groups=Groups(knowledge);for(const auto& group:groups)for(int id:group)signature=signature*131+uint64_t(id+1);
+-    bool changed=signature!=state.activation||state.commander!=l.id;
+-    // Fire control belongs to the assault lane, never to a fixing directive instance.
+-    for(const auto& r:squads){
+-        if(r.phaseLineAt>state.phaseLines[r.squad%SquadsPerTeam]){
+-            state.phaseLines[r.squad%SquadsPerTeam]=r.phaseLineAt;
+-            state.fireControl.push_back({r.squad,r.phaseLineAt,r.observedAt,true,{r.assaultOrigin,r.assaultObjective,.08f,time}});
+-            Trace(l,d,time,"platoon_fire_control","received phase line: retain lane lift independently of fixing task",r.assaultObjective,r.squad);
+-        }
+-        for(auto& control:state.fireControl)if(control.active&&control.assaultSquad==r.squad&&r.observedAt>control.lastReportAt){
+-            control.lastReportAt=r.observedAt;
+-            const bool completed=r.completedAssaultLineAt==control.phaseLineAt;
+-            // A complete fresh own-member report must clear the whole 20 m lane
+-            // envelope (including both endpoints). Missing reports never clear it.
+-            const bool clear=!r.drillMemberPositions.empty()&&int(r.drillMemberPositions.size())==r.active&&
+-                std::all_of(r.drillMemberPositions.begin(),r.drillMemberPositions.end(),[&](Vec3 at){return SegmentDistance(at,at,control.lane.origin,control.lane.target)>20;});
+-            if(completed||clear){control.active=false;Trace(l,d,time,"platoon_fire_control",completed?"received assault completion: reopen lane":"received complete member report: lane no longer occupied; reopen",control.lane.target,r.squad);}
++    const bool withdraw=weak && time>=state.observeStarted+45;
++    // Assess received knowledge often; only material changes emit orders.
++    if (time<state.nextAssessment && state.commander==leader.id && withdraw==state.withdrawing) return orders;
++    state.nextAssessment=time+1; state.commander=leader.id; state.withdrawing=withdraw; ++state.revision;
++    const float direction=leader.team?-1.f:1.f;
++    const SquadSituation* needing=nullptr;int helper=-1;float helpDistance=1e9f;
++    for(const auto& report:squads){
++        const int index=report.squad%SquadsPerTeam;
++        const bool need=report.drillCause==TaskCause::InsufficientStrength;
++        if(!need){state.needSince[index]=-1;continue;}
++        if(state.needSince[index]<0)state.needSince[index]=time;
++        if(time-state.needSince[index]<2*config.reportDelay)continue;
++        bool answered=false;
++        for(const auto& other:squads)if(other.squad!=report.squad&&other.supportUseful&&Distance(other.goalObjective,report.goalObjective)<40)answered=true;
++        if(answered)continue;
++        for(const auto& other:squads)if(other.squad!=report.squad&&other.active>=3&&
++            other.drillKind!=int(BattleDrill::BreakContact)&&other.drillKind!=int(BattleDrill::Withdraw)){
++            float distance=Distance(other.position,report.position);
++            if(distance<helpDistance){helpDistance=distance;helper=other.squad;needing=&report;}
+         }
+     }
+-    auto fireControl=[&](PlatoonDirective& directive){
+-        if(directive.task!=PlatoonTask::Support)return;
+-        directive.liftFire=false;directive.assaultLane={};
+-        for(const auto& control:state.fireControl)if(control.active&&Distance(directive.intent.objective,control.lane.target)<20){
+-            directive.liftFire=true;directive.assaultLane=control.lane;
++    for (const auto& report:squads) {
++        const int index=report.squad%SquadsPerTeam;
++        auto& previous=state.assigned[index];
++        const bool matching=previous.intent.id && report.goalId==previous.intent.id && report.directive==previous.serial;
++        const bool done=matching && report.goalStatus==TaskStatus::Done;
++        const bool blocked=matching && report.goalStatus==TaskStatus::Blocked;
++        const bool retiring=report.goalStatus==TaskStatus::Executing &&
++            (report.drillKind==int(BattleDrill::BreakContact) || report.drillKind==int(BattleDrill::Withdraw));
++        int target=Nearest(knowledge,report.position);
++        // Keep a still-known group rather than chasing changes in nearest member.
++        if (previous.enemy>=0 && knowledge.contacts[previous.enemy].known &&
++            Distance(previous.sector,knowledge.contacts[previous.enemy].position)<=40) target=previous.enemy;
++        const auto task=withdraw?PlatoonTask::RetreatThere:report.squad==helper?PlatoonTask::HelpSquad:PlatoonTask::FightHere;
++        const bool knownChanged=(previous.enemy>=0)!=(target>=0) ||
++            (target>=0 && (previous.enemy!=target || Distance(previous.sector,knowledge.contacts[target].position)>40));
++        const bool change=!previous.taskNode || done || blocked ||
++            (!retiring && (previous.task!=task || knownChanged));
++        if (!change) {
++            if (previous.expiresAt-time<=15 || previous.issuer!=leader.id) {
++                Lifetime(previous,leader.id,time); orders.push_back({report.leader,previous});
++                Trace(leader,diagnostics,time,"platoon_task","renew committed intent (75 s lifetime)",previous.position,report.squad);
++            }
++            continue;
+         }
+-    };
+-    for(const auto& fix:squads){auto& previous=state.assigned[fix.squad%SquadsPerTeam];if(previous.task!=PlatoonTask::Support||!previous.taskNode)continue;
+-        const bool before=previous.liftFire;const auto lane=previous.assaultLane;fireControl(previous);
+-        if(before!=previous.liftFire||(previous.liftFire&&Distance(lane.target,previous.assaultLane.target)>.01f)){
+-            previous.issuedAt=time;out.push_back({fix.leader,previous});
+-            Trace(l,d,time,previous.liftFire?"platoon_lift":"platoon_reopen",previous.liftFire?"received assault phase line: lift/shift fixing fire via fire-lane transport":"received lane clearance: reopen fixing sector",previous.assaultLane.target,fix.squad);
++        PlatoonDirective order;
++        order.task=task; order.taskNode=1+report.squad; order.committedStrength=strength;
++        order.enemy=target; if (target>=0) order.contact=knowledge.contacts[target];
++        order.position=target<0?report.position+Vec3{direction*60,0}:knowledge.contacts[target].position;
++        order.sector=order.position;
++        std::string reason=target<0?"FightHere: next 60 m leg in own advance lane":"FightHere: nearest known group; squad chooses its drill";
++        if (withdraw) {
++            order.position=report.position+Vec3{-direction*60,0};
++            reason="RetreatThere: believed ratio below one half without support after 45 s observation";
+         }
++        if(task==PlatoonTask::HelpSquad){
++            order.helpSquad=needing->squad;order.position=needing->position;order.sector=needing->goalObjective;
++            reason="HelpSquad: received need unanswered for one report round trip; nearest squad with capacity";
++        }
++        const bool advancing=target<0 && task==PlatoonTask::FightHere;
++        if (advancing) {
++            if (state.advanceExhausted[index]) continue;
++            const bool guarded=done && state.advanceDoneSeen[index] && Distance(previous.position,state.advanceDoneObjectives[index])<18;
++            if (guarded) Trace(leader,diagnostics,time,"platoon_no_progress","two Done objectives within 18 m: resolved next leg must be at least 40 m ahead",order.position,report.squad);
++            Vec3 resolved;
++            if (!ResolveLeg(knowledge,map,config,report.position,order.position,guarded?40.f:1.f,time,resolved)) {
++                state.advanceExhausted[index]=true;
++                Trace(leader,diagnostics,time,"platoon_route_exhausted","resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal",order.position,report.squad);
++                continue;
++            }
++            order.position=resolved;
++            if (done) { state.advanceDoneSeen[index]=true; state.advanceDoneObjectives[index]=previous.position; }
++            // The only platoon area is the advance lane. Combat has no assigned area or corridor.
++            order.hasArea=true;
++            order.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,report.position.y-24)};
++            order.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,report.position.y+24)};
++            if (done) { order.intent.id=previous.intent.id; reason="renew committed FightHere: completed advance leg, next own-lane objective"; }
++        } else state.advanceExhausted[index]=false;
++        order.intent.purpose=withdraw?GoalPurpose::Withdraw:task==PlatoonTask::HelpSquad?GoalPurpose::Support:GoalPurpose::Seize;
++        order.intent.objective=task==PlatoonTask::HelpSquad?order.sector:order.position; order.intent.radius=12;
++        Lifetime(order,leader.id,time); previous=order; orders.push_back({report.leader,order});
++        Trace(leader,diagnostics,time,"platoon_task",reason,order.position,report.squad);
+     }
+-    if(!changed&&time<state.nextAssessment&&!(state.noFlankBranch==2&&time>=state.observeStarted+45))return out;
+-    state.activation=signature;state.commander=l.id;state.nextAssessment=time+5;++state.revision;
+-    const auto previousNodes=state.nodes;
+-    for(auto& node:state.nodes){node.active=false;node.assigned=0;}
+-    state.noCoveredRoute=false;
+-    const float direction=l.team?-1.f:1.f;
+-    Vec3 objective=centroid+Vec3{direction*60,0};
+-    int target=-1;float bestGroup=1e9f;
+-    std::vector<int> selected;
+-    for(const auto& group:groups){Vec3 centre{};for(int id:group)centre=centre+knowledge.contacts[id].position;centre=centre*(1.f/group.size());float distance=Distance(centroid,centre);if(distance<bestGroup){bestGroup=distance;objective=centre;target=group.front();selected=group;}}
+-    float enemy=target<0?0:BelievedStrength(l,objective,120,time);state.believedRatio=enemy>0?strength/enemy:10;
+-    Vec3 forward=Unit(objective-centroid),side{-forward.y,forward.x};
+-    bool withdraw=target>=0&&state.believedRatio<.5f&&!support;
+-    bool superiority=false;for(const auto& r:squads)superiority|=r.drillSuperiority;
+-    if(target<0||(state.noFlankBranch&&Distance(objective,state.observeObjective)>60)){state.observeStarted=-1;state.observeSuperiority=false;state.noFlankBranch=0;}
+-    if(state.observeStarted>=0)state.observeSuperiority|=superiority;
+-    auto add=[&](PlatoonNodeKind kind,int id,int priority,int capacity,Vec3 goal,bool weapon,const char* why){
+-        auto at=std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==id;});
+-        auto old=std::find_if(previousNodes.begin(),previousNodes.end(),[&](const auto& n){return n.id==id;});
+-        bool completed=false;int assigned=0,finished=0;
+-        for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];if(a.taskNode==id){++assigned;if(r.goalId==a.intent.id&&r.directive==a.serial&&(r.goalStatus==TaskStatus::Done||r.goalStatus==TaskStatus::Blocked))++finished;}}
+-        completed=assigned>0&&assigned==finished;
+-        if(old!=previousNodes.end()&&old->active&&old->kind==kind&&old->enemy==target&&!completed)goal=old->objective;
+-        if(at==state.nodes.end()){state.nodes.push_back({});at=state.nodes.end()-1;}
+-        auto& n=*at;n.id=id;n.parent=id==1?0:1;n.kind=kind;n.priority=priority;n.capacity=capacity;n.active=true;n.status=PlatoonNodeStatus::Active;n.objective=goal;n.enemy=target;n.needsWeapon=weapon;n.fireMovement=false;n.activation=why;
+-    };
+-    auto nodeAt=[&](int id)->PlatoonTaskNode&{return *std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==id;});};
+-    for(const auto& r:squads){
+-        Vec3 next{std::clamp(r.position.x+direction*60,-map.halfWidth+12,map.halfWidth-12),r.position.y};
+-        add(PlatoonNodeKind::Advance,30+r.squad,10,1,next,false,"no known contact; own reported position plus 60 m lane leg");
+-        auto& n=nodeAt(30+r.squad);n.active=target<0&&!state.advanceExhausted[r.squad%4];n.status=n.active?PlatoonNodeStatus::Active:state.advanceExhausted[r.squad%4]?PlatoonNodeStatus::Blocked:PlatoonNodeStatus::Dormant;
+-    }
+-    int fixing=-1,weapon=-1;float fixCost=1e9f;Vec3 fixPoint=centroid;
+-    for(const auto& r:squads)if(r.supportSoldier>=0)weapon=r.supportSoldier;
+-    if(target>=0&&!withdraw){
+-        for(const auto& r:squads){if(weapon>=0&&r.machineGuns==0)continue;Vec3 goal=r.position;bool lines=Lines(map,goal,objective,r.machineGuns?95:70);
+-            for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,r.position)<35&&Lines(map,cover.peek,objective,r.machineGuns?95:70)&&(!lines||Distance(r.position,cover.shelter)<Distance(r.position,goal))){goal=cover.shelter;lines=true;}
+-            float score=Distance(r.position,goal)/1.89f+(lines?0:1000)+(r.machineGuns?0:25);
+-            if(score<fixCost){fixCost=score;fixing=r.squad;fixPoint=goal;}
+-            if(r.supportSoldier>=0)weapon=r.supportSoldier;
+-        }
+-    }
+-    struct FlankChoice{int squad=-1,side=0;float score=1e9f;std::shared_ptr<TacticalRoute> route;};std::vector<FlankChoice> flanks;
+-    if(target>=0&&!withdraw){
+-        for(int direction:{-1,1}){Vec3 extreme=objective;float lateral=-1e9f;for(int id:selected){auto ct=knowledge.contacts[id];float dot=(ct.position.x-centroid.x)*side.x*direction+(ct.position.y-centroid.y)*side.y*direction;if(dot>lateral){lateral=dot;extreme=ct.position;}}
+-            for(const auto& r:squads)if(r.squad!=fixing){Vec3 goal=extreme+side*(35.f*direction)+forward*8;auto route=Route(knowledge,map,config,r.position,goal,time,{},r.squad,false);
+-                if(route&&Covered(map,knowledge,*route))flanks.push_back({r.squad,direction,route->cost.Total(),route});
+-            }
+-        }
+-        for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];
+-            if((a.task==PlatoonTask::FlankNorth||a.task==PlatoonTask::FlankSouth)&&a.corridor&&
+-               r.goalId==a.intent.id&&r.goalStatus==TaskStatus::Executing&&Distance(a.sector,objective)<30)
+-                flanks.push_back({r.squad,a.task==PlatoonTask::FlankNorth?1:-1,a.corridor->cost.Total(),std::make_shared<TacticalRoute>(*a.corridor)});
+-        }
+-        add(PlatoonNodeKind::Fix,2,90,1,objective,weapon>=0,"known group; potential firing lines");
+-        if(flanks.empty()){
+-            state.noCoveredRoute=true;
+-            if(state.observeStarted<0&&state.believedRatio<1&&!superiority){state.observeStarted=time;state.observeObjective=objective;state.observeSuperiority=false;}
+-            const bool expired=state.observeStarted>=0&&time>=state.observeStarted+45;
+-            const bool observing=!expired&&state.believedRatio<1&&!superiority;
+-            const int branch=expired&&!state.observeSuperiority?3:observing?2:1;
+-            if(branch!=state.noFlankBranch){
+-                // One honest route-rejection report, followed by the selected manoeuvre.
+-                if(!state.noFlankBranch)Trace(l,d,time,"platoon_blocked","no covered flank route: selecting bounded observation or attack by fire and movement",objective);
+-                Trace(l,d,time,"platoon_manoeuvre",branch==1?"no covered flank: attack by fire and movement; Reserve capacity zero":branch==2?"inferior without superiority: Fix/Observe/Reserve for at most 45 s":"45 s observation expired without superiority: Withdraw",objective);
+-                state.noFlankBranch=branch;state.observeObjective=objective;
+-            }
+-            if(branch==3){withdraw=true;nodeAt(2).active=false;}
+-            else if(branch==2)add(PlatoonNodeKind::Observe,3,60,1,objective,false,"inferior without superiority; bounded observation");
+-            else for(const auto& r:squads)if(r.squad!=fixing){
+-                const float sign=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y>=0?1.f:-1.f;
+-                Vec3 extreme=objective;float extent=-1e9f;
+-                for(int id:selected){Vec3 delta=knowledge.contacts[id].position-objective;float v=(delta.x*side.x+delta.y*side.y)*sign;if(v>extent){extent=v;extreme=knowledge.contacts[id].position;}}
+-                const float lane=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y;
+-                int outward=0;for(const auto& other:squads)if(other.squad!=fixing&&other.squad!=r.squad){
+-                    const float otherLane=(other.position.x-centroid.x)*side.x+(other.position.y-centroid.y)*side.y;
+-                    if(otherLane*sign>=0&&std::abs(otherLane)<std::abs(lane))++outward;
+-                }
+-                Vec3 goal=extreme+side*(sign*(24.f+24.f*outward))-forward*8;const Vec3 anchor=goal;
+-                // Flank-most catalogue cover near the group, ranked for this own lane.
+-                float best=1e9f;for(const auto& cover:CoverPositions(map)){
+-                    Vec3 delta=cover.shelter-objective;
+-                    if(Distance(cover.shelter,objective)>65||(delta.x*forward.x+delta.y*forward.y)<-20)continue;
+-                    float cost=Distance(cover.shelter,anchor)+.25f*Distance(r.position,cover.shelter);
+-                    if(cost<best){best=cost;goal=cover.shelter;}
+-                }
+-                add(PlatoonNodeKind::Advance,40+r.squad,80,1,goal,false,"attack by fire and movement in own corridor");nodeAt(40+r.squad).fireMovement=true;
+-            }
+-        }
+-        else {auto best=*std::min_element(flanks.begin(),flanks.end(),[](const auto&a,const auto&b){return a.score<b.score;});
+-            add(PlatoonNodeKind::Flank,3,80,std::min(int(squads.size())-1,std::max(1,int(std::round(squads.size()*.6f)))),best.route->destination,false,"covered flank with assigned fixing element");nodeAt(3).side=best.side;
+-        }
+-        add(PlatoonNodeKind::Reserve,4,20,state.noCoveredRoute&&state.noFlankBranch!=2?0:int(squads.size()),fixPoint-forward*30,false,"reserve behind fixing element");
+-    }
+-    if(withdraw)add(PlatoonNodeKind::Withdraw,5,100,int(squads.size()),centroid-forward*60,false,state.noFlankBranch==3?"bounded observation exhausted without superiority":"believed ratio below one half without support");
+-    for(const auto& r:squads)if(r.active<3&&squads.size()>1)add(PlatoonNodeKind::Merge,10+r.squad,95,1,centroid,false,"received remnant strength below three");
+-    for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];
+-        if(r.goalStatus==TaskStatus::Done&&r.goalId==a.intent.id&&
+-           (a.task==PlatoonTask::FlankNorth||a.task==PlatoonTask::FlankSouth))
+-            add(PlatoonNodeKind::Secure,20+r.squad,70,1,r.position,false,"received completed attack objective");
+-    }
+-    std::stable_sort(state.nodes.begin(),state.nodes.end(),[](const auto&a,const auto&b){return a.priority>b.priority;});std::vector<int> used,locked,retiring;
+-    for(const auto& r:squads){
+-        const bool retire=(r.drillKind==int(BattleDrill::BreakContact)||r.drillKind==int(BattleDrill::Withdraw))&&r.goalStatus==TaskStatus::Executing;
+-        if(retire)retiring.push_back(r.squad);
+-        auto& a=state.assigned[r.squad%4];
+-        auto node=std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==a.taskNode;});
+-        bool advanced=false;
+-        if(node!=state.nodes.end()&&node->active&&node->kind==PlatoonNodeKind::Advance&&!a.fireMovement&&
+-           r.goalStatus==TaskStatus::Done&&r.goalId==a.intent.id&&r.directive==a.serial){
+-            const int index=r.squad%4;Vec3 next=node->objective;
+-            const bool guarded=state.advanceDoneSeen[index]&&Distance(a.position,state.advanceDoneObjectives[index])<18;
+-            if(guarded){
+-                next.x=r.position.x+direction*std::max(40.f,(next.x-r.position.x)*direction);
+-                Trace(l,d,time,"platoon_no_progress","two completed objectives within 18 m: next leg at least 40 m ahead",next,r.squad);
+-            }
+-            auto route=Route(knowledge,map,config,r.position,next,time,{},r.squad,false);
+-            if(guarded&&(!route||(route->destination.x-r.position.x)*direction<40)){
+-                state.advanceExhausted[index]=true;node->active=false;node->status=PlatoonNodeStatus::Blocked;
+-                Trace(l,d,time,"platoon_route_exhausted","resolved endpoint cannot meet 40 m forward minimum; route exhausted, no unchanged renewal",next,r.squad);
+-            }else if(route){
+-                state.advanceDoneSeen[index]=true;state.advanceDoneObjectives[index]=a.position;
+-                node->objective=route->destination;a.position=route->destination;a.intent.objective=a.position;
+-                a.corridor=route;a.areaDiscCenter=a.position;a.issuedAt=time;a.expiresAt=time+75;a.intent.expiresAt=a.expiresAt;
+-                out.push_back({r.leader,a});advanced=true;
+-                Trace(l,d,time,"platoon_task","renew committed Advance: completed leg, next own-lane objective",a.position,r.squad);
+-            }
+-        }
+-        const bool executing=advanced||(r.goalId==a.intent.id&&r.goalStatus==TaskStatus::Executing)||
+-            ((r.goalId!=a.intent.id||r.directive!=a.serial)&&time<a.issuedAt+2*config.reportDelay+5);
+-        if(a.taskNode&&((node!=state.nodes.end()&&node->active&&executing)||retire)){
+-            used.push_back(r.squad);locked.push_back(r.squad);if(node!=state.nodes.end()){++node->assigned;node->status=PlatoonNodeStatus::Assigned;}
+-            if(a.expiresAt-time<=15||a.issuer!=l.id){a.issuedAt=time;a.expiresAt=time+75;a.intent.expiresAt=a.expiresAt;a.issuer=l.id;out.push_back({r.leader,a});Trace(l,d,time,"platoon_task","renew committed directive (75 s lifetime)",a.position,r.squad);}
+-        }else if(retire)used.push_back(r.squad);
+-    }
+-    // Retain accepted claims, removing only released/deactivated/completed assignments.
+-    state.claims.erase(std::remove_if(state.claims.begin(),state.claims.end(),[&](const auto& c){return std::find(locked.begin(),locked.end(),c.squad)==locked.end();}),state.claims.end());
+-    for(auto& c:state.claims)c.expiresAt=state.assigned[c.squad%4].expiresAt;
+-    for(auto& node:state.nodes)if(node.active){
+-        struct PairRoute{const SquadSituation* squad=nullptr;std::shared_ptr<TacticalRoute> route;};
+-        std::vector<PairRoute> joint;
+-        if(node.kind==PlatoonNodeKind::Flank&&node.capacity==2&&node.assigned==0&&std::find(used.begin(),used.end(),fixing)!=used.end()){
+-            float bestPair=1e30f;int pairSide=node.side;
+-            for(int flankSide:{node.side,-node.side}){
+-                Vec3 extreme=objective;float lateral=-1e9f;
+-                for(int id:selected){const Vec3 delta=knowledge.contacts[id].position-centroid;const float dot=(delta.x*side.x+delta.y*side.y)*flankSide;if(dot>lateral){lateral=dot;extreme=knowledge.contacts[id].position;}}
+-                struct Candidate{const SquadSituation* squad;std::shared_ptr<TacticalRoute> route;};std::vector<Candidate> candidates;
+-                for(const auto& r:squads)if(std::find(used.begin(),used.end(),r.squad)==used.end()&&std::find(retiring.begin(),retiring.end(),r.squad)==retiring.end()){
+-                    for(float offset:{35.f,59.f,83.f})for(float along:{8.f,-24.f,40.f}){
+-                        auto route=Route(knowledge,map,config,r.position,extreme+side*(offset*flankSide)+forward*along,time,state.claims,r.squad,claimsEnabled);
+-                        if(route&&Covered(map,knowledge,*route))candidates.push_back({&r,route});
+-                    }
+-                }
+-                for(const auto& a:candidates)for(const auto& b:candidates)if(a.squad->squad!=b.squad->squad){
+-                    auto second=b.route;
+-                    if(claimsEnabled&&!Separated(*a.route,*second)){
+-                        auto exclusions=state.claims;exclusions.push_back({a.squad->squad,node.id,20,time+75,a.route});
+-                        second=Route(knowledge,map,config,b.squad->position,b.route->destination,time,exclusions,b.squad->squad,true);
+-                    }
+-                    if(!second||!Covered(map,knowledge,*second)||(claimsEnabled&&!Separated(*a.route,*second)))continue;
+-                    float score=a.route->cost.Total()+second->cost.Total()+6;
+-                    for(auto r:{a.squad,b.squad})if(state.assigned[r->squad%4].taskNode==node.id)score-=18;
+-                    if(score<bestPair){bestPair=score;pairSide=flankSide;joint={{a.squad,a.route},{b.squad,second}};}
+-                }
+-            }
+-            if(!joint.empty()){node.side=pairSide;Trace(l,d,time,"platoon_corridor_pair","joint minimum-cost covered pair: both centrelines separated throughout",node.objective);}
+-            else Trace(l,d,time,"platoon_corridor_pair","no admissible pair on either side; second squad remains eligible for Reserve",node.objective);
+-        }
+-        for(int slot=node.assigned;slot<node.capacity;++slot){
+-        const SquadSituation* chosen=nullptr;std::shared_ptr<TacticalRoute> route;Vec3 goal=node.objective;float cost=1e9f;
+-        if(!joint.empty()){chosen=joint[slot].squad;route=joint[slot].route;goal=route->destination;}
+-        bool idleEligible=false;for(const auto& r:squads)if(std::find(used.begin(),used.end(),r.squad)==used.end()&&(!node.needsWeapon||r.machineGuns>0)&&(node.kind!=PlatoonNodeKind::Fix||r.squad==fixing))idleEligible=true;
+-        if(joint.empty())for(const auto& r:squads){
+-            if(std::find(retiring.begin(),retiring.end(),r.squad)!=retiring.end())continue;
+-            const bool busy=std::find(used.begin(),used.end(),r.squad)!=used.end();
+-            if(busy){const auto& a=state.assigned[r.squad%4];auto old=std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==a.taskNode;});
+-                if(idleEligible||old==state.nodes.end()||old->priority>=node.priority)continue;
+-            }
+-            if(node.kind==PlatoonNodeKind::Advance&&node.id!=(node.fireMovement?40:30)+r.squad)continue;
+-            if(node.kind==PlatoonNodeKind::Fix&&r.squad!=fixing)continue;
+-            if(node.needsWeapon&&r.machineGuns==0)continue;
+-            if(node.kind==PlatoonNodeKind::Flank&&std::find(used.begin(),used.end(),fixing)==used.end())continue;
+-            if(node.kind==PlatoonNodeKind::Merge&&(r.active>=3||node.id!=10+r.squad))continue;
+-            if(node.kind==PlatoonNodeKind::Secure&&node.id!=20+r.squad)continue;
+-            Vec3 desired=node.objective;
+-            if(node.kind==PlatoonNodeKind::Fix)desired=fixPoint;
+-
+-            if(node.kind==PlatoonNodeKind::Reserve||node.kind==PlatoonNodeKind::Withdraw)desired=desired+side*((r.squad%4-1.5f)*24);
+-            if(node.kind==PlatoonNodeKind::Observe)desired=r.position;
+-            auto candidate=Route(knowledge,map,config,r.position,desired,time,state.claims,r.squad,claimsEnabled&&(node.kind==PlatoonNodeKind::Flank||node.fireMovement));
+-            if(node.fireMovement&&!candidate){
+-                std::vector<Vec3> goals;for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,desired)<60)goals.push_back(cover.shelter);
+-                std::stable_sort(goals.begin(),goals.end(),[&](Vec3 a,Vec3 b){return Distance(a,desired)<Distance(b,desired);});
+-                for(Vec3 alternative:goals){candidate=Route(knowledge,map,config,r.position,alternative,time,state.claims,r.squad,claimsEnabled);if(candidate)break;}
+-            }
+-            if(node.kind==PlatoonNodeKind::Flank){
+-                if(candidate&&!Covered(map,knowledge,*candidate))candidate.reset();
+-                // Same preferred objective for all candidates. Search offset corridors
+-                // only after physical cover/exclusion rejects that preferred route.
+-                for(Vec3 offset:{side*(32.f*node.side),side*(-32.f*node.side),forward*32,forward*(-32)}){
+-                    if(candidate)break;
+-                    auto alternative=Route(knowledge,map,config,r.position,desired+offset,time,state.claims,r.squad,claimsEnabled);
+-                    if(alternative&&Covered(map,knowledge,*alternative))candidate=alternative;
+-                }
+-            }
+-            if(!candidate)continue;
+-            float score=candidate->cost.Total()+slot*6-(state.assigned[r.squad%4].taskNode==node.id?18:0);
+-            if(node.kind==PlatoonNodeKind::Fix&&!Lines(map,candidate->destination,objective,r.machineGuns?95:70))score+=1000;
+-            if(node.kind==PlatoonNodeKind::Flank&&fixing<0)score+=1000;
+-            if(score<cost){cost=score;chosen=&r;route=candidate;goal=route->destination;}
+-        }
+-        if(!chosen)break;
+-        const auto& r=*chosen;
+-        if(std::find(used.begin(),used.end(),r.squad)!=used.end()){
+-            auto& oldNode=nodeAt(state.assigned[r.squad%4].taskNode);--oldNode.assigned;
+-            state.claims.erase(std::remove_if(state.claims.begin(),state.claims.end(),[&](const auto& c){return c.squad==r.squad;}),state.claims.end());
+-        }else used.push_back(r.squad);++node.assigned;node.status=PlatoonNodeStatus::Assigned;
+-        PlatoonDirective directive;directive.taskNode=node.id;directive.fireMovement=node.fireMovement;directive.issuer=l.id;directive.position=goal;directive.sector=objective;directive.enemy=target;if(target>=0)directive.contact=knowledge.contacts[target];
+-        directive.issuedAt=time;directive.expiresAt=time+75;directive.corridor=route;directive.supportSoldier=weapon;directive.supportSquad=fixing;directive.committedStrength=strength;
+-        GoalPurpose purpose=GoalPurpose::Seize;
+-        switch(node.kind){case PlatoonNodeKind::Fix:directive.task=PlatoonTask::Support;purpose=GoalPurpose::Support;break;
+-        case PlatoonNodeKind::Flank:directive.task=node.side>0?PlatoonTask::FlankNorth:PlatoonTask::FlankSouth;break;
+-        case PlatoonNodeKind::Reserve:directive.task=PlatoonTask::Reserve;purpose=GoalPurpose::Support;break;
+-        case PlatoonNodeKind::Observe:directive.task=PlatoonTask::Observe;purpose=GoalPurpose::Observe;break;
+-        case PlatoonNodeKind::Withdraw:directive.task=PlatoonTask::Withdraw;purpose=GoalPurpose::Withdraw;break;
+-        case PlatoonNodeKind::Merge:directive.task=PlatoonTask::Merge;purpose=GoalPurpose::Support;directive.mergeInto=fixing;break;
+-        case PlatoonNodeKind::Secure:directive.task=PlatoonTask::Consolidate;purpose=GoalPurpose::Support;break;
+-        default:directive.task=PlatoonTask::Advance;break;}
+-        directive.intent={0,0,purpose,(node.kind==PlatoonNodeKind::Fix||node.kind==PlatoonNodeKind::Observe)?objective:goal,12,directive.expiresAt};
+-        Area(directive,map,r.position,goal,16);
+-        if(node.kind==PlatoonNodeKind::Flank||node.kind==PlatoonNodeKind::Advance){
+-            directive.areaRouteRadius=25;directive.areaDiscCenter=goal;directive.areaDiscRadius=60;
+-            // Bounds are diagnostics/map clipping only; admission uses the polyline union disc.
+-            directive.areaMin={-map.halfWidth+2,-map.halfHeight+2};directive.areaMax={map.halfWidth-2,map.halfHeight-2};
+-        }node.areaMin=directive.areaMin;node.areaMax=directive.areaMax;
+-        auto& old=state.assigned[r.squad%4];const bool same=old.taskNode==directive.taskNode&&Distance(old.position,directive.position)<8&&old.issuer==l.id;
+-        if(same){directive.position=old.position;directive.areaMin=old.areaMin;directive.areaMax=old.areaMax;directive.corridor=old.corridor;directive.areaRouteRadius=old.areaRouteRadius;directive.areaDiscCenter=old.areaDiscCenter;directive.areaDiscRadius=old.areaDiscRadius;directive.intent=old.intent;directive.intent.expiresAt=directive.expiresAt;directive.intent.id=old.intent.id;directive.liftFire=old.liftFire;directive.assaultLane=old.assaultLane;}
+-        fireControl(directive);
+-        route=std::const_pointer_cast<TacticalRoute>(directive.corridor);
+-        if(!same)route->id=900000000ULL+uint64_t(l.team)*1000000+uint64_t(state.revision)*32+r.squad;
+-        if(node.kind==PlatoonNodeKind::Flank||node.fireMovement){state.claims.push_back({r.squad,node.id,20,time+75,route});Trace(l,d,time,"platoon_corridor","own claimed flank corridor; other centreline routes excluded within 20 m",goal,r.squad);}
+-        if(!same||old.expiresAt-time<=15){old=directive;out.push_back({r.leader,directive});Trace(l,d,time,"platoon_task",same?"renew committed directive (75 s lifetime)":"greedy task assignment: travel + coordination + balance - stickiness",goal,r.squad);}
+-    }
+-    }
+-    for(auto& n:state.nodes)if(n.active&&!n.assigned)n.status=PlatoonNodeStatus::Blocked;
+-    return out;
++    return orders;
+ }
+ }
+--- entry/PlatoonTaskSim.h
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.h
+@@ -2,7 +2,7 @@
+ #include "PlatoonSim.h"
+ namespace army {
+ // Policy input is one commander's memory and this commander's own intentions.
+-std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier&,const Map&,const Config&,PlatoonTaskState&,Diagnostics*,float,bool claimsEnabled=true);
++std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier&,const Map&,const Config&,PlatoonTaskState&,Diagnostics*,float);
+ void MakePlatoonEncounter(const Config&,int,Map&,Frame&);
+ void StepPlatoonEncounter(int,Frame&);
+ }
+--- entry/SquadDrillSim.cpp
++++ Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+@@ -304,7 +304,7 @@
+         ActionTrace(l,p,d,time,"drill_stage_advanced","received platoon phase-line/fire-lane amendment: lift original area; shift to remaining known threats");
+         return true;
+     }
+-    if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Support&&l.platoonOrder.task==PlatoonTask::Support){
++    if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Support&&(l.platoonOrder.task==PlatoonTask::Support||l.platoonOrder.task==PlatoonTask::HelpSquad)){
+         Accept(l,p,BattleDrill::SupportByFire,d,time,"SupportByFire: received threat-area order");p.action.objective=l.platoonOrder.intent.objective;
+         Stage(l,p,d,time,DrillStage::SupportPrepare,"occupy protected firing positions; wait for element delivered rounds");
+         int slots=Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);

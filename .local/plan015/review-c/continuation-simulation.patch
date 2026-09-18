@@ -1,0 +1,262 @@
+diff -ruN .local/plan015/review-c/entry/Sim/BattleSim.cpp Unreal/Source/ArmyPrototype/Sim/BattleSim.cpp
+--- .local/plan015/review-c/entry/Sim/BattleSim.cpp	2026-09-17 08:45:42.026322350 -0700
++++ Unreal/Source/ArmyPrototype/Sim/BattleSim.cpp	2026-09-17 09:27:06.613113957 -0700
+@@ -667,7 +667,7 @@
+     if(input.family!=ScenarioFamily::None&&(encounter!=0||input.recoveryFixture||input.terrain!=Terrain::FracturedWorks))throw std::invalid_argument("Generated scenarios cannot combine with encounters, recovery or authored terrain");
+     if(TypedController(input)&&(!input.foundations||input.reportDelay<0||input.reportDelay>10||!std::isfinite(input.reportDelay)))throw std::invalid_argument("Cognition requires foundations and a report delay between 0 and 10 seconds");
+     if(input.cognition)for(float value:{input.officer.judgment,input.officer.risk,input.officer.adaptability})if(!std::isfinite(value)||value<0||value>1)throw std::invalid_argument("Officer profile values must be 0..1");
+-    if(input.drills&&(input.cognition||input.recoveryFixture||!(encounter==0||(encounter>=5&&encounter<=7)||(encounter>=44&&encounter<=93))))throw std::invalid_argument("Drills require encounter 0 or 5..7 and exclusive controller selection");
++    if(input.drills&&(input.cognition||input.recoveryFixture||!(encounter==0||(encounter>=5&&encounter<=7)||(encounter>=44&&encounter<=98))))throw std::invalid_argument("Drills require encounter 0 or 5..7 and exclusive controller selection");
+     if(input.foundations&&((encounter!=8&&!(input.cognition&&(encounter==0||(encounter>=5&&encounter<=43)))&&!input.drills)||input.recoveryFixture))throw std::invalid_argument("Foundations policy requires encounter 8 and cannot combine with recovery");
+     if(encounter>=9&&encounter<=43&&!input.cognition)throw std::invalid_argument("Cognitive scenarios require --cognition");
+     if(encounter==8&&!input.foundations)throw std::invalid_argument("Encounter 8 requires --foundations");
+@@ -681,7 +681,7 @@
+     if(encounter==8){r.encounter=8;MakeMGEncounter(c,1,r.map,f);}
+     if(encounter>=9&&encounter<=43){r.encounter=encounter;MakeCognitiveEncounter(c,encounter,r.map,f);}
+     if(encounter>=44&&encounter<=69){if(!c.drills)throw std::invalid_argument("Drill fixtures require --drills");r.encounter=encounter;MakeDrillEncounter(c,encounter,r.map,f);}
+-    if(encounter>=70&&encounter<=93){r.encounter=encounter;MakePlatoonEncounter(c,encounter,r.map,f);}
++    if(encounter>=70&&encounter<=98){r.encounter=encounter;MakePlatoonEncounter(c,encounter,r.map,f);}
+     if(encounter==10&&geometry.empty()){
+         GeometryEdit change;change.time=2;change.obstacle=r.map.obstacles.front().id;change.remove=false;
+         change.replacement={{0,0},{1,90},false,false,4};geometry.push_back(change);
+@@ -717,7 +717,7 @@
+         auto stageStart=DiagnosticClock::now();
+         f.time=tick*TickSeconds;
+         if(c.drills&&encounter>=56&&encounter<=69)StepDrillEncounter(encounter,f);
+-        if(c.drills&&encounter>=70&&encounter<=93)StepPlatoonEncounter(encounter,f);
++        if(c.drills&&encounter>=70&&encounter<=98)StepPlatoonEncounter(encounter,f);
+         for(size_t g=0;g<geometry.size();++g)if(!applied[g]&&geometry[g].time<=f.time){
+             applied[g]=true;const auto& edit=geometry[g];
+             for(const auto& obstacle:r.map.obstacles)if(obstacle.id==edit.obstacle)changedObstacles[g]=obstacle;
+diff -ruN .local/plan015/review-c/entry/Sim/BattleSim.h Unreal/Source/ArmyPrototype/Sim/BattleSim.h
+--- .local/plan015/review-c/entry/Sim/BattleSim.h	2026-09-17 08:44:41.740682354 -0700
++++ Unreal/Source/ArmyPrototype/Sim/BattleSim.h	2026-09-17 09:25:47.324332670 -0700
+@@ -117,6 +117,7 @@
+     bool paused=false;
+     bool unavailable=false;
+     bool rifleSupport=false;int supportThreat=-1;
++    bool arrivalCheck=false; // Drills: stage-clock expiry requests a physical arrival receipt.
+     float rushSeconds=0; // Drills only: bounded movement permission after activation.
+ };
+ struct ObservationCoverage {
+@@ -467,7 +468,9 @@
+     std::vector<SquadBroadcast> broadcasts;
+     bool helpApproach=false;Vec3 helpObjective{};
+     int radioLaneRevision=0;
+-    int radioSequence=0,radioAttackInstance=0,radioSupportSquad=-1,radioLeadSquad=-1,radioHandled=0;
++    int radioSequence=0,radioAttackInstance=0,radioSupportSquad=-1,radioLeadSquad=-1;
++    std::array<std::array<int,UnitCount>,5> radioConsumed{};
++    bool arrivalCheckPending=false;
+     float radioFireSince=-1,radioPhaseAt=-1,radioDoneAt=-1;bool radioFixing=false,radioNeed=false;
+     Vec3 radioObjective{},radioSupportPosition{};
+     bool platoonArea=false,platoonLift=false;int platoonTaskNode=0;float directiveUntil=0;
+diff -ruN .local/plan015/review-c/entry/Sim/CommandSim.cpp Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+--- .local/plan015/review-c/entry/Sim/CommandSim.cpp	2026-09-17 08:40:45.079072399 -0700
++++ Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp	2026-09-17 09:25:47.326772423 -0700
+@@ -438,7 +438,7 @@
+         const bool drillPauseAmendment=config.drills&&rt.lastSent[recipient].drillInstance>0&&rt.lastSent[recipient].execution.paused!=execution.paused;
+         const bool retainedTask=recovery&&rt.lastSent[recipient].intent.id==intent.id&&rt.lastSent[recipient].execution.method==execution.method&&rt.lastSent[recipient].execution.stage==execution.stage&&rt.lastSent[recipient].execution.generation==execution.generation&&rt.lastSent[recipient].execution.completion==execution.completion&&rt.lastSent[recipient].execution.unavailable==execution.unavailable&&rt.lastSent[recipient].execution.rifleSupport==execution.rifleSupport&&rt.lastSent[recipient].execution.supportThreat==execution.supportThreat&&EquivalentTask(rt.lastSent[recipient],task,position,sector,plan.targetEnemy)&&rt.lastSent[recipient].teamPlan.liftFire==plan.liftFire&&rt.lastSent[recipient].teamPlan.assaultAreaFire==plan.assaultAreaFire&&(drillPauseAmendment||(rt.lastSent[recipient].hasSlot==(slot!=nullptr)&&
+             (!slot||(rt.lastSent[recipient].slot.id==slot->id&&Distance(rt.lastSent[recipient].slot.shelter,slot->shelter)<.05f&&Distance(rt.lastSent[recipient].slot.peek,slot->peek)<.05f))));
+-        if(retainedTask&&rt.lastSent[recipient].execution.paused==execution.paused)return;
++        if(retainedTask&&rt.lastSent[recipient].execution.paused==execution.paused&&rt.lastSent[recipient].execution.arrivalCheck==execution.arrivalCheck)return;
+         const Map& orderMap=recovery&&rt.geometryViews?(*rt.geometryViews)[sender]:map;
+         if(!ResolveOrderPosition(orderMap,f.soldiers[recipient].position,requested,position)) {
+             log(EventKind::Decision,sender,recipient,std::string(Name(sender))+": no reachable waypoint for "+Name(recipient));return;
+diff -ruN .local/plan015/review-c/entry/Sim/Diagnostics.cpp Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp
+--- .local/plan015/review-c/entry/Sim/Diagnostics.cpp	2026-09-17 08:44:41.740843240 -0700
++++ Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp	2026-09-17 09:25:47.328506431 -0700
+@@ -166,9 +166,9 @@
+                 for(int n=0;n<SquadsPerTeam;++n){i(t.advanceDoneSeen[n]);i(t.advanceExhausted[n]);v(t.advanceDoneObjectives[n]);}
+                 f(t.observeStarted);v(t.observeObjective);for(float at:t.needSince)f(at);
+             }
+-            for(const auto& command:frame.command){const auto& p=command.battleDrill;i(p.action.assaultRushRecovered);i(p.action.areaFireOrdered);i(p.action.supportSearchTried);i(p.action.supportSearchExhausted);i(p.action.boundSupportThreat);i(p.action.supportPositionReady);i(p.action.helping);i(p.helpApproach);v(p.helpObjective);i(p.radioLaneRevision);i(p.radioSequence);i(p.radioAttackInstance);i(p.radioSupportSquad);i(p.radioLeadSquad);i(p.radioHandled);f(p.radioFireSince);f(p.radioPhaseAt);f(p.radioDoneAt);i(p.radioFixing);i(p.radioNeed);v(p.radioObjective);v(p.radioSupportPosition);for(const auto& message:p.broadcasts)radio(message);}
++            for(const auto& command:frame.command){const auto& p=command.battleDrill;i(p.action.assaultRushRecovered);i(p.action.areaFireOrdered);i(p.action.supportSearchTried);i(p.action.supportSearchExhausted);i(p.action.boundSupportThreat);i(p.action.supportPositionReady);i(p.action.helping);i(p.helpApproach);v(p.helpObjective);i(p.radioLaneRevision);i(p.radioSequence);i(p.radioAttackInstance);i(p.radioSupportSquad);i(p.radioLeadSquad);for(const auto& kind:p.radioConsumed)for(int serial:kind)i(serial);i(p.arrivalCheckPending);f(p.radioFireSince);f(p.radioPhaseAt);f(p.radioDoneAt);i(p.radioFixing);i(p.radioNeed);v(p.radioObjective);v(p.radioSupportPosition);for(const auto& message:p.broadcasts)radio(message);}
+             for(const auto& unit:frame.soldiers){i(unit.organisation);for(const auto& message:unit.squadRadio)radio(message);directive(unit.platoonOrder);for(const auto& r:unit.platoonReports){i(r.drillSuperiority);f(r.phaseLineAt);f(r.completedAssaultLineAt);v(r.assaultObjective);v(r.assaultOrigin);for(Vec3 at:r.drillMemberPositions)v(at);}}
+-            for(const auto& unit:frame.soldiers){const auto& a=unit.assignment;i(a.teamPlan.assaultAreaFire);v(a.teamPlan.assaultFireArea);i(a.teamPlan.assaultFireEnemy);for(const auto& lane:a.teamPlan.friendlyAssaultLanes){v(lane.origin);v(lane.target);f(lane.observedAt);}f(a.areaRouteRadius);if(a.areaRoute){v(a.areaRoute->start);for(Vec3 point:a.areaRoute->points)v(point);}i(a.drillInstance);i(a.element);i(a.baseOfFire);v(a.areaMin);v(a.areaMax);v(a.areaDiscCenter);f(a.areaDiscRadius);i(a.execution.method);i(a.execution.stage);i(a.execution.generation);i(int(a.execution.completion));f(a.execution.deadline);i(a.execution.paused);f(a.execution.rushSeconds);f(a.drillRushPausedAt);f(a.drillRushPausedSeconds);
++            for(const auto& unit:frame.soldiers){const auto& a=unit.assignment;i(a.teamPlan.assaultAreaFire);v(a.teamPlan.assaultFireArea);i(a.teamPlan.assaultFireEnemy);for(const auto& lane:a.teamPlan.friendlyAssaultLanes){v(lane.origin);v(lane.target);f(lane.observedAt);}f(a.areaRouteRadius);if(a.areaRoute){v(a.areaRoute->start);for(Vec3 point:a.areaRoute->points)v(point);}i(a.drillInstance);i(a.element);i(a.baseOfFire);v(a.areaMin);v(a.areaMax);v(a.areaDiscCenter);f(a.areaDiscRadius);i(a.execution.method);i(a.execution.stage);i(a.execution.generation);i(int(a.execution.completion));f(a.execution.deadline);i(a.execution.paused);f(a.execution.rushSeconds);i(a.execution.arrivalCheck);f(a.drillRushPausedAt);f(a.drillRushPausedSeconds);
+                 for(const auto& report:unit.platoonReports){i(report.drillInstance);i(report.drillKind);i(int(report.drillCause));i(report.drillRecovering);bytes(report.drillNote.data(),report.drillNote.size());}
+             }
+             for(const auto& cmd:frame.command){const auto& p=cmd.battleDrill;
+diff -ruN .local/plan015/review-c/entry/Sim/DrillSim.cpp Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+--- .local/plan015/review-c/entry/Sim/DrillSim.cpp	2026-09-17 08:37:48.837948134 -0700
++++ Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp	2026-09-17 09:27:06.614643303 -0700
+@@ -81,7 +81,7 @@
+ }
+ static void Accept(const Soldier& leader,DrillPlan& p,BattleDrill kind,Diagnostics* d,float time){
+     if(p.kind==kind&&p.instance)return;
+-    p.kind=kind;++p.instance;p.started=time;p.assessed=false;p.closeAfterCover=false;p.retreat=false;p.closing=false;
++    p.kind=kind;p.arrivalCheckPending=false;++p.instance;p.started=time;p.assessed=false;p.closeAfterCover=false;p.retreat=false;p.closing=false;
+     p.intent={100000+leader.squad*1000+p.instance,p.intent.parent,GoalPurpose::Seize,p.destination,10,0};
+     Trace(d,leader,p,time,"drill_accepted",kind==BattleDrill::ReactToContact?"ReactToContact: cover and return fire":"MoveTactically");
+ }
+@@ -222,6 +222,7 @@
+             Trace(d,leader,p,time,"formation_slot",std::string(p.interval==4?"column interval 4 m":"wedge interval 10 m")+(result.valid?"; allocated":p.slotWaiting[slot]?"; ahead of centre, anchor outside coherence: wait":"; unavailable position"),s.id,p.positions[slot]);
+         }
+     }
++    if(!repair)p.arrivalCheckPending=false;
+     p.support=-1;for(const auto& s:members)if(p.elements[s.id%SquadSize]==0&&p.hasSlot[s.id%SquadSize]){p.support=s.id;break;}
+     if(!repair){
+         p.stageElapsed=0;p.clockAt=time;
+@@ -316,7 +317,21 @@
+     for(int el=0;el<2;++el)below|=p.strength[el]>=Organisation(OrganisationKind::Section).elements[el].minStrength&&strength[el]<Organisation(OrganisationKind::Section).elements[el].minStrength;
+     p.strength=strength;
+     if(arrived&&p.stage==DrillStage::ContactCover)p.coverComplete=true;
+-    const bool deadline=ProgressClock(leader,members,p,time);
++    bool deadline=ProgressClock(leader,members,p,time);
++    if(p.arrivalCheckPending){
++        bool answered=true;
++        for(const auto& s:members){int n=s.id%SquadSize;if(!p.waiting[n]||p.arrivals[n])continue;
++            const auto& receipt=leader.taskReports[n];
++            answered&=receipt.id==p.expected[n]&&receipt.execution.generation==p.orderGenerations[n]&&
++                receipt.execution.arrivalCheck&&(receipt.status==TaskStatus::Done||receipt.status==TaskStatus::Failed);
++        }
++        deadline=answered;
++    }else if(deadline&&p.kind==BattleDrill::MoveTactically&&!arrived){
++        p.arrivalCheckPending=true;
++        for(const auto& s:members){int n=s.id%SquadSize;if(p.waiting[n]&&!p.arrivals[n])p.issue[n]=true;}
++        Trace(d,leader,p,time,"drill_stage_advanced","movement clock expired: request actual-position arrival certification; retain stage and generation");
++        return;
++    }
+     const bool noMovers=std::none_of(p.movers.begin(),p.movers.end(),[](bool moving){return moving;});
+     if(p.stalledExpiries&&Distance(p.center,p.expiryPosition)>6){p.stalledExpiries=0;p.noProgressBlocked=false;}
+     if(!p.effectiveFire)p.retreat=false;
+@@ -344,7 +359,7 @@
+     else if(directive)trigger="received platoon directive";
+     if(deployment||reassess){p.target=target;p.sector=target>=0?knowledge.contacts[target].position:p.center+Vec3{leader.team?-60.f:60.f,0};}
+     auto expire=[&](){
+-        p.exhausted=false;p.deadline=0;
++        p.exhausted=false;p.deadline=0;p.arrivalCheckPending=false;
+         p.attempts.push_back({CognitiveMethod::None,p.intent.objective,p.destination,map.revision,leader.knowledgeRevision,time,TaskCause::Timeout});
+         if(!p.stalledExpiries||Distance(p.center,p.expiryPosition)>6){p.stalledExpiries=1;p.expiryPosition=p.center;}else ++p.stalledExpiries;
+         if(p.stalledExpiries>=2||p.forceColumn){
+@@ -443,7 +458,7 @@
+     for(const auto& s:squad)if(s.Active()&&!IsPlatoonStaff(s)&&p.issue[s.id%SquadSize]&&p.elements[s.id%SquadSize]>=0){const int n=s.id%SquadSize;
+         PlannedOrder o{};o.recipient=s.id;o.task=p.retreat?Task::PullBack:p.stage==DrillStage::Travel?Task::BoundMove:Task::Overwatch;
+         o.position=p.positions[n];o.sector=p.sector;o.hasSlot=p.hasSlot[n];o.slot=p.slots[n];o.teamPlan.route=p.memberRoutes[n];o.teamPlan.targetEnemy=p.target;o.teamPlan.released=p.movers[n];
+-        o.execution.completion=p.stage==DrillStage::Travel?Completion::Transit:Completion::Occupy;o.execution.method=p.orderMethods[n];o.execution.generation=p.orderGenerations[n];o.execution.stage=p.leg;o.execution.deadline=0; // Squad progress clock owns expiry, including shelter pauses.
++        o.execution.completion=p.stage==DrillStage::Travel?Completion::Transit:Completion::Occupy;o.execution.method=p.orderMethods[n];o.execution.generation=p.orderGenerations[n];o.execution.stage=p.leg;o.execution.arrivalCheck=p.arrivalCheckPending&&p.waiting[n]&&!p.arrivals[n];o.execution.deadline=0; // Squad progress clock owns expiry, including shelter pauses.
+         if(p.action.closureFallback&&!p.movers[n]&&p.elements[n]==0){
+             o.task=Task::BoundCover;o.execution.completion=Completion::Support;o.execution.rifleSupport=true;o.execution.supportThreat=p.target;
+         }
+diff -ruN .local/plan015/review-c/entry/Sim/PlatoonFixtures.cpp Unreal/Source/ArmyPrototype/Sim/PlatoonFixtures.cpp
+--- .local/plan015/review-c/entry/Sim/PlatoonFixtures.cpp	2026-09-17 08:01:07.600806469 -0700
++++ Unreal/Source/ArmyPrototype/Sim/PlatoonFixtures.cpp	2026-09-17 09:37:04.208057372 -0700
+@@ -1,7 +1,33 @@
+ #include "PlatoonTaskSim.h"
+ #include "DrillSim.h"
++#include <algorithm>
+ namespace army {
+-void MakePlatoonEncounter(const Config&,int id,Map& map,Frame& f){
++void MakePlatoonEncounter(const Config& config,int id,Map& map,Frame& f){
++    if(id>=94&&id<=96){
++        MakePlatoonEncounter(config,90,map,f);
++        // Three independent squads, no screened flank. Physical attrition and
++        // delivered fire generate the broadcasts through normal transport.
++        map.obstacles.erase(std::remove_if(map.obstacles.begin(),map.obstacles.end(),[](const auto& o){return o.half.x>20;}),map.obstacles.end());
++        // The volunteer is within radio-help distance but cannot reach weapon
++        // range in the 60 m support search. Delay actual fixing fire until that
++        // local exhaustion is established, then deliver the unrelated offer.
++        for(int n=8;n<16;++n){auto& s=f.soldiers[n];s.position=s.position-Vec3{90,20};s.goal=s.position;}
++        for(int n=16;n<24;++n)f.soldiers[n].reloadUntil=35;
++        for(int squad=0;squad<3;++squad){auto& s=f.soldiers[squad*8];auto& order=s.platoonOrder;
++            order.task=squad==2?PlatoonTask::HelpSquad:PlatoonTask::None;
++            order.helpSquad=squad==2?0:-1;order.intent.objective=squad==2?Vec3{70,0}:s.position;
++        }
++        for(int n=0;n<8;++n)f.soldiers[n].reloadUntil=10000;
++        if(id==95)for(int n=16;n<24;++n)f.soldiers[n].health=0;
++        if(id==96)for(int n=0;n<8;++n)f.soldiers[n].health=0;
++        PrepareGeometry(map);return;
++    }
++    if(id==97||id==98){
++        MakePlatoonEncounter(config,82,map,f);
++        for(int n=8;n<32;++n)f.soldiers[n].health=0;
++        f.platoon[0].leader=f.platoon[0].sergeant=-1;
++        return;
++    }
+     map=Map{};map.halfWidth=200;map.halfHeight=140;
+     for(auto& s:f.soldiers){s.health=0;s.action=Action::Killed;s.assignment={};s.contacts={};s.reports={};}
+     for(int n=0;n<32;++n){auto& s=f.soldiers[n];s.health=1000;s.position={-50.f-float(n%8)/2*3,(n/8-1.5f)*32+(n%4-1.5f)*5};s.goal=s.position;s.reloadUntil=0;}
+@@ -73,6 +99,12 @@
+     PrepareGeometry(map);
+ }
+ void StepPlatoonEncounter(int id,Frame& f){
++    if((id==94||id==95)&&f.time>=20)for(int n:{2,6,7}){f.soldiers[n].health=0;f.soldiers[n].action=Action::Wounded;}
++    if(id==97||id==98)for(int n=0;n<8;++n){auto& s=f.soldiers[n];
++        // A physical reload halts movers short of their already accepted end.
++        // No assignment, clock, knowledge or receipt is fabricated.
++        if(s.assignment.drillInstance>0&&Distance(s.position,s.assignment.position)<(id==97?2.8f:5.8f)&&f.time>2)s.reloadUntil=f.time+.3f;
++    }
+     if(id==76&&f.time>=20){f.soldiers[5].health=0;f.soldiers[5].action=Action::Killed;}
+     if((id==92||id==93)&&f.time>=20)for(int n:{2,6,7}){f.soldiers[n].health=0;f.soldiers[n].action=Action::Wounded;}
+     // Negative expiry control removes the reporting/renewal endpoint physically.
+diff -ruN .local/plan015/review-c/entry/Sim/ReactionSim.cpp Unreal/Source/ArmyPrototype/Sim/ReactionSim.cpp
+--- .local/plan015/review-c/entry/Sim/ReactionSim.cpp	2026-09-17 07:50:02.171712856 -0700
++++ Unreal/Source/ArmyPrototype/Sim/ReactionSim.cpp	2026-09-17 09:25:47.326964390 -0700
+@@ -76,6 +76,7 @@
+                     s.assignment.hasSlot=p.order.hasSlot;s.assignment.slot=p.order.slot;s.assignment.teamPlan.route=p.order.teamPlan.route;
+                 }
+                 s.assignment.serial=p.order.serial;s.assignment.execution.paused=p.order.execution.paused;
++                if(s.assignment.drillInstance>0)s.assignment.execution.arrivalCheck=p.order.execution.arrivalCheck;
+                 if(s.assignment.execution.deadline==0&&!p.order.execution.paused)s.assignment.execution.deadline=p.order.execution.deadline;
+                 s.assignment.teamPlan.released=p.order.teamPlan.released;
+                 TaskReceipt receipt;receipt.id=s.assignment.id;receipt.serial=s.assignment.serial;receipt.sequence=++s.assignment.statusSequence;
+diff -ruN .local/plan015/review-c/entry/Sim/SquadDrillSim.cpp Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+--- .local/plan015/review-c/entry/Sim/SquadDrillSim.cpp	2026-09-17 08:57:19.014344532 -0700
++++ Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp	2026-09-17 09:25:47.326573746 -0700
+@@ -17,7 +17,7 @@
+ void Stage(const Soldier& l,DrillPlan& p,Diagnostics* d,float t,DrillStage stage,const std::string& why){p.stage=stage;p.lastProgress=t;ActionTrace(l,p,d,t,"drill_stage_advanced",why);}
+ void Accept(const Soldier& l,DrillPlan& p,BattleDrill kind,Diagnostics* d,float t,const char* why){
+     p.action={};p.action.active=true;p.action.acceptedAt=t;p.action.objective=p.sector;p.action.base=p.center;
+-    p.kind=kind;++p.instance;p.started=t;p.blocked=false;p.exhausted=false;p.localRetries=0;p.noProgressBlocked=false;p.retreat=false;p.deadline=0;
++    p.kind=kind;++p.instance;p.started=t;p.blocked=false;p.exhausted=false;p.localRetries=0;p.noProgressBlocked=false;p.retreat=false;p.deadline=0;p.arrivalCheckPending=false;
+     p.intent.id=100000+l.squad*1000+p.instance;p.intent.objective=p.action.objective;
+     p.intent.purpose=kind==BattleDrill::Observe?GoalPurpose::Observe:kind==BattleDrill::BreakContact||kind==BattleDrill::Withdraw?GoalPurpose::Withdraw:kind==BattleDrill::SupportByFire||kind==BattleDrill::Occupy?GoalPurpose::Support:GoalPurpose::Seize;
+     ActionTrace(l,p,d,t,"drill_accepted",std::string(why)+((kind==BattleDrill::SupportByFire||kind==BattleDrill::SquadAttack)?"; area = deployment lane UNION objective disc radius 60 m, clipped to map":""));
+@@ -329,18 +329,19 @@
+     if(p.kind==BattleDrill::BreakContact||p.kind==BattleDrill::Withdraw)return false;
+     const bool compatible=l.platoonOrder.task==PlatoonTask::None||l.platoonOrder.task==PlatoonTask::FightHere||l.platoonOrder.task==PlatoonTask::HelpSquad;
+     if(!compatible)return false;
+-    if(need&&need->serial!=p.radioHandled&&CanVolunteer(l,false)&&
++    auto consumed=[&](const SquadBroadcast& message)->int&{return p.radioConsumed[int(message.kind)][message.sender];};
++    if(need&&need->serial>consumed(*need)&&CanVolunteer(l,false)&&
+         (p.target<0||Distance(p.sector,need->objective)<40)&&p.kind!=BattleDrill::SquadAttack){
+-        p.radioHandled=need->serial;p.target=need->enemy;p.sector=need->objective;
++        consumed(*need)=need->serial;p.target=need->enemy;p.sector=need->objective;
+         Accept(l,p,BattleDrill::SupportByFire,d,time,"radio NeedSupport: volunteer support by fire within 100 m");
+         p.action.objective=need->objective;p.action.helping=true;
+         Stage(l,p,d,time,DrillStage::SupportPrepare,"help: occupy protected slots covering neighbour's group");
+         Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+         return true;
+     }
+-    if(!fixing||fixing->serial==p.radioHandled||!CanVolunteer(l,true)||p.kind==BattleDrill::SquadAttack||
++    if(!fixing||fixing->serial<=consumed(*fixing)||!CanVolunteer(l,true)||p.kind==BattleDrill::SquadAttack||
+        (p.target>=0&&Distance(p.sector,fixing->objective)>=40)||p.effectiveFire)return false;
+-    p.radioHandled=fixing->serial;
++    consumed(*fixing)=fixing->serial;
+     auto candidate=p;candidate.radioSupportSquad=fixing->squad;candidate.radioSupportPosition=fixing->position;
+     candidate.action.objective=fixing->objective;
+     auto route=Flank(l,knowledge,members,map,config,candidate,d,time,false);
+diff -ruN .local/plan015/review-c/entry/Sim/TaskSim.cpp Unreal/Source/ArmyPrototype/Sim/TaskSim.cpp
+--- .local/plan015/review-c/entry/Sim/TaskSim.cpp	2026-09-17 08:58:16.902939981 -0700
++++ Unreal/Source/ArmyPrototype/Sim/TaskSim.cpp	2026-09-17 09:27:06.614973695 -0700
+@@ -212,7 +212,7 @@
+     // including during a reload or shelter interruption; never certify support.
+     const auto& movement=s.assignment;
+     const bool movementTimeout=movement.drillInstance>0&&!movement.execution.paused&&
+-        ((movement.execution.rushSeconds>0&&time-movement.activatedAt-movement.drillRushPausedSeconds>=movement.execution.rushSeconds)||
++        (movement.execution.arrivalCheck||(movement.execution.rushSeconds>0&&time-movement.activatedAt-movement.drillRushPausedSeconds>=movement.execution.rushSeconds)||
+          (movement.execution.deadline>0&&time>=movement.execution.deadline));
+     if(movementTimeout&&s.Active()&&!movement.execution.unavailable&&
+         (movement.execution.completion==Completion::Transit||movement.execution.completion==Completion::Occupy)&&
+@@ -220,6 +220,11 @@
+         Distance(s.position,movement.position)<=3){
+         SetTaskStatus(s,TaskStatus::Done,TaskCause::Arrived,time,d);return;
+     }
++    if(movement.drillInstance>0&&movement.execution.arrivalCheck&&!movement.execution.paused&&
++        s.Active()&&!memory.emergency&&!(movement.status==TaskStatus::Interrupted&&movement.cause==TaskCause::Shelter)&&
++        (movement.execution.completion==Completion::Transit||movement.execution.completion==Completion::Occupy)){
++        SetTaskStatus(s,TaskStatus::Failed,TaskCause::Timeout,time,d);return;
++    }
+     if(TerminalTask(s.assignment.status)&&!(s.assignment.status==TaskStatus::Done&&(s.assignment.execution.completion==Completion::Support||(s.cognition&&s.assignment.execution.completion==Completion::Occupy))))return;
+     TaskStatus status=TaskStatus::Executing;TaskCause cause=TaskCause::None;
+     if(!s.Active()){status=TaskStatus::Failed;cause=TaskCause::Casualty;}

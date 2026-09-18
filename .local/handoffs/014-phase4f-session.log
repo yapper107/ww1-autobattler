@@ -1,0 +1,1835 @@
+OpenAI Codex v0.154.0-alpha.6.2
+--------
+workdir: /home/jchan/ww1-autobattler
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR, /mnt/c/Users/Jordan Chan/Documents/Codex/ArmyPrototype]
+reasoning effort: high
+reasoning summaries: none
+session id: 01a0ad4f-920e-7312-900e-04e2688842e8
+--------
+user
+Fable architect response to your Phase 4e report: read plans/014-phase4e-fable-review.md first. The advance loop is fixed and everything mechanical passes. The traces show the remaining cause: platoon_blocked 110 times on Works and 82 on Trenches, 'no covered route on either flank: Fix, Observe, Reserve', so three of four squads hold all battle. That rule was mine and is wrong as written: doctrine's third answer is attack by fire and movement under suppression. Rulings: (1) when no covered flank route exists, the fixing squad establishes support by fire with the platoon weapon and the other squads advance in bounding overwatch inside their own corridors toward the flank-most cover of the group (the Phase 3 closure default), Reserve capacity zero; (2) Fix plus Observe plus Reserve only when the believed ratio is below 1.0 without superiority, bounded to 45 s, then attack by fire and movement if superiority was established since, else withdraw, never an indefinite hold; (3) new scenario P08 as specified in the review with its control; (4) complete Phase 4d ruling 3: validate the resolved loop-guard endpoint and report route exhaustion when the forward minimum cannot be met.
+
+Do Phase 4f: apply the rulings, add P08 to tests/platoon_tests.h and the companion, up to three local attempts documented with no distribution runs between them until P08 and all 27 existing selectors pass on one source; then the full ./scripts/test-sim.sh, the 40 authored digest checks, drills trace parity on both maps and one F1 draw, and the single measured build under the Phase 4 exit in the Phase 3d review with the engagement guard active. Report to .local/handoffs/014-phase4f-report.md and stop; no second measured build; no F2/F3; no gun pickup; weapon attachment, Merge transfer and company escalation remain deferred. Rules unchanged: officer memory, own orders, received reports and permitted squad-member fields only; areas and claims are the platoon's own intentions; no per-seed tuning; protected files untouched; no commit, reset or stash; no Fable launcher; Windows and Unreal stay with the architect.
+codex
+I’ll read the Phase 4e review first, implement the bounded no-flank response and resolved-endpoint guard, and add P08. Measurement will remain gated on all 28 selectors passing on one source.
+
+exec
+/bin/bash -lc "cat plans/014-phase4e-fable-review.md
+python3 tools/source_id.py
+sed -n '130,245p' Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+# Plan 014 Phase 4e review — Fable
+
+Actual Claude Fable 5.1 (`claude-fable-5-1`) response, direct architect session, 17 September 2026. Reviewed Astra's Phase 4e report (`.local/handoffs/014-phase4e-report.md`) on fingerprint `d8586da13b539c61` and the traced Works seed-103 and Trenches seed-108 battles. Verified independently: protected files intact, 63 Python tests pass, diff clean; native Windows lab build and tests running from this session. Advisory review, not acceptance.
+
+## Verdict
+
+The advance loop is gone: P07 passes on the first attempt, all 27 selectors, the full suite, the 40 digests and trace parity pass, all 110 battles completed with the guards clear, and the Works stall is replaced by real movement (three leg completions and eight assignments where there were ninety-four and fifty). The tactical exit still fails, and the traces show why: on Works the planner emitted `platoon_blocked` 110 times in six minutes and on Trenches 82, each time "no covered route on either flank: Fix, Observe, Reserve". Against an equal enemy on open ground a covered flank route rarely exists, so three of four squads spend the battle fixing, observing or in reserve, and the front stops at about 70 m out. Trenches seed 103 fired nothing for the same reason.
+
+That rule was mine, and it is wrong as written. Doctrine offers three answers to a known enemy, not two: envelop when a covered route exists; attack by fire and movement under suppression when it does not and fire superiority can be gained; hold and observe only briefly when neither holds, then withdraw or attack anyway. The Phase 3 squads did the second by default; the platoon layer now forbids it.
+
+## Binding corrections for Phase 4f
+
+1. **Third manoeuvre branch.** When no covered flank route exists, the fixing squad establishes support by fire on the enemy group with the platoon weapon, and the other squads advance in bounding overwatch inside their own corridors toward the flank-most cover of the group, exactly as the Phase 3 closure default does, with Reserve capacity zero. This is the platoon's frontal attack by fire and movement.
+2. **Observe is bounded.** Fix plus Observe plus Reserve is chosen only when the believed strength ratio is below 1.0 and superiority is not established; it lasts at most 45 s. On expiry the platoon attacks by fire and movement if superiority has been established since, and withdraws otherwise. It never holds for the rest of the battle.
+3. **Scenario P08.** Equal strength, open ground, no covered route on either side: assert the fixing squad's delivered fire on the group, the other squads' front displacement of at least 40 m within 90 s of contact under bounding overwatch, no Reserve directive, and no `platoon_blocked` after the branch is chosen. Control: believed ratio 0.6 with no superiority: Fix and Observe, then Withdraw within 45 s plus transport.
+4. Ruling 3 of the Phase 4d review is completed: the loop guard validates the resolved endpoint, and reports route exhaustion when the forward minimum cannot be met.
+
+## Allowance and exit
+
+Up to three local attempts, documented, no distribution runs between them, until P08 and all 27 selectors pass on one source; then the full suite, the 40 digests, trace parity, and the single measured build under the Phase 4 exit. Report and stop if it fails. The Phase 4 exit's targeted authored criteria remain total casualties and closure against candidate90, orders per minute not regressing, F1 outcomes not regressing against Phase 3e, and spacing against legacy with the trench floor targeted.
+d8586da13b539c61
+        auto at=std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==id;});
+        auto old=std::find_if(previousNodes.begin(),previousNodes.end(),[&](const auto& n){return n.id==id;});
+        bool completed=false;int assigned=0,finished=0;
+        for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];if(a.taskNode==id){++assigned;if(r.goalId==a.intent.id&&r.directive==a.serial&&(r.goalStatus==TaskStatus::Done||r.goalStatus==TaskStatus::Blocked))++finished;}}
+        completed=assigned>0&&assigned==finished;
+        if(old!=previousNodes.end()&&old->active&&old->kind==kind&&old->enemy==target&&!completed)goal=old->objective;
+        if(at==state.nodes.end()){state.nodes.push_back({});at=state.nodes.end()-1;}
+        auto& n=*at;n.id=id;n.parent=id==1?0:1;n.kind=kind;n.priority=priority;n.capacity=capacity;n.active=true;n.status=PlatoonNodeStatus::Active;n.objective=goal;n.enemy=target;n.needsWeapon=weapon;n.activation=why;
+    };
+    auto nodeAt=[&](int id)->PlatoonTaskNode&{return *std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==id;});};
+    for(const auto& r:squads){
+        Vec3 next{std::clamp(r.position.x+direction*60,-map.halfWidth+12,map.halfWidth-12),r.position.y};
+        add(PlatoonNodeKind::Advance,30+r.squad,10,1,next,false,"no known contact; own reported position plus 60 m lane leg");
+        auto& n=nodeAt(30+r.squad);n.active=target<0;n.status=target<0?PlatoonNodeStatus::Active:PlatoonNodeStatus::Dormant;
+    }
+    int fixing=-1,weapon=-1;float fixCost=1e9f;Vec3 fixPoint=centroid;
+    for(const auto& r:squads)if(r.supportSoldier>=0)weapon=r.supportSoldier;
+    if(target>=0&&!withdraw){
+        for(const auto& r:squads){if(weapon>=0&&r.machineGuns==0)continue;Vec3 goal=r.position;bool lines=Lines(map,goal,objective,r.machineGuns?95:70);
+            for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,r.position)<35&&Lines(map,cover.peek,objective,r.machineGuns?95:70)&&(!lines||Distance(r.position,cover.shelter)<Distance(r.position,goal))){goal=cover.shelter;lines=true;}
+            float score=Distance(r.position,goal)/1.89f+(lines?0:1000)+(r.machineGuns?0:25);
+            if(score<fixCost){fixCost=score;fixing=r.squad;fixPoint=goal;}
+            if(r.supportSoldier>=0)weapon=r.supportSoldier;
+        }
+    }
+    struct FlankChoice{int squad=-1,side=0;float score=1e9f;std::shared_ptr<TacticalRoute> route;};std::vector<FlankChoice> flanks;
+    if(target>=0&&!withdraw){
+        for(int direction:{-1,1}){Vec3 extreme=objective;float lateral=-1e9f;for(int id:selected){auto ct=knowledge.contacts[id];float dot=(ct.position.x-centroid.x)*side.x*direction+(ct.position.y-centroid.y)*side.y*direction;if(dot>lateral){lateral=dot;extreme=ct.position;}}
+            for(const auto& r:squads)if(r.squad!=fixing){Vec3 goal=extreme+side*(35.f*direction)+forward*8;auto route=Route(knowledge,map,config,r.position,goal,time,{},r.squad,false);
+                if(route&&Covered(map,knowledge,*route))flanks.push_back({r.squad,direction,route->cost.Total(),route});
+            }
+        }
+        add(PlatoonNodeKind::Fix,2,90,1,objective,weapon>=0,"known group; potential firing lines");
+        if(flanks.empty()){state.noCoveredRoute=true;add(PlatoonNodeKind::Observe,3,60,1,objective,false,"neither flank has a covered route");Trace(l,d,time,"platoon_blocked","no covered route on either flank: Fix/Observe/Reserve; report no manoeuvre route",objective);}
+        else {auto best=*std::min_element(flanks.begin(),flanks.end(),[](const auto&a,const auto&b){return a.score<b.score;});
+            add(PlatoonNodeKind::Flank,3,80,std::min(int(squads.size())-1,std::max(1,int(std::round(squads.size()*.6f)))),best.route->destination,false,"covered flank with assigned fixing element");nodeAt(3).side=best.side;
+        }
+        add(PlatoonNodeKind::Reserve,4,20,int(squads.size()),fixPoint-forward*30,false,"reserve behind fixing element");
+    }
+    if(withdraw)add(PlatoonNodeKind::Withdraw,5,100,int(squads.size()),centroid-forward*60,false,"believed ratio below one half without support");
+    for(const auto& r:squads)if(r.active<3&&squads.size()>1)add(PlatoonNodeKind::Merge,10+r.squad,95,1,centroid,false,"received remnant strength below three");
+    for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];
+        if(r.goalStatus==TaskStatus::Done&&r.goalId==a.intent.id&&
+           (a.task==PlatoonTask::FlankNorth||a.task==PlatoonTask::FlankSouth))
+            add(PlatoonNodeKind::Secure,20+r.squad,70,1,r.position,false,"received completed attack objective");
+    }
+    std::stable_sort(state.nodes.begin(),state.nodes.end(),[](const auto&a,const auto&b){return a.priority>b.priority;});std::vector<int> used,locked,retiring;
+    for(const auto& r:squads){
+        const bool retire=(r.drillKind==int(BattleDrill::BreakContact)||r.drillKind==int(BattleDrill::Withdraw))&&r.goalStatus==TaskStatus::Executing;
+        if(retire)retiring.push_back(r.squad);
+        auto& a=state.assigned[r.squad%4];
+        auto node=std::find_if(state.nodes.begin(),state.nodes.end(),[&](const auto& n){return n.id==a.taskNode;});
+        bool advanced=false;
+        if(node!=state.nodes.end()&&node->active&&node->kind==PlatoonNodeKind::Advance&&
+           r.goalStatus==TaskStatus::Done&&r.goalId==a.intent.id&&r.directive==a.serial){
+            const int index=r.squad%4;Vec3 next=node->objective;
+            if(state.advanceDoneSeen[index]&&Distance(a.position,state.advanceDoneObjectives[index])<18){
+                next.x=r.position.x+direction*std::max(40.f,(next.x-r.position.x)*direction);
+                Trace(l,d,time,"platoon_no_progress","two completed objectives within 18 m: next leg at least 40 m ahead",next,r.squad);
+            }
+            auto route=Route(knowledge,map,config,r.position,next,time,{},r.squad,false);
+            if(route){
+                state.advanceDoneSeen[index]=true;state.advanceDoneObjectives[index]=a.position;
+                node->objective=route->destination;a.position=route->destination;a.intent.objective=a.position;
+                a.corridor=route;a.areaDiscCenter=a.position;a.issuedAt=time;a.expiresAt=time+75;a.intent.expiresAt=a.expiresAt;
+                out.push_back({r.leader,a});advanced=true;
+                Trace(l,d,time,"platoon_task","renew committed Advance: completed leg, next own-lane objective",a.position,r.squad);
+            }
+        }
+        const bool executing=advanced||(r.goalId==a.intent.id&&r.goalStatus==TaskStatus::Executing)||
+            ((r.goalId!=a.intent.id||r.directive!=a.serial)&&time<a.issuedAt+2*config.reportDelay+5);
+        if(a.taskNode&&((node!=state.nodes.end()&&node->active&&executing)||retire)){
+            used.push_back(r.squad);locked.push_back(r.squad);if(node!=state.nodes.end()){++node->assigned;node->status=PlatoonNodeStatus::Assigned;}
+            if(a.expiresAt-time<=15||a.issuer!=l.id){a.issuedAt=time;a.expiresAt=time+75;a.intent.expiresAt=a.expiresAt;a.issuer=l.id;out.push_back({r.leader,a});Trace(l,d,time,"platoon_task","renew committed directive (75 s lifetime)",a.position,r.squad);}
+        }else if(retire)used.push_back(r.squad);
+    }
+    // Retain accepted claims, removing only released/deactivated/completed assignments.
+    state.claims.erase(std::remove_if(state.claims.begin(),state.claims.end(),[&](const auto& c){return std::find(locked.begin(),locked.end(),c.squad)==locked.end();}),state.claims.end());
+    for(auto& c:state.claims)c.expiresAt=state.assigned[c.squad%4].expiresAt;
+    for(auto& node:state.nodes)if(node.active){
+        struct PairRoute{const SquadSituation* squad=nullptr;std::shared_ptr<TacticalRoute> route;};
+        std::vector<PairRoute> joint;
+        if(node.kind==PlatoonNodeKind::Flank&&node.capacity==2&&node.assigned==0&&std::find(used.begin(),used.end(),fixing)!=used.end()){
+            float bestPair=1e30f;int pairSide=node.side;
+            for(int flankSide:{node.side,-node.side}){
+                Vec3 extreme=objective;float lateral=-1e9f;
+                for(int id:selected){const Vec3 delta=knowledge.contacts[id].position-centroid;const float dot=(delta.x*side.x+delta.y*side.y)*flankSide;if(dot>lateral){lateral=dot;extreme=knowledge.contacts[id].position;}}
+                struct Candidate{const SquadSituation* squad;std::shared_ptr<TacticalRoute> route;};std::vector<Candidate> candidates;
+                for(const auto& r:squads)if(std::find(used.begin(),used.end(),r.squad)==used.end()&&std::find(retiring.begin(),retiring.end(),r.squad)==retiring.end()){
+                    for(float offset:{35.f,59.f,83.f})for(float along:{8.f,-24.f,40.f}){
+                        auto route=Route(knowledge,map,config,r.position,extreme+side*(offset*flankSide)+forward*along,time,state.claims,r.squad,claimsEnabled);
+                        if(route&&Covered(map,knowledge,*route))candidates.push_back({&r,route});
+                    }
+                }
+                for(const auto& a:candidates)for(const auto& b:candidates)if(a.squad->squad!=b.squad->squad){
+                    auto second=b.route;
+                    if(claimsEnabled&&!Separated(*a.route,*second)){
+                        auto exclusions=state.claims;exclusions.push_back({a.squad->squad,node.id,20,time+75,a.route});
+                        second=Route(knowledge,map,config,b.squad->position,b.route->destination,time,exclusions,b.squad->squad,true);
+                    }
+                    if(!second||!Covered(map,knowledge,*second)||(claimsEnabled&&!Separated(*a.route,*second)))continue;
+                    float score=a.route->cost.Total()+second->cost.Total()+6;
+                    for(auto r:{a.squad,b.squad})if(state.assigned[r->squad%4].taskNode==node.id)score-=18;
+                    if(score<bestPair){bestPair=score;pairSide=flankSide;joint={{a.squad,a.route},{b.squad,second}};}
+                }
+            }
+            if(!joint.empty()){node.side=pairSide;Trace(l,d,time,"platoon_corridor_pair","joint minimum-cost covered pair: both centrelines separated throughout",node.objective);}
+            else Trace(l,d,time,"platoon_corridor_pair","no admissible pair on either side; second squad remains eligible for Reserve",node.objective);
+        }
+        for(int slot=node.assigned;slot<node.capacity;++slot){
+        const SquadSituation* chosen=nullptr;std::shared_ptr<TacticalRoute> route;Vec3 goal=node.objective;float cost=1e9f;
+        if(!joint.empty()){chosen=joint[slot].squad;route=joint[slot].route;goal=route->destination;}
+        bool idleEligible=false;for(const auto& r:squads)if(std::find(used.begin(),used.end(),r.squad)==used.end()&&(!node.needsWeapon||r.machineGuns>0)&&(node.kind!=PlatoonNodeKind::Fix||r.squad==fixing))idleEligible=true;
+        if(joint.empty())for(const auto& r:squads){
+            if(std::find(retiring.begin(),retiring.end(),r.squad)!=retiring.end())continue;
+            const bool busy=std::find(used.begin(),used.end(),r.squad)!=used.end();
+
+exec
+/bin/bash -lc "grep -n 'PlatoonTask::\\|closureFallback' Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp; sed -n '190,213p' Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp; sed -n '280,350p' Unreal/Source/ArmyPrototype/Sim/BattleSim.h; cat Unreal/Source/ArmyPrototype/Sim/PositionSim.h; sed -n '1,95p' Unreal/Source/ArmyPrototype/Sim/PlatoonFixtures.cpp; cat docs/BATTLE_LAB.md | head -65" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+219:        p.action.active=false;p.action.closureFallback=true;p.noProgressBlocked=false;p.exhausted=false;
+276:        p.action.active=false;p.action.closureFallback=true;p.action.cause=TaskCause::Support;p.closeAfterCover=true;
+306:    if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Support&&l.platoonOrder.task==PlatoonTask::Support){
+                const bool reachedIntent=(plan.mission.purpose==GoalPurpose::Observe&&plan.method==CognitiveMethod::Observe)||
+                    (plan.method!=CognitiveMethod::Observe&&Distance(plan.destination,plan.mission.objective)<=plan.mission.radius);
+                report.goalStatus=plan.stage==MethodStage::Complete&&reachedIntent?TaskStatus::Done:plan.stage==MethodStage::Blocked&&plan.exhausted?TaskStatus::Blocked:TaskStatus::Executing;
+            }
+            if(config.drills){const auto& p=f.command[squad].battleDrill;report.directive=f.command[squad].platoonOrderSerial;report.phaseLineAt=p.action.phaseLineAt;report.completedAssaultLineAt=p.completedAssaultLineAt;report.assaultObjective=p.action.objective;report.assaultOrigin=p.action.assault;for(const auto& member:f.soldiers)if(member.squad==squad&&member.Active()&&member.machineGun)report.supportSoldier=member.id;report.drillInstance=p.instance;report.drillKind=int(p.kind);report.goalId=p.intent.parent;report.goalObjective=p.intent.objective;report.goalPurpose=p.intent.purpose;report.drillRecovering=p.blocked&&!p.exhausted;report.drillNote=p.blocked?(report.drillRecovering?"recovering: ":"exhausted: ")+p.lastRejection:"";report.goalStatus=p.blocked&&p.exhausted?TaskStatus::Blocked:p.action.completed&&p.stage==DrillStage::Reorganise?TaskStatus::Done:TaskStatus::Executing;report.drillCause=p.action.cause!=TaskCause::None?p.action.cause:p.blocked?TaskCause::Support:TaskCause::None;report.movementBlocked=p.blocked;}
+            if((report.goalId||config.drills)&&(report.goalStatus!=TaskStatus::Executing||report.drillRecovering))
+                TraceGoalFeedback(reactions.diagnostics,local,report,f.time,"goal_feedback_sent",config.drills&&!report.drillNote.empty()?report.drillNote.c_str():"status derived from matching received member receipts");
+            for(int id=0;id<UnitCount;++id){const auto& ct=knowledge.contacts[id];
+                if(ct.known||f.time-ct.clearedAt<15)report.observations.push_back({id,ct});
+            }
+        }
+        float contactPriority=-1e9f;
+        for(int enemy=0;enemy<UnitCount;++enemy) {
+            const auto& ct=knowledge.contacts[enemy];
+            if(!ct.known||f.time-ct.observedAt>120)continue;
+            float priority=ct.observedAt+(ct.automaticWeapon?6.f:0.f);
+            if(priority>contactPriority){contactPriority=priority;report.contact=ct;report.contact.visible=false;report.enemy=enemy;}
+        }
+        rt.messages.push_back({false,leader,receiver,f.time+(TypedController(config)?config.reportDelay:MessageDelay),report,{}});
+    }
+    for(int team=0;team<2;++team) {
+        auto& cmd=f.platoon[team];int sergeant=cmd.sergeant;
+        if(sergeant>=0&&cmd.leader>=0&&sergeant!=cmd.leader&&f.soldiers[sergeant].Active()&&f.time>=rt.nextRelay[team]) {
+            rt.nextRelay[team]=f.time+(TypedController(config)?.5f:2.f);
+    int supportSoldier=-1;
+    float lastProgress=-100;
+    Vec3 goalObjective{};
+    GoalPurpose goalPurpose=GoalPurpose::None;
+    bool observationComplete=false;
+    std::vector<FireDelivery> deliveries;
+    std::vector<ReportedContact> observations;
+    int goalId=0,directive=0;
+    TaskStatus goalStatus=TaskStatus::Executing;
+    int squad=-1, leader=-1, active=0, enemy=-1;
+    Vec3 position{};
+    bool engaged=false, supportUseful=false, movementBlocked=false;
+    int machineGuns=0, mobile=0;
+    float suppression=0;
+    float danger=0, observedAt=-100;
+    Contact contact;
+    int drillInstance=0,drillKind=0;
+    TaskCause drillCause=TaskCause::None;
+    bool drillRecovering=false;std::string drillNote;
+    float phaseLineAt=-1,completedAssaultLineAt=-1;Vec3 assaultObjective{},assaultOrigin{};
+    std::vector<Vec3> drillMemberPositions;
+};
+struct PlatoonDirective {
+    int taskNode=0,mergeInto=-1;bool hasArea=false,liftFire=false;
+    Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaRouteRadius=0,areaDiscRadius=0;FireLane assaultLane;
+    std::shared_ptr<const TacticalRoute> corridor;
+    int supportSoldier=-1,supportSquad=-1;
+    bool supportWithdrawn=false;
+    GoalIntent intent;
+    bool hasAlternative=false;
+    PlatoonTask alternativeTask=PlatoonTask::None;
+    Vec3 alternativePosition{};
+    PlatoonTask task=PlatoonTask::None;
+    int issuer=-1, serial=0, enemy=-1;
+    Vec3 position{}, sector{};
+    Contact contact;
+    float issuedAt=0, receivedAt=0, activatedAt=0, expiresAt=0;
+};
+enum class PlatoonNodeKind { Advance, Fix, Flank, Secure, Reserve, Merge, Withdraw, Observe };
+enum class PlatoonNodeStatus { Dormant, Active, Assigned, Complete, Blocked };
+struct PlatoonTaskNode {
+    int id=0,parent=0,priority=0,capacity=1,assigned=0,enemy=-1,side=0;
+    PlatoonNodeKind kind=PlatoonNodeKind::Advance;PlatoonNodeStatus status=PlatoonNodeStatus::Dormant;
+    bool active=false,needsWeapon=false;Vec3 objective{},areaMin{},areaMax{};
+    std::string activation;
+};
+struct CorridorClaim {int squad=-1,task=0;float width=10,expiresAt=0;std::shared_ptr<const TacticalRoute> route;};
+struct PlatoonFireControl {
+    int assaultSquad=-1;float phaseLineAt=-1,lastReportAt=-1;bool active=false;
+    FireLane lane;
+};
+struct PlatoonTaskState {
+    int revision=0,commander=-1;uint64_t activation=0;float nextAssessment=0;
+    std::vector<PlatoonTaskNode> nodes;std::vector<CorridorClaim> claims;
+    std::vector<PlatoonFireControl> fireControl;
+    std::array<PlatoonDirective,SquadsPerTeam> assigned{};
+    std::array<Vec3,SquadsPerTeam> advanceDoneObjectives{};
+    std::array<bool,SquadsPerTeam> advanceDoneSeen{};
+    std::array<float,SquadsPerTeam> phaseLines{{-1,-1,-1,-1}};
+    bool noCoveredRoute=false;float believedRatio=1;
+};
+struct PlatoonCommand {
+    int leader=-1, sergeant=-1, supportSquad=-1, flankSquad=-1, mainEffortSquad=-1, reserveSquad=-1, plans=0;
+    float disruptedUntil=0, nextPlanAt=0;
+    PlatoonTask maneuver=PlatoonTask::None;
+    Vec3 sector{};
+    PlatoonTaskState tasks;
+};
+struct DeliveredRound {float at=0;Vec3 target{};};
+struct FireDelivery { bool supportWeapon=false; int shooter=-1, enemy=-1, rounds=0; Vec3 origin{}, target{}; float firstAt=-100, observedAt=-100; std::array<float,8> times{{-100,-100,-100,-100,-100,-100,-100,-100}}; std::vector<DeliveredRound> history; };
+struct MoveFailure { int soldier=-1, order=0; Vec3 destination{}; float observedAt=-100; };
+#pragma once
+#include "RecoverySim.h"
+namespace army {
+struct ReservedPosition {int soldier=-1;CoverPosition cover;};
+struct GroupPositionQuery {
+    Vec3 center{},target{},support{},areaMin{-10000,-10000,-10000},areaMax{10000,10000,10000};
+    float radius=25,targetRadius=12,angleProbe=6,minAngle=0,groupCap=60,coherenceRadius=50;
+    Vec3 boundCenter{};float boundRadius=0;
+    float shelterSpacing=2,peekSpacing=1.8f,preferredSpacing=10;
+    float travelWeight=.25f,anchorWeight=1,coverWeight=12,lineWeight=20;
+    bool firing=false,protectedPosition=false,formation=false;
+    bool preferCover=false,safeEndpoint=false;
+    float maxPathLength=0;
+    // Permission from received buddy fire; only the named objective area is
+    // exempt from endpoint protection inside this close-assault radius.
+    Vec3 supportedObjective{};float supportedAssaultRadius=0;bool inspectSupportedObjective=false;
+    // Optional attack sector and lane-union-disc; defaults preserve basic queries.
+    float maxAngle=180,minTargetDistance=0,maxTargetDistance=10000,areaDiscRadius=0;
+    Vec3 areaDiscCenter{};
+    size_t maxFallbacks=2;
+    std::array<Vec3,SquadSize> anchors{};
+    std::vector<ReservedPosition> reserved;
+    std::shared_ptr<const TacticalRoute> corridor,areaRoute;float areaRouteRadius=0;
+};
+struct MemberPositions {int soldier=-1;bool valid=false;TacticalSlot primary;std::vector<TacticalSlot> fallbacks;std::string reason;};
+std::vector<MemberPositions> QueryPositions(const Soldier& leader,const std::vector<Soldier>& members,const Map& map,const GroupPositionQuery& query,float time,Diagnostics* diagnostics);
+}
+#include "PlatoonTaskSim.h"
+#include "DrillSim.h"
+namespace army {
+void MakePlatoonEncounter(const Config&,int id,Map& map,Frame& f){
+    map=Map{};map.halfWidth=200;map.halfHeight=140;
+    for(auto& s:f.soldiers){s.health=0;s.action=Action::Killed;s.assignment={};s.contacts={};s.reports={};}
+    for(int n=0;n<32;++n){auto& s=f.soldiers[n];s.health=1000;s.position={-50.f-float(n%8)/2*3,(n/8-1.5f)*32+(n%4-1.5f)*5};s.goal=s.position;s.reloadUntil=0;}
+    for(int n:{5,6})f.soldiers[n].position={-65,-12+float(n-5)*6};
+    for(int n=32;n<40;++n){auto& s=f.soldiers[n];s.health=300;s.position={55.f+float(n/4%2)*4,(n%4-1.5f)*6};s.goal=s.position;s.reloadUntil=10000;s.machineGun=false;s.role=n==32?Role::Sergeant:Role::Rifleman;}
+    f.platoon[1].leader=f.platoon[1].sergeant=-1;
+    for(int squad=0;squad<4;++squad)f.command[squad].mission={90,float(squad-1.5f)*30};
+    for(float y:{-48.f,-32.f,-16.f,0.f,16.f,32.f,48.f,64.f}){
+        map.obstacles.push_back({{-38,y},{.6f,2},false,true,1.3f});
+        map.obstacles.push_back({{53,y},{.6f,2},false,true,1.3f});
+    }
+    const bool bare=id==71||id==75;
+    if(!bare)map.obstacles.push_back({{5,12},{65,1},false,false,4});
+    if(id==78||id==79){
+        // Physical strength controls; contact and ratios still travel normally.
+        for(int n=0;n<32;++n)if(n%8>=3&&!IsPlatoonStaff(f.soldiers[n])){f.soldiers[n].health=0;f.soldiers[n].action=Action::Killed;}
+        const int count=id==78?32:4;
+        for(int n=32;n<64;++n){auto& s=f.soldiers[n];s.health=n<32+count?10000:0;s.reloadUntil=10000;s.role=Role::Rifleman;s.machineGun=false;s.position={30.f+(n-32)/8*6,(n%8-3.5f)*5};s.goal=s.position;}
+        f.soldiers[7].health=0;map.obstacles.clear();
+        for(int n=0;n<32;++n)if(f.soldiers[n].Active()){f.soldiers[n].position={-40.f-float(n%3)*2,(n/8-1.5f)*12};f.soldiers[n].goal=f.soldiers[n].position;}
+        for(int n=32;n<64;++n){f.soldiers[n].position={15.f+float((n-32)/8)*3,(n%8-3.5f)*5};f.soldiers[n].goal=f.soldiers[n].position;}
+    }
+    if(id==80||id==81){for(int n=32;n<64;++n){auto& s=f.soldiers[n];s.health=n==63?10000:0;s.position={180,125};s.goal=s.position;s.reloadUntil=10000;}map.obstacles.clear();}
+    if(id==82){
+        map.halfWidth=500;map.halfHeight=250;map.obstacles.clear();
+        for(int n=32;n<64;++n){auto& s=f.soldiers[n];s.health=n==63?10000:0;s.position={450,220};s.goal=s.position;s.reloadUntil=10000;}
+    }
+    if(id==83)for(int n=32;n<40;++n){f.soldiers[n].position.x-=15;f.soldiers[n].goal=f.soldiers[n].position;}
+    for(auto& s:f.soldiers){s.facing=s.look={s.team?-1.f:1.f,0};}
+    PrepareGeometry(map);
+}
+void StepPlatoonEncounter(int id,Frame& f){
+    if(id==76&&f.time>=20){f.soldiers[5].health=0;f.soldiers[5].action=Action::Killed;}
+    // Negative expiry control removes the reporting/renewal endpoint physically.
+    if(id==81&&f.time>=20){f.soldiers[5].health=0;f.soldiers[6].health=0;}
+}
+}
+# Battle laboratory
+
+## Cognition experiment
+
+The implemented upgrade and its scenario evidence are recorded in
+[AI_COGNITION_IMPLEMENTATION.md](AI_COGNITION_IMPLEMENTATION.md).
+`--cognition` implies foundations. It supports the normal maps (encounter 0) and experimental encounters 5–17.
+Use 8 for integration, 9 for delayed platoon knowledge, and 10 for a physical
+route obstruction applied through geometry invalidation. Encounters 5–7 retain
+the existing strict tactical layouts and unchanged evaluator.
+
+```bash
+./scripts/test-sim.sh --cognition
+./scripts/battle-lab.sh --cognition --encounter 10 --seed 107 --seconds 70 --out .local/cognition-obstruction
+python3 tools/investigate_cognition.py .local/cognition-obstruction/latest.json --check-obstruction
+python3 tools/run_route_matrix.py --cognition --out .local/cognition-matrix --check
+./scripts/launch.sh -ArmyCognition -ArmyScenario=8
+```
+
+Paired configurations can set `--report-delay`, `--full-vision`, `--judgment`,
+`--risk`, `--adaptability` and `--estimate-bias`. Manifests and exact reruns preserve
+them. Profile knobs set bases; stored actor profiles include deterministic variation.
+`method_candidate`, `method_accepted`, `method_stage`, `method_stage_advanced`,
+`method_safety_override`, `method_resume`, `method_reconsidered` and
+`method_exhausted` expose the accepted method lifecycle. Parent goals and method
+instances have distinct IDs. Mental-map regions separate unseen-force allowance
+from the count supported by sightings. A stale report never gains a fresh timestamp
+just because another commander forwards it.
+
+The overlay reads recorded actor frames. Cyan marks field limits (occlusion still
+applies); amber outlines remembered uncertainty. Visible world units remain
+explicitly labeled observer truth. This mode is not promoted to normal gameplay.
+
+## AI foundations experiment (2026-09-14)
+
+`./scripts/battle-lab.sh --foundations --encounter 8 --seed 107 --seconds 90 --out .local/foundations`
+runs the first perception/belief/goal slice. It is opt-in, mutually exclusive with
+recovery, and rejected outside encounter 8. The scenario reuses the controlled MG
+terrain/deployment. `--estimate-bias -1` or `1` shifts the seeded actor judgments
+toward under/overestimation without changing observations. Exact reruns restore
+both parameters from the manifest.
+
+`./scripts/test-sim.sh --foundations` tests component boundaries, real command
+transport, changed goal orders, and integrated simulation/trace determinism.
+`python3 tools/investigate_foundations.py .local/foundations/latest.json --soldier 5 --time 30`
+prints the latest recorded mental-map snapshot at or before that time and the
+selected actor's goal changes. A missing snapshot means no recorded evidence,
+not an empty battlefield. Mental-map snapshots are sampled every five seconds;
+the decision code derives the map from current local memory when needed.
+
+`mental_map` records structured `look`, `estimate_bias`, and `regions`, including
+raw observation count, remembered MG count, heuristic low/high estimate,
+interpreted strength, confidence and original observation time. Missing regions
+are unknown. `goal_feedback_sent`, `goal_feedback_received`,
+`goal_feedback_ignored`, `goal_alternative_applied`, and `goal_observe` connect
+received task status with the parent's subsequent order. `goal_intent` records
+identity, parent, purpose, objective, expiry, status and feedback observation time
+where applicable. Observer truth never supplies these belief fields.
+
+The existing strict flanking evaluator is unchanged. Foundations tests are not
+a new 8/9 tactical pass. See [AI_FOUNDATIONS_PLAN.md](AI_FOUNDATIONS_PLAN.md) for
+scope, assumptions, attributed reviews and deferred work.
+
+The simulator exports evidence for offline AI investigation. Use the analyzer before interpreting movement counts or proposing tactical changes. Visual review is still useful for animation and presentation; it is not required to inspect tactical causes.
+
+
+exec
+/bin/bash -lc "sed -n '245,335p' Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp; sed -n '112,175p' Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp; sed -n '40,70p' plans/014-battle-drill-scenarios.md; sed -n '160,183p' Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp; sed -n '20,70p' Unreal/Source/ArmyPrototype/Sim/BeliefSim.cpp" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+    Accept(l,p,withdraw?BattleDrill::Withdraw:BattleDrill::BreakContact,d,time,withdraw?"Withdraw to received rally":"BreakContact: believed ratio at least two without superiority");
+    p.action.rally=rally;p.action.objective=p.sector;p.retreat=true;p.movingElement=1;
+    Stage(l,p,d,time,DrillStage::Retire,"rearward bound: one stationary suppressing element");
+    Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+    Vec3 start=Centre(members,p,1),goal=start+Direction(rally-start)*std::min(30.f,Distance(rally,start));
+    Assign(l,members,Element(members,p,1),map,p,goal,false,Task::PullBack,Completion::Occupy,false,false,d,time);
+}
+}
+bool BeginContactAction(const Soldier& l,const Soldier& knowledge,const std::vector<Soldier>& members,const Map& map,const Config& config,DrillPlan& p,Diagnostics* d,float time){
+    bool incoming=p.effectiveFire||l.understoodSuppression>.3f;
+    for(const auto& s:members)incoming|=s.suppression>.3f;
+    for(const auto& fire:l.fireAreas)incoming|=time-fire.observedAt<6&&fire.intensity>.3f;
+    bool protectedSlot=false;for(const auto& s:members){int n=s.id%8;protectedSlot|=p.hasSlot[n]&&ProtectedAt(map,p.slots[n].shelter,p.sector,Stance::Crouched);}
+    if(incoming&&!protectedSlot){
+        p.effectiveFire=true; // Immediate emergency overrides ordinary assessment hysteresis.
+        ActionTrace(l,p,d,time,"drill_stage","BreakContact: effective incoming fire with zero protected slots");
+        BeginRetire(l,members,map,p,d,time,false);
+        ActionTrace(l,p,d,time,"drill_stage","rearward bound: emergency takes precedence over attack or fallback");
+        return true;
+    }
+    if(p.target<0||p.strength[0]<2)return false;
+    if(p.retreat&&p.effectiveFire){BeginRetire(l,members,map,p,d,time,false);return true;}
+    // A contact requiring deliberate fire and manoeuvre, not quiet route travel.
+    if(p.superiority||Distance(p.center,p.sector)>100)return false;
+    Accept(l,p,BattleDrill::SupportByFire,d,time,"SupportByFire: contact assessment deploys gun group");
+    p.action.initialStrength=int(members.size());p.action.base=Centre(members,p,0);
+    for(int id=0;id<UnitCount;++id)p.action.threats[id]=knowledge.contacts[id].known;
+    p.action.route=Flank(l,knowledge,members,map,config,p,d,time,false);p.action.attack=bool(p.action.route);
+    if(p.action.attack){p.kind=BattleDrill::SquadAttack;ActionTrace(l,p,d,time,"drill_candidate","SquadAttack: covered flank sector 40-60 degrees, 20-45 m");}
+    if(!p.action.attack){
+        Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+        p.action.active=false;p.action.closureFallback=true;p.action.cause=TaskCause::Support;p.closeAfterCover=true;
+        p.movingElement=1;
+        ActionTrace(l,p,d,time,"drill_stage_advanced","no covered route: report upward and continue supported bounding closure");
+        return false; // Existing committed movement stages own the bounds.
+    }
+    Stage(l,p,d,time,DrillStage::SupportPrepare,"prepare element support; assault permission withheld pending delivered rounds");
+    int slots=Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+    for(const auto& s:members)if(p.elements[s.id%8]==1){int n=s.id%8;p.action.tasks[n]=Task::Overwatch;p.action.completions[n]=Completion::Occupy;}
+    if(slots<2)Fail(l,p,d,time,TaskCause::Support,"Blocked/Support: fewer than two protected firing positions");
+    return true;
+}
+bool UpdateSquadAction(const Soldier& l,const Soldier& knowledge,const std::vector<Soldier>& members,const Map& map,const Config& config,DrillPlan& p,Diagnostics* d,float time,bool arrived,bool below,bool directive){
+    const bool withdrawing=directive&&l.platoonOrder.intent.purpose==GoalPurpose::Withdraw;
+    const float enemy=BelievedStrength(l,p.sector,100,time);p.believedEnemy=enemy;
+    int recentLosses=0;for(float at:p.lossTimes)recentLosses+=at>0&&time-at<=20;
+    if(withdrawing&&p.action.active&&(p.kind==BattleDrill::BreakContact||p.kind==BattleDrill::Withdraw)){
+        // A higher withdrawal extends the current retirement; it does not cancel
+        // the bound, reset its receipts, or restart the element sequence.
+        p.kind=BattleDrill::Withdraw;p.action.rally=l.platoonOrder.intent.objective;
+        ActionTrace(l,p,d,time,"drill_stage_advanced","received Withdraw: retain retirement bound and receipts; extend rally");
+    }
+    if((withdrawing&&p.kind!=BattleDrill::Withdraw)||(!p.action.active&&p.target>=0&&(enemy>=2*members.size()||recentLosses>=3)&&!p.superiority)){
+        BeginRetire(l,members,map,p,d,time,withdrawing);return true;
+    }
+    if(directive&&l.platoonOrder.liftFire){
+        p.action.lifted=true;
+        for(const auto& s:members){int n=s.id%8;p.issue[n]=true;p.action.liftOrders[n]=true;}
+        ActionTrace(l,p,d,time,"drill_stage_advanced","received platoon phase-line/fire-lane amendment: lift original area; shift to remaining known threats");
+        return true;
+    }
+    if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Support&&l.platoonOrder.task==PlatoonTask::Support){
+        Accept(l,p,BattleDrill::SupportByFire,d,time,"SupportByFire: received threat-area order");p.action.objective=l.platoonOrder.intent.objective;
+        Stage(l,p,d,time,DrillStage::SupportPrepare,"occupy protected firing positions; wait for element delivered rounds");
+        int slots=Assign(l,members,Element(members,p,0),map,p,p.center,true,Task::BoundCover,Completion::Support,true,false,d,time);
+        if(slots<2)Fail(l,p,d,time,TaskCause::Support,"Blocked/Support: fewer than two executable support slots");
+        return true;
+    }
+    if(directive&&(l.platoonOrder.intent.purpose==GoalPurpose::Observe||l.platoonOrder.intent.purpose==GoalPurpose::Support)){
+        const bool observe=l.platoonOrder.intent.purpose==GoalPurpose::Observe;
+        Accept(l,p,observe?BattleDrill::Observe:BattleDrill::Occupy,d,time,observe?"Observe received area":"Occupy received area and sectors");p.action.objective=l.platoonOrder.intent.objective;
+        Stage(l,p,d,time,observe?DrillStage::Observation:DrillStage::Occupation,observe?"move to viewpoint and sample fresh sight lines":"occupy mutually supporting slots until superseded");
+        Assign(l,members,members,map,p,p.action.objective,true,Task::Overwatch,observe?Completion::Observe:Completion::Occupy,false,false,d,time);return true;
+    }
+    if(!p.action.active)return false;
+    if(below){p.action.cause=TaskCause::InsufficientStrength;p.blocked=true;p.exhausted=true;p.lastRejection="frozen element below minStrength";p.action.active=false;p.movers.fill(false);Stage(l,p,d,time,DrillStage::Reorganise,"InsufficientStrength: frozen element failed; Reorganise before new drill");return true;}
+    if(directive&&l.platoonOrder.intent.purpose==GoalPurpose::Seize){p.action.active=false;return false;}
+    SupportEvidence(l,p,d,time);
+    if(p.stage==DrillStage::Occupation)return true;
+    if(p.stage==DrillStage::Observation){
+        bool observed=false;for(const auto& s:members){const auto& r=l.taskReports[s.id%8];observed|=r.id==p.expected[s.id%8]&&r.execution.method==p.instance&&r.status==TaskStatus::Done;}
+        if(observed){p.action.completed=true;p.action.active=false;Stage(l,p,d,time,DrillStage::Reorganise,"Observe complete: matching fresh sight/clearance receipt");}
+        else if(time-p.action.acceptedAt>=45){p.action.cause=TaskCause::NoObservation;Fail(l,p,d,time,TaskCause::NoObservation,"Observe timeout: nothing learned; report upward");}
+        return true;
+    }
+    if(p.stage==DrillStage::Retire){
+        bool close=false;for(const auto& ct:knowledge.contacts)close|=ct.known&&Distance(p.center,ct.position)<100&&time-ct.observedAt<6;
+        if(close)p.action.clearSince=-1;else if(p.action.clearSince<0)p.action.clearSince=time;
+        if(Distance(p.center,p.action.rally)<12||(p.kind==BattleDrill::BreakContact&&p.action.clearSince>=0&&time-p.action.clearSince>=20)){
+            p.action.completed=true;p.retreat=false;p.kind=BattleDrill::Occupy;Stage(l,p,d,time,DrillStage::Occupation,"contact broken or rally reached: Occupy and report strength");Assign(l,members,members,map,p,p.action.rally,true,Task::Overwatch,Completion::Occupy,false,false,d,time);
+        }else if(arrived){
+        Vec3 segment=origin;
+        if(!coverStage&&!repair){
+            const float length=p.technique==MovementTechnique::Traveling?24.f:p.technique==MovementTechnique::BoundingOverwatch?24.f:40.f;
+            const Vec3 start=p.technique==MovementTechnique::Traveling?p.center:origin;
+            segment=start+Unit(p.destination-start)*std::min(length,Distance(start,p.destination));
+            if(p.retreat)segment=origin-Unit(p.sector-origin)*30;
+            if(p.technique==MovementTechnique::BoundingOverwatch&&Distance(segment,overwatch)>24)segment=overwatch+Unit(segment-overwatch)*24;
+        }
+        Vec3 resolved=origin;ResolveOrderPosition(map,origin,segment,resolved);
+        TacticalRoutePlanner planner(map,knowledge,time,leader.team?config.emberDoctrine:config.doctrine,Stance::Crouched);
+        auto route=std::make_shared<TacticalRoute>(planner.Evaluate(origin,resolved));
+        if(p.platoonArea&&leader.platoonOrder.corridor&&!coverStage&&!repair&&!p.retreat){
+            const auto& corridor=*leader.platoonOrder.corridor;
+            Vec3 before=corridor.start,projection=before;float best=1e9f;size_t segmentIndex=0;
+            for(size_t n=0;n<corridor.points.size();++n){Vec3 delta=corridor.points[n]-before;float length2=delta.x*delta.x+delta.y*delta.y+delta.z*delta.z;
+                Vec3 rel=origin-before;float fraction=length2>0?std::clamp((rel.x*delta.x+rel.y*delta.y+rel.z*delta.z)/length2,0.f,1.f):0;
+                Vec3 point=before+delta*fraction;float distance=Distance(origin,point);
+                if(distance<best){best=distance;projection=point;segmentIndex=n;}before=corridor.points[n];
+            }
+            Vec3 next=projection;float remaining=24;
+            for(size_t n=segmentIndex;n<corridor.points.size();++n){Vec3 end=corridor.points[n];float length=Distance(next,end);
+                if(length>=remaining){next=next+Unit(end-next)*remaining;break;}remaining-=length;next=end;
+            }
+            if(p.technique==MovementTechnique::BoundingOverwatch&&Distance(next,overwatch)>24)next=overwatch+Unit(next-overwatch)*24;
+            if(ResolveOrderPosition(map,origin,next,resolved)){*route=corridor;route->start=origin;route->destination=resolved;route->points=FollowCorridor(map,corridor,origin,resolved);}
+
+        }
+        // A geometric element centre is not necessarily a navigable start. Keep
+        // the accepted corridor, or build from a real known member position.
+        if(route->points.empty()){
+            for(const auto& member:group){
+                Vec3 endpoint=segment;
+                if(!ResolveOrderPosition(map,member.position,segment,endpoint))continue;
+                auto candidate=planner.Evaluate(member.position,endpoint);
+                if(!candidate.points.empty()){*route=std::move(candidate);resolved=route->destination;break;}
+            }
+        }
+        if(route->points.empty()&&p.routes[element]&&p.routes[element]->geometry==map.revision&&!p.routes[element]->points.empty())*route=*p.routes[element];
+        if(route->points.empty()){
+            p.blocked=true;p.lastRejection="no executable element corridor";
+            Trace(d,leader,p,time,"drill_recovering","recovering: no executable element corridor; retry column before exhaustion");
+            continue;
+        }
+        route->id=700000000ULL+uint64_t(leader.squad)*1000000+uint64_t(p.instance)*1000+p.generation*2+element;route->owner=leader.id;route->plan=p.instance;p.routes[element]=route;
+        GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=p.areaMin;query.areaMax=p.areaMax;query.coherenceRadius=90;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
+        if(p.platoonArea&&leader.platoonOrder.areaRouteRadius>0){query.areaRoute=leader.platoonOrder.corridor;query.areaRouteRadius=25;query.areaDiscCenter=leader.platoonOrder.areaDiscCenter;query.areaDiscRadius=60;}
+        const bool protectedBound=p.action.closureFallback&&!coverStage&&!repair&&p.effectiveFire&&!p.superiority;
+        query.formation=!coverStage&&!repair&&!protectedBound;query.protectedPosition=coverStage||repair||protectedBound;
+        if(p.action.closureFallback&&!p.platoonArea){query.areaDiscCenter=p.action.objective;query.areaDiscRadius=60;}
+        query.firing=query.protectedPosition&&element==0&&p.target>=0&&Distance(origin,p.sector)<SightRange(group.front());
+        if(p.stage==DrillStage::BoundSetup){query.target=p.center+direction*40;query.firing=element==0;}
+        if(p.stage==DrillStage::Bound&&p.technique==MovementTechnique::BoundingOverwatch){query.boundCenter=overwatch;query.boundRadius=35;}
+        query.anchorWeight=query.formation?3.f:1.f;query.coverWeight=query.formation?0.f:12.f;query.lineWeight=query.formation?0.f:20.f;
+        Vec3 averageOffset{};
+        if(p.interval==10){for(size_t rank=1;rank<group.size();++rank)averageOffset=averageOffset+direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));averageOffset=averageOffset*(1.f/group.size());}
+        int rank=0;for(const auto& s:group){Vec3 offset{};
+            if(p.interval==4)offset=direction*(-4.f*(rank+(p.technique==MovementTechnique::Traveling&&element==1?p.strength[0]:0)));
+            else if(rank>0)offset=direction*(-7.f*((rank+1)/2))+left*((rank%2?1.f:-1.f)*7.f*((rank+1)/2));
+            // Two wedges 18m apart along the route. The former diagonal overlap
+            // made four of eight nearest-neighbour intervals only 5.1m.
+            if(p.interval==10)offset=offset-averageOffset+(p.technique==MovementTechnique::Traveling?direction*(element==0?9.f:-9.f):Vec3{});
+            query.anchors[s.id%SquadSize]=coverStage||repair?s.position:resolved+offset;++rank;
+        }
+        auto allocated=QueryPositions(leader,group,map,query,time,d);
+|---|---|---|---|
+| P01 | contact with a known enemy group; a covered route exists round one flank | Fix task assigned to the squad with lines and the support weapon; Flank tasks to two squads inside distinct corridors; corridor claims traced; reserve squad in its own area behind the fixing element; assault elements arrive at 45 degrees or more from the fixing element's centroid | no covered route on either flank: Fix, Observe and Reserve tasks only; honest upward report; no squad enters within 18 m of the known group without cover |
+| P02 | two squads assigned flank corridors | minimum inter-squad centroid distance never below 20 m during movement; neither squad's route uses the other's claimed corridor | claims disabled (control build flag in tests only): routes may coincide |
+| P03 | fixing element receives the assault element's phase-line receipt | shift within one hop plus 1 s; no round crosses the assault lane afterwards | none |
+| P04 | platoon commander killed | squads continue current drills; succession per template; new directives resume within the template delay plus cadence | none |
+| P05 | believed strength ratio below one half, no support | Withdraw tasks with rally points inside each squad's area; alternating bounds | ratio above one: no withdrawal |
+| P07 | four squads on open ground, no enemy within 200 m; production sensing and reports | front displacement at least 100 m by 120 s; no Secure node before contact; at most six directives per squad in two minutes | contact at 90 m activates Fix and Flank through production sensing and transport |
+| P06 | directive expiry | every directive renewed or replaced within 60-90 s; no directive older than 90 s is executed | none |
+
+## 3. Scenario families for the generator
+
+All families produce `GeneratedScenario` records validated by `ValidateScenario` before use. Parameters are drawn from the ranges below by the family RNG. Deployment areas never have a line of sight to each other at start unless the family says so.
+
+| Family | Map | Enemy and objective | Cover and obstacles | Armies |
+|---|---|---|---|---|
+| F1 defended position | half sizes 90-140 by 85-120 | 4-12 defenders in cover around an objective of radius 10 m, 60-140 m from the attacker deployment; support weapon per side yes or no | 3-8 low cover pieces and 0-2 tall pieces near the objective; 1-3 approach corridors 6-20 m wide formed by obstacle bands; screening obstacles between deployments | attackers 2-3 squads with masks; defenders 1-2 squads |
+| F2 meeting engagement | half sizes 120-170 by 100-150 | both sides advancing toward a central objective of radius 15 m or none (deathmatch) | cover density 0.5-3 pieces per 1000 square metres, mixed low and tall | 3-4 squads per side, support weapon per side yes or no |
+| F3 urban block | half sizes 100-140 by 90-120 | objective is one building; 6-10 defenders | 2-6 buildings via `AddBuilding` on a grid with 12-20 m streets; low walls along streets; buildings added before free obstacles | 2-3 attacking squads; 1-2 defending |
+| F4 trench line (later) | trench map primitives | objective is a trench junction | randomised crossing count and exposed centre width | as the trench map |
+
+Draw policy:
+
+- Development draws: genSeeds 1-30 per family, battle seeds 107, 108 and 109, giving 90 runs per family per controller. These are open and may be inspected.
+- Validation draws: 20 genSeeds per family derived from `hash(candidate fingerprint, family, salt)` with one battle seed derived the same way, run once per candidate and reported in full. The salt is recorded in the report; the draws are never reused for a later candidate.
+- Sparring partners: legacy, candidate90 and the previous drills candidate, each run on the same `(family, genSeed, seed)` keys so deltas are paired.
+
+## 4. Metric definitions
+
+All metrics are computed by `tools/family_metrics.py` from `evaluation.jsonl` (0.2 s frames), `events.jsonl`, `trace.jsonl` and `shots.jsonl`. Observer facts never feed policy. Duration weighting uses the frame interval.
+
+| Metric | Definition |
+        rt.nextReport[squad]=f.time+(TypedController(config)?1.f:3.f);
+        int leader=f.command[squad].leader;if(leader<0)continue;
+        const auto& local=f.soldiers[leader];auto& platoon=f.platoon[local.team];
+        int receiver=platoon.sergeant>=0&&f.soldiers[platoon.sergeant].Active()?platoon.sergeant:platoon.leader;
+        if(receiver<0)continue;
+        SquadSituation report;report.squad=squad;report.leader=leader;report.observedAt=f.time;
+        for(const auto& s:f.soldiers)if(s.squad==squad&&s.Active()&&!IsPlatoonStaff(s)) {
+            report.position=report.position+s.position;++report.active;
+            if(config.drills)report.drillMemberPositions.push_back(s.position);
+            report.machineGuns+=s.machineGun;
+            report.suppression+=s.understoodSuppression;
+            report.mobile+=!KnowsWounded(local,s)&&s.understoodSuppression<.5f;
+        }
+        if(report.active)report.suppression/=report.active;
+        if(report.active)report.position=report.position*(1.f/report.active);
+        report.movementBlocked=f.command[squad].movementBlock.reason!=MoveBlock::None;
+        report.engaged=f.command[squad].engaged;report.danger=f.command[squad].danger;report.supportUseful=f.command[squad].supportUseful;
+        auto knowledge=WithTracks(local,f.time);
+        if(config.foundations){
+            if(TypedController(config))for(const auto& delivery:local.deliveries)if(delivery.shooter>=0&&f.time-delivery.observedAt<6)report.deliveries.push_back(delivery);
+            report.goalId=f.time<local.platoonOrder.expiresAt?local.platoonOrder.intent.id:0;
+            report.goalStatus=ReportedGoalStatus(local,f.time);
+            if(config.cognition){const auto& plan=f.command[squad].accepted;
+                report.directive=plan.directive;report.goalId=plan.intent.parent;report.goalObjective=plan.mission.objective;report.goalPurpose=plan.mission.purpose;
+    }
+    for(auto& region:result){
+        region.confidence/=region.observations;
+        // Heuristic uncertainty band, not a guaranteed bound on the hidden force.
+        // Partial observation leaves room for another element even with fresh sightings.
+        region.unseen=std::max(1.f,region.observations*.25f);
+        region.high+=region.unseen;
+        float bias=observer.estimateBias*(observer.cognition?1-observer.officer.judgment*.8f:1.f);
+        float judgment=.5f+.5f*std::clamp(bias,-1.f,1.f);
+        region.estimate=region.low+(region.high-region.low)*judgment;
+    }
+    std::sort(result.begin(),result.end(),[](const auto& a,const auto& b){return a.x==b.x?a.y<b.y:a.x<b.x;});
+    return result;
+}
+float BelievedStrength(const Soldier& observer,Vec3 region,float radius,float time){
+    float strength=0;
+    for(const auto& cell:BuildMentalMap(observer,time)){
+        Vec3 centre{(cell.x+.5f)*BeliefCellSize,(cell.y+.5f)*BeliefCellSize};
+        if(Distance(centre,region)<radius+BeliefCellSize*.707107f)
+            strength+=cell.estimate+cell.automaticWeapons*1.5f;
+    }
+    return strength;
+}
+void ReceiveObservations(Soldier& recipient,const std::vector<ReportedContact>& observations,int relay,float time){
+    for(const auto& evidence:observations){
+        if(evidence.track<0||evidence.track>=UnitCount)continue;
+        const auto& incoming=evidence.contact;auto& old=recipient.reports[evidence.track];
+        if(incoming.observedAt>time||incoming.clearedAt>time||time-std::max(incoming.observedAt,incoming.clearedAt)>120)continue;
+        if(incoming.observedAt<=old.observedAt&&incoming.clearedAt<=old.clearedAt)continue;
+        float cleared=std::max(incoming.clearedAt,old.clearedAt);
+        if(incoming.observedAt>old.observedAt)old=incoming;
+        old.clearedAt=cleared;old.known=old.observedAt>cleared;old.visible=false;
+        old.reportSource=relay;old.registeredAt=time;++recipient.knowledgeRevision;
+    }
+}
+TaskStatus ReportedGoalStatus(const Soldier& leader,float time){
+    const auto& intent=leader.platoonOrder.intent;
+    if(!intent.id||time>=leader.platoonOrder.expiresAt)return TaskStatus::Executing;
+    int completed=0,blocked=0;
+    for(const auto& report:leader.taskReports){
+        if(report.goalId!=intent.id||time-report.at>20)continue;
+        const bool obstruction=report.cause==TaskCause::Unreachable||report.cause==TaskCause::Geometry||report.cause==TaskCause::Fire;
+        if(report.active&&obstruction&&(report.status==TaskStatus::Blocked||report.status==TaskStatus::Failed))++blocked;
+        if(report.status==TaskStatus::Done&&report.active&&Distance(report.position,intent.objective)<=intent.radius)++completed;
+    }
+    // A local hold receipt is never evidence that a distant objective was secured.
+    if(blocked>=2)return TaskStatus::Blocked;
+    return intent.purpose==GoalPurpose::Seize&&completed>=2?TaskStatus::Done:TaskStatus::Executing;
+}
+void TraceBeliefs(Diagnostics* d,const Soldier& observer,float time){
+    if(!d||!d->options.enabled||!observer.directionalSight)return;
+
+codex
+The new fallback needs to carry an explicit bounding-movement instruction; an ordinary Advance order alone would leave movement technique to squad contact range. I’ll also time the observation branch from its first acceptance so reassessments cannot restart the 45-second limit. The existing P01 bare control encodes the old hold behavior, so I’ll keep it unchanged and report any conflict exposed by the tests.
+
+exec
+/bin/bash -lc "mkdir -p .local/phase4f/entry/source
+cp Unreal/Source/ArmyPrototype/Sim/* .local/phase4f/entry/source/
+cp tests/platoon_tests.h .local/phase4f/entry/platoon_tests.h
+python3 tools/source_id.py > .local/phase4f/entry/fingerprint.txt
+cat > .local/phase4f/edit1.py <<'PY'
+from pathlib import Path
+base=Path('Unreal/Source/ArmyPrototype/Sim')
+p=base/'BattleSim.h';s=p.read_text().replace('bool drillRecovering=false;','bool drillSuperiority=false;bool drillRecovering=false;').replace('bool hasArea=false,liftFire=false;','bool hasArea=false,liftFire=false,fireMovement=false;').replace('bool active=false,needsWeapon=false;Vec3 objective','bool active=false,needsWeapon=false,fireMovement=false;Vec3 objective').replace('std::array<bool,SquadsPerTeam> advanceDoneSeen{};','std::array<bool,SquadsPerTeam> advanceDoneSeen{},advanceExhausted{};\\n    float observeStarted=-1;Vec3 observeObjective{};bool observeSuperiority=false;int noFlankBranch=0;');p.write_text(s)
+p=base/'PlatoonSim.cpp';s=p.read_text().replace('report.drillRecovering=p.blocked', 'report.drillSuperiority=p.superiority;report.drillRecovering=p.blocked');p.write_text(s)
+p=base/'Diagnostics.cpp';s=p.read_text().replace('i(a.taskNode);i(a.mergeInto);','i(a.taskNode);i(a.fireMovement);i(a.mergeInto);').replace('i(n.active);i(n.needsWeapon);','i(n.active);i(n.needsWeapon);i(n.fireMovement);').replace('i(t.advanceDoneSeen[n]);','i(t.advanceDoneSeen[n]);i(t.advanceExhausted[n]);').replace('for(float at:t.phaseLines)', 'f(t.observeStarted);v(t.observeObjective);i(t.observeSuperiority);i(t.noFlankBranch);\\n                for(float at:t.phaseLines)').replace('f(r.phaseLineAt);f(r.completedAssaultLineAt);','i(r.drillSuperiority);f(r.phaseLineAt);f(r.completedAssaultLineAt);');p.write_text(s)
+p=base/'PlatoonTaskSim.cpp';s=p.read_text().replace('if("'!changed&&time<state.nextAssessment)return out;'"', 'if("'!changed&&time<state.nextAssessment&&!(state.noFlankBranch==2&&time>=state.observeStarted+45))return out;'"')
+s=s.replace('bool withdraw=target>=0&&state.believedRatio<.5f&&"'!support;'"', '''bool withdraw=target>=0&&state.believedRatio<.5f&&"'!support;
+    bool superiority=false;for(const auto& r:squads)superiority|=r.drillSuperiority;
+    if(target<0||Distance(objective,state.observeObjective)>30){state.observeStarted=-1;state.observeSuperiority=false;state.noFlankBranch=0;}
+    if(state.observeStarted>=0)state.observeSuperiority|=superiority;'"''')
+s=s.replace('n.needsWeapon=weapon;n.activation=why;', 'n.needsWeapon=weapon;n.fireMovement=false;n.activation=why;')
+s=s.replace('n.active=target<0;n.status=target<0?PlatoonNodeStatus::Active:PlatoonNodeStatus::Dormant;', 'n.active=target<0&&"'!state.advanceExhausted[r.squad%4];n.status=n.active?PlatoonNodeStatus::Active:state.advanceExhausted[r.squad%4]?PlatoonNodeStatus::Blocked:PlatoonNodeStatus::Dormant;'"')
+old='''if(flanks.empty()){state.noCoveredRoute=true;add(PlatoonNodeKind::Observe,3,60,1,objective,false,\"neither flank has a covered route\");Trace(l,d,time,\"platoon_blocked\",\"no covered route on either flank: Fix/Observe/Reserve; report no manoeuvre route\",objective);}'''
+new='''if(flanks.empty()){
+            state.noCoveredRoute=true;
+            if(state.observeStarted<0&&state.believedRatio<1&&"'!superiority){state.observeStarted=time;state.observeObjective=objective;state.observeSuperiority=false;}
+            const bool expired=state.observeStarted>=0&&time>=state.observeStarted+45;
+            const bool observing=!expired&&state.believedRatio<1&&!superiority;
+            const int branch=expired&&!state.observeSuperiority?3:observing?2:1;
+            if(branch!=state.noFlankBranch){
+                // One honest route-rejection report, followed by the selected manoeuvre.
+                if(!state.noFlankBranch)Trace(l,d,time,"platoon_blocked","no covered flank route: selecting bounded observation or attack by fire and movement",objective);
+                Trace(l,d,time,"platoon_manoeuvre",branch==1?"no covered flank: attack by fire and movement; Reserve capacity zero":branch==2?"inferior without superiority: Fix/Observe/Reserve for at most 45 s":"45 s observation expired without superiority: Withdraw",objective);
+                state.noFlankBranch=branch;
+            }
+            if(branch==3){withdraw=true;nodeAt(2).active=false;}
+            else if(branch==2)add(PlatoonNodeKind::Observe,3,60,1,objective,false,"inferior without superiority; bounded observation");
+            else for(const auto& r:squads)if(r.squad!=fixing){
+                const float sign=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y>=0?1.f:-1.f;
+                Vec3 extreme=objective;float extent=-1e9f;
+                for(int id:selected){Vec3 delta=knowledge.contacts[id].position-objective;float v=(delta.x*side.x+delta.y*side.y)*sign;if(v>extent){extent=v;extreme=knowledge.contacts[id].position;}}
+                Vec3 goal=extreme+side*(sign*24)-forward*8;
+                // Flank-most catalogue cover near the group, ranked for this own lane.
+                float best=1e9f;for(const auto& cover:CoverPositions(map)){
+                    Vec3 delta=cover.shelter-objective;
+                    if(Distance(cover.shelter,objective)>65||(delta.x*forward.x+delta.y*forward.y)<-20)continue;
+                    float cost=Distance(cover.shelter,goal)+.25f*Distance(r.position,cover.shelter);
+                    if(cost<best){best=cost;goal=cover.shelter;}
+                }
+                add(PlatoonNodeKind::Advance,40+r.squad,80,1,goal,false,"attack by fire and movement in own corridor");nodeAt(40+r.squad).fireMovement=true;
+            }
+        }'"'''
+assert old in s;s=s.replace(old,new)
+s=s.replace('add(PlatoonNodeKind::Reserve,4,20,int(squads.size()),fixPoint-forward*30,false,\"reserve behind fixing element\");','add(PlatoonNodeKind::Reserve,4,20,state.noCoveredRoute&&state.noFlankBranch"'!=2?0:int(squads.size()),fixPoint-forward*30,false,"reserve behind fixing element");'"')
+s=s.replace('\"believed ratio below one half without support\");','state.noFlankBranch==3?\"bounded observation exhausted without superiority\":\"believed ratio below one half without support\");')
+s=s.replace('node->kind==PlatoonNodeKind::Advance&&\\n', 'node->kind==PlatoonNodeKind::Advance&&"'!a.fireMovement&&'"\\n')
+s=s.replace('if(state.advanceDoneSeen[index]&&Distance(a.position,state.advanceDoneObjectives[index])<18){', 'const bool guarded=state.advanceDoneSeen[index]&&Distance(a.position,state.advanceDoneObjectives[index])<18;\\n            if(guarded){')
+s=s.replace('''if(route){
+                state.advanceDoneSeen''','''if(guarded&&("'!route||(route->destination.x-r.position.x)*direction<40)){
+                state.advanceExhausted[index]=true;node->active=false;node->status=PlatoonNodeStatus::Blocked;
+                Trace(l,d,time,"platoon_route_exhausted","resolved endpoint cannot meet 40 m forward minimum; route exhausted, no unchanged renewal",next,r.squad);
+            }else if(route){
+                state.advanceDoneSeen'"''')
+s=s.replace('if(node.kind==PlatoonNodeKind::Advance&&node.id"'!=30+r.squad)continue;'"', 'if(node.kind==PlatoonNodeKind::Advance&&node.id"'!=(node.fireMovement?40:30)+r.squad)continue;'"')
+s=s.replace('claimsEnabled&&node.kind==PlatoonNodeKind::Flank);', 'claimsEnabled&&(node.kind==PlatoonNodeKind::Flank||node.fireMovement));')
+s=s.replace('directive.taskNode=node.id;directive.issuer', 'directive.taskNode=node.id;directive.fireMovement=node.fireMovement;directive.issuer')
+s=s.replace('if(node.kind==PlatoonNodeKind::Flank){state.claims.push_back', 'if(node.kind==PlatoonNodeKind::Flank||node.fireMovement){state.claims.push_back')
+p.write_text(s)
+p=base/'DrillSim.cpp';s=p.read_text().replace('auto technique=close||', 'auto technique=leader.platoonOrder.fireMovement||close||');p.write_text(s)
+p=base/'SquadDrillSim.cpp';s=p.read_text().replace('p.action.route=Flank(l,knowledge,members,map,config,p,d,time,false);','p.action.route=l.platoonOrder.fireMovement?std::shared_ptr<TacticalRoute>{}:Flank(l,knowledge,members,map,config,p,d,time,false);');p.write_text(s)
+p=base/'PlatoonFixtures.cpp';s=p.read_text().replace('for(auto& s:f.soldiers){s.facing', '''if(id==84||id==85){
+        map.obstacles.clear();
+        for(float x:{-35.f,-10.f,15.f,40.f})for(float y=-72;y<=72;y+=12)map.obstacles.push_back({{x,y},{.6f,2},false,true,1.3f});
+        for(int n=0;n<32;++n){auto& s=f.soldiers[n];s.health=(id==84||n%8<4||IsPlatoonStaff(s))?10000:0;s.reloadUntil=id==85?10000:0;}
+        for(int n=32;n<64;++n){auto& s=f.soldiers[n];s.health=n<32+(id==84?30:24)?10000:0;s.position={35.f+float((n-32)/8)*3,(n%8-3.5f)*8};s.goal=s.position;s.reloadUntil=10000;s.machineGun=false;s.role=Role::Rifleman;}
+    }
+    for(auto& s:f.soldiers){s.facing''');p.write_text(s)
+p=base/'BattleSim.cpp';s=p.read_text().replace('encounter<=83','encounter<=85');p.write_text(s)
+p=Path('tools/battle_cli.cpp');s=p.read_text().replace('encounter>83','encounter>85').replace('0..83','0..85');p.write_text(s)
+p=Path('tests/platoon_tests.h');s=p.read_text();at=s.index('static void PlatoonTests(');s=s[:at]+'''static void PlatoonP08(){
+    auto c=DrillConfig();c.maxSeconds=145;auto attack=Simulate(c,{}, {},84),observe=Simulate(c,{}, {},85);
+    float contact=-1,branch=-1;int fixing=-1;Vec3 sector{};std::array<Vec3,4> start{};std::array<float,4> displacement{};std::array<bool,4> bounding{};
+    bool reserve=false,lateBlocked=false,delivered=false,noRoute=false;
+    for(const auto& f:attack.frames){
+        bool known=false;for(const auto& a:f.platoon[0].tasks.assigned)known|=a.enemy>=0;
+        if(known&&contact<0){contact=f.time;for(int n=0;n<4;++n)start[n]=PlatoonCentre(f,n);}
+        for(int n=0;n<4;++n){const auto& a=f.platoon[0].tasks.assigned[n];if(a.fireMovement){if(branch<0)branch=f.time;fixing=a.supportSquad;sector=a.sector;noRoute|=f.platoon[0].tasks.noCoveredRoute;}
+            if(branch>=0){reserve|=a.task==PlatoonTask::Reserve;bounding[n]=bounding[n]||(a.fireMovement&&f.command[n].battleDrill.technique==MovementTechnique::BoundingOverwatch);}
+            if(contact>=0&&f.time<=contact+90)displacement[n]=std::max(displacement[n],PlatoonCentre(f,n).x-start[n].x);
+        }
+    }
+    for(const auto& e:attack.diagnostics->entries)if(e.soldier<32&&e.kind==\"platoon_blocked\"&&branch>=0&&e.time>branch)lateBlocked=true;
+    for(const auto& shot:attack.shots)if(shot.owner/8==fixing&&shot.time>=branch&&Distance(shot.aimedAt,sector)<45)delivered=true;
+    float minimum=1e9f;bool allBounding=true;for(int n=0;n<4;++n)if(n"'!=fixing){minimum=std::min(minimum,displacement[n]);allBounding&=bounding[n];}
+    float began=-1,withdraw=-1,ratio=0;bool fix=false,watch=false,superiority=false;
+    for(const auto& f:observe.frames){const auto& t=f.platoon[0].tasks;
+        if(t.noFlankBranch==2&&began<0){began=t.observeStarted;ratio=t.believedRatio;}
+        for(const auto& a:t.assigned){fix|=a.task==PlatoonTask::Support;watch|=a.task==PlatoonTask::Observe;if(a.task==PlatoonTask::Withdraw&&withdraw<0)withdraw=f.time;}
+        if(began>=0)for(const auto& s:f.soldiers)if(s.team==0&&s.Active())for(const auto& report:s.platoonReports)superiority|=report.drillSuperiority;
+    }
+    std::cout<<"P08 contact="<<contact<<" branch="<<branch<<" fixing="<<fixing<<" delivered="<<delivered<<" minimum_front="<<minimum<<" bounding="<<allBounding<<" reserve="<<reserve<<" late_blocked="<<lateBlocked<<" no_route="<<noRoute<<" control_ratio="<<ratio<<" fix="<<fix<<" observe="<<watch<<" began="<<began<<" withdraw="<<withdraw<<" superiority="<<superiority<<"'"\\\\n\";
+    assert(contact>=0&&branch>=0&&fixing>=0&&delivered&&minimum>=40&&allBounding&&"'!reserve&&!lateBlocked&&noRoute);
+    assert(ratio>.5f&&ratio<.7f&&fix&&watch&&!superiority&&began>=0&&withdraw>=began&&withdraw<=began+45+c.reportDelay+1);
+}
+'"'''+s[at:];s=s.replace('if(name==\"all\"||name==\"P07\")PlatoonP07();}', 'if(name==\"all\"||name==\"P07\")PlatoonP07();\\n    if(name==\"all\"||name==\"P08\")PlatoonP08();}');p.write_text(s)
+p=Path('plans/014-battle-drill-scenarios.md');s=p.read_text().replace('| P07 |', '| P08 | equal strength on open ground; no covered flank route | fixing squad delivers fire on the group; all other squads advance at least 40 m within 90 s of contact in bounding overwatch in own corridors; no Reserve and no platoon_blocked after branch selection | believed ratio about 0.6 without superiority: Fix and Observe, then Withdraw within 45 s plus transport; beliefs and orders use production sensing/transport |\\n| P07 |');p.write_text(s)
+PY
+python3 .local/phase4f/edit1.py
+./scripts/test-sim.sh --platoon P08 > .local/phase4f/build-attempt1.log 2>&1" in /home/jchan/ww1-autobattler
+ exited 134 in 43765ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import shutil,subprocess
+r=Path('.local/phase4f');a=r/'attempt1';(a/'source').mkdir(parents=True,exist_ok=True)
+for p in Path('Unreal/Source/ArmyPrototype/Sim').glob('*'):shutil.copy2(p,a/'source'/p.name)
+shutil.copy2('tests/platoon_tests.h',a/'platoon_tests.h');(a/'fingerprint.txt').write_text(subprocess.check_output(['python3','tools/source_id.py'],text=True))
+for name in ('run_attempt.py','trace_attempt.py','gates.py','trace_checks.py','run_authored.py','measure.py','analyze.py','analyze_partial.py','scoreboard.py','augment_table.py','analysis_steps.py','finish_analysis.py','check_artifacts.py','guard_diagnostic.py'):
+ s=(Path('.local/phase4e')/name).read_text().replace('phase4e','phase4f').replace('P4e','P4f')
+ if name=='run_attempt.py':s=s.replace(\"'P07','close'\",\"'P07','P08','close'\")
+ if name=='trace_attempt.py':s=s.replace(\"mapping={'P07'\", \"mapping={'P08':(84,145),'control08':(85,145),'P07'\").replace(\"failed=['bare']\", \"failed=['bare','P08','control08']\")
+ if name=='measure.py':s=s.replace('==27','==28')
+ (r/name).write_text(s)
+PY
+./scripts/battle-lab.sh --version > .local/phase4f/cli-attempt1.log 2>&1" in /home/jchan/ww1-autobattler
+codex
+Attempt 1 is building. It adds a fire-and-movement directive, a latched 45-second observation window, superiority reported through normal squad messages, and rejection of resolved loop-guard endpoints that fall short of 40 m. P08 uses physical strength and firing controls; it injects no knowledge or receipts.
+
+exec
+/bin/bash -lc "tail -10 .local/phase4f/build-attempt1.log; tail -5 .local/phase4f/cli-attempt1.log; grep -n 'drillSuperiority\\|fireMovement' Unreal/Source/ArmyPrototype/Sim/Diagnostics.cpp; grep -n 'KnownContact\\|DrillConfig' tests/drills_tests.h | head" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+P08 contact=9 branch=9 fixing=0 delivered=1 minimum_front=0.251213 bounding=0 reserve=0 late_blocked=1 no_route=1 control_ratio=0 fix=0 observe=0 began=-1 withdraw=-1 superiority=0
+sim_tests: /home/jchan/ww1-autobattler/tests/platoon_tests.h:111: void PlatoonP08(): Assertion `contact>=0&&branch>=0&&fixing>=0&&delivered&&minimum>=40&&allBounding&&!reserve&&!lateBlocked&&noRoute' failed.
+./scripts/test-sim.sh: line 33:    68 Aborted                    "$repo_root/.local/tests/sim_tests" "$@"
+162:            auto directive=[&](const PlatoonDirective& a){f(a.areaRouteRadius);f(a.areaDiscRadius);v(a.areaDiscCenter);i(a.taskNode);i(a.fireMovement);i(a.mergeInto);i(a.hasArea);i(a.liftFire);v(a.areaMin);v(a.areaMax);v(a.assaultLane.origin);v(a.assaultLane.target);f(a.assaultLane.observedAt);i(a.intent.id);f(a.expiresAt);if(a.corridor){v(a.corridor->start);v(a.corridor->destination);for(Vec3 point:a.corridor->points)v(point);}};
+164:                for(const auto& n:t.nodes){i(n.id);i(n.parent);i(int(n.kind));i(int(n.status));i(n.priority);i(n.capacity);i(n.assigned);i(n.active);i(n.needsWeapon);i(n.fireMovement);v(n.objective);v(n.areaMin);v(n.areaMax);}
+172:            for(const auto& unit:frame.soldiers){directive(unit.platoonOrder);for(const auto& r:unit.platoonReports){i(r.drillSuperiority);f(r.phaseLineAt);f(r.completedAssaultLineAt);v(r.assaultObjective);v(r.assaultOrigin);for(Vec3 at:r.drillMemberPositions)v(at);}}
+5:static Config DrillConfig(){Config c;c.drills=c.foundations=true;return c;}
+12:        auto c=DrillConfig();auto frame=InitialFrame(c);auto map=MakeSkirmishMap();if(layout)MakeMGEncounter(c,layout,map,frame);
+25:        auto c=DrillConfig();auto frame=InitialFrame(c);auto map=MakeSkirmishMap();MakeDrillEncounter(c,44,map,frame);
+34:    auto f=InitialFrame(DrillConfig());std::vector<Soldier> squad(f.soldiers.begin(),f.soldiers.begin()+8);
+42:    auto c=DrillConfig();c.maxSeconds=160;auto open=Simulate(c,{}, {},44),narrow=Simulate(c,{}, {},45);
+56:    auto c=DrillConfig();c.maxSeconds=70;auto report=Simulate(c,{}, {},46),control=Simulate(c,{}, {},47);bool received=false,distant=false,protectedTrail=false,closeControl=false,quietControl=true;
+68:    auto c=DrillConfig();c.maxSeconds=80;auto near=Simulate(c,{}, {},48),far=Simulate(c,{}, {},49);bool alternate=false,covered=true;float maximum=0;int previous=-1,bounds=0;
+87:    auto c=DrillConfig();c.maxSeconds=50;auto covered=Simulate(c,{}, {},50),bare=Simulate(c,{}, {},51);float first=-1;std::set<int> firing;bool allCover=false,assessment=false,separated=true,pathBound=true;
+104:    auto c=DrillConfig();c.maxSeconds=60;auto capable=Simulate(c,{}, {},52),weak=Simulate(c,{}, {},53);bool support=DrillTrace(capable,"drill_stage","gun group supports"),blocked=false,received=false;float sent=-1,at=-1;
+115:    auto c=DrillConfig();c.maxSeconds=40;auto scarce=Simulate(c,{}, {},54),ample=Simulate(c,{}, {},55);int occupied[2]={};bool spaced=true;
+
+exec
+/bin/bash -lc 'python3 .local/phase4f/run_attempt.py 1 > .local/phase4f/attempt1-run.log 2>&1' in /home/jchan/ww1-autobattler
+ succeeded in 31944ms:
+exec
+/bin/bash -lc "tail -6 .local/phase4f/attempt1-run.log; cat .local/phase4f/cli-attempt1.log; grep -n 'enum class Action\\|bool Active' Unreal/Source/ArmyPrototype/Sim/BattleSim.h" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+{'name': 'D02', 'command': ['.local/phase4f/attempt1/sim-tests', '--drills', 'D02'], 'exit_code': 0, 'log': '.local/phase4f/attempt1/mechanisms/D02.log'}
+{'name': 'D03', 'command': ['.local/phase4f/attempt1/sim-tests', '--drills', 'D03'], 'exit_code': 0, 'log': '.local/phase4f/attempt1/mechanisms/D03.log'}
+{'name': 'D04', 'command': ['.local/phase4f/attempt1/sim-tests', '--drills', 'D04'], 'exit_code': 0, 'log': '.local/phase4f/attempt1/mechanisms/D04.log'}
+{'name': 'D05', 'command': ['.local/phase4f/attempt1/sim-tests', '--drills', 'D05'], 'exit_code': 0, 'log': '.local/phase4f/attempt1/mechanisms/D05.log'}
+{'name': 'D17', 'command': ['.local/phase4f/attempt1/sim-tests', '--drills', 'D17'], 'exit_code': 0, 'log': '.local/phase4f/attempt1/mechanisms/D17.log'}
+{'name': 'D06', 'command': ['.local/phase4f/attempt1/sim-tests', '--drills', 'D06'], 'exit_code': 0, 'log': '.local/phase4f/attempt1/mechanisms/D06.log'}
+6046562409d4acbe-linux
+152:enum class Action { Advance, Cover, Fire, Retreat, Hold, Wounded, Killed };
+412:    bool Active() const { return health > 0; }
+
+ succeeded in 23701ms:
+exec
+/bin/bash -lc 'python3 .local/phase4f/trace_attempt.py 1 > .local/phase4f/attempt1-trace.log 2>&1' in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json
+from pathlib import Path
+r=json.loads(Path('.local/phase4f/attempt1/results.json').read_text());print(len(r),[(x['name'],x['exit_code']) for x in r if x['exit_code']])
+PY
+cat .local/phase4f/attempt1/mechanisms/P01.log
+cat .local/phase4f/attempt1-trace.log" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+28 [('P01', -6), ('P03', -6), ('P08', -6)]
+P01 fix_weapon=1 two_flanks=1 reserve=1 arrival_angle=0 claims=1 bare_flank=0 bare_unsafe=0 honest=1
+sim-tests: /home/jchan/ww1-autobattler/tests/platoon_tests.h:20: void PlatoonP01(): Assertion `fixing&&two&&reserve&&angle&&PlatoonTrace(live,"platoon_corridor")&&!controlFlank&&!controlUnsafe&&PlatoonTrace(bare,"platoon_blocked")' failed.
+bare [{'kind': 'platoon_blocked', 'reason': 'no covered flank route: selecting bounded observation or attack by fire and movement', 'n': 20}, {'kind': 'platoon_manoeuvre', 'reason': 'no covered flank: attack by fire and movement; Reserve capacity zero', 'n': 20}, {'kind': 'drill_stage_advanced', 'reason': 'new contact inside 100 m', 'n': 17}]
+P08 [{'kind': 'platoon_blocked', 'reason': 'no covered flank route: selecting bounded observation or attack by fire and movement', 'n': 48}, {'kind': 'platoon_manoeuvre', 'reason': 'no covered flank: attack by fire and movement; Reserve capacity zero', 'n': 48}, {'kind': 'drill_accepted', 'reason': 'MoveTactically', 'n': 8}]
+control08 [{'kind': 'platoon_task', 'reason': 'renew committed directive (75 s lifetime)', 'n': 8}, {'kind': 'drill_accepted', 'reason': 'MoveTactically', 'n': 4}, {'kind': 'drill_stage_advanced', 'reason': 'deployment', 'n': 4}]
+
+ succeeded in 13367ms:
+codex
+Attempt 1 fails P08 and two existing pairs, P01 and P03. The trace confirms repeated no-flank branch acceptance, and P08’s weak control never acquires contact. I’m inspecting those failures and the lost flank commitment before the second attempt; no distribution run has started.
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json
+from pathlib import Path
+r=json.loads(Path('.local/phase4f/attempt1/trace-evidence.json').read_text())
+for x in r:
+ print('\\nCASE',x['name'])
+ for e in x['events']:
+  if (e['kind'].startswith('platoon') and e['time']<60) or ('Retire' in e.get('reason','') or 'BreakContact' in e.get('reason','')):print(e['time'],e['squad'],e['kind'],e['reason'],e['goal'])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+
+CASE bare
+3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [5.9292908, -47.959759, 0]
+3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9651413, -15.975235, 0]
+3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9455833, 16.022512, 0]
+3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9064674, 48.018009, 0]
+16.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [56.305115, 3.2080956, 0]
+16.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [56.305115, 3.2080956, 0]
+16.950001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-23.719536, -48.3699, 0]
+16.950001 1 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [51.799999, -46.900002, 0]
+16.950001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [51.799999, -46.900002, 0]
+17.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.523129, 0.083685562, 0]
+17.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.523129, 0.083685562, 0]
+19.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [56.197601, 0.66579169, 0]
+19.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [56.197601, 0.66579169, 0]
+22.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [55.22953, 1.2985609, 0]
+22.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [55.22953, 1.2985609, 0]
+27.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [54.842911, 1.1440291, 0]
+27.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [54.842911, 1.1440291, 0]
+31.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [54.538166, 16.584143, 0]
+31.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [54.538166, 16.584143, 0]
+36.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [55.013165, -14.199177, 0]
+36.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [55.013165, -14.199177, 0]
+41.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [55.013165, -14.199177, 0]
+41.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [55.013165, -14.199177, 0]
+46.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [54.296959, -15.414715, 0]
+46.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [54.296959, -15.414715, 0]
+51.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [54.296959, -15.414715, 0]
+51.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [54.296959, -15.414715, 0]
+56.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [54.296959, -15.414715, 0]
+56.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [54.296959, -15.414715, 0]
+
+CASE P08
+3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [5.9284134, -48.043957, 0]
+3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.966423, -16.007841, 0]
+3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9455643, 16.022675, 0]
+3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9029274, 47.962322, 0]
+8.9000006 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [35.621429, -24.103569, 0]
+8.9000006 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [35.621429, -24.103569, 0]
+8.9000006 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-43.085373, -46.557125, 0]
+8.9000006 1 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [13.8, -70.900002, 0]
+8.9000006 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [13.8, -70.900002, 0]
+9.3500004 0 drill_accepted BreakContact: believed ratio at least two without superiority [35, -28, 0]
+10.900001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [37.147106, -18.055428, 0]
+10.900001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [37.147106, -18.055428, 0]
+12.900001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [38.951569, -13.614921, 0]
+12.900001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [38.951569, -13.614921, 0]
+14.3 1 drill_accepted BreakContact: believed ratio at least two without superiority [35, -12, 0]
+14.45 2 drill_accepted BreakContact: believed ratio at least two without superiority [36.242859, 3.7928572, 0]
+14.75 3 drill_accepted BreakContact: believed ratio at least two without superiority [35, 28, 0]
+14.900001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.397709, -9.7646227, 0]
+14.900001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.397709, -9.7646227, 0]
+16.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.700989, -5.7168331, 0]
+16.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.700989, -5.7168331, 0]
+17.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526878, -4.4680619, 0]
+17.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526878, -4.4680619, 0]
+22.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.255524, -4.7790942, 0]
+22.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.255524, -4.7790942, 0]
+27.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.358692, -5.0239444, 0]
+27.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.358692, -5.0239444, 0]
+32.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.567936, -5.5529313, 0]
+32.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.567936, -5.5529313, 0]
+37.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.464664, -5.2561545, 0]
+37.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.464664, -5.2561545, 0]
+42.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+42.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+47.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+47.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+52.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+52.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+55.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+55.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+79.200005 3 drill_accepted BreakContact: believed ratio at least two without superiority [35, 28, 0]
+79.25 2 drill_accepted BreakContact: believed ratio at least two without superiority [35, 12, 0]
+102.2 2 drill_accepted BreakContact: believed ratio at least two without superiority [35, 12, 0]
+102.2 3 drill_accepted BreakContact: believed ratio at least two without superiority [35, 28, 0]
+
+CASE control08
+3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [7.75, -48, 0]
+3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [7.75, -16, 0]
+3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [7.75, 16, 0]
+3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [7.75, 48, 0]
+
+CASE P01
+3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [5.9292908, -47.959759, 0]
+3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9651413, -15.975235, 0]
+3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.5553017, 16.029205, 0]
+3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9064674, 48.018009, 0]
+16.950001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-23.719536, -48.3699, 0]
+16.950001 0 platoon_corridor_pair joint minimum-cost covered pair: both centrelines separated throughout [66.59581, 24.978485, 0]
+16.950001 2 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [34.769249, 28.305723, 0]
+16.950001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [34.769249, 28.305723, 0]
+16.950001 3 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [37.264675, 52.175644, 0]
+16.950001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [37.264675, 52.175644, 0]
+16.950001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-54.804646, -57.185574, 0]
+31.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+31.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+31.950001 2 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [51.799999, -46.900002, 0]
+31.950001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [51.799999, -46.900002, 0]
+36.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+36.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+41.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+41.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+46.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+46.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+51.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+51.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+56.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+56.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+
+CASE P03
+3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [5.9292908, -47.959759, 0]
+3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9651413, -15.975235, 0]
+3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.5553017, 16.029205, 0]
+3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9064674, 48.018009, 0]
+16.950001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-23.719536, -48.3699, 0]
+16.950001 0 platoon_corridor_pair joint minimum-cost covered pair: both centrelines separated throughout [66.59581, 24.978485, 0]
+16.950001 2 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [34.769249, 28.305723, 0]
+16.950001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [34.769249, 28.305723, 0]
+16.950001 3 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [37.264675, 52.175644, 0]
+16.950001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [37.264675, 52.175644, 0]
+16.950001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-54.804646, -57.185574, 0]
+31.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+31.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+31.950001 2 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [51.799999, -46.900002, 0]
+31.950001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [51.799999, -46.900002, 0]
+36.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+36.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+41.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+41.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+46.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+46.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+51.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+51.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+56.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [57.723522, -1.9725988, 0]
+56.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [57.723522, -1.9725988, 0]
+
+CASE P08
+3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [5.9284134, -48.043957, 0]
+3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.966423, -16.007841, 0]
+3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9455643, 16.022675, 0]
+3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9029274, 47.962322, 0]
+8.9000006 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [35.621429, -24.103569, 0]
+8.9000006 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [35.621429, -24.103569, 0]
+8.9000006 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-43.085373, -46.557125, 0]
+8.9000006 1 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [13.8, -70.900002, 0]
+8.9000006 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [13.8, -70.900002, 0]
+9.3500004 0 drill_accepted BreakContact: believed ratio at least two without superiority [35, -28, 0]
+10.900001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [37.147106, -18.055428, 0]
+10.900001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [37.147106, -18.055428, 0]
+12.900001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [38.951569, -13.614921, 0]
+12.900001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [38.951569, -13.614921, 0]
+14.3 1 drill_accepted BreakContact: believed ratio at least two without superiority [35, -12, 0]
+14.45 2 drill_accepted BreakContact: believed ratio at least two without superiority [36.242859, 3.7928572, 0]
+14.75 3 drill_accepted BreakContact: believed ratio at least two without superiority [35, 28, 0]
+14.900001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.397709, -9.7646227, 0]
+14.900001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.397709, -9.7646227, 0]
+16.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.700989, -5.7168331, 0]
+16.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.700989, -5.7168331, 0]
+17.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526878, -4.4680619, 0]
+17.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526878, -4.4680619, 0]
+22.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.255524, -4.7790942, 0]
+22.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.255524, -4.7790942, 0]
+27.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.358692, -5.0239444, 0]
+27.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.358692, -5.0239444, 0]
+32.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.567936, -5.5529313, 0]
+32.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.567936, -5.5529313, 0]
+37.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.464664, -5.2561545, 0]
+37.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.464664, -5.2561545, 0]
+42.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+42.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+47.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+47.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+52.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+52.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+55.950001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [39.526024, -5.4427238, 0]
+55.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [39.526024, -5.4427238, 0]
+79.200005 3 drill_accepted BreakContact: believed ratio at least two without superiority [35, 28, 0]
+79.25 2 drill_accepted BreakContact: believed ratio at least two without superiority [35, 12, 0]
+102.2 2 drill_accepted BreakContact: believed ratio at least two without superiority [35, 12, 0]
+102.2 3 drill_accepted BreakContact: believed ratio at least two without superiority [35, 28, 0]
+
+exec
+/bin/bash -lc "sed -n '1,77p' Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp; python3 - <<'PY'
+import json
+from pathlib import Path
+rows=json.loads(Path('.local/phase4f/attempt1/trace-evidence.json').read_text())
+r=next(x for x in rows if x['name']=='control08');print(r['counts']);print(r['events'][:14])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+#include "DrillSim.h"
+#include "PositionSim.h"
+#include "TacticalRouteSim.h"
+#include "Diagnostics.h"
+#include <algorithm>
+#include <cmath>
+namespace army {
+const SquadOrganisation& Organisation(OrganisationKind kind){
+    static const std::array<SquadOrganisation,4> data{{
+        {"Gun-centric",{{{"gun group",Role::Sergeant,2},{"rifle group",Role::Corporal,2}}},5,AttritionRule::GunNest,true,.5f,1,false},
+        {"Section",{{{"gun group",Role::Sergeant,2},{"rifle group",Role::Corporal,3}}},5,AttritionRule::HaltAndMerge,true,.5f,3,false},
+        {"Teams",{{{"first team",Role::Sergeant,2},{"second team",Role::Corporal,2}}},5,AttritionRule::SingleElement,true,.5f,2,false},
+        {"Rush",{{{"assault group",Role::Sergeant,2},{"reserve",Role::Corporal,0}}},3,AttritionRule::SingleElement,true,2,5,true}
+    }};return data[int(kind)];
+}
+std::array<int,SquadSize> AssignElements(const std::vector<Soldier>& members,OrganisationKind kind){
+    std::array<int,SquadSize> result;result.fill(-1);int counts[2]={};
+    for(const auto& s:members)if(s.Active()&&!IsPlatoonStaff(s)&&(s.role==Role::Sergeant||s.role==Role::Corporal||s.machineGun)){
+        int e=s.role==Role::Corporal&&kind!=OrganisationKind::Rush?1:0;result[s.id%SquadSize]=e;++counts[e];
+    }
+    for(const auto& s:members)if(s.Active()&&!IsPlatoonStaff(s)&&result[s.id%SquadSize]<0){
+        int e=kind==OrganisationKind::Rush?0:counts[0]<3?0:counts[1]<=counts[0]?1:0;
+        result[s.id%SquadSize]=e;++counts[e];
+    }return result;
+}
+static void Trace(Diagnostics* d,const Soldier& leader,const DrillPlan& p,float time,const char* kind,const std::string& reason,int subject=-1,Vec3 position={}){
+    if(!d||!d->options.enabled)return;
+    TraceEntry e;e.id=d->nextId++;e.time=time;e.soldier=leader.id;e.squad=leader.squad;e.kind=kind;e.reason=reason;e.plan=p.instance;e.routeStage=p.generation;e.goal=p.destination;e.sector=p.sector;e.position=position;e.taskSubject=subject;e.intent=p.intent;e.execution.method=p.instance;e.execution.stage=int(p.stage);e.execution.generation=p.generation;d->entries.push_back(e);
+}
+static Vec3 Unit(Vec3 p){p.z=0;float n=Length(p);return n>.01f?p*(1/n):Vec3{1,0};}
+static std::vector<Soldier> SquadView(const Soldier& leader,const std::vector<Soldier>& members,DrillPlan& p,float time){
+    std::vector<Soldier> result;
+    for(const auto& member:members){const int index=member.id%SquadSize;auto& v=p.members[index];
+        // Initial deployment orders are legal. Later updates require own observation or a received report.
+        if(!p.initialized){v={true,member.position,member.health,member.suppression,time,member.role,member.machineGun};}
+        if(member.id==leader.id){v={true,leader.position,leader.understoodHealth,leader.understoodSuppression,time,leader.role,leader.machineGun};}
+        const auto& sight=leader.allies[member.id];
+        if(sight.known&&sight.observedAt>v.observedAt){v.position=sight.position;v.health=member.health;v.suppression=member.suppression;v.observedAt=sight.observedAt;v.role=member.role;v.machineGun=member.machineGun;}
+        const auto& report=leader.taskReports[index];
+        if(report.soldier==member.id&&report.at>v.observedAt){v.position=report.position;v.observedAt=report.at;if(!report.active)v.health=0;}
+        if(!v.known)continue;
+        Soldier s;s.id=member.id;s.squad=leader.squad;s.team=leader.team;s.position=v.position;s.health=v.health;s.suppression=v.suppression;s.role=v.role;s.machineGun=v.machineGun;s.assignment=member.assignment;
+        result.push_back(s);
+    }return result;
+}
+static Vec3 Mean(const std::vector<Soldier>& members,int element,const DrillPlan& p){Vec3 sum{};int count=0;for(const auto& s:members)if(s.Active()&&(element<0||p.elements[s.id%SquadSize]==element)){sum=sum+s.position;++count;}return count?sum*(1.f/count):p.center;}
+static Vec3 Sweep(const Soldier& leader,const Map& map,DrillPlan& p){
+    const float sign=leader.team?-1.f:1.f;const float fractions[]={-.55f,-.15f,.35f,.75f,.35f,-.35f};
+    Vec3 target{map.halfWidth*fractions[p.leg%6]*sign,p.deployment.y,p.deployment.z};
+    while(p.leg%6<3&&p.center.x*sign>target.x*sign+8){++p.leg;target.x=map.halfWidth*fractions[p.leg%6]*sign;}
+    return target;
+}
+static bool Mouth(const Map& map,Vec3 from,Vec3 direction){
+    Vec3 to=from+direction*30;return !ClearLine(map,from+Vec3{0,10},to+Vec3{0,10},.5f)||!ClearLine(map,from+Vec3{0,-10},to+Vec3{0,-10},.5f);
+}
+// Receipt evidence belongs to the accepted order, not to the latest heartbeat.
+static bool LatchArrival(const Soldier& leader,const std::vector<Soldier>& members,DrillPlan& p,float time){
+    if(p.arrivalConsumed)return false;
+    int required=0,arrived=0;
+    for(const auto& s:members){const int n=s.id%SquadSize;if(!p.waiting[n])continue;++required;
+        const auto& r=leader.taskReports[n];
+        if(p.expected[n]&&r.id==p.expected[n]&&r.execution.method==p.orderMethods[n]&&
+           r.execution.generation==p.orderGenerations[n]&&r.status==TaskStatus::Done)p.arrivals[n]=true;
+        arrived+=p.arrivals[n];
+    }
+    if(required&&arrived*2>=required&&p.arrivalQuorumAt<0)p.arrivalQuorumAt=time;
+    if(required&&(arrived==required||(p.arrivalQuorumAt>=0&&time-p.arrivalQuorumAt>=3))){p.arrivalConsumed=true;return true;}
+    return false;
+}
+static bool Hysteresis(bool value,bool& candidate,float& since,bool& state,float delay,float time){
+    if(value!=candidate){candidate=value;since=time;}
+    if(state!=candidate&&time-since>=delay){state=candidate;return true;}return false;
+}
+static std::array<int,2> Strength(const std::vector<Soldier>& members,const DrillPlan& p){
+    std::array<int,2> result{};for(const auto& s:members)if(p.elements[s.id%SquadSize]>=0)++result[p.elements[s.id%SquadSize]];return result;
+}
+static void Reorganise(const Soldier& leader,const std::vector<Soldier>& members,DrillPlan& p,Diagnostics* d,float time,const char* trigger){
+[{'kind': 'platoon_task', 'reason': 'renew committed directive (75 s lifetime)', 'n': 8}, {'kind': 'drill_accepted', 'reason': 'MoveTactically', 'n': 4}, {'kind': 'drill_stage_advanced', 'reason': 'deployment', 'n': 4}, {'kind': 'platoon_task', 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'n': 4}, {'kind': 'drill_stage_advanced', 'reason': 'received platoon directive', 'n': 4}, {'kind': 'drill_stage_advanced', 'reason': 'no progress: eligible movement budget expired; contract to column', 'n': 4}, {'kind': 'drill_stage_advanced', 'reason': 'no progress: two expiries within 6 m; Blocked upward, retain orders', 'n': 4}]
+[{'id': 9, 'time': 0.050000001, 'kind': 'drill_accepted', 'soldier': 0, 'squad': 0, 'reason': 'MoveTactically', 'goal': [-30.000002, -48, 0], 'goal_intent': {'id': 100001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, -48, 0]}}, {'id': 11, 'time': 0.050000001, 'kind': 'drill_stage_advanced', 'soldier': 0, 'squad': 0, 'reason': 'deployment', 'goal': [-30.000002, -48, 0], 'goal_intent': {'id': 100001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, -48, 0]}}, {'id': 389, 'time': 0.050000001, 'kind': 'drill_accepted', 'soldier': 8, 'squad': 1, 'reason': 'MoveTactically', 'goal': [-30.000002, -16, 0], 'goal_intent': {'id': 101001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, -16, 0]}}, {'id': 391, 'time': 0.050000001, 'kind': 'drill_stage_advanced', 'soldier': 8, 'squad': 1, 'reason': 'deployment', 'goal': [-30.000002, -16, 0], 'goal_intent': {'id': 101001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, -16, 0]}}, {'id': 769, 'time': 0.050000001, 'kind': 'drill_accepted', 'soldier': 16, 'squad': 2, 'reason': 'MoveTactically', 'goal': [-30.000002, 16, 0], 'goal_intent': {'id': 102001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, 16, 0]}}, {'id': 771, 'time': 0.050000001, 'kind': 'drill_stage_advanced', 'soldier': 16, 'squad': 2, 'reason': 'deployment', 'goal': [-30.000002, 16, 0], 'goal_intent': {'id': 102001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, 16, 0]}}, {'id': 1149, 'time': 0.050000001, 'kind': 'drill_accepted', 'soldier': 24, 'squad': 3, 'reason': 'MoveTactically', 'goal': [-30.000002, 48, 0], 'goal_intent': {'id': 103001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, 48, 0]}}, {'id': 1151, 'time': 0.050000001, 'kind': 'drill_stage_advanced', 'soldier': 24, 'squad': 3, 'reason': 'deployment', 'goal': [-30.000002, 48, 0], 'goal_intent': {'id': 103001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 0, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, 48, 0]}}, {'id': 1860, 'time': 3.8500001, 'kind': 'platoon_task', 'soldier': 5, 'squad': 0, 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'goal': [7.75, -48, 0], 'goal_intent': None}, {'id': 1861, 'time': 3.8500001, 'kind': 'platoon_task', 'soldier': 5, 'squad': 1, 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'goal': [7.75, -16, 0], 'goal_intent': None}, {'id': 1862, 'time': 3.8500001, 'kind': 'platoon_task', 'soldier': 5, 'squad': 2, 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'goal': [7.75, 16, 0], 'goal_intent': None}, {'id': 1863, 'time': 3.8500001, 'kind': 'platoon_task', 'soldier': 5, 'squad': 3, 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'goal': [7.75, 48, 0], 'goal_intent': None}, {'id': 1986, 'time': 5.7000003, 'kind': 'drill_stage_advanced', 'soldier': 16, 'squad': 2, 'reason': 'received platoon directive', 'goal': [7.75, 16, 0], 'goal_intent': {'id': 102001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 145, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, 16, 0]}}, {'id': 2361, 'time': 5.8499999, 'kind': 'drill_stage_advanced', 'soldier': 24, 'squad': 3, 'reason': 'received platoon directive', 'goal': [7.75, 48, 0], 'goal_intent': {'id': 103001, 'parent': 0, 'purpose': 1, 'radius': 10, 'expires_at': 145, 'status': -1, 'observed_at': -100, 'objective': [-30.000002, 48, 0]}}]
+
+exec
+/bin/bash -lc "grep -n 'D16\\|id==68\\|case 68\\|case 69' tests/squad_drills_tests.h Unreal/Source/ArmyPrototype/Sim/DrillFixtures.cpp; sed -n '120,175p' tests/squad_drills_tests.h; grep -n '68\\|69' Unreal/Source/ArmyPrototype/Sim/DrillFixtures.cpp" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+tests/squad_drills_tests.h:107:static void DrillD16(){
+tests/squad_drills_tests.h:112:    std::cout<<"D16 retreat="<<retreat<<" alternate="<<alternate<<" rear_distance="<<rear<<" complete="<<complete<<" equal_break="<<control<<"\n";assert(retreat&&alternate&&rear>=25&&complete&&!control);
+Unreal/Source/ArmyPrototype/Sim/DrillFixtures.cpp:40:        for(int n=32;n<(id==68?48:40);++n){auto& s=frame.soldiers[n];s.health=10000;s.reloadUntil=10000;s.position={65.f+(n-32)/8*6,(n%8-3.5f)*6};s.goal=s.position;s.role=Role::Rifleman;s.machineGun=false;}
+Unreal/Source/ArmyPrototype/Sim/DrillFixtures.cpp:48:    if(id>=68&&std::fmod(f.time,5.f)>.15f)for(int n=32;n<(id==68?48:40);++n)f.soldiers[n].reloadUntil=f.time+.25f;
+    q.protectedPosition=false;q.safeEndpoint=true;q.maxPathLength=9.45f;q.preferCover=true;
+    auto catalogue=QueryPositions(member,{member},map,q,0,nullptr);assert(!catalogue[0].valid);
+    q.formation=true;auto projected=QueryPositions(member,{member},map,q,0,nullptr);assert(projected[0].valid);
+    assert(projected[0].primary.cover.id==0&&Walkable(map,projected[0].primary.cover.shelter));
+    assert(!ClearLine3D(map,projected[0].primary.cover.shelter+Vec3{0,0,1.3f},q.target+Vec3{0,0,1.7f}));
+    q.maxPathLength=4;auto tooFar=QueryPositions(member,{member},map,q,0,nullptr);assert(!tooFar[0].valid);
+    std::cout<<"Projected rush: screened open ground succeeds without catalogue cover; short path budget rejects\n";
+}
+
+static void DrillSprintContracts(){
+    auto c=DrillConfig();c.maxSeconds=100;auto r=Simulate(c,{}, {},60);
+    int moving=0,arrived=0;float longest=0;
+    for(const auto& f:r.frames)for(const auto& s:f.soldiers){const auto& a=s.assignment;
+        if(!s.Active()||a.drillInstance<=0||a.execution.rushSeconds<=0||a.execution.paused)continue;
+        if(s.action==Action::Advance&&s.reason==Reason::BoundAdvance){++moving;assert(s.stance==Stance::Standing);}
+        if(s.reason==Reason::AtWaypoint&&Distance(s.position,a.position)<=.7f){++arrived;assert(s.stance==Stance::Crouched);}
+        if(a.teamPlan.route){float length=0;Vec3 previous=a.teamPlan.route->start;for(Vec3 at:a.teamPlan.route->points){length+=Distance(previous,at);previous=at;}longest=std::max(longest,length);assert(length<=15.001f);}
+    }
+    std::cout<<"Sprint contracts: standing movement="<<moving<<" crouched arrivals="<<arrived<<" maximum route="<<longest<<"\n";
+    assert(moving>0&&arrived>0);
+}
+
+static void DrillCloseAssaultPositions(){
+    auto c=DrillConfig();c.maxSeconds=20;auto r=Simulate(c,{}, {},60);
+    const auto& f=r.frames.back();const auto& leader=f.soldiers[0];const auto& member=f.soldiers[1];
+    auto knowledge=WithTracks(leader,f.time);assert(knowledge.contacts[32].known);
+    GroupPositionQuery q;q.center=leader.position;q.coherenceRadius=200;q.target={70,0};
+    q.formation=true;q.safeEndpoint=true;q.radius=.1f;q.anchors[1]={58,-7};
+    auto unprotected=QueryPositions(leader,{member},r.map,q,f.time,nullptr);assert(!unprotected[0].valid);
+    q.supportedObjective=q.target;q.supportedAssaultRadius=18;
+    auto supported=QueryPositions(leader,{member},r.map,q,f.time,nullptr);assert(supported[0].valid);
+    q.anchors[1]={45,-7};auto distant=QueryPositions(leader,{member},r.map,q,f.time,nullptr);assert(!distant[0].valid);
+    q.anchors[1]={58,-7};q.supportedObjective={45,-7};
+    auto otherThreat=QueryPositions(leader,{member},r.map,q,f.time,nullptr);assert(!otherThreat[0].valid);
+    std::cout<<"Close assault positions: supported objective inside18 accepted; unsupported, distant and other-threat controls reject\n";
+}
+12:    auto& enemy=frame.soldiers[32];enemy.health=10000;enemy.position={70,0};enemy.goal=enemy.position;enemy.role=Role::Sergeant;enemy.machineGun=false;enemy.reloadUntil=id<=57||id>=68?10000:0;
+13:    map.obstacles.push_back({{68,0},{.6f,2},false,true,1.3f});
+37:    if(id>=68){
+40:        for(int n=32;n<(id==68?48:40);++n){auto& s=frame.soldiers[n];s.health=10000;s.reloadUntil=10000;s.position={65.f+(n-32)/8*6,(n%8-3.5f)*6};s.goal=s.position;s.role=Role::Rifleman;s.machineGun=false;}
+48:    if(id>=68&&std::fmod(f.time,5.f)>.15f)for(int n=32;n<(id==68?48:40);++n)f.soldiers[n].reloadUntil=f.time+.25f;
+59:    if(id>=56&&id<=69){MakeActionEncounter(id,map,frame);return;}
+
+exec
+/bin/bash -lc "cat > .local/phase4f/edit2.py <<'PY'
+from pathlib import Path
+b=Path('Unreal/Source/ArmyPrototype/Sim')
+p=b/'BattleSim.h';s=p.read_text().replace('int supportSoldier=-1,supportSquad=-1;', 'int supportSoldier=-1,supportSquad=-1,committedStrength=0;');p.write_text(s)
+p=b/'Diagnostics.cpp';s=p.read_text().replace('i(a.fireMovement);','i(a.fireMovement);i(a.committedStrength);');p.write_text(s)
+p=b/'SquadDrillSim.cpp';s=p.read_text().replace('enemy>=2*members.size()', 'enemy>=2*std::max(int(members.size()),l.platoonOrder.taskNode?l.platoonOrder.committedStrength:0)');p.write_text(s)
+p=b/'PlatoonTaskSim.cpp';s=p.read_text().replace('if(target<0||Distance(objective,state.observeObjective)>30)', 'if(target<0||(state.noFlankBranch&&Distance(objective,state.observeObjective)>60))')
+s=s.replace('state.noFlankBranch=branch;', 'state.noFlankBranch=branch;state.observeObjective=objective;')
+# Keep the accepted manoeuvre while an assigned flank still executes it.
+s=s.replace('''add(PlatoonNodeKind::Fix,2,90,1,objective,weapon>=0,\"known group; potential firing lines\");''', '''for(const auto& r:squads){const auto& a=state.assigned[r.squad%4];
+            if((a.task==PlatoonTask::FlankNorth||a.task==PlatoonTask::FlankSouth)&&a.corridor&&
+               r.goalId==a.intent.id&&r.goalStatus==TaskStatus::Executing&&Distance(a.sector,objective)<30)
+                flanks.push_back({r.squad,a.task==PlatoonTask::FlankNorth?1:-1,a.corridor->cost.Total(),std::make_shared<TacticalRoute>(*a.corridor)});
+        }
+        add(PlatoonNodeKind::Fix,2,90,1,objective,weapon>=0,\"known group; potential firing lines\");''')
+s=s.replace('Vec3 goal=extreme+side*(sign*24)-forward*8;', '''const float lane=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y;
+                Vec3 goal=objective+side*lane-forward*8;const Vec3 anchor=goal;
+                (void)extreme;''')
+s=s.replace('Distance(cover.shelter,goal)+.25f', 'Distance(cover.shelter,anchor)+.25f')
+# Respect claims by trying all ranked nearby cover destinations, not just one snapped endpoint.
+s=s.replace('''if(node.kind==PlatoonNodeKind::Flank){
+                if(candidate''','''if(node.fireMovement&&"'!candidate){
+                std::vector<Vec3> goals;for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,desired)<60)goals.push_back(cover.shelter);
+                std::stable_sort(goals.begin(),goals.end(),[&](Vec3 a,Vec3 b){return Distance(a,desired)<Distance(b,desired);});
+                for(Vec3 alternative:goals){candidate=Route(knowledge,map,config,r.position,alternative,time,state.claims,r.squad,claimsEnabled);if(candidate)break;}
+            }
+            if(node.kind==PlatoonNodeKind::Flank){
+                if(candidate'"''')
+s=s.replace('directive.supportSoldier=weapon;directive.supportSquad=fixing;', 'directive.supportSoldier=weapon;directive.supportSquad=fixing;directive.committedStrength=strength;')
+p.write_text(s)
+p=b/'PlatoonFixtures.cpp';s=p.read_text().replace('s.position={35.f+float((n-32)/8)*3,(n%8-3.5f)*8};','s.position={(id==85?5.f:35.f)+float((n-32)/8)*3,(n%8-3.5f)*8};');p.write_text(s)
+PY
+python3 .local/phase4f/edit2.py
+./scripts/test-sim.sh --platoon P08 > .local/phase4f/build-attempt2.log 2>&1" in /home/jchan/ww1-autobattler
+codex
+The trace shows P08 squads treating the whole enemy platoon as a threat to one eight-man squad and entering BreakContact before coordination takes effect. Attempt 2 carries the commander’s reported committed strength in the directive, preserves executing flank commitments, and fixes the branch latch. I also moved the new weak-control defenders into sensing range; its original placement never exercised the intended belief branch. Its assertions remain unchanged.
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import shutil,subprocess,json
+r=Path('.local/phase4f');a=r/'attempt2';(a/'source').mkdir(parents=True,exist_ok=True)
+for p in Path('Unreal/Source/ArmyPrototype/Sim').glob('*'):shutil.copy2(p,a/'source'/p.name)
+shutil.copy2('tests/platoon_tests.h',a/'platoon_tests.h');(a/'fingerprint.txt').write_text(subprocess.check_output(['python3','tools/source_id.py'],text=True))
+(r/'attempt1/interpretation.md').write_text('Attempt 1 source 6046562409d4acbe. 25/28 selectors pass; P01 arrival-angle, P03 phase-line and P08 fail. Trace evidence: P01/P03 replace an executing flank at31.95 s; P08 reaccepts no-flank branch48 times, and all four squads enter numerical-ratio BreakContact (9.35,14.3,14.45,14.75 s). Its quiet control never acquires contact and stays on four Advance directives. Attempt2 preserves executing flank missions, anchors the no-flank state, carries own reported committed strength in directives for coordinated ratio assessment, tries alternative claim-compatible cover endpoints, and moves only the new weak-control defenders30 m nearer to exercise the specified knowledge branch. Existing27 selector fixtures/assertions and P08 assertions remain unchanged. No distribution run.\\n')
+PY
+./scripts/battle-lab.sh --version > .local/phase4f/cli-attempt2.log 2>&1" in /home/jchan/ww1-autobattler
+ exited 134 in 45528ms:
+ succeeded in 31523ms:
+exec
+/bin/bash -lc 'tail -6 .local/phase4f/build-attempt2.log; cat .local/phase4f/cli-attempt2.log; cat .local/phase4f/attempt1/mechanisms/P03.log' in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+P08 contact=9 branch=9 fixing=0 delivered=1 minimum_front=0.801422 bounding=1 reserve=1 late_blocked=0 no_route=1 control_ratio=0.627528 fix=1 observe=0 began=4.9 withdraw=50 superiority=0
+sim_tests: /home/jchan/ww1-autobattler/tests/platoon_tests.h:111: void PlatoonP08(): Assertion `contact>=0&&branch>=0&&fixing>=0&&delivered&&minimum>=40&&allBounding&&!reserve&&!lateBlocked&&noRoute' failed.
+./scripts/test-sim.sh: line 33:    64 Aborted                    "$repo_root/.local/tests/sim_tests" "$@"
+c1c54e2794c1dd87-linux
+P03 phase_received=-1 fixing_received=-1 lifted=-1 late=0 no_phase_lift=0
+sim-tests: /home/jchan/ww1-autobattler/tests/platoon_tests.h:42: void PlatoonP03(): Assertion `issued>=0&&received>=issued&&amendment>=issued&&received-amendment<=c.reportDelay+1&&late==0&&!control' failed.
+
+exec
+/bin/bash -lc 'python3 .local/phase4f/run_attempt.py 2 > .local/phase4f/attempt2-run.log 2>&1' in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc 'python3 .local/phase4f/trace_attempt.py 2 > .local/phase4f/attempt2-trace.log 2>&1' in /home/jchan/ww1-autobattler
+ exited 1 in 0ms:
+exec
+/bin/bash -lc "tail -4 .local/phase4f/attempt2-run.log; cat .local/phase4f/attempt2-trace.log; sed -n '1,32p' Unreal/Source/ArmyPrototype/Sim/BeliefSim.cpp; grep -n 'BoundSetup\\|BoundCover' Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp | head -10" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+{'name': 'projection', 'command': ['.local/phase4f/attempt2/sim-tests', '--drills', 'projection'], 'exit_code': 0, 'log': '.local/phase4f/attempt2/mechanisms/projection.log'}
+{'name': 'sector', 'command': ['.local/phase4f/attempt2/sim-tests', '--drills', 'sector'], 'exit_code': 0, 'log': '.local/phase4f/attempt2/mechanisms/sector.log'}
+{'name': 'positions', 'command': ['.local/phase4f/attempt2/sim-tests', '--drills', 'positions'], 'exit_code': 0, 'log': '.local/phase4f/attempt2/mechanisms/positions.log'}
+{'name': 'plumbing', 'command': ['.local/phase4f/attempt2/sim-tests', '--drills', 'plumbing'], 'exit_code': 0, 'log': '.local/phase4f/attempt2/mechanisms/plumbing.log'}
+Traceback (most recent call last):
+  File "/home/jchan/ww1-autobattler/.local/phase4f/trace_attempt.py", line 7, in <module>
+    failed=['bare','P08','control08']+[r['name'] for r in json.loads((root/'results.json').read_text()) if r['exit_code']]
+                                                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 788, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/pathlib/__init__.py", line 772, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '.local/phase4f/attempt2/results.json'
+#include "BeliefSim.h"
+#include "CommandSim.h"
+#include "Diagnostics.h"
+#include <algorithm>
+#include <cmath>
+#include <sstream>
+namespace army {
+std::vector<RegionEstimate> BuildMentalMap(const Soldier& observer,float time){
+    auto known=WithTracks(observer,time);std::vector<RegionEstimate> result;
+    for(const auto& ct:known.contacts){
+        if(!ct.known)continue;
+        int x=int(std::floor(ct.position.x/BeliefCellSize)),y=int(std::floor(ct.position.y/BeliefCellSize));
+        auto it=std::find_if(result.begin(),result.end(),[&](const auto& r){return r.x==x&&r.y==y;});
+        if(it==result.end()){result.push_back({});it=result.end()-1;it->x=x;it->y=y;}
+        float confidence=TrackConfidence(ct,time);
+        ++it->observations;it->automaticWeapons+=ct.automaticWeapon;
+        it->low+=confidence;it->high+=observer.cognition?1.f:1+(1-confidence)*2;
+        it->uncertainty=std::max(it->uncertainty,TrackUncertainty(ct,time));
+        it->confidence+=confidence;it->observedAt=std::max(it->observedAt,ct.observedAt);
+    }
+    for(auto& region:result){
+        region.confidence/=region.observations;
+        // Heuristic uncertainty band, not a guaranteed bound on the hidden force.
+        // Partial observation leaves room for another element even with fresh sightings.
+        region.unseen=std::max(1.f,region.observations*.25f);
+        region.high+=region.unseen;
+        float bias=observer.estimateBias*(observer.cognition?1-observer.officer.judgment*.8f:1.f);
+        float judgment=.5f+.5f*std::clamp(bias,-1.f,1.f);
+        region.estimate=region.low+(region.high-region.low)*judgment;
+    }
+    std::sort(result.begin(),result.end(),[](const auto& a,const auto& b){return a.x==b.x?a.y<b.y:a.x<b.x;});
+    return result;
+100:    const bool coverStage=p.stage==DrillStage::ContactCover||p.stage==DrillStage::BoundSetup||p.stage==DrillStage::BoundCover;
+162:        if(p.stage==DrillStage::BoundSetup){query.target=p.center+direction*40;query.firing=element==0;}
+329:        else {Advance(leader,p,DrillStage::BoundSetup,d,time,why);issue(SelectMembers(members,p));}
+404:    }else if((arrived||(noMovers&&(p.stage==DrillStage::BoundSetup||p.stage==DrillStage::BoundCover)))&&(p.stage==DrillStage::Travel||p.stage==DrillStage::Bound||p.stage==DrillStage::BoundSetup||p.stage==DrillStage::BoundCover)){
+407:            Advance(leader,p,DrillStage::BoundCover,d,time,"matching received arrivals: moving element takes halted cover");
+410:        if(p.stage==DrillStage::BoundSetup)p.coverComplete=true;
+419:        }else if(p.stage==DrillStage::Bound||p.stage==DrillStage::BoundCover)p.movingElement=1-p.movingElement;
+442:            o.task=Task::BoundCover;o.execution.completion=Completion::Support;o.execution.rifleSupport=true;o.execution.supportThreat=p.target;
+
+exec
+/bin/bash -lc 'python3 .local/phase4f/trace_attempt.py 2 > .local/phase4f/attempt2-trace.log 2>&1' in /home/jchan/ww1-autobattler
+ succeeded in 25780ms:
+ succeeded in 7686ms:
+exec
+/bin/bash -lc "cat .local/phase4f/attempt2-trace.log; python3 - <<'PY'
+import json
+from pathlib import Path
+r=json.loads(Path('.local/phase4f/attempt2/results.json').read_text());print(len(r),[(x['name'],x['exit_code']) for x in r if x['exit_code']])
+rows=json.loads(Path('.local/phase4f/attempt2/trace-evidence.json').read_text())
+for r in rows:
+ if r['name'] not in ('P08','control08'):continue
+ print('\\n',r['name'],r['counts'][:12])
+ for e in r['events']:
+  if e['kind']=='platoon_manoeuvre' or (e['time']<45 and e['kind'].startswith('platoon')): print(e['id'],e['time'],e['squad'],e['kind'],e['reason'],e['goal'])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+bare [{'kind': 'drill_stage_advanced', 'reason': 'new contact inside 100 m', 'n': 17}, {'kind': 'drill_accepted', 'reason': 'MoveTactically', 'n': 10}, {'kind': 'drill_stage_advanced', 'reason': 'matching received arrivals: moving element takes halted cover', 'n': 10}]
+control08 [{'kind': 'platoon_task', 'reason': 'renew committed directive (75 s lifetime)', 'n': 7}, {'kind': 'drill_stage_advanced', 'reason': 'rearward bound: one stationary suppressing element', 'n': 5}, {'kind': 'platoon_task', 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'n': 5}]
+P08 [{'kind': 'drill_stage_advanced', 'reason': 'new contact inside 100 m', 'n': 37}, {'kind': 'platoon_corridor', 'reason': 'own claimed flank corridor; other centreline routes excluded within 20 m', 'n': 24}, {'kind': 'drill_accepted', 'reason': 'MoveTactically', 'n': 14}]
+28 [('P08', -6)]
+
+ control08 [{'kind': 'platoon_task', 'reason': 'renew committed directive (75 s lifetime)', 'n': 7}, {'kind': 'drill_stage_advanced', 'reason': 'rearward bound: one stationary suppressing element', 'n': 5}, {'kind': 'platoon_task', 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'n': 5}, {'kind': 'drill_accepted', 'reason': 'MoveTactically', 'n': 4}, {'kind': 'drill_stage_advanced', 'reason': 'deployment', 'n': 4}, {'kind': 'drill_accepted', 'reason': 'BreakContact: believed ratio at least two without superiority', 'n': 4}, {'kind': 'platoon_corridor', 'reason': 'own claimed flank corridor; other centreline routes excluded within 20 m', 'n': 3}, {'kind': 'drill_accepted', 'reason': 'ReactToContact: cover and return fire', 'n': 1}, {'kind': 'drill_stage_advanced', 'reason': 'new contact inside 100 m', 'n': 1}, {'kind': 'platoon_blocked', 'reason': 'no covered flank route: selecting bounded observation or attack by fire and movement', 'n': 1}, {'kind': 'platoon_manoeuvre', 'reason': 'no covered flank: attack by fire and movement; Reserve capacity zero', 'n': 1}, {'kind': 'platoon_manoeuvre', 'reason': 'inferior without superiority: Fix/Observe/Reserve for at most 45 s', 'n': 1}]
+3282 3.8500001 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [5.3701124, -16.109184, 0]
+3283 3.8500001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [5.3701124, -16.109184, 0]
+3284 3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-52.25, -48, 0]
+3285 3.8500001 1 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [-8.8000002, -25.1, 0]
+3286 3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-8.8000002, -25.1, 0]
+3287 3.8500001 2 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [-8.8000002, 1.1, 0]
+3288 3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-8.8000002, 1.1, 0]
+3289 3.8500001 3 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [13.8, 34.900002, 0]
+3290 3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [13.8, 34.900002, 0]
+3705 4.9000001 0 platoon_manoeuvre inferior without superiority: Fix/Observe/Reserve for at most 45 s [7.6917858, 0.839387, 0]
+5292 49.900002 0 platoon_manoeuvre 45 s observation expired without superiority: Withdraw [-8.8000002, 0, 0]
+
+ P08 [{'kind': 'drill_stage_advanced', 'reason': 'new contact inside 100 m', 'n': 37}, {'kind': 'platoon_corridor', 'reason': 'own claimed flank corridor; other centreline routes excluded within 20 m', 'n': 24}, {'kind': 'drill_accepted', 'reason': 'MoveTactically', 'n': 14}, {'kind': 'platoon_task', 'reason': 'greedy task assignment: travel + coordination + balance - stickiness', 'n': 14}, {'kind': 'drill_accepted', 'reason': 'ReactToContact: cover and return fire', 'n': 12}, {'kind': 'drill_stage_advanced', 'reason': 'contact assessment complete (3 s plus reaction)', 'n': 9}, {'kind': 'drill_stage', 'reason': 'assessment: gun group supports; rifle group covers or closes', 'n': 9}, {'kind': 'drill_stage_advanced', 'reason': 'received platoon directive', 'n': 7}, {'kind': 'drill_accepted', 'reason': 'SupportByFire: contact assessment deploys gun group; area = deployment lane UNION objective disc radius 60 m, clipped to map', 'n': 7}, {'kind': 'drill_stage_advanced', 'reason': 'no covered route: report upward and continue supported bounding closure', 'n': 7}, {'kind': 'drill_stage_advanced', 'reason': 'contact cover complete: assessment resumes closure', 'n': 7}, {'kind': 'drill_stage_advanced', 'reason': 'matching received arrivals: moving element takes halted cover', 'n': 5}]
+2682 3.8500001 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [5.9284134, -48.043957, 0]
+2683 3.8500001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.966423, -16.007841, 0]
+2684 3.8500001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9455643, 16.022675, 0]
+2685 3.8500001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [4.9029274, 47.962322, 0]
+7268 8.9000006 0 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement [35.621429, -24.103569, 0]
+7269 8.9000006 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [35.621429, -24.103569, 0]
+7270 8.9000006 0 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-43.085373, -46.557125, 0]
+7271 8.9000006 1 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [16.200001, -37.099998, 0]
+7272 8.9000006 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [16.200001, -37.099998, 0]
+7273 8.9000006 2 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [38.799999, -10.9, 0]
+7274 8.9000006 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [38.799999, -10.9, 0]
+7275 8.9000006 3 platoon_corridor own claimed flank corridor; other centreline routes excluded within 20 m [41.200001, 22.9, 0]
+7276 8.9000006 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [41.200001, 22.9, 0]
+32861 24.950001 0 platoon_manoeuvre inferior without superiority: Fix/Observe/Reserve for at most 45 s [37.234325, -4.8253517, 0]
+32862 24.950001 1 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-42.524239, -16.391911, 0]
+32863 24.950001 2 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-71.236824, -26.049492, 0]
+32864 24.950001 3 platoon_task greedy task assignment: travel + coordination + balance - stickiness [-70.012192, -2.080761, 0]
+44949 60.950001 0 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero [-8.7979298, -1.0181803, 0]
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json,collections
+from pathlib import Path
+r=next(x for x in json.loads(Path('.local/phase4f/attempt2/trace-evidence.json').read_text()) if x['name']=='P08');run=Path(r['run']);shots=[json.loads(l) for l in (run/'shots.jsonl').open()];print('shotkeys',shots[0].keys());print('early shooters',collections.Counter(x.get('owner') for x in shots if x['time']<30));print('first30',shots[:2]);
+for e in r['events']:
+ if e['squad']==0 and e['time']<35:print(e['time'],e['kind'],e['reason'])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 21ms:
+shotkeys dict_keys(['schema', 'time', 'impact_time', 'owner', 'team', 'squad', 'aimed_enemy', 'aimed_point', 'start', 'end', 'impact_kind', 'hit', 'target', 'suppressive', 'support_weapon', 'element_role'])
+early shooters Counter({7: 48, 0: 15, 16: 9, 18: 9, 24: 8, 10: 8, 21: 7, 28: 7, 11: 7, 8: 7, 17: 6, 3: 5, 15: 4, 31: 4, 2: 4, 25: 3, 9: 3, 26: 3, 20: 3, 5: 3, 1: 3, 4: 3, 27: 2, 19: 1, 12: 1})
+first30 [{'schema': 1, 'time': 5.75, 'impact_time': 6.12, 'owner': 0, 'team': 0, 'squad': 0, 'aimed_enemy': 32, 'aimed_point': [35, -28, 1.665], 'start': [-36.2, -58.9, 0], 'end': [204.766, 54.697, 1.18603], 'impact_kind': 4, 'hit': 0, 'target': -1, 'suppressive': 1, 'support_weapon': 0, 'element_role': 'moving'}, {'schema': 1, 'time': 7.2, 'impact_time': 7.30725, 'owner': 0, 'team': 0, 'squad': 0, 'aimed_enemy': 32, 'aimed_point': [35, -28, 1.665], 'start': [-36.2, -58.9, 0], 'end': [34.6519, -28.197, 1.68522], 'impact_kind': 3, 'hit': 1, 'target': 32, 'suppressive': 1, 'support_weapon': 0, 'element_role': 'base_of_fire'}]
+0.050000001 drill_accepted MoveTactically
+0.050000001 drill_stage_advanced deployment
+3.8500001 platoon_task greedy task assignment: travel + coordination + balance - stickiness
+6 drill_accepted ReactToContact: cover and return fire
+6 drill_stage_advanced new contact inside 100 m
+7.3499999 drill_stage_advanced new contact inside 100 m
+8.9000006 platoon_blocked no covered flank route: selecting bounded observation or attack by fire and movement
+8.9000006 platoon_manoeuvre no covered flank: attack by fire and movement; Reserve capacity zero
+8.9000006 platoon_task greedy task assignment: travel + coordination + balance - stickiness
+9.3500004 drill_stage_advanced new contact inside 100 m
+11.35 drill_stage_advanced new contact inside 100 m
+11.85 drill_accepted SupportByFire: received threat-area order; area = deployment lane UNION objective disc radius 60 m, clipped to map
+11.85 drill_stage_advanced occupy protected firing positions; wait for element delivered rounds
+16 drill_stage_advanced support established: element delivered fire on threat area
+16 drill_stage_advanced established base of fire; hold and report no covered assault route
+24.950001 platoon_manoeuvre inferior without superiority: Fix/Observe/Reserve for at most 45 s
+
+exec
+/bin/bash -lc "grep -n 'established\\|struct SquadAction\\|support' Unreal/Source/ArmyPrototype/Sim/BattleSim.h | tail -22; grep -n 'SupportEvidence\\|supportLost\\|established\\|rounds' Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp | head -28" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+350:struct FireDelivery { bool supportWeapon=false; int shooter=-1, enemy=-1, rounds=0; Vec3 origin{}, target{}; float firstAt=-100, observedAt=-100; std::array<float,8> times{{-100,-100,-100,-100,-100,-100,-100,-100}}; std::vector<DeliveredRound> history; };
+362:    SupportSector supportSector;
+363:    SupportProgress supportProgress;
+379:    float understoodHealth = 100, understoodSuppression = 0, supportReadyAt = -100;
+380:    float supportActivityAt = -100;
+382:    float supportReportAt=-100, supportContactAt=-100;
+384:    bool supportBlocked=false;
+428:    Vec3 origin{}, target{}, supportPosition{}, alternative{};
+431:    int support=-1;
+438:    Vec3 targetPosition{},supportPosition{};
+453:struct SquadActionState {
+458:    bool active=false,established=false,everEstablished=false,lifted=false,paused=false,attack=false,completed=false;
+466:    std::array<bool,SquadSize> pausedOrders{},liftOrders{},supportOrders{},rushOrders{};
+478:    int instance=0,generation=0,leg=0,movingElement=0,target=-1,support=-1;
+531:    int leader = -1, support = -1;
+532:    bool advancing = false, supportReady = false;
+547:    bool supportNeedsMove=false;
+548:    Vec3 supportMoveFrom{};
+549:    bool supportUseful=false;
+550:    SupportState supportState=SupportState::Deploying;
+551:    float supportProblemSince=-1, nextSupportMove=0;
+552:    int supportRepositions=0;
+173:void SupportEvidence(const Soldier& l,DrillPlan& p,Diagnostics* d,float time){
+179:    // Establishment needs a useful volley. Once established, a real delivered
+182:    if(useful||p.action.established)p.action.lastEvidence=std::max(p.action.lastEvidence,newest);
+183:    if(useful&&!p.action.established){p.action.established=p.action.everEstablished=true;if(p.action.attack)p.action.cause=TaskCause::None;ActionTrace(l,p,d,time,"drill_stage_advanced","support established: element delivered fire on threat area");}
+184:    if(p.action.established&&time-p.action.lastEvidence>=8){p.action.established=false;p.action.lostAt=time;p.action.cause=TaskCause::Support;ActionTrace(l,p,d,time,"drill_stage_advanced","support lost: eight seconds without element delivery evidence");}
+227:    Stage(l,p,d,time,DrillStage::AttackMove,"support established: next buddy rush, at most five seconds");
+281:    Stage(l,p,d,time,DrillStage::SupportPrepare,"prepare element support; assault permission withheld pending delivered rounds");
+308:        Stage(l,p,d,time,DrillStage::SupportPrepare,"occupy protected firing positions; wait for element delivered rounds");
+322:    SupportEvidence(l,p,d,time);
+342:        if(p.action.established&&p.action.attack){p.action.routeStep=0;p.action.buddy=0;Rush(l,members,map,p,d,time);}
+343:        else if(p.stage==DrillStage::SupportPrepare&&p.action.established)Stage(l,p,d,time,DrillStage::SupportHold,"established base of fire; hold and report no covered assault route");
+361:        if(!p.action.established){Pause(l,members,map,p,d,time,true);if(time-p.action.lastEvidence>30)Fail(l,p,d,time,TaskCause::Support,"Blocked: support lost beyond 30 s recovery allowance");return true;}
+
+codex
+Attempt 2 restores all 27 existing selectors, but P08 still fails. Its fixing squad establishes support at 16 seconds; the platoon nevertheless switches to observation because the reported superiority flag ignores that support stage. I also found that zero-distance route queries reject stationary Observe assignments. The third and final attempt will address those gaps and defer numerical-ratio retirement until contact assessment.
+
+exec
+/bin/bash -lc "cat > .local/phase4f/edit3.py <<'PY'
+from pathlib import Path
+b=Path('Unreal/Source/ArmyPrototype/Sim')
+p=b/'PlatoonTaskSim.cpp';s=p.read_text();s=s.replace('auto r=std::make_shared<TacticalRoute>(planner.Evaluate(start,resolved));','auto r=std::make_shared<TacticalRoute>(planner.Evaluate(start,resolved));\\n    if(r->points.empty()&&Distance(start,resolved)<.1f)r->points.push_back(resolved);')
+s=s.replace('''const float lane=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y;
+                Vec3 goal=objective+side*lane-forward*8;const Vec3 anchor=goal;
+                (void)extreme;''','''const float lane=(r.position.x-centroid.x)*side.x+(r.position.y-centroid.y)*side.y;
+                int outward=0;for(const auto& other:squads)if(other.squad"'!=fixing&&other.squad!=r.squad){
+                    const float otherLane=(other.position.x-centroid.x)*side.x+(other.position.y-centroid.y)*side.y;
+                    if(otherLane*sign>=0&&std::abs(otherLane)<std::abs(lane))++outward;
+                }
+                Vec3 goal=extreme+side*(sign*(24.f+24.f*outward))-forward*8;const Vec3 anchor=goal;'"''')
+p.write_text(s)
+p=b/'PlatoonSim.cpp';s=p.read_text().replace('report.drillSuperiority=p.superiority;', 'report.drillSuperiority=p.superiority||(p.kind==BattleDrill::SupportByFire&&p.action.established&&"'!p.effectiveFire);'"');p.write_text(s)
+p=b/'SquadDrillSim.cpp';s=p.read_text().replace('''if((withdrawing&&p.kind"'!=BattleDrill::Withdraw)||(!p.action.active&&p.target>=0&&(enemy>=2*std::max(int(members.size()),l.platoonOrder.taskNode?l.platoonOrder.committedStrength:0)||recentLosses>=3)&&!p.superiority)){'"''','''const bool ratioAssessed=p.kind==BattleDrill::ReactToContact&&(p.assessed||time>=p.assessmentAt);
+    if((withdrawing&&p.kind"'!=BattleDrill::Withdraw)||(!p.action.active&&p.target>=0&&((ratioAssessed&&enemy>=2*std::max(int(members.size()),l.platoonOrder.taskNode?l.platoonOrder.committedStrength:0))||recentLosses>=3)&&!p.superiority)){'"''');p.write_text(s)
+PY
+python3 .local/phase4f/edit3.py
+python3 - <<'PY'
+from pathlib import Path
+import shutil,subprocess
+r=Path('.local/phase4f');a=r/'attempt3';(a/'source').mkdir(parents=True,exist_ok=True)
+for p in Path('Unreal/Source/ArmyPrototype/Sim').glob('*'):shutil.copy2(p,a/'source'/p.name)
+shutil.copy2('tests/platoon_tests.h',a/'platoon_tests.h');(a/'fingerprint.txt').write_text(subprocess.check_output(['python3','tools/source_id.py'],text=True))
+(r/'attempt2/interpretation.md').write_text('Attempt2 source c1c54e2794c1dd87. All27 existing selectors pass; P08 alone fails. P08: fixing delivered fire, all movers sample bounding, but minimum progress0.801422 m; Reserve appears at24.95 s. SupportByFire was established at16 s; its flag was absent from reported superiority, so observed full enemy strength selected the inferior branch. Control now proves ratio0.627528; timer starts4.9, Withdraw50 s, but no Observe assignment: stationary route query is rejected. Automatic squad ratio retirement also precedes initial assessment/coordination. Attempt3 admits zero-distance routes, includes established support with no effective incoming fire in the superiority report, defers numeric-ratio retirement to assessment, and restores outward-ranked flank-most cover goals with claim-compatible alternatives. No fixture/assertion changes in attempt3; no distribution runs.\\n')
+PY
+./scripts/test-sim.sh --platoon P08 > .local/phase4f/build-attempt3.log 2>&1" in /home/jchan/ww1-autobattler
+ exited 134 in 44945ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('tests/platoon_tests.h');s=p.read_text();old='watch|=a.task==PlatoonTask::Observe;if(a.task==PlatoonTask::Withdraw&&withdraw<0)withdraw=f.time;}';new='watch|=a.task==PlatoonTask::Observe;}\\n        for(const auto& soldier:f.soldiers)if(soldier.team==0&&soldier.platoonOrder.task==PlatoonTask::Withdraw&&withdraw<0)withdraw=f.time;';assert old in s;s=s.replace(old,new);p.write_text(s)
+Path('.local/phase4f/attempt3/platoon_tests.h').write_text(s)
+p=Path('.local/phase4f/attempt2/interpretation.md');s=p.read_text().replace('No fixture/assertion changes in attempt3;', 'No fixture or assertion-bound changes in attempt3; the new P08 control times Withdraw at first production receipt rather than commander assignment, to check its transport allowance;');p.write_text(s)
+PY
+./scripts/battle-lab.sh --version > .local/phase4f/cli-attempt3.log 2>&1" in /home/jchan/ww1-autobattler
+exec
+/bin/bash -lc "tail -6 .local/phase4f/build-attempt3.log; cat .local/phase4f/attempt3/fingerprint.txt; stat -c '%y %n' .local/tests/sim_tests tests/platoon_tests.h" in /home/jchan/ww1-autobattler
+ succeeded in 0ms:
+P08 contact=9 branch=9 fixing=0 delivered=1 minimum_front=3.58308 bounding=1 reserve=1 late_blocked=0 no_route=1 control_ratio=0.627528 fix=1 observe=1 began=4.9 withdraw=50 superiority=0
+sim_tests: /home/jchan/ww1-autobattler/tests/platoon_tests.h:111: void PlatoonP08(): Assertion `contact>=0&&branch>=0&&fixing>=0&&delivered&&minimum>=40&&allBounding&&!reserve&&!lateBlocked&&noRoute' failed.
+./scripts/test-sim.sh: line 33:    66 Aborted                    "$repo_root/.local/tests/sim_tests" "$@"
+01462c286da88358
+2026-09-17 06:47:44.385210151 -0700 .local/tests/sim_tests
+2026-09-17 06:48:00.403648139 -0700 tests/platoon_tests.h
+
+ succeeded in 31089ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('tests/platoon_tests.h');s=p.read_text();s=s.replace('watch|=a.task==PlatoonTask::Observe;}\\n        for(const auto& soldier:f.soldiers)if(soldier.team==0&&soldier.platoonOrder.task==PlatoonTask::Withdraw&&withdraw<0)withdraw=f.time;', 'watch|=a.task==PlatoonTask::Observe;if(a.task==PlatoonTask::Withdraw&&withdraw<0)withdraw=f.time;}');p.write_text(s);Path('.local/phase4f/attempt3/platoon_tests.h').write_text(s)
+p=Path('.local/phase4f/attempt2/interpretation.md');s=p.read_text().replace('No fixture or assertion-bound changes in attempt3; the new P08 control times Withdraw at first production receipt rather than commander assignment, to check its transport allowance;', 'No fixture/assertion changes in attempt3;');p.write_text(s)
+PY
+python3 .local/phase4f/run_attempt.py 3 > .local/phase4f/attempt3-run.log 2>&1" in /home/jchan/ww1-autobattler
+codex
+The third attempt still fails P08: the slowest moving squad advances 3.58 m, below the required 40 m, and a Reserve directive still appears. Delivered support, bounding movement, and the weak control’s Fix→Observe→Withdraw sequence are now observed.
+
+The three-attempt allowance is exhausted. I’m completing the unchanged selectors and collecting final traces, then reporting the failure without distribution measurement.
+
+exec
+/bin/bash -lc "cat .local/phase4f/cli-attempt3.log; tail -4 .local/phase4f/attempt3-run.log; python3 -m unittest discover -s tests -p 'test_*.py' > .local/phase4f/python-tests.log 2>&1" in /home/jchan/ww1-autobattler
+ succeeded in 3501ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+p=Path('.local/phase4f/trace_attempt.py');s=p.read_text().replace(\"def run(name):\", \"failed=list(dict.fromkeys(failed))\\ndef run(name):\");p.write_text(s)
+PY
+python3 .local/phase4f/trace_attempt.py 3 > .local/phase4f/attempt3-trace.log 2>&1" in /home/jchan/ww1-autobattler
+ succeeded in 25123ms:
+ succeeded in 7442ms:
+exec
+/bin/bash -lc '.local/phase4f/attempt3/battle-lab --drills --encounter 82 --seconds 360 --evaluate --out .local/phase4f/attempt3/traces/82-boundary > .local/phase4f/loop-guard-diagnostic.log 2>&1' in /home/jchan/ww1-autobattler
+ succeeded in 5323ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json
+from pathlib import Path
+r=json.loads(Path('.local/phase4f/attempt3/results.json').read_text());print(len(r),[(x['name'],x['exit_code']) for x in r if x['exit_code']])
+p=Path('.local/phase4f/attempt3/trace-evidence.json')
+if p.exists():
+ for x in json.loads(p.read_text()):
+  if x['name']"'!='"'P08':continue
+  print(x['counts'][:10])
+  for e in x['events']:
+   if e['kind']=='platoon_manoeuvre' or (e['squad']==0 and ('support' in e['reason'].lower() or 'blocked' in e['reason'].lower())):print(e['id'],e['time'],e['kind'],e['reason'])
+PY
+cat .local/phase4f/loop-guard-diagnostic.log
+tail -4 .local/phase4f/python-tests.log" in /home/jchan/ww1-autobattler
+ succeeded in 13ms:
+codex
+All 27 existing selectors pass on the final source; P08 alone fails. Its trace shows support established at 16 s, lost at 36.5 s, followed by observation at 39.95 s and withdrawal at 84.95 s. The bounded hold now terminates, but the equal-strength advance still misses its bound.
+
+I also ran the unchanged open-ground fixture to the map boundary on this binary to check route exhaustion. No distribution runs, full-battle parity runs or further source changes will follow.
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import json
+r=Path('.local/phase4f');dest=r/'attempt3/traces/82-boundary';run=dest/json.loads((dest/'latest.json').read_text())['run'];es=[]
+for line in (run/'trace.jsonl').open():
+ if 'platoon_no_progress' in line or 'platoon_route_exhausted' in line:es.append(json.loads(line))
+(r/'boundary-evidence.json').write_text(json.dumps(dict(run=str(run),events=es),indent=2)+'\\n');print('Boundary',[(e['id'],e['time'],e['squad'],e['kind'],e.get('goal'),e.get('reason')) for e in es])
+rows=json.loads((r/'attempt3/trace-evidence.json').read_text());case=next(x for x in rows if x['name']=='control08');run=Path(case['run'])
+for line in (run/'trace.jsonl').open():
+ if 'platoon' in line:
+  e=json.loads(line)
+  if 48<e['time']<54 and ('received' in e['kind'] or 'order' in e['kind']):print('Control receipt',str(e)[:500])
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 87ms:
+Boundary [(67987, 302, 1, 'platoon_no_progress', [516.90906, -16.275196, 0], 'two completed objectives within 18 m: next leg at least 40 m ahead'), (67988, 302, 1, 'platoon_route_exhausted', [516.90906, -16.275196, 0], 'resolved endpoint cannot meet 40 m forward minimum; route exhausted, no unchanged renewal'), (67989, 302, 2, 'platoon_no_progress', [516.82825, 15.684811, 0], 'two completed objectives within 18 m: next leg at least 40 m ahead'), (67990, 302, 2, 'platoon_route_exhausted', [516.82825, 15.684811, 0], 'resolved endpoint cannot meet 40 m forward minimum; route exhausted, no unchanged renewal'), (68289, 309, 3, 'platoon_no_progress', [516.67017, 48.027973, 0], 'two completed objectives within 18 m: next leg at least 40 m ahead'), (68290, 309, 3, 'platoon_route_exhausted', [516.67017, 48.027973, 0], 'resolved endpoint cannot meet 40 m forward minimum; route exhausted, no unchanged renewal'), (68801, 324, 0, 'platoon_no_progress', [517.49609, -49.982819, 0], 'two completed objectives within 18 m: next leg at least 40 m ahead'), (68802, 324, 0, 'platoon_route_exhausted', [517.49609, -49.982819, 0], 'resolved endpoint cannot meet 40 m forward minimum; route exhausted, no unchanged renewal')]
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+import json
+from pathlib import Path
+r=Path('.local/phase4f');rows=json.loads((r/'attempt3/trace-evidence.json').read_text());case=next(x for x in rows if x['name']=='control08');root=Path(case['run'])
+with (root/'evaluation.jsonl').open() as f:
+ e=json.loads(next(f));print('Frame keys',e.keys());print('soldier keys',e['soldiers'][0].keys());print('first',str(e['soldiers'][0])[:1000])
+for line in (root/'events.jsonl').open():
+ e=json.loads(line)
+ if 49<e['time']<54 and ('directive' in e.get('text','').lower() or 'withdraw' in e.get('text','').lower()):print(e)
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 11ms:
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import json,hashlib,subprocess,difflib
+r=Path('.local/phase4f');base=Path('Unreal/Source/ArmyPrototype/Sim')
+checks={p:hashlib.sha256(Path(p).read_bytes()).hexdigest()==h for p,h in json.loads(Path('.local/phase0b/original/protected.json').read_text()).items()}
+old=(r/'entry/platoon_tests.h').read_text();new=Path('tests/platoon_tests.h').read_text();unchanged=old[:old.index('static void PlatoonTests(')]==new[:new.index('static void PlatoonP08(')]
+same=all(p.read_bytes()==(base/p.name).read_bytes() for p in (r/'attempt3/source').glob('*'))
+info=dict(protected=checks,existing_P01_P07_bodies_unchanged=unchanged,final_source_unchanged=same,fingerprint=subprocess.check_output(['python3','tools/source_id.py'],text=True).strip())
+(r/'static-checks.json').write_text(json.dumps(info,indent=2)+'\\n');assert all(checks.values()) and same and unchanged;print(info)
+for n in range(1,4):
+ a=r/f'attempt{n}';patch=''
+ for p in (r/'entry/source').glob('*'):
+  q=a/'source'/p.name
+  if p.read_bytes()"'!=q.read_bytes():patch+='"''.join(difflib.unified_diff(p.read_text().splitlines(True),q.read_text().splitlines(True),fromfile=str(p),tofile=str(q)))
+ (a/'simulation.patch').write_text(patch)
+rows=json.loads((r/'attempt3/trace-evidence.json').read_text());control=next(x for x in rows if x['name']=='control08');events=[]
+for line in (Path(control['run'])/'events.jsonl').open():
+ e=json.loads(line)
+ if 49<e['time']<54 and 'WITHDRAW' in e.get('text',''):events.append(e)
+(r/'control-receipts.json').write_text(json.dumps(dict(run=control['run'],observe_started=4.9,events=events),indent=2)+'\\n')
+p=Path('plans/014-battle-drill-scenarios.md');s=p.read_text().replace('no covered route on either flank: Fix, Observe and Reserve tasks only; honest upward report; no squad enters within 18 m of the known group without cover','no covered route on either flank: no Flank directive; honest upward report; no squad enters within 18 m of the known group without cover (the Phase4f response and bounded observation are exercised by P08)');p.write_text(s)
+PY
+git diff --check" in /home/jchan/ww1-autobattler
+ succeeded in 96ms:
+{'protected': {'tests/ai_acceptance.json': True, 'tests/ai_validation_v2.json': True, 'tools/evaluate_routes.py': True, 'Unreal/Source/ArmyPrototype/Sim/TerrainSim.cpp': True}, 'existing_P01_P07_bodies_unchanged': True, 'final_source_unchanged': True, 'fingerprint': '01462c286da88358'}
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+import json,collections
+r=Path('.local/phase4f');case=next(x for x in json.loads((r/'attempt3/trace-evidence.json').read_text()) if x['name']=='P08');run=Path(case['run']);start=None;maximum=[0]*4;at99=None
+for line in (run/'evaluation.jsonl').open():
+ f=json.loads(line);t=f['time']
+ if t<9:continue
+ if t>99:break
+ centres=[]
+ for n in range(4):
+  x=[s['position'][0] for s in f['soldiers'] if s['alive'] and s['squad']==n and s['role'] not in (4,5)];centres.append(sum(x)/len(x))
+ if start is None:start=centres
+ maximum=[max(a,b-c) for a,b,c in zip(maximum,centres,start)];at99=centres
+reject=collections.Counter();evidence=[]
+for line in (run/'trace.jsonl').open():
+ if not any(x in line for x in ('position_query','drill_blocked','platoon_manoeuvre')):continue
+ e=json.loads(line)
+ if e.get('squad',99)>3 or e['time']>99:continue
+ if e['kind']=='position_query':reject[e.get('reason','')]+=1
+ else:evidence.append({k:e.get(k) for k in ('id','time','squad','kind','reason','goal')})
+value=dict(run=str(run),contact_time=9,horizon=99,start_centres_x=start,centres_x_at_horizon=at99,max_forward_by_squad=maximum,query_reasons=dict(reject),events=evidence)
+(r/'p08-progress.json').write_text(json.dumps(value,indent=2)+'\\n');print(value)
+PY" in /home/jchan/ww1-autobattler
+ succeeded in 678ms:
+{'run': '.local/phase4f/attempt3/traces/84/battle-107-1789652949450688018', 'contact_time': 9, 'horizon': 99, 'start_centres_x': [-39.526, -43.7289125, -42.3534625, -41.748775], 'centres_x_at_horizon': [-49.74675, -47.979675, -46.164725000000004, -51.736112500000004], 'max_forward_by_squad': [3.211833333333331, 9.372462499999997, 8.1188, 3.5831000000000017], 'query_reasons': {'outside assigned area or coherence radius': 13950, 'cover faces away from known sector': 27982, 'candidate satisfies hard conditions': 6115, 'outside anchor radius': 3018, 'allocated primary': 298, 'outside accepted corridor': 38, 'no line within weapon range': 28, 'received friendly firing lane': 43, 'outside angular sector': 16}, 'events': [{'id': 7269, 'time': 8.9000006, 'squad': 0, 'kind': 'platoon_manoeuvre', 'reason': 'no covered flank: attack by fire and movement; Reserve capacity zero', 'goal': [35.621429, -24.103569, 0]}, {'id': 44854, 'time': 39.950001, 'squad': 0, 'kind': 'platoon_manoeuvre', 'reason': 'inferior without superiority: Fix/Observe/Reserve for at most 45 s', 'goal': [33.231682, -4.9069533, 0]}, {'id': 59951, 'time': 84.950005, 'squad': 0, 'kind': 'platoon_manoeuvre', 'reason': '45 s observation expired without superiority: Withdraw', 'goal': [15.153852, -12.573683, 0]}]}
+
+exec
+/bin/bash -lc "grep -n 'committedStrength\\|noFlankBranch\\|resolved endpoint\\|outward\\|points.empty()&&Distance' Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp; grep -n 'ratioAssessed\\|platoonOrder.fireMovement' Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp; grep -n 'fireMovement\\|drillSuperiority' Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp Unreal/Source/ArmyPrototype/Sim/PlatoonSim.cpp; cat .local/phase4f/attempt3/mechanisms/P08.log; cat .local/phase4f/attempt3/mechanisms/P03.log; python3 tools/source_id.py" in /home/jchan/ww1-autobattler
+ succeeded in 58ms:
+01462c286da88358
+
+exec
+/bin/bash -lc "cat > .local/phase4f/write_report.py <<'PY'
+from pathlib import Path
+import json
+r=Path('.local/phase4f')
+results=[json.loads((r/f'attempt{n}/results.json').read_text()) for n in (1,2,3)]
+assert len(results[-1])==28 and [x['name'] for x in results[-1] if x['exit_code']]==['P08']
+text='''# Plan 014 Phase 4f — no-covered-flank response
+
+17 September 2026. Astra implementation of the attributed [Phase4e review](../../plans/014-phase4e-fable-review.md).
+
+**Result: mechanism exit not met; stopped after three local attempts.** All27 pre-existing selectors pass on the final source. New P08 fails its equal-strength advance: minimum40 m displacement is not reached and a Reserve directive appears. The bounded weak-control sequence and boundary-exhaustion diagnostic produce the intended evidence, but that does not turn P08 into a pass. **No distribution measurement, full-suite run,40-case authored digest gate or full-battle trace-parity gate was started**, because the all-mechanism prerequisite was not met. Legacy remains the playable default; this source is experimental and unpromoted.
+
+## Fingerprints and retained work
+
+Entry: "'`d8586da13b539c61`.
+
+| Attempt | Simulation fingerprint | Selector result | Remaining failure |
+|---|---|---:|---|
+| 1 | `6046562409d4acbe` | 25/28 | P01 arrival angle, P03 phase-line/lift, P08 |
+| 2 | `c1c54e2794c1dd87` | 27/28 | P08 |
+| 3, final | `01462c286da88358` | 27/28 | P08 |
+
+Entry and each attempted simulation source are preserved in `.local/phase4f/{entry,attempt1,attempt2,attempt3}/source/`. Each attempt has its exact test binary, CLI binary, fingerprint, `results.json`, mechanism logs, traced scenario records and a slice-only `simulation.patch`. Existing uncommitted work was retained. No commit, reset, stash, Fable launcher, Windows process or Unreal build was invoked. There was no fourth policy attempt and no measured build.
+
+## Implemented scope
+
+- `Sim/PlatoonTaskSim.cpp:170–209`: no-covered-flank response selects a fixing squad with the existing platoon support weapon and creates per-squad fire-and-movement Advance nodes. Objectives use the extreme known contacts on each side, outward lane ranks and nearby catalogue cover; routes respect existing hard claims. Alternate cover endpoints are considered when claims reject the preferred one. Reserve capacity is zero in this branch. Covered flank commitments already executing are retained until their ordinary release conditions; a newly computed route candidate cannot alone cancel them.
+- `Sim/BattleSim.h`, `Sim/DrillSim.cpp:324`, `Sim/SquadDrillSim.cpp:272`: the received `fireMovement` directive forces bounding overwatch and the Phase3 supported-closure path. It does not require a covered flank route for that movement. Emergency retirement and casualty-loss responses remain available.
+- `Sim/PlatoonTaskSim.cpp:117–182`: below believed ratio1 without superiority, observation is timed from first acceptance. Reassessment does not restart the45 s clock. On expiry, the history of received superiority selects fire-and-movement or Withdraw. Branch transitions are traced once; initial route rejection is reported honestly before the selected response. A substantially displaced contact group or lost contact starts a new decision context.
+- `Sim/PlatoonSim.cpp:194`: a normal squad report carries its superiority belief, including an established SupportByFire stage with no effective incoming fire. Establishment still comes from the existing element-delivered-fire mechanism and its support-loss hysteresis; there are no injected delivery receipts.
+- `Sim/PlatoonTaskSim.cpp:335`, `Sim/SquadDrillSim.cpp:297`: a directive carries the commander'"'s received committed strength. Numerical-ratio retirement assesses that intended support rather than treating every supported squad as alone against the entire known group. The numeric decision waits for contact assessment. Actual recent-loss emergencies remain independent. This reads the squad's own received order, not other squads' hidden state.
+- "'`Sim/PlatoonTaskSim.cpp:53`: a valid stationary route is admitted for Fix/Observe at an already reached point. Previously an empty path rejected the assignment even when the requested position was current and walkable.
+- `Sim/PlatoonTaskSim.cpp:226–236`: the40 m repeated-Done guard validates the resolved endpoint as well as the requested endpoint. A missing route or resolved forward displacement below40 m latches route exhaustion, marks the node Blocked and emits `platoon_route_exhausted`; it does not renew the unchanged objective. New state is hashed only in the drills digest block.
+- `Sim/PlatoonFixtures.cpp`, `tests/platoon_tests.h:97`, CLI/simulation encounter dispatch: append encounters84/85 and P08. Equal case has30 active non-staff attackers and30 durable defenders. Weak control has16 non-staff attackers and24 durable defenders, yielding the measured belief ratio0.627528 after sensing. Defenders hold fire through physical reload state; the weak attackers also hold fire. These controls are scenario construction, not policy inputs.
+- Companion P08 documents the new pair. P01'"'s prose is aligned with its unchanged actual assertions (no Flank without a route, honest report, no unsafe entry); the obsolete prose requiring indefinite Fix/Observe/Reserve is superseded by the review. All existing P01–P07 test bodies and their assertions are byte-identical to entry. No authored layout or frozen seed list was edited.
+
+Weapon attachment across squads, Merge member transfer and company escalation remain deferred. Selecting the fixing squad that already owns the weapon is not an implementation of weapon transfer.
+
+## Local attempts and evidence
+
+### Attempt 1
+
+P08: first contact9 s, fire-and-movement branch9 s, fixing squad0 delivers fire, but slowest mover advances only0.251213 m; bounding is not observed for every moving squad and later "'`platoon_blocked` traces occur. Its weak control never acquires the intended contact, so its belief branch is not exercised.
+
+Trace causes motivating attempt2:
+
+- The no-flank branch'"'s anchor remained its default value, so the known group was treated as new on repeated assessments:48 branch acceptances in the145 s P08 trace.
+- Squad numerical-ratio retirement treated the whole enemy group as opponents of one squad. The four Azure squads entered BreakContact at9.35,14.3,14.45 and14.75 s despite the platoon's planned support.
+- P01/P03 switched an executing flank to the new fallback at31.95 s, before its arrival/phase receipt. P01 therefore lost its arrival angle and P03 never emitted its lift.
+
+Attempt2 anchors the branch, preserves executing flank commitments, transmits own reported committed strength and searches claim-compatible alternative cover. It also moves **only the new weak-control defenders30 m closer**, from nominal x35 to x5, so production sensing can actually exercise the specified belief. This fixture amendment is explicit; no existing fixture or behavioral assertion was changed. The first fixture was inadequate, not a valid negative-control pass.
+
+### Attempt 2
+
+All27 existing selectors pass. P08 alone fails: delivered fire and bounding are observed, but minimum advance is0.801422 m and Reserve appears. The control now proves ratio0.627528, starts its timer at4.9 s and selects Withdraw at49.9 s (first recorded frame50 s), but no Observe directive is allocated.
+
+Trace: fixing support establishes at16 s; the platoon selects the inferior observation branch at24.95 s because the report's superiority flag omits the established SupportByFire stage. Stationary Observe allocation also fails on the zero-distance route query. These motivate attempt3: include that existing support evidence in the reported belief, admit a stationary route, defer numerical retirement to contact assessment, and use outward-ranked flank-most cover goals. No fixture or assertion changes follow attempt2.
+
+### Attempt 3 — final
+
+All27 existing selectors pass, including unchanged D01–D11, D16, D17, P01–P07 and seven auxiliary pins. P03 again records phase receipt139 s, fixing amendment140.4 s, all members lifted142 s and zero late original-area rounds.
+
+P08's final output:
+
+"'```text
+contact=9 branch=9 fixing=0 delivered=1 minimum_front=3.58308
+bounding=1 reserve=1 late_blocked=0 no_route=1
+control_ratio=0.627528 fix=1 observe=1 began=4.9 withdraw=50 superiority=0
+```
+
+P08 fails its positive conjunction; the control'"'s individual predicates are true. Since the positive assertion aborts first, this is not reported as a separately passing P08 test. The control's production-transport diagnostic confirms the timing independently, below.
+
+| Positive P08 requirement | Final evidence | Result |
+|---|---|---|
+| fixing squad delivers fire on group | squad0; delivered rounds observed | pass |
+| every other squad moves at least40 m within90 s of contact | maxima: squad1 **9.372 m**, squad2 **8.119 m**, squad3 **3.583 m** | **fail** |
+| movers use bounding overwatch | sampled for all three | pass |
+| no Reserve directive | Reserve appears after observation branch | **fail** |
+| no platoon_blocked after branch selection | none after the branch | pass |
+| no covered flank route | observed in planner state | pass |
+
+The first contact frame is9 s; the displacement horizon is99 s. "'`.local/phase4f/p08-progress.json` records the per-squad centres and observer calculations. These are diagnostics only.
+
+Key final trace IDs in encounter84:
+
+| Trace ID | Time | Evidence |
+|---:|---:|---|
+| 7269 | 8.900 s | choose fire-and-movement, Reserve capacity zero |
+| 20925 | 16.000 s | element-delivered fire establishes support |
+| 42392 | 36.500 s | eight seconds without delivery evidence; support lost |
+| 44854 | 39.950 s | inferior without superiority; select bounded observation |
+| 59951 | 84.950 s |45 s expires without regained superiority; Withdraw |
+
+Thus the repeated unbounded no-route report is fixed, but effective supported closure is not demonstrated. The new branch later loses support, enters the allowed inferior branch and withdraws before satisfying the required advance. The trace contains candidate-query rejections for area/coherence, cover orientation and accepted corridors, as well as successful allocations; rejection counts alone do not identify the causal movement blocker. No further remedy is claimed or implemented after the third attempt.
+
+## Focused diagnostics on the same final binary
+
+**Control transport:** encounter85 starts observation at4.9 s and issues Withdraw at49.9 s. NCOs0,16 and24 hear it at50.65 s and accept at51.30,51.15 and51.25 s respectively. All these recorded acceptances fall within4.9+45+0.75+1=51.65 s. Fix and Observe directives are present, with no received superiority. The selector'"'s printed50 s value is the first frame containing the commander assignment; the later received/accepted times come from actual production events, not fabricated receipts. "'`.local/phase4f/control-receipts.json` records the evidence. This diagnostic does not claim every squad received Withdraw: the recorded issue/acceptance set is explicitly the three NCOs listed.
+
+**Resolved loop guard:** the unchanged P07 fixture was extended to360 s for a same-binary boundary diagnostic, without changing its assertions or running a distribution draw. All four squads hit the finite-map condition. At302 s squads1/2 request x516.91/516.83; at309 s squad3 requests x516.67; at324 s squad0 requests x517.50. The map ends at x500. Each request emits `platoon_no_progress` followed by `platoon_route_exhausted`; no unchanged renewal is accepted. Trace pairs67987/67988,67989/67990,68289/68290,68801/68802 are preserved in `.local/phase4f/boundary-evidence.json`. This directly exercises the no-admissible-route branch. The conditional check for a resolved-but-too-short endpoint is present in source but was not separately triggered by this fixture.
+
+## Commands and verification
+
+For each N=1,2,3:
+
+```sh
+./scripts/test-sim.sh --platoon P08
+./scripts/battle-lab.sh --version
+python3 .local/phase4f/run_attempt.py N
+python3 .local/phase4f/trace_attempt.py N
+```
+
+Each `run_attempt.py` copies the just-built test binary and runs all28 selectors, with exact per-selector argv, exit codes and logs in `attemptN/results.json`. `trace_attempt.py` preserves the corresponding CLI binary and exports the failed/local scenario traces with `--drills --encounter ID --seconds LIMIT --evaluate`. The helper was initially called before attempt2'"'s result checkpoint existed, failed with FileNotFoundError, and was rerun after that checkpoint existed; this was a tooling error, not another source attempt. Duplicate trace targets in the initial helper were deduplicated before attempt3. All policy attempts remain the three fingerprinted sources above.
+
+Additional commands:
+
+"'```sh
+.local/phase4f/attempt3/battle-lab --drills --encounter 82 --seconds 360 --evaluate --out .local/phase4f/attempt3/traces/82-boundary
+python3 -m unittest discover -s tests -p '"'test_*.py'
+python3 tools/source_id.py
+git diff --check
+"'```
+
+Python: **63 tests pass**,3.547 s. Diff whitespace check passes. `.local/phase4f/static-checks.json` verifies the protected terrain source, frozen acceptance/validation seeds and `tools/evaluate_routes.py` hashes are unchanged; old P01–P07 test bodies are unchanged; final simulation source equals the attempt3 snapshot.
+
+### Selector results
+
+| Selector | Attempt1 | Attempt2 | Attempt3 |
+|---|---|---|---|
+'"'''
+lookup=[{x['name']:x for x in rows} for rows in results]
+for name in ['D01','D02','D03','D04','D05','D06','D07','D08','D09','D10','D11','D16','D17','P01','P02','P03','P04','P05','P06','P07','P08','close','sprint','projection','sector','positions','plumbing','lifecycle']:
+ text+='| '+name+' | '+' | '.join('PASS' if d[name]['exit_code']==0 else 'FAIL' for d in lookup)+' |\\n'
+text+='''
+### Gates not run
+
+| Gate | Status / reason |
+|---|---|
+| full "'`./scripts/test-sim.sh` suite | not run; P08 prerequisite fails |
+|40 authored legacy/cognition digests | not run on Phase4f; prior Phase4e evidence is not substituted |
+| drills trace parity, both maps and one F1 draw | not run on Phase4f |
+| Works and Trenches seeds100–109 | no distribution cases started |
+| F1 development draws / paired scoreboard | no distribution cases started; no current outcome claim |
+| distribution engagement guard | not exercised; no distribution dispatched |
+| native Windows / Unreal | remains with architect; not attempted |
+
+There is consequently no Phase4f per-run distribution table or paired CI scoreboard. Existing Phase4e numbers remain historical, not results for this source. Focused no-contact/holding-fire fixtures are not fed into the distribution engagement guard.
+
+## Disagreements, interpretations and unfinished work
+
+1. I agree with replacing indefinite no-flank holding with a supported-movement branch and bounded observation. This implementation still fails the P08 advance/no-Reserve requirements. It is not complete enough for the requested measurement gate.
+2. I do not accept the review'"'s specific attribution of **Phase4e Trenches103** to repeated no-covered-flank handling as established. Its archived zero-shot diagnostic contains no completed Advance leg and no positive Azure mental-map estimate; it instead shows movement-budget exhaustion and renewals. The supplied Works/Trenches108 evidence may establish the no-flank problem elsewhere, but it is not evidence of that same cause in103. No new distribution was run here to resolve103.
+3. “Superiority” here is a reported doctrinal belief: the prior hysteresis flag, or established element support with no effective incoming fire. It is not an omniscient comparison of both sides' bullets. Committed strength is the commander's received own-force strength carried by the order; it does not implement cross-squad weapon transfer or guarantee all intended supporting squads can fire.
+4. The new weak fixture was amended once because attempt1 did not produce its required knowledge. All existing fixtures/assertions, and all P08 assertion bounds, remain unchanged across the policy attempts. The new fixture's measured ratio is0.627528, an operational “about0.6,” with no injected knowledge.
+5. The loop guard now rejects absent or insufficient resolved routes and reports exhaustion. The boundary diagnostic verifies absence/exhaustion, not every possible short resolved alternative. No post-attempt3 policy change was made.
+6. Weapon attachment, Merge transfer and company escalation remain deferred. F2/F3 and gun pickup were not implemented. Native verification remains with the architect. The all-mechanism prerequisite failed at the allowed limit, so the slice stops with this report; no fourth local attempt or measured build follows.
+
+Final fingerprint: **"'`01462c286da88358`**. All changes remain uncommitted in the working tree.
+'"'''
+Path('.local/handoffs/014-phase4f-report.md').write_text(text);print('Wrote report',len(text),'characters')
+PY
+python3 .local/phase4f/write_report.py" in /home/jchan/ww1-autobattler
+ succeeded in 10ms:
+codex
+The report is written. Final status is 27/28 selectors passing, with P08’s movement and no-Reserve requirements still failing. It records all three attempts, actual withdrawal receipts for the weak control, boundary-exhaustion traces, and the gates left unrun because P08 failed. I’m finishing the documentation and fingerprint checks, then stopping.
+
+exec
+/bin/bash -lc "python3 - <<'PY'
+from pathlib import Path
+paragraph='''
+
+The attributed [Phase4e review](plans/014-phase4e-fable-review.md) accepts the
+Advance lifecycle repair and requires supported fire-and-movement when no covered
+flank exists, a45 s observation limit, P08 and resolved loop-guard validation.
+Phase4f used three local attempts, ending at "'`01462c286da88358`. All27 existing
+selectors pass unchanged, but P08 fails: its three moving squads advance at most
+9.372,8.119 and3.583 m within the90 s contact window, and Reserve appears after
+support is lost. Its weak control proves ratio0.627528, Fix/Observe and a bounded
+Withdraw through production transport; the same-binary map-boundary diagnostic
+proves route exhaustion for all four squads. See the
+[Phase4f report](.local/handoffs/014-phase4f-report.md) for fingerprints, local
+attempts, traces and disagreements. **No distribution, full-suite run,40-case
+authored digest gate or full-battle trace-parity gate was started**, because P08
+failed at the three-attempt limit.63 Python tests pass; protected files are intact.
+No fourth attempt or measured build follows. Legacy remains default. Weapon
+attachment, Merge transfer and company escalation remain deferred; F2/F3 and gun
+pickup are not implemented. Windows and Unreal stay with the architect.
+'"'''
+for name in ('AGENTS.md','CLAUDE.md'):
+ p=Path(name);s=p.read_text();marker='## Previous main-build decisions (history, superseded by the replay decision above)'
+ if marker in s:s=s.replace(marker,paragraph+'\\n'+marker,1)
+ else:s+=paragraph
+ p.write_text(s)
+p=Path('docs/AI_MAIN_BUILD.md');p.write_text(p.read_text()+paragraph.replace('(plans/','(../plans/').replace('(.local/','(../.local/'))
+# Record final checks without rerunning the gated scenarios or distributions.
+import json,hashlib,subprocess
+r=Path('.local/phase4f');sim=Path('Unreal/Source/ArmyPrototype/Sim')
+checks=json.loads((r/'static-checks.json').read_text());checks['final_source_unchanged']=all(p.read_bytes()==(sim/p.name).read_bytes() for p in (r/'attempt3/source').glob('*'))
+checks['P08_assertions_unchanged']=(r/'attempt1/platoon_tests.h').read_bytes()==Path('tests/platoon_tests.h').read_bytes()
+checks['fingerprint']=subprocess.check_output(['python3','tools/source_id.py'],text=True).strip()
+checks['distribution_started']=any((r/p).exists() for p in ('authored/results.json','f1-dev/family.json'))
+assert checks['final_source_unchanged'] and checks['P08_assertions_unchanged'] and not checks['distribution_started']
+(r/'static-checks.json').write_text(json.dumps(checks,indent=2)+'\\n');print(checks)
+PY
+git diff --check
+python3 tools/source_id.py" in /home/jchan/ww1-autobattler
+ succeeded in 135ms:
+{'protected': {'tests/ai_acceptance.json': True, 'tests/ai_validation_v2.json': True, 'tools/evaluate_routes.py': True, 'Unreal/Source/ArmyPrototype/Sim/TerrainSim.cpp': True}, 'existing_P01_P07_bodies_unchanged': True, 'final_source_unchanged': True, 'fingerprint': '01462c286da88358', 'P08_assertions_unchanged': True, 'distribution_started': False}
+01462c286da88358
+
+codex
+[Phase 4f report](/home/jchan/ww1-autobattler/.local/handoffs/014-phase4f-report.md) is complete.
+
+After three attempts, all 27 existing selectors pass; P08 still fails movement and no-Reserve requirements. No distribution measurement or subsequent verification gates were started.
+
+Stopped as requested. Changes remain uncommitted. Final fingerprint: `01462c286da88358`.
+tokens used
+4,827,348
+[Phase 4f report](/home/jchan/ww1-autobattler/.local/handoffs/014-phase4f-report.md) is complete.
+
+After three attempts, all 27 existing selectors pass; P08 still fails movement and no-Reserve requirements. No distribution measurement or subsequent verification gates were started.
+
+Stopped as requested. Changes remain uncommitted. Final fingerprint: `01462c286da88358`.
+exit=0
