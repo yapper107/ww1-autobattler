@@ -1,0 +1,99 @@
+=== --decision-loop
+SCENARIO contracts: arrival, bounded empty coverage, duplicate evidence, replacement generation, reload retention and deadline PASS
+SCENARIO receipts: obsolete assignment/stage rejected; exact support identity, sector, age and duration cache key PASS
+SCENARIO support deployment: exact source/route/stage/sector/age, bounded wait, duplicate deadline, actual fire release PASS
+SCENARIO retained execution: pause/resume preserves ID, original arrival, deadline, and rejects reordered control PASS
+SCENARIO observer availability: use remaining rifleman; retain command roles; report no observer available PASS
+physical 11 completed=1 transported=1 moved=1 sighting=1
+SCENARIO physical observation 11: completion=1 movement=1 peek=1 transport=1 exhausted=0 PASS
+physical 12 completed=1 transported=1 moved=1 sighting=1
+SCENARIO physical observation 12: completion=1 movement=1 peek=1 transport=1 exhausted=0 PASS
+physical 13 completed=1 transported=1 moved=0 sighting=0
+SCENARIO physical observation 13: completion=1 movement=0 peek=0 transport=1 exhausted=0 PASS
+physical 14 completed=0 transported=0 moved=0 sighting=0
+SCENARIO physical observation 14: completion=0 movement=0 peek=0 transport=0 exhausted=1 PASS
+support 15 release=1 loss=1 physical=1
+support 16 release=0 loss=0 physical=0
+sim_tests: /home/jchan/ww1-autobattler/tests/decision_loop_tests.h:196: void PhysicalDeploymentScenario(): Assertion `waiting&&released&&travel&&transported' failed.
+exit=134
+=== --reliability
+support handoff: requested=1 relocated=1 fired=1 handed=1 at=27.4
+SCENARIO reliability support handoff: production reports redirect deployment beyond initial range, gun physically relocates, and actual new-target delivery acknowledges the handoff PASS
+SCENARIO reliability injury contracts: generation gaps retain roles, reported detour progress renews capability, shelter matches healthy grace, retirement holds the last known position PASS
+injured movement 40: assessed=1 completed=1 retired=1 moved=16.0633
+injured movement 41: assessed=1 completed=0 retired=1 moved=0
+injured movement 42: assessed=1 completed=1 retired=1 moved=7.81025
+SCENARIO reliability injury: a wounded member demonstrates actual retained-task movement and completion; persistent physical inability retires the role within its budget PASS
+SCENARIO reliability support protocol: reissued deployment cannot extend stage cap; silence requires new source evidence; platoon relay retains distinct original target evidence PASS
+support loss 37: dead=5.6 received=8.15 retired=1 replaced=-1 released=-1
+support loss 38: dead=-1 received=-1 retired=0 replaced=-1 released=-1
+support loss 39: dead=3 received=5.55 retired=1 replaced=5.8 released=28.2
+SCENARIO reliability support loss: physical casualty relays original evidence, remains retired, and replacement needs actual delayed fire; living sheltered control retains source PASS
+SCENARIO reliability shelter: same-slot peek recovery retains identity; actual pressure and unavailable tasks never certify occupation PASS
+SCENARIO reliability delivery memory: alternating targets retain independent original evidence; duplicate relays cannot refresh it PASS
+SCENARIO reliability threat support: nearby rifle fire cannot substitute for the crossing MG; original delivery age retained PASS
+SCENARIO reliability area denial: requested remembered gun covered at executable cover edge, uncertainty bounded, no refreshed sighting PASS
+SCENARIO reliability friendly intent: distant lane protected from received evidence; clear lane allowed; no invented personal contact PASS
+SCENARIO reliability strength: one arrival cannot advance a two-person objective; capable pair advances PASS
+SCENARIO reliability final connector: same physical clearance, bounded departure from route, geometry invalidation PASS
+SCENARIO reliability support recovery: local safety cannot starve received support; repeated support recovery cannot renew execution budget PASS
+reliability physical 18 arrived=1 transported=1 sheltered=1
+reliability physical 19 arrived=1 transported=1 sheltered=0
+reliability physical 26 arrived=1 transported=1 sheltered=1
+SCENARIO reliability physical: safety recovery and final connector execute through movement, collision and delayed receipt transport PASS
+remote friendly 20 received=1 held=1 shots=0
+remote friendly 21 received=1 held=0 shots=36
+SCENARIO reliability physical distant support: transported friendly intent inhibits conflicting fire; clear-lane control delivers actual projectiles PASS
+SCENARIO reliability physical occupied position: fresh sensed defender excludes ordinary occupation of its cover PASS
+physical threat: cover denial=1 delivery=1
+SCENARIO reliability physical threat: gun covers the requested concealed MG instead of substituting the nearby rifleman PASS
+physical rifle denial: report=1 projectile=1
+SCENARIO reliability physical rifle denial: delayed observation supports bounded area fire at a concealed requested rifle position PASS
+physical aged evidence: projectile=1
+SCENARIO reliability firing memory: two real report hops preserve original age beyond10s; bounded remembered target remains executable without a fabricated sighting PASS
+protected transit 24 learned=1 advanced=1 held=1
+protected transit 25 learned=1 advanced=0 held=0
+SCENARIO reliability protected transit: observed geometry permits screened movement without fire; exposed next stage and unscreened control retain actual-fire gate PASS
+SCENARIO reliability paused movement: defend current position without movement release or fabricated completion PASS
+SCENARIO reliability transit cover: arrived member can fire from the waypoint; no-contact control waits and transit completion remains spatial PASS
+transit covering: assigned=1 fired=1 stage ends=9.8
+SCENARIO reliability physical transit cover: early arrival fires real projectiles while the remaining movers approach the synchronization point PASS
+SCENARIO reliability cover posture: crouched firing uses a real clear muzzle ray; blocked low shot requires standing PASS
+paused shelter: paused=1 safety=1 occupied=1
+SCENARIO reliability paused shelter: sensed exposure triggers bounded physical shelter movement without inventing support fire PASS
+wounded occupation: held=1 completed=1
+SCENARIO reliability wounded occupation: physically established holder retained through reported injury; stale, departed, dead and replaced evidence rejected PASS
+alternate wounded foothold: adopted=1 received=1 done=1
+SCENARIO reliability alternate foothold: received injury and fresh friendly position cause a useful local reassignment; physical arrival returns a new matching receipt PASS
+local cover 32: assigned=1 acknowledged=1 useful=1 shot=1
+local cover 33: assigned=0 acknowledged=0 useful=0 shot=0
+SCENARIO reliability local cover: real forward rifle delivery selects an explicit role, new delayed receipt and continued projectiles establish local support; reload-only control cannot provide it PASS
+recon 34: selected=1 observed=0 new occupation=0 complete=0
+sim_tests: /home/jchan/ww1-autobattler/tests/reliability_tests.h:439: void ReliabilityReconnaissanceScenario(): Assertion `selected&&observed&&reassigned&&completed' failed.
+exit=134
+=== --drills D05
+D05 support=1 incorrectly_blocked=1 weak_report=1 latency=2.95
+sim_tests: /home/jchan/ww1-autobattler/tests/drills_tests.h:114: void DrillD05(): Assertion `support&&!blocked' failed.
+exit=134
+=== --drills D07
+D07 phase_receipt=84.7 lift_received=86 late_original_area_rounds=90 no_signal_lift=0
+sim_tests: /home/jchan/ww1-autobattler/tests/squad_drills_tests.h:27: void DrillD07(): Assertion `receipt>=0&&lift>=receipt&&lift-receipt<=c.reportDelay+1&&crossing==0&&!noSignalLift' failed.
+exit=134
+=== --drills D08
+D08 observer screened candidate routes=2 best blocked fraction=1
+D08 accepted route observer blocked fraction=1
+D08 covered_attack=1 moved=1 physical_angle=1 longest_rush=4.5 consolidate=0 reorganise=0 bare_attack=0 bare_report=1
+sim_tests: /home/jchan/ww1-autobattler/tests/squad_drills_tests.h:85: void DrillD08(): Assertion `accepted&&moved&&angle&&longest<=5.05f&&consolidated&&reorganise==1&&!unsupported&&reported' failed.
+exit=134
+=== --drills D17
+D17 independently allocatable protected slots=8
+D17 scarce_occupied=5 ample_occupied=7 spacing=1
+sim_tests: /home/jchan/ww1-autobattler/tests/drills_tests.h:129: void DrillD17(): Assertion `occupied[0]==5&&occupied[1]==8&&spaced' failed.
+exit=134
+=== --stats
+STATS sampler: base=49910 low=40121 high=9969 of 100000 PASS
+STATS generation: roster determinism, independence, equal-troop mirroring and neutral fixtures PASS
+STATS weapons: table reference, modifiers, power-law velocity and the consistency assertion PASS
+STATS battle: 40 rifle reloads between 2.25583s and 2.97252s; 3397 composure decay samples PASS
+PASS: stat sampler, roster generation, weapon items, fire control references and magazine tracking
+exit=0

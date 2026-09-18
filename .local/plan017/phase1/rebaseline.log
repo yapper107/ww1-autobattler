@@ -1,0 +1,137 @@
+== build lab
+seed=107 repeat=0 simulation=11.6094 export=1.03205 total=12.6427 peak_memory_bytes=3112456192 digest=18321111508563236090 run=.local/battles/battle-107-1789717091212297363
+ccaa94cdca873c23-linux
+== rebaseline
+candidate90 works 101 7930898989977892717 shots 1333 dur 360 winner 0
+candidate90 works 100 7930898989977892717 shots 1333 dur 360 winner 0
+candidate90 works 102 7930898989977892717 shots 1333 dur 360 winner 0
+candidate90 works 103 7930898989977892717 shots 1333 dur 360 winner 0
+candidate90 works 104 5752491414942901855 shots 599 dur 360 winner 1
+candidate90 works 106 5752491414942901855 shots 599 dur 360 winner 1
+candidate90 works 105 5752491414942901855 shots 599 dur 360 winner 1
+candidate90 works 107 5752491414942901855 shots 599 dur 360 winner 1
+candidate90 trenches 100 12545590221314381113 shots 528 dur 360 winner 0
+candidate90 works 108 12943298729702113109 shots 1535 dur 360 winner 1
+candidate90 works 109 12943298729702113109 shots 1535 dur 360 winner 1
+candidate90 trenches 101 10252754990486527832 shots 933 dur 360 winner 1
+candidate90 trenches 102 17781068166328866562 shots 1085 dur 360 winner 1
+candidate90 trenches 104 16950635592330066467 shots 470 dur 360 winner 1
+candidate90 trenches 103 18423106155033461833 shots 295 dur 360 winner 0
+candidate90 trenches 105 18423106155033461833 shots 295 dur 360 winner 0
+candidate90 trenches 106 2599113218557670219 shots 165 dur 360 winner 1
+candidate90 trenches 107 12458309451603004707 shots 305 dur 360 winner 0
+candidate90 trenches 109 15742811639633699520 shots 438 dur 360 winner -1
+candidate90 trenches 108 15742811639633699520 shots 438 dur 360 winner -1
+legacy works 102 14505408295596960231 shots 2056 dur 360 winner 1
+legacy works 100 14505408295596960231 shots 2056 dur 360 winner 1
+legacy works 103 3876355858300632830 shots 1809 dur 360 winner 1
+legacy works 101 3876355858300632830 shots 1809 dur 360 winner 1
+legacy works 105 4096088849903196495 shots 2458 dur 360 winner 1
+legacy works 104 18321111508563236090 shots 2531 dur 360 winner 1
+legacy works 107 18321111508563236090 shots 2531 dur 360 winner 1
+legacy works 106 4463645604524997404 shots 2580 dur 360 winner 0
+legacy works 108 2277292893147724476 shots 2551 dur 360 winner 0
+legacy works 109 11658993147872815329 shots 3103 dur 360 winner 0
+legacy trenches 100 1850209746351873923 shots 1758 dur 360 winner 1
+legacy trenches 101 13905986130570945846 shots 2527 dur 360 winner 1
+legacy trenches 102 16235677258301571990 shots 2329 dur 360 winner 1
+legacy trenches 103 4289049154490961461 shots 2288 dur 360 winner 0
+legacy trenches 104 4289049154490961461 shots 2288 dur 360 winner 0
+legacy trenches 105 16609392950822072593 shots 811 dur 360 winner 1
+legacy trenches 108 4412656107668017515 shots 1394 dur 360 winner 0
+legacy trenches 107 4412656107668017515 shots 1394 dur 360 winner 0
+legacy trenches 109 18419345677729451113 shots 3133 dur 360 winner 1
+legacy trenches 106 18193692439354763741 shots 2031 dur 360 winner 0
+regenerated 40 archived 40
+== parity check against new references
+candidate90 works 102 True
+candidate90 works 107 True
+candidate90 works 105 True
+candidate90 works 104 True
+candidate90 works 103 True
+candidate90 works 108 True
+candidate90 works 100 True
+candidate90 works 101 True
+candidate90 works 109 True
+candidate90 works 106 True
+candidate90 trenches 108 True
+candidate90 trenches 101 True
+candidate90 trenches 109 True
+candidate90 trenches 104 True
+candidate90 trenches 103 True
+candidate90 trenches 106 True
+candidate90 trenches 102 True
+candidate90 trenches 100 True
+candidate90 trenches 107 True
+candidate90 trenches 105 True
+legacy works 103 True
+legacy works 106 True
+legacy works 100 True
+legacy works 107 True
+legacy works 105 True
+legacy works 109 True
+legacy works 104 True
+legacy works 108 True
+legacy works 102 True
+legacy works 101 True
+legacy trenches 102 True
+legacy trenches 105 True
+legacy trenches 104 True
+legacy trenches 106 True
+legacy trenches 109 True
+legacy trenches 107 True
+legacy trenches 103 True
+legacy trenches 108 True
+legacy trenches 100 True
+legacy trenches 101 True
+== trace parity
+works True 17532049110754150493
+trenches True 13874747916152877712
+F1 True 3330112170839493068
+works repeat True
+== acceptance development
+seed=107 repeat=0 simulation=0.664254 export=0.484448 total=1.14952 peak_memory_bytes=1031770112 digest=12842029157391225569 run=.local/plan017/phase1/acceptance-dev/battle-107-1789717552955388284
+seed=108 repeat=0 simulation=0.630273 export=0.441739 total=1.07293 peak_memory_bytes=922669056 digest=3062447459795892798 run=.local/plan017/phase1/acceptance-dev/battle-108-1789717554377790246
+seed=109 repeat=0 simulation=0.79517 export=0.58813 total=1.38417 peak_memory_bytes=1153261568 digest=14421272489706308583 run=.local/plan017/phase1/acceptance-dev/battle-109-1789717555962641329
+seed=107 repeat=0 simulation=0.851395 export=0.667386 total=1.51974 peak_memory_bytes=1270767616 digest=10751801863811534073 run=.local/plan017/phase1/acceptance-dev/battle-107-1789717557822590023
+seed=108 repeat=0 simulation=0.63192 export=0.43674 total=1.06946 peak_memory_bytes=935841792 digest=5227095700662713319 run=.local/plan017/phase1/acceptance-dev/battle-108-1789717559494477989
+seed=109 repeat=0 simulation=1.87276 export=1.63548 total=3.50913 peak_memory_bytes=3085406208 digest=4470340061289471334 run=.local/plan017/phase1/acceptance-dev/battle-109-1789717562799132730
+seed=107 repeat=0 simulation=0.726723 export=0.584359 total=1.31196 peak_memory_bytes=1166925824 digest=17210481651502053551 run=.local/plan017/phase1/acceptance-dev/battle-107-1789717565519719627
+seed=108 repeat=0 simulation=1.5648 export=1.64312 total=3.20883 peak_memory_bytes=3094171648 digest=1618661084866399824 run=.local/plan017/phase1/acceptance-dev/battle-108-1789717568675501095
+seed=109 repeat=0 simulation=1.59407 export=1.66684 total=3.26228 peak_memory_bytes=3090227200 digest=8065823614507196613 run=.local/plan017/phase1/acceptance-dev/battle-109-1789717572851199873
+{"build": "ccaa94cdca873c23-linux", "per_layout": {"5": 3, "6": 3, "7": 1}, "passed": false}
+dev exit=0
+== acceptance held-out
+seed=110 repeat=0 simulation=0.715132 export=0.517703 total=1.23369 peak_memory_bytes=1044549632 digest=1868896671994926110 run=.local/plan017/phase1/acceptance-heldout/battle-110-1789717575574559336
+seed=111 repeat=0 simulation=0.796429 export=0.595612 total=1.39289 peak_memory_bytes=1159057408 digest=10067980724304365700 run=.local/plan017/phase1/acceptance-heldout/battle-111-1789717577295723784
+seed=112 repeat=0 simulation=1.00437 export=0.813779 total=1.81893 peak_memory_bytes=1609437184 digest=6670035127173627359 run=.local/plan017/phase1/acceptance-heldout/battle-112-1789717579470062215
+seed=113 repeat=0 simulation=0.907616 export=0.72846 total=1.63684 peak_memory_bytes=1368940544 digest=9240714550404936524 run=.local/plan017/phase1/acceptance-heldout/battle-113-1789717581623470070
+seed=114 repeat=0 simulation=0.84549 export=0.659742 total=1.50607 peak_memory_bytes=1310957568 digest=11225229841726321112 run=.local/plan017/phase1/acceptance-heldout/battle-114-1789717583663058564
+seed=115 repeat=0 simulation=0.638155 export=0.457079 total=1.09619 peak_memory_bytes=992391168 digest=8324272567340581103 run=.local/plan017/phase1/acceptance-heldout/battle-115-1789717585288249356
+seed=116 repeat=0 simulation=1.94328 export=1.64793 total=3.59217 peak_memory_bytes=3083677696 digest=10890653982932660709 run=.local/plan017/phase1/acceptance-heldout/battle-116-1789717588613998748
+seed=117 repeat=0 simulation=0.814705 export=0.626305 total=1.44183 peak_memory_bytes=1267687424 digest=7185803924876166627 run=.local/plan017/phase1/acceptance-heldout/battle-117-1789717591473611481
+seed=118 repeat=0 simulation=0.652635 export=0.530802 total=1.18426 peak_memory_bytes=1107075072 digest=4769078885581812708 run=.local/plan017/phase1/acceptance-heldout/battle-118-1789717593098525835
+seed=119 repeat=0 simulation=0.69875 export=0.528809 total=1.22836 peak_memory_bytes=1109524480 digest=9024995238782108909 run=.local/plan017/phase1/acceptance-heldout/battle-119-1789717594620248559
+seed=110 repeat=0 simulation=0.831415 export=0.700364 total=1.53258 peak_memory_bytes=1400848384 digest=7820050017157383121 run=.local/plan017/phase1/acceptance-heldout/battle-110-1789717596390164543
+seed=111 repeat=0 simulation=2.14015 export=1.62596 total=3.76697 peak_memory_bytes=3088326656 digest=14698862141440808566 run=.local/plan017/phase1/acceptance-heldout/battle-111-1789717600187462125
+seed=112 repeat=0 simulation=1.61518 export=1.56909 total=3.18515 peak_memory_bytes=3082752000 digest=11145835238430771936 run=.local/plan017/phase1/acceptance-heldout/battle-112-1789717604397269686
+seed=113 repeat=0 simulation=0.644377 export=0.448288 total=1.09353 peak_memory_bytes=950902784 digest=14483752045851722204 run=.local/plan017/phase1/acceptance-heldout/battle-113-1789717606813614596
+seed=114 repeat=0 simulation=1.68115 export=1.63116 total=3.3132 peak_memory_bytes=3087491072 digest=14586210551205505758 run=.local/plan017/phase1/acceptance-heldout/battle-114-1789717609879288282
+seed=115 repeat=0 simulation=1.09702 export=1.06404 total=2.16185 peak_memory_bytes=2082476032 digest=8386981787622042171 run=.local/plan017/phase1/acceptance-heldout/battle-115-1789717613229112598
+seed=116 repeat=0 simulation=1.36357 export=1.38714 total=2.75162 peak_memory_bytes=2641829888 digest=8611389279932437877 run=.local/plan017/phase1/acceptance-heldout/battle-116-1789717616474501129
+seed=117 repeat=0 simulation=0.711244 export=0.513856 total=1.22605 peak_memory_bytes=1038368768 digest=13973447652552290580 run=.local/plan017/phase1/acceptance-heldout/battle-117-1789717618905945448
+seed=118 repeat=0 simulation=1.67261 export=1.67627 total=3.34979 peak_memory_bytes=3093061632 digest=9635547187464644398 run=.local/plan017/phase1/acceptance-heldout/battle-118-1789717622039452641
+seed=119 repeat=0 simulation=0.687772 export=0.505693 total=1.19429 peak_memory_bytes=1021952000 digest=4930832104679608141 run=.local/plan017/phase1/acceptance-heldout/battle-119-1789717624786753125
+seed=110 repeat=0 simulation=0.707499 export=0.546122 total=1.25447 peak_memory_bytes=1096609792 digest=7802967756134992457 run=.local/plan017/phase1/acceptance-heldout/battle-110-1789717626310643729
+seed=111 repeat=0 simulation=1.71884 export=1.64772 total=3.36814 peak_memory_bytes=3090628608 digest=6047072793033567044 run=.local/plan017/phase1/acceptance-heldout/battle-111-1789717629536794262
+seed=112 repeat=0 simulation=1.54786 export=1.62366 total=3.17238 peak_memory_bytes=3089666048 digest=8591468983736591098 run=.local/plan017/phase1/acceptance-heldout/battle-112-1789717633715599360
+seed=113 repeat=0 simulation=2.13033 export=1.73666 total=3.86775 peak_memory_bytes=3095699456 digest=3993898485183785738 run=.local/plan017/phase1/acceptance-heldout/battle-113-1789717638473012084
+seed=114 repeat=0 simulation=0.783269 export=0.648976 total=1.43314 peak_memory_bytes=1270751232 digest=3670088957066537390 run=.local/plan017/phase1/acceptance-heldout/battle-114-1789717641518010196
+seed=115 repeat=0 simulation=1.50903 export=1.51762 total=3.0276 peak_memory_bytes=2834718720 digest=10649556756746094017 run=.local/plan017/phase1/acceptance-heldout/battle-115-1789717644523592546
+seed=116 repeat=0 simulation=0.723554 export=0.542819 total=1.26724 peak_memory_bytes=1078726656 digest=17166020572703826092 run=.local/plan017/phase1/acceptance-heldout/battle-116-1789717647001390630
+seed=117 repeat=0 simulation=1.7812 export=1.63543 total=3.41746 peak_memory_bytes=3088429056 digest=5150130784968201950 run=.local/plan017/phase1/acceptance-heldout/battle-117-1789717650285023641
+seed=118 repeat=0 simulation=0.873111 export=0.783058 total=1.65705 peak_memory_bytes=1520095232 digest=9695865053444242284 run=.local/plan017/phase1/acceptance-heldout/battle-118-1789717653281599359
+seed=119 repeat=0 simulation=1.94748 export=1.65913 total=3.60749 peak_memory_bytes=3091619840 digest=12497603694685700224 run=.local/plan017/phase1/acceptance-heldout/battle-119-1789717656995758143
+{"build": "ccaa94cdca873c23-linux", "per_layout": {"5": 10, "6": 9, "7": 6}, "passed": false}
+heldout exit=0
+chain exit=0

@@ -1,0 +1,10 @@
+== D02 at 70 s
+D02 report_only=1 30-50m=0 protected_trail=1 control_traveling=1 control_close=1
+sim_tests: /home/jchan/ww1-autobattler/tests/drills_tests.h:64: void DrillD02(): Assertion `received&&DrillTrace(report,"technique_selected","traveling overwatch")&&distant&&protectedTrail' failed.
+scripts/test-sim.sh: line 36: 88272 Aborted                    "$repo_root/.local/tests/sim_tests" "$@"
+D02 exit=134
+== python
+----------------------------------------------------------------------
+Ran 102 tests in 19.345s
+
+OK

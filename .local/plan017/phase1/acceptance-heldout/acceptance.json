@@ -1,0 +1,743 @@
+{
+  "build": "ccaa94cdca873c23-linux",
+  "held_out": true,
+  "regression_only": true,
+  "seconds": 360,
+  "evaluator_sha256": "3ade284789f519b1d4c6d377b091b075b177f14b183d2329464a1bfaa8d86dca",
+  "passed": false,
+  "cases": [
+    {
+      "seed": 110,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-110-1789717575574559336",
+      "selected": 3,
+      "completed": 2,
+      "actual_exposed_mover_seconds": {
+        "200002": 127.4,
+        "200003": 68.99999999999999
+      },
+      "second_angles": {
+        "200002": {
+          "time": 64.6,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 586,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 111,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-111-1789717577295723784",
+      "selected": 3,
+      "completed": 2,
+      "actual_exposed_mover_seconds": {
+        "200002": 61.80000000000002,
+        "200003": 61.39999999999996,
+        "200004": 20.00000000000003
+      },
+      "second_angles": {
+        "200002": {
+          "time": 62.2,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 572,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 112,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-112-1789717579470062215",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 55.8
+      },
+      "second_angles": {
+        "200002": {
+          "time": 64,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 583,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 113,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-113-1789717581623470070",
+      "selected": 6,
+      "completed": 5,
+      "actual_exposed_mover_seconds": {
+        "200002": 74.19999999999999,
+        "200003": 41.80000000000001,
+        "200004": 32.59999999999998,
+        "200005": 15.19999999999996,
+        "200006": 39.39999999999996,
+        "200007": 2.799999999999997
+      },
+      "second_angles": {
+        "200002": {
+          "time": 63.4,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 577,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 114,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-114-1789717583663058564",
+      "selected": 6,
+      "completed": 3,
+      "actual_exposed_mover_seconds": {
+        "200002": 72.19999999999999,
+        "200003": 20.00000000000003,
+        "200008": 14.999999999999986,
+        "200010": 25.00000000000003
+      },
+      "second_angles": {
+        "200002": {
+          "time": 64,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 604,
+          "route_completed": true
+        },
+        "200010": {
+          "time": 132.8,
+          "movers": [
+            8,
+            10
+          ],
+          "decision": 5654,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 115,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-115-1789717585288249356",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 111.94999999999999
+      },
+      "second_angles": {
+        "200002": {
+          "time": 64.8,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 591,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 116,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-116-1789717588613998748",
+      "selected": 4,
+      "completed": 3,
+      "actual_exposed_mover_seconds": {
+        "200002": 88.40000000000005,
+        "200003": 23.400000000000006,
+        "200004": 15.200000000000017,
+        "200005": 3.6000000000000085
+      },
+      "second_angles": {
+        "200002": {
+          "time": 65.2,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 601,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 117,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-117-1789717591473611481",
+      "selected": 3,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 56.19999999999999,
+        "200003": 42.40000000000002,
+        "200005": 6.399999999999977
+      },
+      "second_angles": {
+        "200002": {
+          "time": 65.6,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 595,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 118,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-118-1789717593098525835",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 228.39999999999355
+      },
+      "second_angles": {
+        "200002": {
+          "time": 82.2,
+          "movers": [
+            12,
+            14
+          ],
+          "decision": 574,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 119,
+      "encounter": 5,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-119-1789717594620248559",
+      "selected": 2,
+      "completed": 2,
+      "actual_exposed_mover_seconds": {
+        "200002": 101.4,
+        "200003": 17.19999999999999
+      },
+      "second_angles": {
+        "200002": {
+          "time": 65.2,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 606,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 110,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-110-1789717596390164543",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 132.99999999999966
+      },
+      "second_angles": {
+        "200002": {
+          "time": 66.8,
+          "movers": [
+            12,
+            13
+          ],
+          "decision": 425,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 111,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-111-1789717600187462125",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 100.8
+      },
+      "second_angles": {
+        "200002": {
+          "time": 66.2,
+          "movers": [
+            8,
+            9,
+            10,
+            11,
+            13
+          ],
+          "decision": 560,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 112,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-112-1789717604397269686",
+      "selected": 1,
+      "completed": 0,
+      "actual_exposed_mover_seconds": {
+        "200002": 1.6000000000000014
+      },
+      "second_angles": {},
+      "passed": false,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 113,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-113-1789717606813614596",
+      "selected": 2,
+      "completed": 2,
+      "actual_exposed_mover_seconds": {
+        "200002": 69.99999999999999,
+        "200003": 11.200000000000003
+      },
+      "second_angles": {
+        "200002": {
+          "time": 66,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 582,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 114,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-114-1789717609879288282",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 198.19999999999533
+      },
+      "second_angles": {
+        "200002": {
+          "time": 71.2,
+          "movers": [
+            9,
+            15
+          ],
+          "decision": 567,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 115,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-115-1789717613229112598",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 63.59999999999998
+      },
+      "second_angles": {
+        "200002": {
+          "time": 60,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 578,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 116,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-116-1789717616474501129",
+      "selected": 2,
+      "completed": 2,
+      "actual_exposed_mover_seconds": {
+        "200002": 100.2,
+        "200003": 58.09999999999992
+      },
+      "second_angles": {
+        "200002": {
+          "time": 62.8,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 575,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 117,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-117-1789717618905945448",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 81.0
+      },
+      "second_angles": {
+        "200002": {
+          "time": 64.2,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 576,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 118,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-118-1789717622039452641",
+      "selected": 4,
+      "completed": 3,
+      "actual_exposed_mover_seconds": {
+        "200002": 62.400000000000006,
+        "200003": 109.2,
+        "200004": 26.19999999999996,
+        "200005": 3.5999999999999943
+      },
+      "second_angles": {
+        "200002": {
+          "time": 61.8,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 567,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 119,
+      "encounter": 6,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-119-1789717624786753125",
+      "selected": 4,
+      "completed": 3,
+      "actual_exposed_mover_seconds": {
+        "200002": 69.00000000000001,
+        "200003": 71.00000000000001,
+        "200004": 15.199999999999974,
+        "200005": 9.59999999999998
+      },
+      "second_angles": {
+        "200002": {
+          "time": 62.4,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 570,
+          "route_completed": true
+        },
+        "200003": {
+          "time": 82.2,
+          "movers": [
+            9,
+            10
+          ],
+          "decision": 3392,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 110,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-110-1789717626310643729",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 242.1999999999926
+      },
+      "second_angles": {
+        "200002": {
+          "time": 75.4,
+          "movers": [
+            8,
+            14
+          ],
+          "decision": 605,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 111,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-111-1789717629536794262",
+      "selected": 1,
+      "completed": 0,
+      "actual_exposed_mover_seconds": {
+        "200002": 205.79999999999484
+      },
+      "second_angles": {},
+      "passed": false,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 112,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-112-1789717633715599360",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 205.79999999999478
+      },
+      "second_angles": {
+        "200002": {
+          "time": 79,
+          "movers": [
+            13,
+            14
+          ],
+          "decision": 598,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 113,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-113-1789717638473012084",
+      "selected": 1,
+      "completed": 0,
+      "actual_exposed_mover_seconds": {
+        "200002": 273.999999999991
+      },
+      "second_angles": {
+        "200002": {
+          "time": 69.8,
+          "movers": [
+            9,
+            12
+          ],
+          "decision": 586,
+          "route_completed": false
+        }
+      },
+      "passed": false,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 114,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-114-1789717641518010196",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 161.5999999999978
+      },
+      "second_angles": {
+        "200002": {
+          "time": 79.6,
+          "movers": [
+            8,
+            9
+          ],
+          "decision": 613,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 115,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-115-1789717644523592546",
+      "selected": 1,
+      "completed": 0,
+      "actual_exposed_mover_seconds": {
+        "200002": 195.59999999999525
+      },
+      "second_angles": {},
+      "passed": false,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 116,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-116-1789717647001390630",
+      "selected": 4,
+      "completed": 3,
+      "actual_exposed_mover_seconds": {
+        "200002": 159.59999999999786,
+        "200003": 10.399999999999991,
+        "200004": 5.400000000000034
+      },
+      "second_angles": {
+        "200002": {
+          "time": 72.8,
+          "movers": [
+            8,
+            11
+          ],
+          "decision": 607,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 117,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-117-1789717650285023641",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 164.59999999999786
+      },
+      "second_angles": {
+        "200002": {
+          "time": 74.2,
+          "movers": [
+            8,
+            11
+          ],
+          "decision": 615,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 118,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-118-1789717653281599359",
+      "selected": 1,
+      "completed": 1,
+      "actual_exposed_mover_seconds": {
+        "200002": 241.79999999999268
+      },
+      "second_angles": {
+        "200002": {
+          "time": 70.6,
+          "movers": [
+            11,
+            12
+          ],
+          "decision": 579,
+          "route_completed": true
+        }
+      },
+      "passed": true,
+      "defenders_eliminated": true,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    },
+    {
+      "seed": 119,
+      "encounter": 7,
+      "run": ".local/plan017/phase1/acceptance-heldout/battle-119-1789717656995758143",
+      "selected": 1,
+      "completed": 0,
+      "actual_exposed_mover_seconds": {
+        "200002": 198.3999999999952
+      },
+      "second_angles": {},
+      "passed": false,
+      "defenders_eliminated": false,
+      "method": "At least two surviving movers within 8m of the final route destination, each with a clear physical firing line to an active defender and >=45 degree separation from assigned support for a continuous 3s interval; route also completes. Observer targets never feed policy."
+    }
+  ],
+  "per_layout": {
+    "5": 10,
+    "6": 9,
+    "7": 6
+  }
+}
