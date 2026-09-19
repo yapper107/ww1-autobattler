@@ -800,9 +800,10 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         const auto& order=f.soldiers[squad*SquadSize].platoonOrder;command.platoon.lastOrders[squad]=order;
         command.platoon.nextSerial=std::max(command.platoon.nextSerial,order.serial+1);}}
     r.diagnostics=std::make_shared<Diagnostics>();r.diagnostics->options=options;command.diagnostics=r.diagnostics.get();command.reactions.diagnostics=r.diagnostics.get();
-    r.frames.reserve(size_t(c.maxSeconds/FrameSeconds)+2);
+    if(options.keepFrames)r.frames.reserve(size_t(c.maxSeconds/FrameSeconds)+2);
+    auto recordFrame=[&](const Frame& frame){if(options.frameSink)options.frameSink(r,frame);if(options.keepFrames||r.frames.empty())r.frames.push_back(frame);};
     CheckWeaponConsistency(f);
-    r.frames.push_back(f);Random rng(c.seed);
+    recordFrame(f);Random rng(c.seed);
     std::array<Runtime,UnitCount> run;
     std::vector<Projectile> bullets;TrafficRuntime traffic;auto passages=BuildingPassages(r.map);
     for(auto& a:run) a.cooldown=rng.Next();
@@ -1222,7 +1223,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         r.diagnostics->trace+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         const bool done=ResolveDeathmatch(r,f,!bullets.empty(),tick==maxTicks);
         if((c.recoveryFixture||c.foundations)&&(done||tick==maxTicks))for(auto& s:f.soldiers)SetTaskStatus(s,TaskStatus::Failed,s.Active()?TaskCause::BattleEnded:TaskCause::Casualty,f.time,command.diagnostics);
-        if(tick%4==0||done||tick==maxTicks) r.frames.push_back(f);
+        if(tick%4==0||done||tick==maxTicks) recordFrame(f);
         r.diagnostics->recording+=DiagnosticSeconds(stageStart);
         if(done) break;
     }

@@ -361,6 +361,14 @@ class Tree(unittest.TestCase):
         self.assertLessEqual(long, short)
         self.assertGreaterEqual(long, 1)
 
+    def test_lean_binaries_get_many_more_parallel_jobs(self):
+        from tools.loop import runner
+        self.assertGreaterEqual(runner.default_jobs(None, True, 600, lean=True), runner.default_jobs(None, True, 600))
+        self.assertFalse(runner.supports_lean('/nonexistent/battle-lab'))
+        runner._LEAN_SUPPORT['/fake/lean'] = True
+        self.assertIn('--lean', runner.battle_command('/fake/lean', 'legacy', dict(set='works', terrain=0, seed=107), out='o'))
+        self.assertNotIn('--lean', runner.battle_command('/fake/lean', 'legacy', dict(set='works', terrain=0, seed=107), trace=True, out='o'))
+
     def test_only_wanted_sets_are_built(self):
         sets = config.scenario_sets('abc-linux', wanted={'works'})
         self.assertEqual(list(sets), ['works'])

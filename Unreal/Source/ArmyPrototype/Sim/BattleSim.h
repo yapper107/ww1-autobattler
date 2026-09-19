@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 
 namespace army {
 constexpr int SquadSize = 8, SquadsPerTeam = 4, SquadCount = 8;
@@ -700,7 +701,12 @@ struct Shot {
 };
 // Returns only the part of the recorded flight reached at this replay time.
 bool ProjectilePosition(const Shot& shot, float time, Vec3& position);
-struct DiagnosticOptions { bool enabled=true, detailed=false; int soldier=-1,squad=-1; float from=0,to=600; };
+struct Record;struct Frame;
+// frameSink sees every recorded frame as it is produced. With keepFrames false only the
+// first frame stays in the record: a lean consumer (Diagnostics LeanRecorder) folds what
+// it needs and the 1.6 MB frame is dropped. Simulation itself never reads later frames.
+struct DiagnosticOptions { bool enabled=true, detailed=false; int soldier=-1,squad=-1; float from=0,to=600;
+    std::function<void(const Record&,const Frame&)> frameSink; bool keepFrames=true; };
 struct Diagnostics;
 struct GeometryEdit { float time=0; uint64_t obstacle=0; bool remove=true; Obstacle replacement; };
 struct GeometryVersion { float time=0; Map map; std::string reason; };

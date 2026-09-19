@@ -118,22 +118,27 @@ std::string TraceJson(const TraceEntry& e){std::ostringstream o;o<<std::setpreci
         }o<<']';
     }
     o<<",\"knowledge\":[";bool first=true;for(const auto& k:e.knowledge){if(!first)o<<',';first=false;o<<"{\"enemy\":"<<k.id<<",\"personal\":"<<k.personal<<",\"observed_at\":"<<k.contact.observedAt<<",\"automatic_weapon\":"<<k.contact.automaticWeapon<<",\"confidence\":"<<TrackConfidence(k.contact,e.time)<<",\"uncertainty\":"<<TrackUncertainty(k.contact,e.time)<<",\"cleared_at\":"<<k.contact.clearedAt<<",\"last_fire_at\":"<<k.contact.lastFireAt<<",\"original_observer\":"<<k.contact.originalObserver<<",\"report_source\":"<<k.contact.reportSource<<",\"received_at\":"<<k.contact.registeredAt<<",\"position\":";V(o,k.contact.position);o<<'}';}o<<"],\"movement_reports\":[";first=true;for(const auto& r:e.movementReports){if(!first)o<<',';first=false;o<<"{\"soldier\":"<<r.soldier<<",\"order\":"<<r.order<<",\"observed_at\":"<<r.observedAt<<",\"destination\":";V(o,r.destination);o<<'}';}o<<"],\"covering_fire\":[";first=true;for(const auto& r:e.deliveries){if(!first)o<<',';first=false;o<<"{\"shooter\":"<<r.shooter<<",\"enemy\":"<<r.enemy<<",\"rounds\":"<<r.rounds<<",\"observed_at\":"<<r.observedAt<<",\"target\":";V(o,r.target);o<<",\"times\":[";for(int i=0;i<8;++i){if(i)o<<',';o<<r.times[i];}o<<"],\"delivered\":[";for(size_t j=0;j<r.history.size();++j){if(j)o<<',';o<<"{\"at\":"<<r.history[j].at<<",\"target\":";V(o,r.history[j].target);o<<'}';}o<<"]}";}o<<"],\"alternatives\":[";first=true;for(const auto& a:e.alternatives){if(!first)o<<',';first=false;o<<"{\"position\":";V(o,a.position);o<<",\"score\":"<<a.score<<",\"reason\":"<<Q(a.reason)<<'}';}o<<"]}";return o.str();}
-uint64_t GameplayDigest(const Record& r){ // Stable field hashing, never raw struct padding or wall clocks.
+// One body for both digests. The full digest walks every recorded frame section by
+// section, as it always has. framesOnly hashes the same per-frame fields of the given
+// frames and leaves out what belongs to the whole battle (outcome, roster, shots,
+// events, map), so a lean battle can fold each frame as it is produced and drop it.
+static uint64_t DigestCore(const Record& r,const Frame* firstFrame,size_t frameCount,bool framesOnly){ // Stable field hashing, never raw struct padding or wall clocks.
+    struct FrameSpan{const Frame* first;size_t count;const Frame* begin()const{return first;}const Frame* end()const{return first+count;}bool empty()const{return !count;}const Frame& front()const{return *first;}} frames{firstFrame,frameCount};
     uint64_t h=1469598103934665603ull;auto bytes=[&](const void* p,size_t n){auto b=static_cast<const unsigned char*>(p);for(size_t i=0;i<n;++i)h=(h^b[i])*1099511628211ull;};
-    auto f=[&](float v){uint32_t b;std::memcpy(&b,&v,4);bytes(&b,4);};auto i=[&](int v){bytes(&v,4);};auto v=[&](Vec3 p){f(p.x);f(p.y);f(p.z);};i(r.winner);f(r.duration);
+    auto f=[&](float v){uint32_t b;std::memcpy(&b,&v,4);bytes(&b,4);};auto i=[&](int v){bytes(&v,4);};auto v=[&](Vec3 p){f(p.x);f(p.y);f(p.z);};if(!framesOnly){i(r.winner);f(r.duration);}
     // Stats and weapons are unconditional: a legacy battle must never miss a stat change.
-    for(const auto& profile:r.config.statProfiles){f(profile.baseShare);f(profile.lowShare);f(profile.highShare);f(profile.baseHalfWidth);f(profile.lowEdge);f(profile.highEdge);f(profile.shape);}
-    bytes(&r.config.rosterSeed,sizeof(r.config.rosterSeed));
-    if(!r.frames.empty())for(const auto& s:r.frames.front().soldiers){for(float value:s.stats.value)f(value);f(s.maxHealth);f(s.swayPhase);f(s.swayPhase2);f(s.recoilSign);i(int(s.weapon.def));i(int(s.weapon.modifiers.size()));
+    if(!framesOnly)for(const auto& profile:r.config.statProfiles){f(profile.baseShare);f(profile.lowShare);f(profile.highShare);f(profile.baseHalfWidth);f(profile.lowEdge);f(profile.highEdge);f(profile.shape);}
+    if(!framesOnly)bytes(&r.config.rosterSeed,sizeof(r.config.rosterSeed));
+    if(!framesOnly&&!frames.empty())for(const auto& s:frames.front().soldiers){for(float value:s.stats.value)f(value);f(s.maxHealth);f(s.swayPhase);f(s.swayPhase2);f(s.recoilSign);i(int(s.weapon.def));i(int(s.weapon.modifiers.size()));
         for(const auto& m:s.weapon.modifiers){i(int(m.field));f(m.multiply);f(m.add);}}
     // Over-penetration victims live on the shot, not the frame, so they hash here.
-    for(const auto& shot:r.shots){i(int(shot.victims.size()));for(const auto& victim:shot.victims){i(victim.soldier);f(victim.time);f(victim.energy);}}
-    for(const auto& frame:r.frames){f(frame.time);for(const auto& s:frame.soldiers){f(s.lastShotAt);for(const auto& d:s.deliveries){i(d.shooter);i(d.enemy);i(d.rounds);v(d.origin);v(d.target);f(d.observedAt);for(float t:d.times)f(t);if(r.config.recoveryFixture){i(int(d.history.size()));for(const auto& round:d.history){f(round.at);v(round.target);}}}if(r.config.recoveryFixture||r.config.foundations){const auto& a=s.assignment;bytes(&a.id,sizeof(a.id));i(a.target);i(int(a.status));i(int(a.cause));i(a.statusSequence);f(a.statusAt);i(a.hasSlot);v(a.slot.shelter);v(a.slot.peek);i(a.teamPlan.liftFire);v(a.teamPlan.liftedSector);for(const auto& report:s.taskReports){bytes(&report.id,sizeof(report.id));i(report.serial);i(report.sequence);i(int(report.status));i(int(report.cause));i(report.active);f(report.at);v(report.position);}}i(s.id);v(s.position);v(s.goal);f(s.health);f(s.suppression);f(s.aim);i(s.rounds);i(s.magazineRemaining);f(s.recoil.x);f(s.recoil.y);i(int(s.action));i(int(s.reason));i(int(s.stance));i(s.assignment.teamPlan.route?int(s.assignment.teamPlan.route->id%1000000000ull):0);i(s.assignment.serial);i(int(s.assignment.task));v(s.assignment.position);for(const auto& ct:s.contacts){i(ct.known);i(ct.automaticWeapon);i(ct.visible);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}for(const auto& ct:s.reports){i(ct.known);i(ct.automaticWeapon);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}}}
+    if(!framesOnly)for(const auto& shot:r.shots){i(int(shot.victims.size()));for(const auto& victim:shot.victims){i(victim.soldier);f(victim.time);f(victim.energy);}}
+    for(const auto& frame:frames){f(frame.time);for(const auto& s:frame.soldiers){f(s.lastShotAt);for(const auto& d:s.deliveries){i(d.shooter);i(d.enemy);i(d.rounds);v(d.origin);v(d.target);f(d.observedAt);for(float t:d.times)f(t);if(r.config.recoveryFixture){i(int(d.history.size()));for(const auto& round:d.history){f(round.at);v(round.target);}}}if(r.config.recoveryFixture||r.config.foundations){const auto& a=s.assignment;bytes(&a.id,sizeof(a.id));i(a.target);i(int(a.status));i(int(a.cause));i(a.statusSequence);f(a.statusAt);i(a.hasSlot);v(a.slot.shelter);v(a.slot.peek);i(a.teamPlan.liftFire);v(a.teamPlan.liftedSector);for(const auto& report:s.taskReports){bytes(&report.id,sizeof(report.id));i(report.serial);i(report.sequence);i(int(report.status));i(int(report.cause));i(report.active);f(report.at);v(report.position);}}i(s.id);v(s.position);v(s.goal);f(s.health);f(s.suppression);f(s.aim);i(s.rounds);i(s.magazineRemaining);f(s.recoil.x);f(s.recoil.y);i(int(s.action));i(int(s.reason));i(int(s.stance));i(s.assignment.teamPlan.route?int(s.assignment.teamPlan.route->id%1000000000ull):0);i(s.assignment.serial);i(int(s.assignment.task));v(s.assignment.position);for(const auto& ct:s.contacts){i(ct.known);i(ct.automaticWeapon);i(ct.visible);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}for(const auto& ct:s.reports){i(ct.known);i(ct.automaticWeapon);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}}}
     if(r.config.foundations){
         f(r.config.estimateBias);
         auto intent=[&](const GoalIntent& g){i(g.id);i(g.parent);i(int(g.purpose));v(g.objective);f(g.radius);f(g.expiresAt);};
         auto directive=[&](const PlatoonDirective& d){intent(d.intent);i(d.serial);i(int(d.task));v(d.position);v(d.sector);i(d.hasAlternative);i(int(d.alternativeTask));v(d.alternativePosition);f(d.issuedAt);f(d.expiresAt);};
-        for(const auto& frame:r.frames)for(const auto& s:frame.soldiers){
+        for(const auto& frame:frames)for(const auto& s:frame.soldiers){
             i(s.directionalSight);v(s.look);f(s.estimateBias);intent(s.assignment.intent);directive(s.platoonOrder);
             for(const auto& receipt:s.taskReports)i(receipt.goalId);
             for(const auto& ct:s.contacts)i(ct.originalObserver);
@@ -146,7 +151,7 @@ uint64_t GameplayDigest(const Record& r){ // Stable field hashing, never raw str
         auto execution=[&](const ExecutionContract& e){i(int(e.completion));i(e.method);i(e.stage);i(e.generation);f(e.deadline);i(e.paused);i(e.unavailable);i(e.rifleSupport);i(e.supportThreat);};
         auto coverage=[&](const ObservationCoverage& e){i(e.observer);i(e.method);i(e.stage);i(e.generation);v(e.position);v(e.sector);f(e.observedAt);f(e.receivedAt);i(int(e.samples));};
         auto failure=[&](const FailedAttempt& e){i(int(e.method));v(e.objective);v(e.destination);bytes(&e.geometry,sizeof(e.geometry));bytes(&e.threats,sizeof(e.threats));f(e.at);i(int(e.cause));};
-        for(const auto& frame:r.frames){
+        for(const auto& frame:frames){
             for(const auto& s:frame.soldiers){execution(s.assignment.execution);v(s.assignment.statusPosition);for(const auto& e:s.coverage)coverage(e);for(const auto& receipt:s.taskReports){execution(receipt.execution);coverage(receipt.coverage);}
                 i(s.platoonOrder.supportWithdrawn);i(s.platoonOrder.supportSoldier);i(s.platoonOrder.supportSquad);
                 for(const auto& receipt:s.taskReports)f(receipt.remaining);
@@ -161,14 +166,14 @@ uint64_t GameplayDigest(const Record& r){ // Stable field hashing, never raw str
                 for(int n=0;n<SquadSize;++n){i(p.generations[n]);i(p.hasSlot[n]);i(p.unavailable[n]);i(p.slotRetries[n]);v(p.rejectedPositions[n]);v(p.slots[n].shelter);v(p.slots[n].peek);bytes(&p.expected[n],sizeof(p.expected[n]));}}
         }
         i(r.config.cognition);i(r.config.fullVision);f(r.config.reportDelay);f(r.config.officer.judgment);f(r.config.officer.risk);f(r.config.officer.adaptability);
-        for(const auto& frame:r.frames){for(const auto& s:frame.soldiers){i(s.cognition);for(const auto& delivery:s.deliveries)i(delivery.supportWeapon);i(s.attentionTrack);f(s.officer.judgment);f(s.officer.risk);f(s.officer.adaptability);}
+        for(const auto& frame:frames){for(const auto& s:frame.soldiers){i(s.cognition);for(const auto& delivery:s.deliveries)i(delivery.supportWeapon);i(s.attentionTrack);f(s.officer.judgment);f(s.officer.risk);f(s.officer.adaptability);}
             for(const auto& cmd:frame.command){const auto& p=cmd.accepted;i(p.intent.id);i(p.intent.parent);i(int(p.method));i(int(p.stage));i(p.revision);i(p.directive);i(p.routeStage);i(p.failedMethods);v(p.failedDestination);v(p.destination);v(p.sector);f(p.started);f(p.committedUntil);f(p.supportSince);f(p.reconsiderAt);i(p.safetyOverride);i(p.requiresSupport);i(p.exhausted);f(p.riskAtCommit);bytes(&p.knowledge,sizeof(p.knowledge));for(int slot=0;slot<SquadSize;++slot){v(p.positions[slot]);v(p.holds[slot]);i(p.movers[slot]);}}
         }
     }
     if(r.config.leaderEffects||r.config.equalTroops){
         i(1501);i(r.config.leaderEffects);i(r.config.equalTroops);
         for(const auto& p:r.config.platoonProfiles){f(p.judgment);f(p.risk);f(p.adaptability);f(p.communication);}
-        for(const auto& frame:r.frames){
+        for(const auto& frame:frames){
             for(const auto& unit:frame.soldiers){i(unit.leaderEffects);i(unit.initiativeAllowed);i(unit.platoonOrder.initiativeAllowed);f(unit.officer.judgment);f(unit.officer.risk);f(unit.officer.adaptability);f(unit.officer.communication);}
             for(const auto& command:frame.platoon)for(const auto& order:command.tasks.assigned)i(order.initiativeAllowed);
         }
@@ -176,7 +181,7 @@ uint64_t GameplayDigest(const Record& r){ // Stable field hashing, never raw str
     if(r.config.drills){
         i(r.config.drills);f(r.config.reportDelay);i(r.config.fullVision);
         auto radio=[&](const SquadBroadcast& message){i(message.serial);i(message.sender);i(message.squad);i(message.enemy);i(message.side);i(int(message.kind));f(message.sentAt);f(message.receivedAt);v(message.position);v(message.objective);f(message.contact.observedAt);v(message.contact.position);};
-        for(const auto& frame:r.frames){
+        for(const auto& frame:frames){
             auto directive=[&](const PlatoonDirective& a){f(a.areaRouteRadius);f(a.areaDiscRadius);v(a.areaDiscCenter);i(a.taskNode);i(a.fireMovement);i(a.committedStrength);i(a.mergeInto);i(a.helpSquad);i(a.hasArea);i(a.liftFire);v(a.areaMin);v(a.areaMax);v(a.assaultLane.origin);v(a.assaultLane.target);f(a.assaultLane.observedAt);i(a.intent.id);f(a.expiresAt);if(a.corridor){v(a.corridor->start);v(a.corridor->destination);for(Vec3 point:a.corridor->points)v(point);}};
             for(const auto& command:frame.platoon){const auto& t=command.tasks;i(t.revision);i(t.commander);f(t.nextAssessment);i(t.withdrawing);f(t.believedRatio);
                 for(const auto& a:t.assigned)directive(a);
@@ -208,18 +213,19 @@ uint64_t GameplayDigest(const Record& r){ // Stable field hashing, never raw str
             for(int n=0;n<SquadSize;++n){i(p.elements[n]);v(p.positions[n]);i(p.hasSlot[n]);v(p.slots[n].shelter);v(p.slots[n].peek);i(p.movers[n]);bytes(&p.expected[n],sizeof(p.expected[n]));}
         }}
     }
-    if(r.config.family!=ScenarioFamily::None){
+    if(!framesOnly&&r.config.family!=ScenarioFamily::None){
         i(int(r.config.family));bytes(&r.config.genSeed,sizeof(r.config.genSeed));
         const uint64_t generated=r.generated?ScenarioDigest(*r.generated):0;bytes(&generated,sizeof(generated));
     }
-    if(r.config.battlefield)bytes(&r.config.battlefield->digest,sizeof(r.config.battlefield->digest));
-    for(const auto& s:r.shots){f(s.time);f(s.impactTime);i(s.owner);i(s.target);i(int(s.impact));v(s.start);v(s.end);for(const auto& p:s.flight){f(p.time);v(p.position);}}
-    for(const auto& e:r.events){f(e.time);i(int(e.kind));i(e.actor);i(e.target);bytes(e.text.data(),e.text.size());}return h;
+    if(!framesOnly&&r.config.battlefield)bytes(&r.config.battlefield->digest,sizeof(r.config.battlefield->digest));
+    if(!framesOnly)for(const auto& s:r.shots){f(s.time);f(s.impactTime);i(s.owner);i(s.target);i(int(s.impact));v(s.start);v(s.end);for(const auto& p:s.flight){f(p.time);v(p.position);}}
+    if(!framesOnly)for(const auto& e:r.events){f(e.time);i(int(e.kind));i(e.actor);i(e.target);bytes(e.text.data(),e.text.size());}
+    return h;
 }
+uint64_t GameplayDigest(const Record& r){return DigestCore(r,r.frames.data(),r.frames.size(),false);}
 // Offline observer sampling. This runs after simulation and never feeds policy.
-void ExportEvaluation(const Record& r,const std::string& directory) {
-    std::ofstream out(std::filesystem::path(directory)/"evaluation.jsonl");
-    for(const auto& f:r.frames) {
+static void EvaluationRow(std::ostream& out,const Record& r,const Frame& f) {
+    {
         const auto& map=GeometryAt(r,f.time);
         out<<"{\"schema\":2,\"time\":"<<f.time<<",\"soldiers\":[";bool first=true;
         for(const auto& s:f.soldiers) {
@@ -261,8 +267,32 @@ void ExportEvaluation(const Record& r,const std::string& directory) {
         out<<"]}\n";
     }
 }
-std::string ExportBattle(const Record& r,const std::string& root,const std::string& build,uint64_t digest){
-    if(digest==0)digest=GameplayDigest(r);
+void ExportEvaluation(const Record& r,const std::string& directory,const LeanRecorder* lean) {
+    std::ofstream out(std::filesystem::path(directory)/"evaluation.jsonl");
+    if(lean){out<<lean->evaluation.str();return;}
+    for(const auto& f:r.frames)EvaluationRow(out,r,f);
+}
+// What the shots export needs from the frame a shot was fired in.
+static ShotOwner OwnerAt(const Record& r,const Frame& frame,int id){
+    const auto& owner=frame.soldiers[id];
+    const int role=r.config.drills&&owner.assignment.element>=0?(!frame.command[owner.squad].battleDrill.movers[owner.id%SquadSize]?0:1):-1;
+    return {owner.team,owner.squad,owner.gun.muzzleVelocity,owner.machineGun,role};
+}
+void LeanRecorder::Record_(const Record& r,const Frame& frame){
+    if(evaluate)EvaluationRow(evaluation,r,frame);
+    const uint64_t one=DigestCore(r,&frame,1,true);
+    auto b=reinterpret_cast<const unsigned char*>(&one);for(size_t n=0;n<sizeof(one);++n)frameHash=(frameHash^b[n])*1099511628211ull;
+    times.push_back(frame.time);owners.emplace_back();for(int id=0;id<UnitCount;++id)owners.back()[size_t(id)]=OwnerAt(r,frame,id);
+}
+uint64_t LeanRecorder::Digest(const Record& r) const {
+    // The folded frames, then everything that belongs to the whole battle (outcome, roster,
+    // shots, events, map) through the same code as the full digest. A lean digest and a full
+    // digest of one battle are different numbers over the same fields; compare like with like.
+    uint64_t h=frameHash;const uint64_t whole=DigestCore(r,r.frames.data(),r.frames.empty()?0:1,false);
+    auto b=reinterpret_cast<const unsigned char*>(&whole);for(size_t n=0;n<sizeof(whole);++n)h=(h^b[n])*1099511628211ull;return h;
+}
+std::string ExportBattle(const Record& r,const std::string& root,const std::string& build,uint64_t digest,const LeanRecorder* lean){
+    if(digest==0)digest=lean?lean->Digest(r):GameplayDigest(r);
     namespace fs=std::filesystem;std::error_code ec;fs::create_directories(root,ec);if(ec)return {};
     auto stamp=std::chrono::system_clock::now().time_since_epoch().count();std::string name="battle-"+std::to_string(r.config.seed)+"-"+std::to_string(stamp);
     fs::path dir=fs::path(root)/name;fs::create_directory(dir,ec);if(ec)return {};auto write=[&](const char* file){return std::ofstream(dir/file);};
@@ -282,10 +312,12 @@ std::string ExportBattle(const Record& r,const std::string& root,const std::stri
         paths<<"{\"schema\":1,\"decision\":"<<p.decision<<",\"geometry\":"<<p.geometry<<",\"route\":"<<p.route<<",\"time\":"<<p.time<<",\"soldier\":"<<p.soldier<<",\"squad\":"<<p.squad<<",\"order\":"<<p.order<<",\"kind\":"<<Q(p.kind)<<",\"status\":"<<Q(p.status)<<",\"start\":";V(paths,p.start);paths<<",\"goal\":";V(paths,p.goal);paths<<",\"points\":[";bool first=true;for(auto v:p.points){if(!first)paths<<',';first=false;V(paths,v);}paths<<"]}\n";}
     auto events=write("events.jsonl");for(const auto& e:r.events)events<<"{\"time\":"<<e.time<<",\"kind\":"<<int(e.kind)<<",\"actor\":"<<e.actor<<",\"target\":"<<e.target<<",\"text\":"<<Q(e.text)<<"}\n";
     auto shots=write("shots.jsonl");
-    for(const auto& shot:r.shots){auto sample=std::upper_bound(r.frames.begin(),r.frames.end(),shot.time,[](float time,const Frame& frame){return time<frame.time;});const auto& ownerFrame=sample==r.frames.begin()?r.frames.front():*(sample-1);const auto& owner=ownerFrame.soldiers[shot.owner];
+    for(const auto& shot:r.shots){ShotOwner owner;
+        if(lean){auto sample=std::upper_bound(lean->times.begin(),lean->times.end(),shot.time);const size_t index=sample==lean->times.begin()?0:size_t(sample-lean->times.begin())-1;owner=lean->owners[index][size_t(shot.owner)];}
+        else{auto sample=std::upper_bound(r.frames.begin(),r.frames.end(),shot.time,[](float time,const Frame& frame){return time<frame.time;});owner=OwnerAt(r,sample==r.frames.begin()?r.frames.front():*(sample-1),shot.owner);}
         shots<<"{\"schema\":1,\"time\":"<<shot.time<<",\"impact_time\":"<<shot.impactTime<<",\"owner\":"<<shot.owner<<",\"team\":"<<owner.team<<",\"squad\":"<<owner.squad<<",\"aimed_enemy\":"<<shot.aimedEnemy<<",\"aimed_point\":";V(shots,shot.aimedAt);
         shots<<",\"start\":";V(shots,shot.start);shots<<",\"end\":";V(shots,shot.end);
-        shots<<",\"muzzle_velocity\":"<<owner.gun.muzzleVelocity<<",\"impact_kind\":"<<int(shot.impact)<<",\"hit\":"<<shot.hit<<",\"target\":"<<shot.target<<",\"suppressive\":"<<shot.suppressive<<",\"support_weapon\":"<<owner.machineGun<<",\"element_role\":"<<(r.config.drills&&owner.assignment.element>=0?Q(!ownerFrame.command[owner.squad].battleDrill.movers[owner.id%SquadSize]?"base_of_fire":"moving"):"null");
+        shots<<",\"muzzle_velocity\":"<<owner.muzzleVelocity<<",\"impact_kind\":"<<int(shot.impact)<<",\"hit\":"<<shot.hit<<",\"target\":"<<shot.target<<",\"suppressive\":"<<shot.suppressive<<",\"support_weapon\":"<<owner.machineGun<<",\"element_role\":"<<(owner.role<0?std::string("null"):Q(owner.role==0?"base_of_fire":"moving"));
         shots<<",\"impact_energy\":"<<(shot.victims.empty()?0.f:shot.victims.front().energy)<<",\"victims\":[";
         for(size_t v=0;v<shot.victims.size();++v){const auto& victim=shot.victims[v];if(v)shots<<',';shots<<"{\"soldier\":"<<victim.soldier<<",\"time\":"<<victim.time<<",\"energy\":"<<victim.energy<<'}';}
         shots<<"]}\n";
@@ -304,7 +336,7 @@ std::string ExportBattle(const Record& r,const std::string& root,const std::stri
         scenario<<"],\"obstacles\":[";bool first=true;for(const auto& o:g.map.obstacles){if(!first)scenario<<',';first=false;scenario<<"{\"id\":"<<o.id<<",\"center\":";V(scenario,o.center);scenario<<",\"half\":";V(scenario,o.half);scenario<<",\"height\":"<<o.height<<",\"blocks_movement\":"<<o.blocksMovement<<",\"half_cover\":"<<o.halfCover<<'}';}scenario<<"]}";
     }
     if(r.config.battlefield){auto imported=write("battlefield.army");imported<<r.config.battlefield->source;}
-    auto manifest=write("manifest.json");manifest<<"{\"evaluation_schema\":2,\"shots_schema\":1,\"scenario_family\":"<<Q(ScenarioFamilyName(r.config.family))<<",\"gen_seed\":"<<r.config.genSeed<<",\"schema\":1,\"route_schema\":1,\"geometry_schema\":2,\"build\":"<<Q(build)<<",\"terrain\":"<<int(r.config.terrain)<<",\"cognition_policy\":"<<r.config.cognition<<",\"drills_policy\":"<<r.config.drills<<",\"full_vision\":"<<r.config.fullVision<<",\"report_delay\":"<<r.config.reportDelay<<",\"judgment\":"<<r.config.officer.judgment<<",\"risk\":"<<r.config.officer.risk<<",\"adaptability\":"<<r.config.officer.adaptability<<",\"foundations_policy\":"<<r.config.foundations<<",\"estimate_bias\":"<<r.config.estimateBias<<",\"recovery_policy\":"<<r.config.recoveryFixture<<",\"task_schema\":1,\"encounter\":"<<r.encounter<<",\"seed\":"<<r.config.seed<<",\"doctrine\":"<<int(r.config.doctrine)<<",\"ember_doctrine\":"<<int(r.config.emberDoctrine)<<",\"approach\":"<<int(r.config.approach)<<",\"support_weapon\":"<<r.config.supportWeapon<<",\"duration_limit\":"<<r.config.maxSeconds<<",\"duration\":"<<r.duration<<",\"winner\":"<<r.winner<<",\"shots\":"<<r.shots.size()<<",\"gameplay_digest\":"<<Q(std::to_string(digest))<<",\"trace_enabled\":"<<(r.diagnostics&&r.diagnostics->options.enabled)<<",\"roster_seed\":"<<r.config.rosterSeed<<",\"stat_profile_azure\":["<<r.config.statProfiles[0].baseShare<<','<<r.config.statProfiles[0].lowShare<<','<<r.config.statProfiles[0].highShare<<','<<r.config.statProfiles[0].baseHalfWidth<<','<<r.config.statProfiles[0].lowEdge<<','<<r.config.statProfiles[0].highEdge<<','<<r.config.statProfiles[0].shape<<']'<<",\"stat_profile_ember\":["<<r.config.statProfiles[1].baseShare<<','<<r.config.statProfiles[1].lowShare<<','<<r.config.statProfiles[1].highShare<<','<<r.config.statProfiles[1].baseHalfWidth<<','<<r.config.statProfiles[1].lowEdge<<','<<r.config.statProfiles[1].highEdge<<','<<r.config.statProfiles[1].shape<<']'<<",\"leader_effects\":"<<r.config.leaderEffects<<",\"equal_troops\":"<<r.config.equalTroops<<",\"platoon_profiles\":[";
+    auto manifest=write("manifest.json");manifest<<"{\"evaluation_schema\":2,\"shots_schema\":1,\"scenario_family\":"<<Q(ScenarioFamilyName(r.config.family))<<",\"gen_seed\":"<<r.config.genSeed<<",\"schema\":1,\"route_schema\":1,\"geometry_schema\":2,\"build\":"<<Q(build)<<",\"terrain\":"<<int(r.config.terrain)<<",\"cognition_policy\":"<<r.config.cognition<<",\"drills_policy\":"<<r.config.drills<<",\"full_vision\":"<<r.config.fullVision<<",\"report_delay\":"<<r.config.reportDelay<<",\"judgment\":"<<r.config.officer.judgment<<",\"risk\":"<<r.config.officer.risk<<",\"adaptability\":"<<r.config.officer.adaptability<<",\"foundations_policy\":"<<r.config.foundations<<",\"estimate_bias\":"<<r.config.estimateBias<<",\"recovery_policy\":"<<r.config.recoveryFixture<<",\"task_schema\":1,\"encounter\":"<<r.encounter<<",\"seed\":"<<r.config.seed<<",\"doctrine\":"<<int(r.config.doctrine)<<",\"ember_doctrine\":"<<int(r.config.emberDoctrine)<<",\"approach\":"<<int(r.config.approach)<<",\"support_weapon\":"<<r.config.supportWeapon<<",\"duration_limit\":"<<r.config.maxSeconds<<",\"duration\":"<<r.duration<<",\"winner\":"<<r.winner<<",\"shots\":"<<r.shots.size()<<",\"gameplay_digest\":"<<Q(std::to_string(digest))<<",\"digest_kind\":"<<Q(lean?"lean":"full")<<",\"trace_enabled\":"<<(r.diagnostics&&r.diagnostics->options.enabled)<<",\"roster_seed\":"<<r.config.rosterSeed<<",\"stat_profile_azure\":["<<r.config.statProfiles[0].baseShare<<','<<r.config.statProfiles[0].lowShare<<','<<r.config.statProfiles[0].highShare<<','<<r.config.statProfiles[0].baseHalfWidth<<','<<r.config.statProfiles[0].lowEdge<<','<<r.config.statProfiles[0].highEdge<<','<<r.config.statProfiles[0].shape<<']'<<",\"stat_profile_ember\":["<<r.config.statProfiles[1].baseShare<<','<<r.config.statProfiles[1].lowShare<<','<<r.config.statProfiles[1].highShare<<','<<r.config.statProfiles[1].baseHalfWidth<<','<<r.config.statProfiles[1].lowEdge<<','<<r.config.statProfiles[1].highEdge<<','<<r.config.statProfiles[1].shape<<']'<<",\"leader_effects\":"<<r.config.leaderEffects<<",\"equal_troops\":"<<r.config.equalTroops<<",\"platoon_profiles\":[";
     for(int team=0;team<2;++team){const auto& p=r.config.platoonProfiles[team];if(team)manifest<<",";manifest<<"["<<p.judgment<<","<<p.risk<<","<<p.adaptability<<","<<p.communication<<"]";}manifest<<"]";
     if(r.config.staticDefence.layout==DefenceLayout::None)manifest<<",\"static_defence\":null";
     else {const auto& sd=r.config.staticDefence;manifest<<",\"static_defence\":{\"layout\":"<<Q(DefenceLayoutName(sd.layout))<<",\"defenders\":"<<sd.defenders<<",\"seed\":"<<(sd.seed?sd.seed:r.config.seed)

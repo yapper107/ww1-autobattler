@@ -1,0 +1,33 @@
+Route fixture: status=complete expansions=41 exposed=15.2381 -> 4.06868 seconds
+Route arrival: claims assigned cover and takes its firing peek
+Trenches: recessed floor, raised earth, ramps, connected detour and deployment verified
+Geometry knowledge: hidden mutation preserves received orders and movement before observation
+Deathmatch: elimination/timer results, sector search, no centre capture, protected regroup and 136 individual cover objects verified
+Platoon: report/relay/order reactions, north/south coordination, stale knowledge, local danger veto, expiry and succession verified
+Reassessment: delayed covered push/withdrawal, heavier resistance, quiet search, stale cover release, suppression veto and support follow verified
+Tracks: confidence, uncertainty, negative observation, occlusion, passed-position decay and stale-report rejection verified
+Prepared assault: eight seconds of crossing-specific fire, reset on gap, pause on lost support verified
+Commitments: one pause, no unchanged-fire retries, cleared-track search, delayed fire evidence verified
+Rifle suppression: remembered fire, expiry, specific track/crossing delivery evidence verified
+Lab: geometry revisions/IDs, spatial equivalence, trace on/off/detail determinism, causal order links, tick-boundary changes and stable cover verified
+STATIC DEFENCE building legacy: shots=988 ember_shots=762 closest=36.8012 winner=1
+STATIC DEFENCE building drills: shots=270 ember_shots=250 closest=46.3935 winner=1
+STATIC DEFENCE spread legacy: shots=713 ember_shots=416 closest=15.7623 winner=1
+STATIC DEFENCE spread drills: shots=594 ember_shots=277 closest=34.741 winner=1
+STATIC DEFENCE clusters legacy: shots=333 ember_shots=146 closest=34.8698 winner=1
+STATIC DEFENCE clusters drills: shots=30 ember_shots=30 closest=62.947 winner=1
+STATIC DEFENCE contact battles=4 of those with defensive fire=4
+STATIC DEFENCE: placement, hold clamp under legacy and drills, win rule, determinism and refusals PASS
+MG encounter matrix: 3 layouts x 3 seeds, covering rounds=4514 flank-group hits on MG=2 pauses=31 blocked frames=2947 (individual outcomes vary)
+MG encounter group closure: 9/9
+Fixed defender: 3/3 eliminated within six minutes
+Recorded vertical dispersion: above and below aim; longest stationary MG burst: 18 rounds
+Coordination integration: paired move/cover frames=4231 completed bounds=126 window-team rounds=247 passage waits=878 useful support reports=14523
+Hold-and-engage firing samples=136582
+Building integration: upper window shots=1758 ground window shots=984 stair samples=806
+Squad integration: wounded rear rounds=1478 holding-fire samples=8513 lane-clearance samples=13368 flank frames=18657 fallback frames=5215 friendly hits=52 over-penetrating shots=26
+PASS: delayed officer/NCO orders, overwatch assignments, reports up the chain, succession, aim acquisition and suppression, crouched hitboxes, protected low-cover positions, pop-up firing, reload shelter, default observation, suppression/reload shelter, active wounded support, minimal corner clearance, gravity, finite cover, moving-target collisions, replay timing, cover commitment/settling/peeking, suppression response, reservations, personal knowledge, navigation, determinism, health invariants
+4 large-battle sweep: draw=0 azure=1 ember=3 shots=10029 hits=472 MG-overwatch rounds=2693 crouched samples=33372 pop-up samples=108916 settling samples=2488 cover-fire samples=30821 remembered-contact samples=254088
+Default battle: 360s; 3119 shots; winner=1; Time limit: more surviving soldiers wins.
+Elapsed: 520.499s
+suite exit 0

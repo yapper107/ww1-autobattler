@@ -16,15 +16,31 @@ from tools.loop.config import CONTROLLER_FLAG, SECONDS, spec_key
 # Measured 18 Sep 2026 without traces, either controller: 3.1 GB peak for a 360 s town battle and
 # 5.0 GB for a 600 s attack. The record grows with the frames, so the budget scales with seconds.
 BYTES_PER_AUTHORED_JOB = 3.5*(1 << 30)
+# Lean recording (plan 018, 19 Sep 2026) folds each frame and drops it: measured 0.50 GB
+# (legacy) and 0.61 GB (drills) for a 600 s attack against 4.97 GB with frames kept, with
+# byte-identical evaluation, shots and events exports. The user keeps WSL at 30 GB, so this
+# is what lets the loop use the cores. Older node binaries lack the flag and run in full.
+BYTES_PER_LEAN_JOB = 1.0*(1 << 30)
+_LEAN_SUPPORT = {}
 
 
-def default_jobs(requested=None, authored=True, seconds=SECONDS):
+def supports_lean(binary) -> bool:
+    key = str(binary)
+    if key not in _LEAN_SUPPORT:
+        try:
+            _LEAN_SUPPORT[key] = subprocess.run([key, '--lean', '--version'], capture_output=True, text=True, timeout=30).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            _LEAN_SUPPORT[key] = False
+    return _LEAN_SUPPORT[key]
+
+
+def default_jobs(requested=None, authored=True, seconds=SECONDS, lean=False):
     cpu = os.cpu_count() or 2
     try:
         avail = os.sysconf('SC_AVPHYS_PAGES')*os.sysconf('SC_PAGE_SIZE')
     except (ValueError, OSError):
         avail = 8*(1 << 30)
-    per = (BYTES_PER_AUTHORED_JOB if authored else 1.5*(1 << 30))*max(1.0, seconds/SECONDS)
+    per = BYTES_PER_LEAN_JOB if lean else (BYTES_PER_AUTHORED_JOB if authored else 1.5*(1 << 30))*max(1.0, seconds/SECONDS)
     cap = max(1, min(cpu - 2, int(avail//per)))
     return max(1, min(requested, cap)) if requested else cap
 
@@ -44,6 +60,8 @@ def battle_command(binary, controller, spec, seconds=SECONDS, trace=False, out=N
     cmd += ['--seed', str(spec['seed']), '--seconds', str(seconds), '--evaluate', '--out', str(out)]
     if not trace:
         cmd.append('--no-trace')
+        if supports_lean(binary):
+            cmd.append('--lean')
     return cmd
 
 
@@ -125,7 +143,7 @@ def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
         row.update(status='complete', run=str(run), build=manifest['build'], metrics=metrics,
                    unavailable=evaluated['unavailable'], firing_squads=firing_squads(run),
                    survivors=evaluated['survivors'], initial_actives=evaluated['initial_actives'],
-                   digest=evaluated['digest'], scenario_digest=evaluated['scenario_digest'])
+                   digest=evaluated['digest'], digest_kind=manifest.get('digest_kind', 'full'), scenario_digest=evaluated['scenario_digest'])
         if not trace:
             prune_exports(run)
     except Exception as exc:  # recorded, never hidden
@@ -141,7 +159,7 @@ def run_specs(binary, controller, specs, out_root, jobs=None, seconds=SECONDS, t
     """Run every spec in parallel; returns rows in spec order."""
     out_root = Path(out_root)
     authored = any('family' not in s or 'map' in s for s in specs)  # full-size battles: 3 GB each
-    jobs = default_jobs(jobs, authored, max([s.get('seconds', seconds) for s in specs] or [seconds]))
+    jobs = default_jobs(jobs, authored, max([s.get('seconds', seconds) for s in specs] or [seconds]), lean=not trace and supports_lean(binary))
     tasks = [(str(binary), controller, spec, out_root/spec['set']/controller/spec_key(spec), seconds, trace) for spec in specs]
     rows = [None]*len(tasks)
     with ProcessPoolExecutor(max_workers=jobs, mp_context=get_context('spawn')) as pool:

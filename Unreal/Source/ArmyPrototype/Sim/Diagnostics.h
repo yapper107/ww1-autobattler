@@ -1,4 +1,5 @@
 #pragma once
+#include <sstream>
 #include "BattleSim.h"
 #include <chrono>
 #include <unordered_map>
@@ -75,8 +76,23 @@ void TraceOrder(Diagnostics* diagnostics,const Soldier& recipient,const Assignme
 void TracePath(Diagnostics* data,const Soldier& soldier,const Map& map,float time,const std::vector<Vec3>& path,const char* kind,uint64_t route=0);
 // digest: a GameplayDigest already computed for this record, or 0 to compute it here.
 // The digest walks every recorded frame, so callers that also print it pass it in.
-std::string ExportBattle(const Record& record,const std::string& root,const std::string& build="development",uint64_t digest=0);
+// Lean recording (plan 018, 19 Sep 2026): a loop battle does not need its 1.6 MB frames once
+// the evaluation row, the per-frame digest and the shot owner attributes are taken from them.
+// Hand Record_ to DiagnosticOptions::frameSink with keepFrames=false, then pass the recorder
+// to ExportBattle and ExportEvaluation. Evaluation and shots exports are byte-identical to the
+// full path; the digest is a different number over the same fields (see Digest).
+struct ShotOwner { int team=0,squad=0; float muzzleVelocity=0; bool machineGun=false; int role=-1; };
+struct LeanRecorder {
+    bool evaluate=false;
+    std::ostringstream evaluation;
+    uint64_t frameHash=1469598103934665603ull;
+    std::vector<float> times;
+    std::vector<std::array<ShotOwner,UnitCount>> owners;
+    void Record_(const Record& record,const Frame& frame);
+    uint64_t Digest(const Record& record) const;
+};
+std::string ExportBattle(const Record& record,const std::string& root,const std::string& build="development",uint64_t digest=0,const LeanRecorder* lean=nullptr);
 std::string TraceJson(const TraceEntry& entry);
-void ExportEvaluation(const Record& record,const std::string& directory);
+void ExportEvaluation(const Record& record,const std::string& directory,const LeanRecorder* lean=nullptr);
 uint64_t GameplayDigest(const Record& record);
 }

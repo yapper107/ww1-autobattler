@@ -69,7 +69,29 @@ static hidden-state check passes; native Windows lab build and tests pass
 (`.local/plan016/native-memo/`). No Unreal build was made; `BattleGameMode` compiles
 unchanged against the new default parameter.
 
-## The remaining structural item: record memory
+## Lean recording, landed 19 September 2026 (source `efce1ef0fb0e378a`)
+
+`battle-lab --lean` folds each frame as it is produced and drops it: the evaluation row, a
+per-frame digest and the few shot-owner attributes the shots export needs are taken, and only
+the first frame stays in the record. Measured on a 600 s town attack: **4.97 GB to 0.50 GB
+(legacy) and 0.61 GB (drills)**, and the end-of-battle export falls from about 3 s to 0.15 s.
+`evaluation.jsonl`, `shots.jsonl`, `events.jsonl`, `geometry.jsonl` and the summary are
+byte-identical to the full path, and the manifest differs only in the digest.
+
+The design below assumed the full digest could be folded incrementally. It cannot stay the same
+number: it hashes the winner and duration first and then walks all frames once per section, and
+it hashes 1.3 to 1.7 GB of frame fields per 600 s battle, so buffering its input would have saved
+only a factor of three. Instead the digest body became one core (`DigestCore`) used two ways: the
+full digest exactly as before (40/40 historical parity, unchanged values), and a frames-only pass
+over a one-frame view, folded per frame, with the whole-battle part (outcome, roster, shots,
+events, map) folded at the end through the same code. **A lean digest and a full digest of one
+battle are different numbers over the same fields**; the manifest says which (`digest_kind`), and
+the loop only ever compares like with like. Unreal and every test that reads frames keep the full
+record. The loop's runner adds `--lean` when a node's binary supports it and budgets 1 GB a job.
+Verification: full Linux suite, 40/40 parity, 120 Python tests, byte-identical exports for both
+controllers, two simultaneous lean runs with identical digests, Unreal module compile on UE 5.4.
+
+## The earlier design note: record memory
 
 3 GB per battle caps parallel battles at about ten on this box and is the same RAM
 the Unreal replay holds. The digest hashes contacts and reports for every soldier in
