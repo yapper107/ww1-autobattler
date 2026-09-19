@@ -340,6 +340,12 @@ class Tree(unittest.TestCase):
         maps.prune_previews(out)
         self.assertEqual(sorted(p.name for p in out.iterdir()), ['city-21.army', 'generate.log', 'trenches-21.army'])
 
+    def test_longer_battles_get_fewer_parallel_jobs(self):
+        from tools.loop import runner
+        short, long = runner.default_jobs(None, True, 360), runner.default_jobs(None, True, 600)
+        self.assertLessEqual(long, short)
+        self.assertGreaterEqual(long, 1)
+
     def test_only_wanted_sets_are_built(self):
         sets = config.scenario_sets('abc-linux', wanted={'works'})
         self.assertEqual(list(sets), ['works'])

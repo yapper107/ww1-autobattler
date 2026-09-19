@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tools.loop import score as scoring, tree
+from tools.loop import config, score as scoring, tree
 
 LINEAGE_FILES = {
     'drills': ['DrillSim.cpp', 'SquadDrillSim.cpp', 'PlatoonTaskSim.cpp', 'PositionSim.cpp', 'LeaderSim.cpp'],
@@ -51,7 +51,15 @@ def brief(node_id: str) -> str:
                      f"defenders lost {stats['defender_loss']:.0%}, attackers lost {stats['attacker_loss']:.0%}; by layout " +
                      ', '.join(f'{k} {v:+.3f}' for k, v in stats['by_layout'].items()))
     failed = [name for name, g in (result.get('guards') or {}).items() if not g['passed']]
-    lines.append(f"- guards failing on the parent: {', '.join(failed) if failed else 'none'}")
+    lines.append(f"- guards failing on the parent: {', '.join(failed) if failed else 'none'}" +
+                 (' (a node that fails a guard has NO score, so clearing these comes first)' if failed else ''))
+    provenance = {g['name']: g for g in scoring.load_guards()['guards']}
+    for name in failed:
+        detail = result['guards'][name].get('detail') or {}
+        count = len(detail.get('failures', [])) if isinstance(detail, dict) else 0
+        rule = provenance.get(name, {})
+        meaning = f"{rule.get('field') or rule.get('metric')} {rule.get('rule')} {rule.get('value', '')} on {', '.join(rule.get('sets', []))}".strip()
+        lines.append(f"  - {name}: {meaning}" + (f'; failed in {count} battles, e.g. ' + ', '.join(f['key'] for f in detail['failures'][:3]) if count else ''))
     known = node.get('external', {}).get('selectors', {}).get('known_failures') or node.get('external', {}).get('selectors', {}).get('failed') or []
     lines.append(f"- selectors already failing (do not count against you, do not add to them): {', '.join(known) if known else 'none'}")
     lines += ['', '## What its worst attacks show']
@@ -78,8 +86,9 @@ def brief(node_id: str) -> str:
               '', '## Check your own work before you finish',
               '- `./scripts/battle-lab.sh --version` must build.',
               f"- Run two of the parent's worst battles above on your build (`.local/lab/battle-lab {'--drills' if lineage == 'drills' else '--legacy-ai'} --map <map> "
-              '--static-defence <layout> --defenders 12 --defence-seed <seed> --seed 107 --seconds 360 --evaluate --no-trace --out <dir>`; the key reads '
-              '`city-<map seed>-107-<layout>12s<defence seed>`, maps are under `.local/loop/maps/<map seed>/`) and compare casualties with the figures above.',
+              '--static-defence <layout> --defenders 12 --defence-seed <seed> --seed 107 --seconds 600 --evaluate --no-trace --out <dir>`; the key reads '
+              f'`city-<map seed>-107-<layout>12s<defence seed>`, the map file is `{config.LOOP_ROOT}/maps/<map seed>/city-<map seed>.army`; use that absolute path, '
+              'your worktree has no copy) and compare casualties with the figures above. Attack battles run 600 s: pass `--seconds 600`.',
               '- Finish with: the mechanism in two sentences, the files and functions touched, what you measured, and what could go wrong. '
               'If the idea did not help in your own check, say so; a negative result is still recorded.']
     return '\n'.join(lines) + '\n'
