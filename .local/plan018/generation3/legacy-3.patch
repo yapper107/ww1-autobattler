@@ -1,0 +1,21 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+index 0ab69ab..a276892 100755
+--- a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+@@ -456,11 +456,15 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
+         // (a report, a nearby order, the periodic sweep) must not swap it for a different
+         // task while the soldier is still en route. Only a wound, a withdrawal, lane
+         // safety or real danger (high suppression) cuts in before the soldier arrives or
+-        // the short window ends.
++        // the short window ends. A Hold that leaves the soldier standing where he
++        // already is costs no extra route: he has effectively arrived, so making him
++        // keep walking toward the stale far destination just to satisfy the commitment
++        // only lengthens his exposure crossing the lane.
+         if(!recovery&&!TypedController(config)&&last.issuer==sender&&last.task!=task&&
+             (last.task==Task::Flank||last.task==Task::BoundMove||last.task==Task::BoundCover)&&
+             task!=Task::PullBack&&task!=Task::ClearLane&&f.time-last.issuedAt<2.5f&&unit.understoodSuppression<0.52f&&
+             !KnowsWounded(f.soldiers[sender],unit)&&Distance(unit.position,last.position)>1.5f&&
++            !(task==Task::Hold&&Distance(unit.position,position)<1.5f)&&
+             !FindPath(map,unit.position,last.position).empty())return;
+         // Finish a short movement commitment before refreshing a moving formation
+         // anchor. Emergency withdrawals and lane clearance can still interrupt.

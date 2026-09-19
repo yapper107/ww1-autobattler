@@ -1,0 +1,25 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp b/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
+index 7bf1946..75e2150 100644
+--- a/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
+@@ -115,7 +115,12 @@ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const M
+             (target>=0 && (previous.enemy!=target || Distance(previous.sector,knowledge.contacts[target].position)>40));
+         const bool change=!previous.taskNode || done || blocked ||
+             (!retiring && (previous.task!=task || knownChanged));
++        const bool advancing=target<0 && task==PlatoonTask::FightHere;
+         if (!change) {
++            // A leg already proven unreachable (route_exhausted below) must not be kept
++            // alive by renewal: that drags the squad back to an already-completed point
++            // every lifetime instead of letting it lapse into local, self-routing advance.
++            if (advancing && state.advanceExhausted[index]) continue;
+             if (previous.expiresAt-time<=15 || previous.issuer!=leader.id) {
+                 Lifetime(previous,leader.id,time); orders.push_back({report.leader,previous});
+                 Trace(leader,diagnostics,time,"platoon_task","renew committed intent (75 s lifetime)",previous.position,report.squad);
+@@ -145,7 +150,6 @@ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const M
+             order.helpSquad=needing->squad;order.position=needing->position;order.sector=needing->goalObjective;
+             reason="HelpSquad: received need unanswered for one report round trip; nearest squad with capacity";
+         }
+-        const bool advancing=target<0 && task==PlatoonTask::FightHere;
+         if (advancing) {
+             if (state.advanceExhausted[index]) continue;
+             const bool guarded=done && state.advanceDoneSeen[index] && Distance(previous.position,state.advanceDoneObjectives[index])<18;

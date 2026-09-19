@@ -221,3 +221,45 @@ First use: legacy qualified after generations 1 and 2 (no survivor), so generati
 root aimed at "PREPARE MOVEMENT" (730 squad-seconds static in the root's three worst attacks, healthy squads silent for
 40 to 110 s at a time), beside the two deepening proposals. With three proposers running their own check battles at
 once the explorer runs one battle at a time, because memory, not cores, is the limit on this machine.
+
+## Third generation, 19 September 2026
+
+The user resumed the loop ("continue"). Three Sonnet proposers: one deepening each lineage and, under the new
+branching rule, a legacy explorer from the root. Evidence: `.local/plan018/generation3/`.
+
+| Node | Parent | Change | Paired delta vs lineage root, 20 dev | 15 val | Guards |
+|---|---|---|---|---|---|
+| `4192db8318921036` | drills `8b6da91cb019eed0` | the platoon no longer renews an advance leg it has marked route-exhausted (the stale, completed leg was re-issued every 75 s and dragged the squad back; one guard in `PlatoonTaskSim.cpp`) | +0.085 [+0.008, +0.161], 14 better, 6 worse | +0.005 [-0.097, +0.117], 6 better, 8 worse | ONE battle of 75 fails (`zero_shot` and `attacker_firing_squads` on validation map 828295, spread), where the drills root also fires nothing; root fails 12 |
+| `f90df393f3ba9394` | legacy `a1498179dd29bf64` | the 2.5 s commitment no longer suppresses a Hold within 1.5 m of where the soldier stands | +0.002 [-0.061, +0.063] | +0.030 [-0.069, +0.128] | fails `friendly_fire` (+1.52 [+0.64, +2.49] against the root) and `attacker_firing_squads` (one battle) |
+| `f7ef9f40c0203c33` | legacy root (explorer) | a sidestep ordered to clear a reported friendly lane must also be sheltered from the commander's known contacts (`ClearReportedFireLane`) | -0.001 [-0.079, +0.074], 9 better, 9 worse | -0.060 [-0.165, +0.042], 4 better, 8 worse | fails `friendly_fire` only (+1.12 [+0.35, +1.89]) |
+
+Findings.
+- **Drills is one battle from a score.** The three drills changes each removed a real stall (march in file, band on the
+  squad's position, no renewal of exhausted legs); development deltas against the root are +0.044, +0.088 and +0.085.
+  The validation delta depends on the draw: the root fires nothing on three of the second node's fifteen maps and on one
+  of the third's. What remains, from the proposer's trace of map 65552: near the objective the formation and column slot
+  search jams in dense cover ("column position unavailable", Blocked), and one squad cycles Bound and BoundCover for
+  600 s without arriving. Next drills brief: that jam, from `4192db8318921036`.
+- **The legacy commitment chain is retired.** Three generations, no repeatable gain without the friendly-fire cost.
+- **A proposer's own five-battle check predicts little.** The explorer's five maps all improved by +0.08 to +0.23 and the
+  full paired result was zero: it measured the root's three worst battles plus two, and worst battles regress toward
+  the mean under any change. Briefs should stop presenting the parent's worst battles as the check set, or give a
+  random dev subset beside them. Only the paired full-suite result decides.
+- **Three independent legacy changes raised friendly fire**, and the user has seen friendly-fire avoidance interfere with
+  the AI in play. The avoidance logic is mostly shared soldier-level code, which no lineage may change, and the guard is
+  relative to the root, which freezes whatever caution the root has.
+
+## User decisions, 19 September 2026
+
+1. **WSL stays at 30 GB**; the other half of the host's memory is reserved for Windows. Not to be suggested again.
+2. **Lean battle mode**, approved, to be built by the architect after generation 3 and before generation 4: fold the
+   digest as frames are produced, compute evaluation rows at record time and drop the frames, keeping full frames only
+   for Unreal and tests that read them (design in `docs/BATTLE_PERFORMANCE.md`). Verification: 40/40 parity,
+   byte-identical evaluation output, and a root `remeasure` with every digest matching; then both lineages are re-rooted
+   and the live drills node is carried across.
+3. **Friendly-fire ablation**, approved, right after the lean mode: on scratch builds of the root (not tree nodes) switch
+   off the shooter's hold-fire check, the lane-clearance orders, and both, and measure attack score, friendly hits and
+   static time. The user then sets an absolute friendly-fire budget to replace the root-relative guard, and any repair
+   of the shared avoidance logic is a designed architect change that starts a new epoch, not a lineage proposal. Lead
+   to test: hits land before any lane is reported (a report needs about a second of held fire plus the chain delay), so
+   the reporting chain may be producing churn without preventing anything.

@@ -44,6 +44,16 @@ on three validation maps drills fires no shot at all, as its root does. The lega
 idea lifts attacks at 2.5 s but raises friendly fire; at 1.0 s it is the root again. The user
 paused the loop after generation 2. Tree page: `python3 -m tools.loop view`.
 
+Generation 3 (19 September 2026, loop resumed by the user): drills `4192db8318921036` is one
+battle of 75 from a score (its root fails 12; paired +0.085 on development); the legacy
+commitment chain is retired; a legacy explorer from the root showed +0.08 to +0.23 on its own
+five check maps and zero on the paired full suite, so a proposer's own check predicts little.
+Three independent legacy changes raised friendly fire. User decisions the same day, recorded at
+the end of the plan: a branching rule for the tree; WSL stays at 30 GB; the architect builds a
+lean battle mode (frames dropped after digest and evaluation rows are folded) before
+generation 4, then runs a friendly-fire ablation on scratch builds so the user can set an
+absolute friendly-fire budget in place of the root-relative guard.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two

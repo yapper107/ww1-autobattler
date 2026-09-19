@@ -1,0 +1,31 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+index b958a29..1364400 100755
+--- a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+@@ -47,9 +47,16 @@ bool InReportedFireLane(const Soldier& commander,int soldier,Vec3 p,float time)
+     return false;
+ }
+ Vec3 ClearReportedFireLane(const Soldier& commander,const Soldier& soldier,Vec3 desired,const Map& map,float time) {
++    // A sidestep that clears a reported friendly lane but stands the soldier in the
++    // open, under a known enemy contact, is not an improvement: the soldier's own
++    // exposure reflex sends it straight back to shelter, and this same deterministic
++    // sidestep is recomputed and reissued every command tick, holding the whole team
++    // still for as long as the friendly lane is reported. Require it to be sheltered
++    // from known contacts too, exactly like the cover search elsewhere in this file.
++    auto exposedToEnemy=[&](Vec3 p){for(const auto& ct:commander.contacts)if(ct.known&&time-ct.observedAt<=8&&!ProtectedAt(map,p,ct.position,Stance::Crouched))return true;return false;};
+     if(soldier.assignment.task==Task::ClearLane&&time-soldier.assignment.activatedAt<8&&Distance(soldier.position,soldier.assignment.position)>0.7f&&
+         !FindPath(map,soldier.position,soldier.assignment.position).empty()&&
+-        !InReportedFireLane(commander,soldier.id,soldier.assignment.position,time))return soldier.assignment.position;
++        !InReportedFireLane(commander,soldier.id,soldier.assignment.position,time)&&!exposedToEnemy(soldier.assignment.position))return soldier.assignment.position;
+     Vec3 base=InReportedFireLane(commander,soldier.id,soldier.position,time)?soldier.position:desired;
+     if(!InReportedFireLane(commander,soldier.id,base,time))return desired;
+     float score=1e9f;Vec3 best=desired;
+@@ -60,7 +67,7 @@ Vec3 ClearReportedFireLane(const Soldier& commander,const Soldier& soldier,Vec3
+         Vec3 lateral{-d.y,d.x};
+         for(float side:{-1.f,1.f})for(float step:{3.f,6.f,10.f,15.f}) {
+             Vec3 p=base+lateral*(side*step);
+-            if(!Walkable(map,p)||InReportedFireLane(commander,soldier.id,p,time))continue;
++            if(!Walkable(map,p)||InReportedFireLane(commander,soldier.id,p,time)||exposedToEnemy(p))continue;
+             float value=Distance(soldier.position,p)+Distance(desired,p)*0.2f;
+             if(value<score&&!FindPath(map,soldier.position,p).empty()){score=value;best=p;}
+         }

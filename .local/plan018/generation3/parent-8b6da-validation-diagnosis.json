@@ -1,0 +1,441 @@
+{
+ "node": "8b6da91cb019eed0",
+ "set": "town-attack-val",
+ "battles": [
+  {
+   "first_attacker_shot": null,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 350.0,
+     "end": 400.0,
+     "alive": 8,
+     "at": [
+      -13,
+      -28
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 0,
+     "start": 430.0,
+     "end": 470.0,
+     "alive": 8,
+     "at": [
+      -17,
+      -19
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 0,
+     "start": 500.0,
+     "end": 550.0,
+     "alive": 8,
+     "at": [
+      -9,
+      -24
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 1,
+     "start": 150.0,
+     "end": 200.0,
+     "alive": 8,
+     "at": [
+      -106,
+      -23
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: quorum latched, grace complete"
+    }
+   ],
+   "static_squad_seconds": 190.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-65552-107-clusters12s65552",
+   "layout": "clusters",
+   "attack_score": 0.0,
+   "defender_loss": 0.0,
+   "attacker_loss": 0.0
+  },
+  {
+   "first_attacker_shot": null,
+   "static_windows": [
+    {
+     "squad": 1,
+     "start": 80.0,
+     "end": 140.0,
+     "alive": 8,
+     "at": [
+      -105,
+      -27
+     ],
+     "shots": 0,
+     "stated": "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal"
+    },
+    {
+     "squad": 1,
+     "start": 190.0,
+     "end": 230.0,
+     "alive": 8,
+     "at": [
+      -99,
+      -34
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 1,
+     "start": 250.0,
+     "end": 300.0,
+     "alive": 8,
+     "at": [
+      -94,
+      -36
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 1,
+     "start": 330.0,
+     "end": 380.0,
+     "alive": 8,
+     "at": [
+      -93,
+      -41
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 1,
+     "start": 410.0,
+     "end": 450.0,
+     "alive": 8,
+     "at": [
+      -94,
+      -44
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 1,
+     "start": 490.0,
+     "end": 540.0,
+     "alive": 8,
+     "at": [
+      -96,
+      -41
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 3,
+     "start": 350.0,
+     "end": 390.0,
+     "alive": 8,
+     "at": [
+      -13,
+      17
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 3,
+     "start": 430.0,
+     "end": 480.0,
+     "alive": 8,
+     "at": [
+      -14,
+      17
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 3,
+     "start": 500.0,
+     "end": 550.0,
+     "alive": 8,
+     "at": [
+      -15,
+      17
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    }
+   ],
+   "static_squad_seconds": 430.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-644915-107-clusters12s644915",
+   "layout": "clusters",
+   "attack_score": 0.0,
+   "defender_loss": 0.0,
+   "attacker_loss": 0.0
+  },
+  {
+   "first_attacker_shot": null,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 70.0,
+     "end": 140.0,
+     "alive": 8,
+     "at": [
+      -106,
+      -63
+     ],
+     "shots": 0,
+     "stated": "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal"
+    },
+    {
+     "squad": 0,
+     "start": 170.0,
+     "end": 220.0,
+     "alive": 8,
+     "at": [
+      -106,
+      -57
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 0,
+     "start": 260.0,
+     "end": 300.0,
+     "alive": 8,
+     "at": [
+      -101,
+      -63
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 0,
+     "start": 320.0,
+     "end": 370.0,
+     "alive": 8,
+     "at": [
+      -109,
+      -59
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 0,
+     "start": 410.0,
+     "end": 460.0,
+     "alive": 8,
+     "at": [
+      -108,
+      -59
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 0,
+     "start": 490.0,
+     "end": 530.0,
+     "alive": 8,
+     "at": [
+      -113,
+      -58
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 0,
+     "start": 560.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      -117,
+      -60
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 2,
+     "start": 240.0,
+     "end": 280.0,
+     "alive": 8,
+     "at": [
+      -49,
+      48
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 2,
+     "start": 320.0,
+     "end": 360.0,
+     "alive": 8,
+     "at": [
+      -46,
+      49
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 2,
+     "start": 400.0,
+     "end": 440.0,
+     "alive": 8,
+     "at": [
+      -43,
+      50
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 2,
+     "start": 470.0,
+     "end": 520.0,
+     "alive": 8,
+     "at": [
+      -46,
+      48
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    }
+   ],
+   "static_squad_seconds": 510.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-355292-107-clusters12s355292",
+   "layout": "clusters",
+   "attack_score": 0.0,
+   "defender_loss": 0.0,
+   "attacker_loss": 0.0
+  },
+  {
+   "first_attacker_shot": 195.2,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 390.0,
+     "end": 470.0,
+     "alive": 5,
+     "at": [
+      -5,
+      -53
+     ],
+     "shots": 69,
+     "stated": "support lost: eight seconds without element delivery evidence"
+    },
+    {
+     "squad": 1,
+     "start": 410.0,
+     "end": 510.0,
+     "alive": 6,
+     "at": [
+      -52,
+      -1
+     ],
+     "shots": 0,
+     "stated": "unavailable formation slots: contract to column on accepted route"
+    },
+    {
+     "squad": 2,
+     "start": 110.0,
+     "end": 170.0,
+     "alive": 8,
+     "at": [
+      -53,
+      25
+     ],
+     "shots": 0,
+     "stated": "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal"
+    },
+    {
+     "squad": 2,
+     "start": 270.0,
+     "end": 310.0,
+     "alive": 8,
+     "at": [
+      -33,
+      19
+     ],
+     "shots": 19,
+     "stated": "help: occupy protected slots covering neighbour's group"
+    },
+    {
+     "squad": 2,
+     "start": 380.0,
+     "end": 420.0,
+     "alive": 7,
+     "at": [
+      -32,
+      20
+     ],
+     "shots": 0,
+     "stated": "effective incoming fire ended (6 s hysteresis)"
+    },
+    {
+     "squad": 3,
+     "start": 380.0,
+     "end": 420.0,
+     "alive": 8,
+     "at": [
+      -19,
+      36
+     ],
+     "shots": 30,
+     "stated": "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity"
+    },
+    {
+     "squad": 3,
+     "start": 480.0,
+     "end": 530.0,
+     "alive": 8,
+     "at": [
+      -9,
+      26
+     ],
+     "shots": 57,
+     "stated": "FightHere: nearest known group; squad chooses its drill"
+    }
+   ],
+   "static_squad_seconds": 410.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-474129-107-building12s474129",
+   "layout": "building",
+   "attack_score": 0.19270833333333331,
+   "defender_loss": 0.3333333333333333,
+   "attacker_loss": 0.28125
+  }
+ ],
+ "static_seconds_by_stated_reason": {
+  "matching received arrivals: deployment leg complete": 950.0,
+  "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal": 190.0,
+  "unavailable formation slots: contract to column on accepted route": 100.0,
+  "support lost: eight seconds without element delivery evidence": 80.0,
+  "matching received arrivals: quorum latched, grace complete": 50.0,
+  "FightHere: nearest known group; squad chooses its drill": 50.0,
+  "help: occupy protected slots covering neighbour's group": 40.0,
+  "effective incoming fire ended (6 s hysteresis)": 40.0,
+  "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity": 40.0
+ }
+}
