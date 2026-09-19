@@ -4,7 +4,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-os.environ.setdefault('ARMY_LOOP_ROOT', tempfile.mkdtemp(prefix='loop-test-'))
+# Always a private root: the loop's own Python-tests guard runs this file with the shared
+# tree's ARMY_LOOP_ROOT exported, and a test must never write into the real tree.
+os.environ['ARMY_LOOP_ROOT'] = tempfile.mkdtemp(prefix='loop-test-')
 
 from tools.loop import config, pairs, score, static_check, tree, verdict  # noqa: E402
 
