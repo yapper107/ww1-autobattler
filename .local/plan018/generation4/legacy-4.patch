@@ -1,0 +1,24 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+index b958a29..1e62d89 100755
+--- a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+@@ -338,6 +338,19 @@ std::vector<PlannedOrder> PlanSquad(const Soldier& officer,const std::vector<Sol
+     Vec3 rear=command.hasWaypoint&&command.maneuver==Maneuver::PullBack?destination+Vec3{-sign*7,-3}:
+         command.advancing&&nco?nco->position+Vec3{-sign*5,3}:assembly+Vec3{-sign*3,0};
+     if(command.advancing&&!nco&&!command.engaged)rear=destination;
++    if(command.advancing&&nco&&command.maneuver!=Maneuver::PullBack&&freshContact&&Walkable(map,rear)&&!ProtectedAt(map,rear,sector,Stance::Standing)) {
++        // The raw trailing offset is not a validated position, unlike every other
++        // assigned spot in this function. When it happens to be exposed to a known
++        // threat, the officer repeatedly leaves and re-seeks shelter every replan
++        // instead of settling near the NCO. Only then, snap to the nearest real
++        // shelter no closer to the threat than the naive spot.
++        Vec3 naive=rear;float best=1e9f;float naiveThreat=Distance(naive,sector);
++        for(const auto& cover:CoverPositions(map)) {
++            if(cover.window)continue;float d=Distance(cover.shelter,naive);
++            if(d>6||Distance(cover.shelter,sector)<naiveThreat-2||!ProtectedAt(map,cover.shelter,sector,cover.crouch?Stance::Crouched:Stance::Standing))continue;
++            if(d<best){best=d;rear=cover.shelter;}
++        }
++    }
+     if(!Walkable(map,rear))rear=officer.position;
+     if(command.advancing&&!nco&&!command.engaged){assign(officer,task,rear,sector);return orders;}
+     assign(officer,command.hasWaypoint&&command.maneuver==Maneuver::PullBack?Task::PullBack:Task::Hold,rear,sector);

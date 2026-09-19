@@ -1,0 +1,20 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+index 7a2fb6c..b3275fc 100644
+--- a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+@@ -362,7 +362,14 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
+     auto issue=[&](const std::array<bool,SquadSize>& who,bool fixing=false,bool loose=false){IssueStage(leader,knowledge,members,map,config,approaches,p,who,d,time,fixing,loose);};
+     auto beginMove=[&](const std::string& why,bool close){
+         Accept(leader,p,BattleDrill::MoveTactically,d,time);p.closing=close;p.blocked=false;
+-        auto technique=leader.platoonOrder.fireMovement||close||(target>=0&&nearest<100)||p.effectiveFire?MovementTechnique::BoundingOverwatch:
++        // Ordered to fight a known group still beyond about one and a half rifle
++        // ranges: close on it as a plain march first, rather than the bounding-
++        // formation machinery a contact fight needs, which repeatedly fails to
++        // find slots this far from the sector (own accepted order, own knowledge).
++        const bool distant=target>=0&&nearest>1.5f*SightRange(leader)&&
++            p.acceptedDirective.task==PlatoonTask::FightHere&&p.acceptedDirective.enemy>=0;
++        auto technique=distant?MovementTechnique::Traveling:
++            leader.platoonOrder.fireMovement||close||(target>=0&&nearest<100)||p.effectiveFire?MovementTechnique::BoundingOverwatch:
+             (target>=0&&nearest<=150)||Mouth(map,p.center,Unit(p.destination-p.center))?MovementTechnique::TravelingOverwatch:MovementTechnique::Traveling;
+         SetTechnique(leader,p,technique,d,time);
+         if(technique==MovementTechnique::Traveling){Advance(leader,p,DrillStage::Travel,d,time,why);issue(SelectMembers(members,p));}

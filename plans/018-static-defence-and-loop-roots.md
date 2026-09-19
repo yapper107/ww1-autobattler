@@ -294,3 +294,28 @@ friendly fire did so by moving soldiers across friendly lines more, not by being
 gains survived the paired comparison. The shared avoidance logic therefore stays as it is, and stays outside the loop.
 Open for the user: whether to replace the root-relative friendly-fire guard with an absolute budget (legacy root 6.59,
 drills root 4.31; the rejected legacy candidates measured 7.7 to 8.1).
+
+## Fourth generation, 19 September 2026
+
+Two Sonnet proposers on the lean source, with a changed brief: each measures the parent's three worst battles AND a fixed
+random five (maps 22, 27, 33, 36, 39) and reports the random five as the honest estimate. Both proposers used it to
+recommend against their own change. Evidence: `.local/plan018/generation4/`.
+
+| Node | Parent | Change | Paired delta vs lineage root, 20 dev | 15 val | Guards |
+|---|---|---|---|---|---|
+| `a2f0b34f44950e0b` | drills `08a5a8f33d1f2732` | a squad ordered to FightHere a known group beyond one and a half sight ranges moves by plain Traveling, not TravelingOverwatch or Bound (whose element slot search fails on some geometry and loops Blocked every 7 s) | +0.057 [-0.033, +0.147], 12 better, 8 worse | +0.043 [-0.068, +0.170], 6 better, 9 worse | **all pass: the first drills node with a score** (0.253 against the root's mean 0.322, so not a survivor) |
+| `ba7287750efbaa4c` | legacy root | the squad leader's "trail behind the corporal" point, the only unvalidated position `PlanSquad` assigns, snaps to real shelter within 6 m when exposed to a fresh contact (trace: the leader left and re-sought cover 95 times in 57 s, the committed flank never completed and timed out, which is the PREPARE MOVEMENT stall) | +0.074 [-0.007, +0.158], 12 better, 8 worse | -0.124 [-0.224, -0.018], 4 better, 10 worse | fails `attacker_firing_squads` (one battle); friendly fire passes (+0.38 [-0.61, +1.36]) |
+
+Findings.
+- Drills now has a guard-passing node: marching at long range gets every squad into the fight, at some cost in attack
+  quality against its parent (+0.057 on development against the parent's +0.085). Its proposer's better idea keeps the
+  bounding technique and repairs the slot search where it fails (the loose file fallback fails the inside-corridor check
+  at long range; the corridor group cap may be too tight for long obstructed legs).
+- The legacy PREPARE MOVEMENT cause is established. The fix as written is not an improvement.
+- **The measurement is too noisy for effects of this size.** Two candidates now have development and validation sets
+  that disagree, each with an interval excluding zero (generation 1 legacy +0.007 and +0.157; this legacy node +0.074 and
+  -0.124), and one proposer saw its random five swing from -0.08 to +0.17 across trivial variants of one mechanism. A
+  battle is chaotic: any change perturbs the whole trajectory, so one battle a map carries roughly +/-0.3 of noise per
+  map and the loop cannot resolve effects below about +/-0.1. With lean battles the remedy is cheap: three battle seeds
+  per map on the attack sets (105 attack battles a node instead of 35), clustered by map as now, roots re-scored the same
+  way. To be done before generation 5.
