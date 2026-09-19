@@ -5,7 +5,7 @@ metrics), ``order_metrics.evaluate`` (soldier orders per minute per side) and th
 shots export (firing squads per side). Traces are off unless asked for.
 """
 from __future__ import annotations
-import json, os, subprocess, time
+import gzip, json, os, shutil, subprocess, time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import get_context
 from pathlib import Path
@@ -13,7 +13,8 @@ from pathlib import Path
 from tools.loop import config
 from tools.loop.config import CONTROLLER_FLAG, SECONDS, spec_key
 
-BYTES_PER_AUTHORED_JOB = 4.5*(1 << 30)
+# Measured 18 Sep 2026: 3.1 GB peak for a 360 s town battle without traces, either controller.
+BYTES_PER_AUTHORED_JOB = 3.5*(1 << 30)
 
 
 def default_jobs(requested=None, authored=True):
@@ -28,6 +29,7 @@ def default_jobs(requested=None, authored=True):
 
 
 def battle_command(binary, controller, spec, seconds=SECONDS, trace=False, out=None):
+    seconds = spec.get('seconds', seconds)  # a scenario may carry its own time limit
     cmd = [str(binary), CONTROLLER_FLAG[controller]]
     if 'map' in spec:
         cmd += ['--map', str(spec['map'])]
@@ -35,10 +37,37 @@ def battle_command(binary, controller, spec, seconds=SECONDS, trace=False, out=N
         cmd += ['--generated', spec['family'], '--gen-seed', str(spec['gen_seed'])]
     else:
         cmd += ['--terrain', str(spec['terrain'])]
+    if spec.get('defence'):
+        d = spec['defence']
+        cmd += ['--static-defence', d['layout'], '--defenders', str(d['defenders']), '--defence-seed', str(d['seed'])]
     cmd += ['--seed', str(spec['seed']), '--seconds', str(seconds), '--evaluate', '--out', str(out)]
     if not trace:
         cmd.append('--no-trace')
     return cmd
+
+
+ATTACKER_LOSS_WEIGHT = 0.5
+
+
+def attack_metrics(metrics: dict) -> dict:
+    """Plan 018 attack outcome: defenders put out of action, less half the attacker's own loss.
+
+    Continuous on purpose: a battle that clears nothing still says how far it got.
+    Azure attacks; casualty fractions are of the soldiers active at frame 0."""
+    defender, attacker = metrics.get('casualty_ember'), metrics.get('casualty_azure')
+    if defender is None or attacker is None:
+        return dict(attack_score=None, attack_cleared=None)
+    return dict(attack_score=defender - ATTACKER_LOSS_WEIGHT*attacker, attack_cleared=int(bool(metrics.get('win_azure'))))
+
+
+def compress_exports(run: Path):
+    """The per-frame evaluation export is nine tenths of a node's size and plain text.
+    It is kept, compressed, so a metric added from a later verdict can still be computed."""
+    source = run/'evaluation.jsonl'
+    if source.exists() and source.stat().st_size:
+        with source.open('rb') as raw, gzip.open(run/'evaluation.jsonl.gz', 'wb', compresslevel=1) as packed:
+            shutil.copyfileobj(raw, packed, 1 << 20)
+        source.unlink()
 
 
 def firing_squads(run: Path):
@@ -72,6 +101,10 @@ def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
             if not manifest.get('battlefield_digest') or manifest['seed'] != spec['seed']:
                 raise ValueError('Binary returned another battle')
             row['battlefield_digest'] = manifest['battlefield_digest']
+            if spec.get('defence'):
+                got, want = manifest.get('static_defence') or {}, spec['defence']
+                if any(got.get(k) != want[k] for k in ('layout', 'defenders', 'seed')):
+                    raise ValueError('Binary returned another defence')
         elif 'family' in spec:
             if manifest.get('scenario_family') != spec['family'] or manifest.get('gen_seed') != spec['gen_seed'] or manifest['seed'] != spec['seed']:
                 raise ValueError('Binary returned another scenario')
@@ -81,10 +114,14 @@ def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
         orders = order_metrics.evaluate(run)
         metrics = dict(evaluated['metrics'])
         metrics['orders_azure_per_minute'], metrics['orders_ember_per_minute'] = orders['orders_per_minute']
+        if spec.get('defence'):
+            metrics.update(attack_metrics(metrics))
         row.update(status='complete', run=str(run), build=manifest['build'], metrics=metrics,
                    unavailable=evaluated['unavailable'], firing_squads=firing_squads(run),
                    survivors=evaluated['survivors'], initial_actives=evaluated['initial_actives'],
                    digest=evaluated['digest'], scenario_digest=evaluated['scenario_digest'])
+        if not trace:
+            compress_exports(run)
     except Exception as exc:  # recorded, never hidden
         row['error'] = f'{type(exc).__name__}: {exc}'
     return row

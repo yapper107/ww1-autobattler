@@ -1,0 +1,18 @@
+[b8f9e3b64c1fb65e-drills] tracing city-24-107-building12s24 (attack score +0.010)
+[b8f9e3b64c1fb65e-drills] tracing city-28-107-spread12s28 (attack score +0.021)
+[b8f9e3b64c1fb65e-drills] tracing city-27-107-building12s27 (attack score +0.031)
+{
+ "matching received arrivals: traveling stage complete": 360.0,
+ "received platoon directive": 290.0,
+ "help: occupy protected slots covering neighbour's group": 260.0,
+ "FightHere: nearest known group; squad chooses its drill": 220.0,
+ "Blocked: local route/column remedies exhausted; column position unavailable": 190.0,
+ "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity": 90.0,
+ "occupy protected firing positions; wait for element delivered rounds": 70.0,
+ "received platoon directive; retain held slots": 70.0,
+ "rearward bound: emergency takes precedence over attack or fallback": 60.0,
+ "effective incoming fire without superiority; no protected bound: hold existing cover": 60.0,
+ "recovering: column position unavailable; retain moving members and retry after arrival": 60.0,
+ "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal": 50.0
+}
+exit 0

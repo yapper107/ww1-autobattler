@@ -33,6 +33,9 @@ if m.get('leader_effects'):
 if m.get('equal_troops'):cmd+=['--equal-troops']
 if m.get('recovery_policy'):cmd+=['--recovery']
 if m.get('scenario_family', 'none') != 'none':cmd+=['--generated',m['scenario_family'],'--gen-seed',str(m['gen_seed'])]
+if m.get('static_defence'):
+    defence=m['static_defence']
+    cmd+=['--static-defence',defence['layout'],'--defenders',str(defence['defenders']),'--defence-seed',str(defence['seed'])]
 if m.get('encounter'):cmd+=['--encounter',str(m['encounter'])]
 if not m['support_weapon']:cmd+=['--no-mg']
 if a.soldier is not None:cmd+=['--soldier',str(a.soldier)]

@@ -1,0 +1,311 @@
+{
+ "node": "b8f9e3b64c1fb65e-drills",
+ "set": "town-attack-dev",
+ "battles": [
+  {
+   "first_attacker_shot": 292.65,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 330.0,
+     "end": 380.0,
+     "alive": 8,
+     "at": [
+      31,
+      -26
+     ],
+     "shots": 34,
+     "stated": "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity"
+    },
+    {
+     "squad": 0,
+     "start": 400.0,
+     "end": 460.0,
+     "alive": 8,
+     "at": [
+      31,
+      -26
+     ],
+     "shots": 33,
+     "stated": "rearward bound: emergency takes precedence over attack or fallback"
+    },
+    {
+     "squad": 0,
+     "start": 550.0,
+     "end": 590.0,
+     "alive": 7,
+     "at": [
+      36,
+      -25
+     ],
+     "shots": 16,
+     "stated": "FightHere: nearest known group; squad chooses its drill"
+    },
+    {
+     "squad": 2,
+     "start": 40.0,
+     "end": 80.0,
+     "alive": 8,
+     "at": [
+      -116,
+      24
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: traveling stage complete"
+    },
+    {
+     "squad": 2,
+     "start": 330.0,
+     "end": 390.0,
+     "alive": 7,
+     "at": [
+      21,
+      16
+     ],
+     "shots": 34,
+     "stated": "effective incoming fire without superiority; no protected bound: hold existing cover"
+    },
+    {
+     "squad": 3,
+     "start": 90.0,
+     "end": 140.0,
+     "alive": 8,
+     "at": [
+      -109,
+      58
+     ],
+     "shots": 0,
+     "stated": "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal"
+    },
+    {
+     "squad": 3,
+     "start": 320.0,
+     "end": 370.0,
+     "alive": 8,
+     "at": [
+      -93,
+      56
+     ],
+     "shots": 0,
+     "stated": "FightHere: nearest known group; squad chooses its drill"
+    },
+    {
+     "squad": 3,
+     "start": 410.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      -93,
+      57
+     ],
+     "shots": 0,
+     "stated": "Blocked: local route/column remedies exhausted; column position unavailable"
+    }
+   ],
+   "static_squad_seconds": 540.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-24-107-building12s24",
+   "layout": "building",
+   "attack_score": 0.010416666666666657,
+   "defender_loss": 0.16666666666666666,
+   "attacker_loss": 0.3125
+  },
+  {
+   "first_attacker_shot": 217.9,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 230.0,
+     "end": 300.0,
+     "alive": 8,
+     "at": [
+      -56,
+      -83
+     ],
+     "shots": 22,
+     "stated": "occupy protected firing positions; wait for element delivered rounds"
+    },
+    {
+     "squad": 0,
+     "start": 380.0,
+     "end": 420.0,
+     "alive": 8,
+     "at": [
+      -41,
+      -69
+     ],
+     "shots": 0,
+     "stated": "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity"
+    },
+    {
+     "squad": 0,
+     "start": 510.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      -47,
+      -55
+     ],
+     "shots": 0,
+     "stated": "FightHere: nearest known group; squad chooses its drill"
+    },
+    {
+     "squad": 1,
+     "start": 340.0,
+     "end": 480.0,
+     "alive": 6,
+     "at": [
+      -47,
+      -57
+     ],
+     "shots": 40,
+     "stated": "received platoon directive"
+    },
+    {
+     "squad": 2,
+     "start": 260.0,
+     "end": 300.0,
+     "alive": 8,
+     "at": [
+      -38,
+      1
+     ],
+     "shots": 21,
+     "stated": "FightHere: nearest known group; squad chooses its drill"
+    },
+    {
+     "squad": 2,
+     "start": 370.0,
+     "end": 590.0,
+     "alive": 7,
+     "at": [
+      -30,
+      -6
+     ],
+     "shots": 168,
+     "stated": "help: occupy protected slots covering neighbour's group"
+    }
+   ],
+   "static_squad_seconds": 600.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-28-107-spread12s28",
+   "layout": "spread",
+   "attack_score": 0.02083333333333333,
+   "defender_loss": 0.08333333333333333,
+   "attacker_loss": 0.125
+  },
+  {
+   "first_attacker_shot": 354.2,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 450.0,
+     "end": 560.0,
+     "alive": 2,
+     "at": [
+      28,
+      -55
+     ],
+     "shots": 237,
+     "stated": "received platoon directive"
+    },
+    {
+     "squad": 1,
+     "start": 30.0,
+     "end": 350.0,
+     "alive": 8,
+     "at": [
+      -116,
+      -27
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: traveling stage complete"
+    },
+    {
+     "squad": 1,
+     "start": 490.0,
+     "end": 530.0,
+     "alive": 8,
+     "at": [
+      -21,
+      -22
+     ],
+     "shots": 0,
+     "stated": "received platoon directive"
+    },
+    {
+     "squad": 2,
+     "start": 450.0,
+     "end": 490.0,
+     "alive": 4,
+     "at": [
+      58,
+      -4
+     ],
+     "shots": 20,
+     "stated": "help: occupy protected slots covering neighbour's group"
+    },
+    {
+     "squad": 2,
+     "start": 520.0,
+     "end": 590.0,
+     "alive": 4,
+     "at": [
+      57,
+      -16
+     ],
+     "shots": 25,
+     "stated": "received platoon directive; retain held slots"
+    },
+    {
+     "squad": 3,
+     "start": 300.0,
+     "end": 350.0,
+     "alive": 8,
+     "at": [
+      9,
+      18
+     ],
+     "shots": 0,
+     "stated": "renew committed intent (75 s lifetime)"
+    },
+    {
+     "squad": 3,
+     "start": 520.0,
+     "end": 580.0,
+     "alive": 5,
+     "at": [
+      -17,
+      67
+     ],
+     "shots": 14,
+     "stated": "recovering: column position unavailable; retain moving members and retry after arrival"
+    }
+   ],
+   "static_squad_seconds": 690.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-27-107-building12s27",
+   "layout": "building",
+   "attack_score": 0.03125,
+   "defender_loss": 0.25,
+   "attacker_loss": 0.4375
+  }
+ ],
+ "static_seconds_by_stated_reason": {
+  "matching received arrivals: traveling stage complete": 360.0,
+  "received platoon directive": 290.0,
+  "help: occupy protected slots covering neighbour's group": 260.0,
+  "FightHere: nearest known group; squad chooses its drill": 220.0,
+  "Blocked: local route/column remedies exhausted; column position unavailable": 190.0,
+  "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity": 90.0,
+  "occupy protected firing positions; wait for element delivered rounds": 70.0,
+  "received platoon directive; retain held slots": 70.0,
+  "rearward bound: emergency takes precedence over attack or fallback": 60.0,
+  "effective incoming fire without superiority; no protected bound: hold existing cover": 60.0,
+  "recovering: column position unavailable; retain moving members and retry after arrival": 60.0,
+  "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal": 50.0
+ }
+}

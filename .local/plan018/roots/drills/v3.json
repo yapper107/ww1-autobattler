@@ -1,0 +1,530 @@
+{
+ "guards": {
+  "attacker_firing_squads": {
+   "detail": {
+    "failures": [
+     {
+      "key": "city-21-107-building12s21",
+      "set": "town-attack-dev"
+     },
+     {
+      "key": "city-29-107-clusters12s29",
+      "set": "town-attack-dev"
+     },
+     {
+      "key": "city-30-107-building12s30",
+      "set": "town-attack-dev"
+     },
+     {
+      "key": "city-33-107-building12s33",
+      "set": "town-attack-dev"
+     },
+     {
+      "key": "city-35-107-clusters12s35",
+      "set": "town-attack-dev"
+     },
+     {
+      "key": "city-40-107-spread12s40",
+      "set": "town-attack-dev"
+     },
+     {
+      "key": "city-78708-107-building12s78708",
+      "set": "town-attack-val"
+     },
+     {
+      "key": "city-247059-107-building12s247059",
+      "set": "town-attack-val"
+     },
+     {
+      "key": "city-249146-107-clusters12s249146",
+      "set": "town-attack-val"
+     },
+     {
+      "key": "city-145384-107-spread12s145384",
+      "set": "town-attack-val"
+     }
+    ]
+   },
+   "passed": false
+  },
+  "build": {
+   "detail": {
+    "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-drills/build.log",
+    "ok": true,
+    "version": "b8f9e3b64c1fb65e-linux"
+   },
+   "passed": true
+  },
+  "firing_squads": {
+   "detail": {
+    "failures": [
+     {
+      "key": "city-23-107",
+      "set": "town-dev"
+     },
+     {
+      "key": "city-37-107",
+      "set": "town-dev"
+     }
+    ]
+   },
+   "passed": false
+  },
+  "friendly_fire": {
+   "detail": {
+    "town-dev": {
+     "ci95": [
+      -3.4940168762509862,
+      -1.072207793141794
+     ],
+     "clusters": 20,
+     "count": 20,
+     "mean": -2.277363439217153,
+     "median": -1.867001772652734,
+     "passed": true,
+     "unpaired": 0
+    }
+   },
+   "passed": true
+  },
+  "orders_azure_per_minute": {
+   "detail": {
+    "town-dev": {
+     "ci95": [
+      -126.44291666666666,
+      -85.13062500000002
+     ],
+     "clusters": 20,
+     "count": 20,
+     "mean": -104.725,
+     "median": -98.75,
+     "passed": true,
+     "unpaired": 0
+    }
+   },
+   "passed": true
+  },
+  "orders_ember_per_minute": {
+   "detail": {
+    "town-dev": {
+     "ci95": [
+      -148.71729166666668,
+      -104.77354166666666
+     ],
+     "clusters": 20,
+     "count": 20,
+     "mean": -125.9,
+     "median": -125.25000000000001,
+     "passed": true,
+     "unpaired": 0
+    }
+   },
+   "passed": true
+  },
+  "parity": {
+   "detail": {
+    "detail": {
+     "candidate90:city-21-107": {
+      "digest": "15347943273721347173",
+      "reference": "15347943273721347173",
+      "status": "match"
+     },
+     "candidate90:city-21-107-building12s21": {
+      "digest": "1933085051069899387",
+      "reference": "1933085051069899387",
+      "status": "match"
+     },
+     "candidate90:t0-107": {
+      "digest": "7915867850169794547",
+      "reference": "7915867850169794547",
+      "status": "match"
+     },
+     "candidate90:t1-107": {
+      "digest": "5965647483858054261",
+      "reference": "5965647483858054261",
+      "status": "match"
+     },
+     "legacy:city-21-107": {
+      "digest": "13298098593276284674",
+      "reference": null,
+      "status": "established"
+     },
+     "legacy:city-21-107-building12s21": {
+      "digest": "5357132056603423334",
+      "reference": null,
+      "status": "established"
+     },
+     "legacy:t0-107": {
+      "digest": "13972642319255895688",
+      "reference": null,
+      "status": "established"
+     },
+     "legacy:t1-107": {
+      "digest": "15242266433207822660",
+      "reference": null,
+      "status": "established"
+     }
+    },
+    "ok": true
+   },
+   "passed": true
+  },
+  "protected_files": {
+   "detail": {
+    "mismatched": [],
+    "ok": true,
+    "pinned": 4
+   },
+   "passed": true
+  },
+  "python_tests": {
+   "detail": {
+    "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/python-tests.log",
+    "ok": true,
+    "reused_from": "b8f9e3b64c1fb65e-legacy"
+   },
+   "passed": true
+  },
+  "selectors": {
+   "detail": {
+    "failed": [
+     "D02",
+     "D07",
+     "D08",
+     "D17"
+    ],
+    "known_failures": [
+     "D02",
+     "D07",
+     "D08",
+     "D17"
+    ],
+    "new_failures": [],
+    "ok": true,
+    "passed": 33,
+    "results": [
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q06.log",
+      "name": "Q06"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q07.log",
+      "name": "Q07"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q08.log",
+      "name": "Q08"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q09.log",
+      "name": "Q09"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/retention.log",
+      "name": "retention"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q01.log",
+      "name": "Q01"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q05.log",
+      "name": "Q05"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/clock-arrival.log",
+      "name": "clock-arrival"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/P04.log",
+      "name": "P04"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/P05.log",
+      "name": "P05"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/P06.log",
+      "name": "P06"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/P07.log",
+      "name": "P07"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q02.log",
+      "name": "Q02"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q03.log",
+      "name": "Q03"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/Q04.log",
+      "name": "Q04"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D01.log",
+      "name": "D01"
+     },
+     {
+      "exit_code": -6,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D02.log",
+      "name": "D02"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D03.log",
+      "name": "D03"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D04.log",
+      "name": "D04"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D05.log",
+      "name": "D05"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D06.log",
+      "name": "D06"
+     },
+     {
+      "exit_code": -6,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D07.log",
+      "name": "D07"
+     },
+     {
+      "exit_code": -6,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D08.log",
+      "name": "D08"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D09.log",
+      "name": "D09"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D10.log",
+      "name": "D10"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D11.log",
+      "name": "D11"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D16.log",
+      "name": "D16"
+     },
+     {
+      "exit_code": -6,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/D17.log",
+      "name": "D17"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/close.log",
+      "name": "close"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/sprint.log",
+      "name": "sprint"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/projection.log",
+      "name": "projection"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/sector.log",
+      "name": "sector"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/positions.log",
+      "name": "positions"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/plumbing.log",
+      "name": "plumbing"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/lifecycle.log",
+      "name": "lifecycle"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/leaders.log",
+      "name": "--leaders"
+     },
+     {
+      "exit_code": 0,
+      "log": "/home/jchan/ww1-autobattler/.local/loop/tree/b8f9e3b64c1fb65e-legacy/selectors/stats.log",
+      "name": "--stats"
+     }
+    ],
+    "reused_from": "b8f9e3b64c1fb65e-legacy"
+   },
+   "passed": true
+  },
+  "static_check": {
+   "detail": {
+    "files": [
+     "DrillSim.cpp",
+     "SquadDrillSim.cpp",
+     "PlatoonTaskSim.cpp",
+     "PositionSim.cpp",
+     "LeaderSim.cpp"
+    ],
+    "hits": [],
+    "ok": true,
+    "tokens": [
+     "Frame&",
+     "const Frame",
+     ".soldiers[",
+     "f.soldiers",
+     "frame.soldiers",
+     "observer_",
+     "observer",
+     "Record&",
+     ".shots",
+     "fullVision",
+     "full_vision"
+    ]
+   },
+   "passed": true
+  },
+  "under_2m": {
+   "detail": {
+    "town-dev": {
+     "ci95": [
+      -0.1252594414112568,
+      -0.10234851616749749
+     ],
+     "clusters": 20,
+     "count": 20,
+     "mean": -0.11392170583016449,
+     "median": -0.10954062963208547,
+     "passed": true,
+     "unpaired": 0
+    }
+   },
+   "passed": true
+  },
+  "zero_shot": {
+   "detail": {
+    "failures": []
+   },
+   "passed": true
+  }
+ },
+ "guards_pass": false,
+ "information": {
+  "town-attack-dev:casualty_fractions": [
+   0.203125,
+   0.31666666666666665
+  ],
+  "town-attack-dev:mean_shots": 1100.2,
+  "town-attack-dev:nearest_m_mean": 6.256329180425725,
+  "town-attack-val:casualty_fractions": [
+   0.23125,
+   0.5055555555555555
+  ],
+  "town-attack-val:mean_shots": 1144.7333333333333,
+  "town-attack-val:nearest_m_mean": 6.084805988112762,
+  "town-dev:casualty_fractions": [
+   0.225,
+   0.25
+  ],
+  "town-dev:mean_shots": 1404.3,
+  "town-dev:nearest_m_mean": 5.585537020639182,
+  "trench-dev:casualty_fractions": [
+   0.69375,
+   0.6125
+  ],
+  "trench-dev:mean_shots": 3589.3,
+  "trench-dev:nearest_m_mean": 3.2807580569844546
+ },
+ "objective": {
+  "kind": "attack",
+  "ranking_set": "town-attack-val",
+  "sets": {
+   "town-attack-dev": {
+    "attack_score": {
+     "ci95": [
+      0.13408203124999998,
+      0.3049674479166665
+     ],
+     "clusters": 20,
+     "count": 20,
+     "mean": 0.21510416666666665,
+     "median": 0.12239583333333333
+    },
+    "attacker_loss": 0.203125,
+    "by_layout": {
+     "building": 0.25223214285714285,
+     "clusters": 0.24913194444444442,
+     "spread": 0.1488095238095238
+    },
+    "cleared_share": 0.0,
+    "defender_loss": 0.31666666666666665,
+    "lower": 0.13408203124999998,
+    "mean": 0.21510416666666665
+   },
+   "town-attack-val": {
+    "attack_score": {
+     "ci95": [
+      0.27394097222222225,
+      0.5034982638888887
+     ],
+     "clusters": 15,
+     "count": 15,
+     "mean": 0.38993055555555556,
+     "median": 0.40625
+    },
+    "attacker_loss": 0.23125,
+    "by_layout": {
+     "building": 0.5822916666666667,
+     "clusters": 0.3654513888888889,
+     "spread": 0.18619791666666669
+    },
+    "cleared_share": 0.0,
+    "defender_loss": 0.5055555555555555,
+    "lower": 0.27394097222222225,
+    "mean": 0.38993055555555556
+   }
+  },
+  "value": 0.27394097222222225
+ },
+ "score_version": "v3",
+ "tie_break": {
+  "diff_lines": null
+ },
+ "value": null
+}

@@ -6,6 +6,42 @@ tree. Design and decisions: [plan 016](../plans/016-improvement-loop.md). Code:
 (override with `ARMY_LOOP_ROOT`). Legacy remains the playable default; nothing here
 changes a default.
 
+## Current state: plan 018 (18 September 2026)
+
+[Plan 018](../plans/018-static-defence-and-loop-roots.md) records the user's decisions of
+18 September 2026 and supersedes the scenario and score choices described further down,
+which are kept as history (score v1 and v2 are preserved as `tools/loop/guards-v1.json`
+and `guards-v2.json`).
+
+- **Score v3.** The objective is the attack on a static defence on generated town maps
+  (`town-attack-dev`, ranked on `town-attack-val`): defenders put out of action minus
+  half the attacker's own loss, mean with a cluster bootstrap, lower bound ranks. The
+  symmetric `town-dev` battles carry the paired behaviour guards; `trench-dev` only
+  proves soldiers still shoot. The static authored maps remain only in the parity spot
+  check. Only the sets the score reads are run.
+- **Roots and lineages.** Legacy and drills are both roots: `evaluate --controller legacy
+  --suffix legacy` and `--controller drills --suffix drills`; a second root on the same
+  source reuses the first's selector results with `--external-from`. A child belongs to
+  its parent's lineage. The selectors guard is relative to the lineage root (no selector
+  the root passes may fail). The parity guard is the lineage rule: the controllers the
+  node does not own must reproduce the root's digests on both static maps, a town map
+  and a static-defence battle. Sparring rows come from the lineage root's binary and are
+  cached per epoch (the root's fingerprint).
+- **Commands added.** `diagnose <node>` reruns the node's worst attack battles with the
+  trace on and records where attacking squads went static and what the controller stated;
+  `brief <node>` writes the proposer brief from the score and that diagnosis;
+  `replay <node> [--set S --key K]` builds the node's source snapshot into the Windows
+  mirror and runs the same map, seed, controller and defence in Unreal for the user's
+  review. `scripts/build.sh` adapts only the mirror when the installed engine is not 5.8.
+- **Parallel battles.** A battle is single threaded and peaks at 3.1 GB, so memory, not
+  cores, sets the job count (3.5 GB a job). WSL defaults to half the host RAM; raising
+  `memory=` in `%UserProfile%\.wslconfig` is what lets all cores be used. Keep traces and
+  other scratch files off `/tmp`: it is RAM backed and counts against the same memory.
+- **Proposers.** Sonnet 5 by default, Haiku 4.5 for narrow single-function edits, recorded
+  on the node with `--proposer llm --model <name>`. The `claude` CLI is not installed in
+  this WSL, so the architect session launches proposer agents in isolated worktrees and
+  evaluates each with `ARMY_LOOP_ROOT` pointing at the shared tree.
+
 ## Commands
 
 All from the repository root.

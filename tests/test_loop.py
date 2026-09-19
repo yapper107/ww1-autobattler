@@ -37,22 +37,169 @@ def synthetic(candidate_win_rate=0.8, base_win_rate=0.5, seed=1):
 
 
 EXTERNAL_OK = {name: dict(ok=True) for name in ('build', 'selectors', 'python_tests', 'protected_files', 'static_check', 'parity')}
+# Score semantics are tested against the preserved v1 spec (authored and F1 sets);
+# the current spec is checked for its own set choices below.
+V1 = score.load_guards(config.GUARDS_FILE.with_name('guards-v1.json'))
 
 
 class GuardsFile(unittest.TestCase):
     def test_loads_and_kinds_known(self):
+        for spec in (score.load_guards(), V1):
+            for g in spec['guards']:
+                self.assertIn(g['kind'], ('external', 'battle', 'paired'))
+                self.assertTrue(g.get('provenance'), g['name'])
+        self.assertEqual(V1['version'], 'v1')
+        self.assertIn('f1-val', V1['objective']['reported_sets'])
+
+    def test_v2_is_preserved_with_the_symmetric_town_objective(self):
+        v2 = score.load_guards(config.GUARDS_FILE.with_name('guards-v2.json'))
+        self.assertEqual(v2['version'], 'v2')
+        self.assertEqual(v2['objective']['ranking_set'], 'town-val')
+
+    def test_current_spec_ranks_the_attack_and_keeps_trenches_for_shooting_only(self):
         spec = score.load_guards()
-        self.assertEqual(spec['version'], 'v1')
+        self.assertEqual(spec['version'], 'v3')
+        self.assertEqual(spec['objective']['kind'], 'attack')
+        self.assertEqual(spec['objective']['ranking_set'], 'town-attack-val')
         for g in spec['guards']:
-            self.assertIn(g['kind'], ('external', 'battle', 'paired'))
-            self.assertTrue(g.get('provenance'), g['name'])
-        self.assertIn('f1-val', spec['objective']['reported_sets'])
+            trench = [s for s in g.get('sets', []) if s.startswith('trench')]
+            if trench:
+                self.assertIn(g['name'], ('zero_shot', 'firing_squads'), g['name'])
+            for s in g.get('sets', []):
+                self.assertTrue(s.startswith(('town-', 'trench-')), f"{g['name']}: {s}")
+
+    @staticmethod
+    def town_rows(defender_loss=0.75, attacker_loss=0.25, squads=(4, 2)):
+        from tools.loop.runner import attack_metrics
+
+        def town(set_name, gen, attack):
+            r = row(set_name, 107, gen, win=int(defender_loss >= 1))
+            r['family'] = 'city'
+            if attack:
+                r['defence'] = dict(layout=config.ATTACK_LAYOUTS[gen % 3], defenders=12, seed=gen)
+                r['firing_squads'] = list(squads)
+                r['metrics'].update(casualty_ember=defender_loss, casualty_azure=attacker_loss)
+                r['metrics'].update(attack_metrics(r['metrics']))
+            return r
+        cand = {s: [town(s, g, 'attack' in s) for g in range(21, 31)] for s in ('town-dev', 'trench-dev', 'town-attack-dev', 'town-attack-val')}
+        base = {'legacy': {'town-dev': [town('town-dev', g, False) for g in range(21, 31)]}}
+        return cand, base
+
+    def test_attack_objective_is_defender_loss_less_half_own_loss(self):
+        cand, base = self.town_rows(0.75, 0.25)
+        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
+        self.assertTrue(result['guards_pass'], {k: v for k, v in result['guards'].items() if not v['passed']})
+        self.assertAlmostEqual(result['value'], 0.625)
+        attack = result['objective']['sets']['town-attack-val']
+        self.assertEqual(attack['cleared_share'], 0)
+        self.assertEqual(sorted(attack['by_layout']), ['building', 'clusters', 'spread'])
+        better, _ = self.town_rows(1.0, 0.25)
+        self.assertLess(score.rank_key(score.score(score.load_guards(), better, base, EXTERNAL_OK)), score.rank_key(result))
+
+    def test_defender_squads_may_be_few_but_attacker_squads_must_fire(self):
+        cand, base = self.town_rows(squads=(4, 1))
+        self.assertTrue(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['attacker_firing_squads']['passed'])
+        cand, base = self.town_rows(squads=(2, 2))
+        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
+        self.assertFalse(result['guards']['attacker_firing_squads']['passed'])
+        self.assertIsNone(result['value'])
+
+    def test_silent_trench_battle_fails_the_shooting_guard(self):
+        cand, base = self.town_rows()
+        cand['trench-dev'][0]['metrics']['shots'] = 0
+        self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['zero_shot']['passed'])
+
+
+class Lineage(unittest.TestCase):
+    def test_child_may_keep_root_failures_but_not_add_one(self):
+        from tools.loop.evaluate import needed_sets, selectors_against_root
+        root = dict(selectors=dict(ok=False, failed=['D02', 'D08']))
+        same = selectors_against_root(dict(ok=False, failed=['D08']), root)
+        self.assertTrue(same['ok'])
+        self.assertEqual(same['known_failures'], ['D08'])
+        worse = selectors_against_root(dict(ok=False, failed=['D08', 'Q04']), root)
+        self.assertFalse(worse['ok'])
+        self.assertEqual(worse['new_failures'], ['Q04'])
+        self.assertTrue(selectors_against_root(dict(ok=False, failed=['D02']), None)['ok'])  # a root defines the known set
+        unbuilt = selectors_against_root(dict(ok=False, reason='test build failed'), root)
+        self.assertFalse(unbuilt['ok'])
+        self.assertEqual(needed_sets(score.load_guards()), {'town-dev', 'trench-dev', 'town-attack-dev', 'town-attack-val'})
+
+    def test_lineage_root_and_partners(self):
+        for node_id, parent in (('r', None), ('c1', 'r'), ('c2', 'c1')):
+            tree.save(tree.new_node(node_id, parent, dict(kind='human')))
+        self.assertEqual(tree.lineage_root('c2'), 'r')
+        self.assertEqual(tree.lineage_root('r'), 'r')
+        self.assertIsNone(tree.lineage_root('missing'))
+        self.assertEqual(config.parity_partners('legacy'), ['candidate90', 'drills'])
+        self.assertEqual(config.parity_partners('drills'), ['legacy', 'candidate90'])
+
+    def test_defence_is_part_of_the_scenario_identity(self):
+        plain = dict(set='town-dev', family='city', gen_seed=21, seed=107)
+        attack = dict(plain, defence=dict(layout='spread', defenders=12, seed=21))
+        self.assertNotEqual(config.spec_key(plain), config.spec_key(attack))
+        self.assertNotEqual(config.pair_key(plain), config.pair_key(attack))
+
+    def test_baseline_cache_is_keyed_by_epoch(self):
+        from tools.loop import baselines
+        spec = dict(set='town-dev', family='city', gen_seed=21, seed=107)
+        baselines.set_epoch('aaaa-legacy')
+        first = baselines._cache_path('legacy', spec, 360)
+        baselines.set_epoch('bbbb')
+        self.assertNotEqual(first, baselines._cache_path('legacy', spec, 360))
+        self.assertIn('aaaa', str(first))
+
+    def test_diagnosis_finds_a_static_attacking_squad_and_a_cancelled_flank(self):
+        from tools.loop.diagnose import summarise_run
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            records = [dict(kind='plan_phase', time=5, squad=1, soldier=8, reason='BLOCKED / HOLD', position=[0, 0, 0])]
+            for t in range(0, 130, 10):
+                for soldier in (8, 9):   # squad 1 never moves
+                    records.append(dict(kind='heartbeat', time=t, squad=1, soldier=soldier, reason='', position=[-50, 10 + soldier, 0], alive=1, health=100))
+                for soldier in (0, 1):   # squad 0 walks 3 m every 10 s
+                    records.append(dict(kind='heartbeat', time=t, squad=0, soldier=soldier, reason='', position=[-50 + 0.3*t, soldier, 0], alive=1, health=100))
+            records += [dict(kind='order_issued', time=60, squad=1, soldier=9, reason='FLANK', position=[0, 0, 0]),
+                        dict(kind='order_issued', time=61, squad=1, soldier=9, reason='HOLD', position=[0, 0, 0]),
+                        dict(kind='position_query', time=1, squad=1, soldier=9, reason='', position=[1, 1, 0])]
+            (run/'trace.jsonl').write_text(''.join(json.dumps(r, separators=(',', ':')) + '\n' for r in records))
+            (run/'shots.jsonl').write_text(json.dumps(dict(team=0, squad=0, time=42.0)) + '\n')
+            summary = summarise_run(run, seconds=120)
+        self.assertEqual([w['squad'] for w in summary['static_windows']], [1])
+        self.assertEqual(summary['static_windows'][0]['stated'], 'BLOCKED / HOLD')
+        self.assertEqual(summary['static_windows'][0]['end'] - summary['static_windows'][0]['start'], 120)
+        self.assertEqual(summary['movement_orders_replaced_within_3s'], {'FLANK -> HOLD': 1})
+        self.assertEqual(summary['first_attacker_shot'], 42.0)
+
+    def test_brief_locates_a_stated_reason_in_the_snapshot(self):
+        from tools.loop.propose import locate
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp)/'SquadDrillSim.cpp').write_text('int a;\nStage(l,p,d,time,DrillStage::SupportHold,"established base of fire; hold and report no covered assault route");\n')
+            self.assertEqual(locate(Path(tmp), 'established base of fire; hold and report no covered assault route'), 'SquadDrillSim.cpp:2')
+            self.assertIsNone(locate(Path(tmp), 'short'))
+
+    def test_replay_arguments_repeat_the_scenario(self):
+        from tools.loop.replay import launch_arguments
+        row = dict(set='town-attack-val', family='city', gen_seed=22, seed=107, map='/x/city-22.army', seconds=600, defence=dict(layout='spread', defenders=12, seed=22))
+        self.assertEqual(launch_arguments(dict(controller='legacy'), row),
+                         ['-ArmyLegacy', '-ArmySeed=107', '-ArmyBattleSeconds=600', '-ArmyMap=city', '-ArmyStaticDefence=spread', '-ArmyDefenders=12', '-ArmyDefenceSeed=22'])
+        self.assertEqual(launch_arguments(dict(controller='drills'), dict(set='trench-dev', family='trenches', gen_seed=21, seed=107, map='/x/t.army'))[-1], '-ArmyMap=trenches')
+
+    def test_audit_lists_added_frame_reads_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            diff = Path(tmp)/'diff.patch'
+            diff.write_text('--- a/CommandSim.cpp\n+++ b/CommandSim.cpp\n@@\n-    auto x=f.soldiers[enemy].position;\n+    auto y=f.soldiers[enemy].position;\n+    int wait=12;\n')
+            audit = static_check.audit_added_lines(diff)
+        self.assertTrue(audit['required'])
+        self.assertEqual(len(audit['lines']), 1)
+        self.assertEqual(audit['lines'][0]['file'], 'CommandSim.cpp')
+        self.assertFalse(static_check.audit_added_lines(None)['required'])
 
 
 class Scoring(unittest.TestCase):
     def test_better_candidate_scores_positive_and_passes(self):
         cand, base = synthetic()
-        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK, diff_lines=12)
+        result = score.score(V1, cand, base, EXTERNAL_OK, diff_lines=12)
         self.assertTrue(result['guards_pass'], {k: v for k, v in result['guards'].items() if not v['passed']})
         self.assertIsNotNone(result['value'])
         self.assertGreater(result['objective']['sets']['f1-val']['mean'], 0)
@@ -61,7 +208,7 @@ class Scoring(unittest.TestCase):
     def test_zero_shot_battle_fails_guard(self):
         cand, base = synthetic()
         cand['works'][3]['metrics']['shots'] = 0
-        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
+        result = score.score(V1, cand, base, EXTERNAL_OK)
         self.assertFalse(result['guards']['zero_shot']['passed'])
         self.assertIsNone(result['value'])
         self.assertEqual(result['guards']['zero_shot']['detail']['failures'][0]['key'], 't0-103')
@@ -69,14 +216,14 @@ class Scoring(unittest.TestCase):
     def test_two_firing_squads_fails_participation(self):
         cand, base = synthetic()
         cand['trenches'][0]['firing_squads'] = [2, 4]
-        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
+        result = score.score(V1, cand, base, EXTERNAL_OK)
         self.assertFalse(result['guards']['firing_squads']['passed'])
 
     def test_bunching_worse_than_legacy_fails(self):
         cand, base = synthetic()
         for r in cand['works']:
             r['metrics']['under_2m'] = 0.30
-        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
+        result = score.score(V1, cand, base, EXTERNAL_OK)
         self.assertFalse(result['guards']['under_2m']['passed'])
         self.assertFalse(result['guards']['under_2m']['detail']['works']['passed'])
         self.assertTrue(result['guards']['under_2m']['detail']['trenches']['passed'])
@@ -84,7 +231,7 @@ class Scoring(unittest.TestCase):
     def test_external_failure_removes_value_but_keeps_objective(self):
         cand, base = synthetic()
         external = dict(EXTERNAL_OK, selectors=dict(ok=False, failed=['D08']))
-        result = score.score(score.load_guards(), cand, base, external)
+        result = score.score(V1, cand, base, external)
         self.assertFalse(result['guards_pass'])
         self.assertIsNone(result['value'])
         self.assertIsNotNone(result['objective']['value'])
@@ -92,7 +239,7 @@ class Scoring(unittest.TestCase):
     def test_worse_candidate_ranks_below(self):
         good, base = synthetic(0.9, 0.5, seed=3)
         bad, _ = synthetic(0.2, 0.5, seed=3)
-        spec = score.load_guards()
+        spec = V1
         a = score.score(spec, good, base, EXTERNAL_OK)
         b = score.score(spec, bad, base, EXTERNAL_OK)
         self.assertLess(score.rank_key(a), score.rank_key(b))
@@ -145,7 +292,7 @@ class Tree(unittest.TestCase):
         self.assertTrue(Path(tree.write_diff('child', 'parent')).read_text().startswith('--- a/A.cpp'))
         cand, base = synthetic()
         tree.write_rows('child', cand)
-        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
+        result = score.score(V1, cand, base, EXTERNAL_OK)
         tree.write_score('child', result)
         self.assertEqual(tree.load('child')['scores']['v1']['guards_pass'], True)
         self.assertEqual([n['id'] for n in tree.list_nodes()], ['parent', 'child'])

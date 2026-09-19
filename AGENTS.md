@@ -1,3 +1,40 @@
+## Plan 018: static-defence attack scenarios and the first loop roots — 18 September 2026
+
+[Plan 018](plans/018-static-defence-and-loop-roots.md) records the user's decisions of
+18 September 2026. AI behaviour is judged on generated **city maps**; trench maps only
+prove soldiers still shoot; the static authored maps stay only in parity checks. Both
+**legacy and drills are roots** of the plan 016 discovery tree. The objective is the
+user's own idea: an attack on **static defenders**, Ember soldiers placed in cover
+(building, spread or clusters, 12 by default) who fire and duck but never leave their
+position; Azure wins only by clearing them. Score v3 (`tools/loop/guards.json`) ranks on
+`town-attack-val`: defenders put out of action minus half the attacker's own loss, 600 s
+battles, lower bound of a cluster bootstrap. Sim source `b8f9e3b64c1fb65e`
+(`--static-defence <layout> --defenders N --defence-seed S`, `-ArmyStaticDefence=` in
+Unreal; `Sim/DefenceGen.cpp`), implemented by an Opus agent and reviewed by Fable, who
+added two follow-ups: the drills attacker heads for its ordered objective on every leg
+(it walked past it), and positions whose firing edge is within 3 m are seated first.
+Off by default: 40/40 historical parity, full Linux suite, the new `--static-defence`
+group and 115 Python tests pass; the six known failing selectors and scenarios are
+unchanged. The Unreal module compiles on UE 5.4 on this machine (`scripts/build.sh`
+now adapts only the mirror to the installed engine; the repository still declares 5.8).
+
+First scored roots (20 development and 15 validation town attacks, evidence in
+`.local/plan018/`): **legacy +0.589 mean, +0.487 lower bound**, clears 20 % of
+battles, defenders lost 77 %, attackers lost 37 %, every guard passes; **drills +0.390
+mean, +0.274 lower bound**, clears none, defenders lost 51 %, and it has no score
+because 10 attack battles and 2 town battles had fewer than three squads firing, the
+stall measured earlier the same day. Drills still beats legacy on the paired town
+guards (11 points fewer men within 2 m, about 105 fewer orders a minute, less friendly
+fire). Loop changes: selectors guard relative to the lineage root, parity guard as the
+lineage rule (a node may change only its own controller; the defender too must stay
+digest-identical), sparring rows from the root binary per epoch, `diagnose`, `brief`
+and `replay` commands, exports compressed, seven parallel battles (memory bound: 3.1 GB
+a battle, WSL capped at 30 GB of this host's 61.6 GB). Not yet done: proposer agents
+have not been launched (Sonnet 5 default, Haiku 4.5 for narrow edits; a worktree needs
+this work committed first), parameter search and the Dream-RSI policy layer. Limits
+disclosed in the plan: the objective measures the attack only, and shared soldier-level
+code is outside the loop's reach. Nothing is promoted; legacy remains the default.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two

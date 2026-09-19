@@ -28,3 +28,24 @@ def check(sim_dir: Path = SIM, files=POLICY_FILES, tokens=FORBIDDEN_TOKENS):
                 if token in code:
                     hits.append(dict(file=name, line=number, token=token, text=stripped[:160]))
     return dict(ok=not hits, hits=hits, files=list(files), tokens=list(tokens))
+
+
+AUDIT_TOKENS = ['.soldiers[', 'f.soldiers', 'frame.soldiers', 'Frame&', 'const Frame', 'observer', 'fullVision', '.shots', 'enemy.position', 'truth']
+
+
+def audit_added_lines(diff_path):
+    """Added lines that touch frame or soldier arrays, for a human or architect audit.
+
+    The policy-file check above is a hard guard for the drills sources. Legacy command
+    code legitimately handles the whole frame for transport, so a token cannot decide
+    there; these lines are listed on the node and audited before a survivor is shown."""
+    if not diff_path or not Path(diff_path).exists():
+        return dict(required=False, lines=[])
+    flagged, current = [], None
+    for line in Path(diff_path).read_text().splitlines():
+        if line.startswith('+++ '):
+            current = line[6:] if line.startswith('+++ b/') else line[4:]
+        elif line.startswith('+') and not line.startswith('+++'):
+            if any(token in line for token in AUDIT_TOKENS):
+                flagged.append(dict(file=current, line=line[1:].strip()[:240]))
+    return dict(required=bool(flagged), lines=flagged)

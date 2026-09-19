@@ -32,8 +32,17 @@ BASELINES = {
     # comparable reference; legacy and candidate90 follow the candidate binary.
     'squad-only': dict(controller='drills', binary=str(REPO/'.local/phase3h/final/battle-lab'),
                        version='a0364bff5cea6ab9-linux'),
+    'drills': dict(controller='drills', binary=None),
 }
 OBJECTIVE_BASELINES = ('legacy', 'candidate90')
+# Plan 018: a node belongs to one lineage and may change only that controller's
+# behaviour. The others are its parity partners and must stay digest-identical.
+LINEAGES = ('legacy', 'drills')
+CONTROLLERS = ('legacy', 'candidate90', 'drills')
+
+
+def parity_partners(controller: str):
+    return [c for c in CONTROLLERS if c != controller]
 
 AUTHORED_SEEDS = list(range(100, 110))
 F1_DEV_GEN_SEEDS = list(range(1, 31))
@@ -44,6 +53,16 @@ VALIDATION_SALT = 'plan016'
 MAP_DEV_SEEDS = list(range(21, 41))
 MAP_VALIDATION_COUNT = 10
 MAP_BATTLE_SEED = 107
+# Trench maps only prove soldiers still shoot (user decision 18 Sep 2026): ten are enough.
+TRENCH_DEV_SEEDS = MAP_DEV_SEEDS[:10]
+# Plan 018 static-defence attack scenarios on town maps: Ember holds cover and never
+# relocates; the layout rotates with the map seed so every set mixes all three.
+ATTACK_LAYOUTS = ('building', 'spread', 'clusters')
+ATTACK_DEFENDERS = 12
+ATTACK_VALIDATION_COUNT = 15
+# Measured 18 Sep 2026: the defended locality is 165 to 235 m from the attacker's start line and
+# legacy squads were still closing at 340 to 360 s, so a 360 s attack mostly measures the walk.
+ATTACK_SECONDS = 600
 
 # Spot checks proving legacy and cognition are unchanged on the candidate binary.
 PARITY_SPECS = [dict(set='works', terrain=0, seed=107), dict(set='trenches', terrain=1, seed=107)]
@@ -78,20 +97,39 @@ def scenario_sets(build: str, validation_count: int = VALIDATION_COUNT, salt: st
     }
     val_seeds = maps.validation_seeds(build, salt, MAP_VALIDATION_COUNT)
     for kind, name in (('city', 'town'), ('trenches', 'trench')):
-        sets[f'{name}-dev'] = maps.specs(f'{name}-dev', kind, MAP_DEV_SEEDS, MAP_BATTLE_SEED)
+        dev = TRENCH_DEV_SEEDS if kind == 'trenches' else MAP_DEV_SEEDS
+        sets[f'{name}-dev'] = maps.specs(f'{name}-dev', kind, dev, MAP_BATTLE_SEED)
         sets[f'{name}-val'] = maps.specs(f'{name}-val', kind, val_seeds, MAP_BATTLE_SEED)
+    attack_val = maps.validation_seeds(build, salt + '|attack', ATTACK_VALIDATION_COUNT)
+    sets['town-attack-dev'] = maps.specs('town-attack-dev', 'city', MAP_DEV_SEEDS, MAP_BATTLE_SEED, attack=True)
+    sets['town-attack-val'] = maps.specs('town-attack-val', 'city', attack_val, MAP_BATTLE_SEED, attack=True)
     return sets
+
+
+def parity_specs():
+    """Spot battles for the lineage parity guard: both static maps, one town map and
+    one static-defence battle, so a candidate cannot move the defender either."""
+    from tools.loop import maps
+    town = maps.specs('parity-town', 'city', MAP_DEV_SEEDS[:1], MAP_BATTLE_SEED)
+    attack = maps.specs('parity-attack', 'city', MAP_DEV_SEEDS[:1], MAP_BATTLE_SEED, attack=True)
+    return PARITY_SPECS + town + attack
+
+
+def defence_key(spec: dict) -> str:
+    d = spec.get('defence')
+    return f"-{d['layout']}{d['defenders']}s{d['seed']}" if d else ''
 
 
 def spec_key(spec: dict) -> str:
     if 'family' in spec:
-        return f"{spec['family']}-{spec['gen_seed']}-{spec['seed']}"
+        return f"{spec['family']}-{spec['gen_seed']}-{spec['seed']}" + defence_key(spec)
     return f"t{spec['terrain']}-{spec['seed']}"
 
 
 def pair_key(spec_or_row: dict):
     """Pairing key across controllers on the same scenario."""
-    return (spec_or_row.get('family') or 'authored', spec_or_row.get('terrain', -1), spec_or_row.get('gen_seed', 0), spec_or_row['seed'])
+    return (spec_or_row.get('family') or 'authored', spec_or_row.get('terrain', -1), spec_or_row.get('gen_seed', 0), spec_or_row['seed'],
+            defence_key(spec_or_row))
 
 
 def cluster_key(row: dict):
@@ -102,7 +140,8 @@ def cluster_key(row: dict):
 def config_digest() -> str:
     payload = json.dumps(dict(seconds=SECONDS, authored=AUTHORED_SEEDS, f1_dev=[F1_DEV_GEN_SEEDS, F1_DEV_SEEDS],
                               validation=[VALIDATION_COUNT, VALIDATION_SALT], baselines=BASELINES,
-                              maps=[MAP_DEV_SEEDS, MAP_VALIDATION_COUNT, MAP_BATTLE_SEED],
+                              maps=[MAP_DEV_SEEDS, MAP_VALIDATION_COUNT, MAP_BATTLE_SEED, TRENCH_DEV_SEEDS],
+                              attack=[ATTACK_LAYOUTS, ATTACK_DEFENDERS, ATTACK_VALIDATION_COUNT, ATTACK_SECONDS], lineages=LINEAGES,
                               selectors=SELECTORS + SELECTOR_GROUPS, policy=POLICY_FILES, tokens=FORBIDDEN_TOKENS),
                          sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()[:16]

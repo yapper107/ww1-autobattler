@@ -49,12 +49,19 @@ def validation_seeds(build: str, salt: str, count: int, low: int = 1000, span: i
     return seeds
 
 
-def specs(set_name: str, kind: str, seeds, battle_seed: int = 107):
-    """Battle specs for one kind over map seeds; maps are generated on demand."""
+def specs(set_name: str, kind: str, seeds, battle_seed: int = 107, attack: bool = False):
+    """Battle specs for one kind over map seeds; maps are generated on demand.
+
+    ``attack`` adds a plan 018 static defence: layout by map seed, defence seed = map seed."""
     out = []
     for seed in seeds:
         paths = ensure(seed)
-        out.append(dict(set=set_name, family=kind, gen_seed=seed, seed=battle_seed, map=str(paths[kind])))
+        spec = dict(set=set_name, family=kind, gen_seed=seed, seed=battle_seed, map=str(paths[kind]))
+        if attack:
+            from tools.loop.config import ATTACK_DEFENDERS, ATTACK_LAYOUTS, ATTACK_SECONDS
+            spec['defence'] = dict(layout=ATTACK_LAYOUTS[seed % len(ATTACK_LAYOUTS)], defenders=ATTACK_DEFENDERS, seed=seed)
+            spec['seconds'] = ATTACK_SECONDS
+        out.append(spec)
     return out
 
 

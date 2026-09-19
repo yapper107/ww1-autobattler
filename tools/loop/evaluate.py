@@ -26,17 +26,21 @@ def protected_files():
     return dict(ok=not mismatched, mismatched=mismatched, pinned=len(pins))
 
 
-def parity(binary, node_dir, jobs=None, progress=None):
-    """Legacy and cognition spot battles on the candidate binary must reproduce cached digests."""
+def parity(binary, node_dir, jobs=None, progress=None, controller='drills', reference_binary=None, specs=None):
+    """Lineage rule: the controllers this node does not own must reproduce the epoch's digests
+    on the candidate binary, on the static maps, a town map and a static-defence battle."""
     detail, ok = {}, True
-    for name in ('legacy', 'candidate90'):
-        fresh = run_specs(binary, config.BASELINES[name]['controller'], PARITY_SPECS, node_dir/'parity', jobs, SECONDS, False, progress)
-        for spec, row in zip(PARITY_SPECS, fresh):
+    specs = PARITY_SPECS if specs is None else specs
+    for name in config.parity_partners(controller):
+        fresh = run_specs(binary, config.BASELINES[name]['controller'], specs, node_dir/'parity', jobs, SECONDS, False, progress)
+        for spec, row in zip(specs, fresh):
             reference = baselines.parity_reference(name, spec)
             got = row.get('digest')
-            if reference is None:
-                # first candidate establishes the reference through the cache
-                baselines.rows_for(name, [spec], binary, SECONDS, jobs)
+            if row.get('status') != 'complete':
+                status, ok = 'failed', False
+            elif reference is None:
+                # the root establishes the epoch's reference through the cache
+                baselines.rows_for(name, [spec], reference_binary or binary, SECONDS, jobs)
                 status = 'established'
             else:
                 status = 'match' if got == reference else 'mismatch'
@@ -45,15 +49,35 @@ def parity(binary, node_dir, jobs=None, progress=None):
     return dict(ok=ok, detail=detail)
 
 
+def needed_sets(spec):
+    """Every scenario set the score reads: run these and nothing else."""
+    names = set(spec['objective']['reported_sets'])
+    for g in spec['guards']:
+        names.update(g.get('sets', []))
+    return names
+
+
+def selectors_against_root(result, root_external):
+    """A child may not break a selector its lineage root passes. The root's own failures are
+    recorded on it as known; they are reported, not repaired, by the loop."""
+    failed = set(result.get('failed', []))
+    known = failed if root_external is None else set(root_external.get('selectors', {}).get('failed', []))
+    result['known_failures'] = sorted(failed & known)
+    result['new_failures'] = sorted(failed - known)
+    if 'reason' not in result:
+        result['ok'] = not result['new_failures']
+    return result
+
+
 def baseline_needs(spec):
     needs = {}
     for g in spec['guards']:
         if g['kind'] == 'paired':
             needs.setdefault(g['baseline'], set()).update(g['sets'])
-    for b in spec['objective']['baselines']:
+    for b in spec['objective'].get('baselines', []):
         needs.setdefault(b, set()).update(spec['objective']['reported_sets'])
     for b in spec.get('information', []):
-        needs.setdefault(b, set()).update(['f1-dev', 'f1-val'])
+        needs.setdefault(b, set()).update(spec['objective']['reported_sets'])
     return needs
 
 
@@ -68,18 +92,28 @@ def baseline_rows_for(spec, sets, binary, jobs=None, run_missing=True, progress=
 
 
 def evaluate_candidate(parent=None, proposer=None, brief=None, jobs=None, skip_selectors=False, skip_python=False,
-                       only_sets=None, suffix=None, force=False, log=print):
+                       only_sets=None, suffix=None, force=False, log=print, controller='drills', external_from=None):
     fingerprint = selectors.source_id()
     node_id = fingerprint + (f'-{suffix}' if suffix else '')
     if tree.exists(node_id) and not force:
         raise SystemExit(f'node {node_id} exists; use --force to re-evaluate')
     node = tree.new_node(node_id, parent, proposer or dict(kind='human'), brief)
     node['config_digest'] = config.config_digest()
+    node['controller'] = controller
+    root_id = tree.lineage_root(parent) if parent else None
+    if parent and not root_id:
+        raise SystemExit(f'parent {parent} is not in the tree')
+    root = tree.load(root_id) if root_id else None
+    if root and root.get('controller', 'drills') != controller:
+        raise SystemExit(f"lineage {root['controller']} cannot take a {controller} child")
+    node['lineage_root'] = root_id or node_id
+    baselines.set_epoch(root_id or fingerprint)
     tree.save(node)
     d = tree.node_dir(node_id)
     tree.snapshot_source(node_id)
     node['diff'] = tree.write_diff(node_id, parent)
     node['tie_break'] = dict(diff_lines=tree.diff_lines(node_id, parent))
+    node['audit'] = static_check.audit_added_lines(node['diff'])
     external = node['external']
 
     log(f'[{node_id}] build')
@@ -95,34 +129,47 @@ def evaluate_candidate(parent=None, proposer=None, brief=None, jobs=None, skip_s
 
     external['static_check'] = static_check.check()
     external['protected_files'] = protected_files()
-    if skip_selectors:
+    # Selectors and Python tests describe the source, not the controller: a second
+    # root on the same fingerprint reuses the first root's recorded results.
+    donor = tree.load(external_from)['external'] if external_from else None
+    if donor and external_from.split('-')[0] != fingerprint:
+        raise SystemExit(f'{external_from} is another source; its selector results cannot be reused')
+    if donor:
+        external['selectors'] = dict(donor['selectors'], reused_from=external_from)
+    elif skip_selectors:
         external['selectors'] = dict(ok=False, reason='skipped')
     else:
         log(f'[{node_id}] test build and selectors')
         built = selectors.build_tests(d/'tests-build.log')
         external['selectors'] = selectors.run_selectors(d) if built['ok'] else dict(ok=False, reason='test build failed', log=built['log'])
-    external['python_tests'] = dict(ok=False, reason='skipped') if skip_python else selectors.run_python_tests(d/'python-tests.log')
+    selectors_against_root(external['selectors'], root['external'] if root else None)
+    if donor:
+        external['python_tests'] = dict(donor['python_tests'], reused_from=external_from)
+    else:
+        external['python_tests'] = dict(ok=False, reason='skipped') if skip_python else selectors.run_python_tests(d/'python-tests.log')
     tree.save(node)
 
     version = external['build']['version']
-    sets = config.scenario_sets(version)
-    if only_sets:
-        sets = {k: v for k, v in sets.items() if k in only_sets}
+    spec = scoring.load_guards()
+    wanted = set(only_sets) if only_sets else needed_sets(spec)
+    sets = {k: v for k, v in config.scenario_sets(version).items() if k in wanted}
     node['draws'] = {k: [config.spec_key(s) for s in v] for k, v in sets.items()}
     started = time.monotonic()
     rows_by_set = {}
     for name, specs in sets.items():
         log(f'[{node_id}] {name}: {len(specs)} battles')
-        rows_by_set[name] = run_specs(binary, 'drills', specs, d/'runs', jobs, SECONDS, False)
+        rows_by_set[name] = run_specs(binary, controller, specs, d/'runs', jobs, SECONDS, False)
         done = sum(1 for r in rows_by_set[name] if r['status'] == 'complete')
         log(f'[{node_id}] {name}: {done}/{len(specs)} complete')
     tree.write_rows(node_id, rows_by_set)
     node['battle_seconds'] = time.monotonic() - started
 
     log(f'[{node_id}] parity and baselines')
-    external['parity'] = parity(binary, d, jobs)
-    spec = scoring.load_guards()
-    baseline_rows = baseline_rows_for(spec, sets, binary, jobs)
+    # Sparring rows and parity references always come from the lineage root's binary, so a
+    # legacy child is compared with the root's legacy, never with itself.
+    reference_binary = Path(root['binary']) if root else binary
+    external['parity'] = parity(binary, d, jobs, controller=controller, reference_binary=reference_binary, specs=config.parity_specs())
+    baseline_rows = baseline_rows_for(spec, sets, reference_binary, jobs)
     _finish(node, rows_by_set, baseline_rows, external, log, spec)
     return node
 

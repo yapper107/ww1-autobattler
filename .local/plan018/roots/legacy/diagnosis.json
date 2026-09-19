@@ -1,0 +1,331 @@
+{
+ "node": "b8f9e3b64c1fb65e-legacy",
+ "set": "town-attack-dev",
+ "battles": [
+  {
+   "first_attacker_shot": 62.05,
+   "static_windows": [
+    {
+     "squad": 2,
+     "start": 150.0,
+     "end": 280.0,
+     "alive": 6,
+     "at": [
+      2,
+      -26
+     ],
+     "shots": 97,
+     "stated": "BOUND"
+    },
+    {
+     "squad": 2,
+     "start": 400.0,
+     "end": 450.0,
+     "alive": 4,
+     "at": [
+      -1,
+      -21
+     ],
+     "shots": 0,
+     "stated": "protected maneuver wins candidate comparison"
+    },
+    {
+     "squad": 2,
+     "start": 460.0,
+     "end": 550.0,
+     "alive": 4,
+     "at": [
+      0,
+      -22
+     ],
+     "shots": 0,
+     "stated": "protected maneuver wins candidate comparison"
+    },
+    {
+     "squad": 2,
+     "start": 560.0,
+     "end": 600.0,
+     "alive": 4,
+     "at": [
+      0,
+      -22
+     ],
+     "shots": 0,
+     "stated": "SEARCH"
+    },
+    {
+     "squad": 3,
+     "start": 110.0,
+     "end": 160.0,
+     "alive": 8,
+     "at": [
+      -1,
+      -1
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 320.0,
+     "end": 390.0,
+     "alive": 8,
+     "at": [
+      -4,
+      2
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 450.0,
+     "end": 500.0,
+     "alive": 8,
+     "at": [
+      -3,
+      0
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 530.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      -2,
+      -1
+     ],
+     "shots": 0,
+     "stated": "BLOCKED / HOLD"
+    }
+   ],
+   "static_squad_seconds": 550.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {
+    "FLANK -> CLEAR FIRING LANE": 36,
+    "FLANK -> HOLD": 13,
+    "ADVANCE -> BOUND / COVER": 12,
+    "FLANK -> REGROUP": 11,
+    "FLANK -> BOUND / COVER": 8,
+    "BOUND / MOVE -> HOLD": 8,
+    "BOUND / MOVE -> BOUND / COVER": 6,
+    "ADVANCE -> REGROUP": 6
+   },
+   "key": "city-28-107-spread12s28",
+   "layout": "spread",
+   "attack_score": 0.234375,
+   "defender_loss": 0.5,
+   "attacker_loss": 0.53125
+  },
+  {
+   "first_attacker_shot": 62.75,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 140.0,
+     "end": 180.0,
+     "alive": 8,
+     "at": [
+      -13,
+      -55
+     ],
+     "shots": 109,
+     "stated": "BOUND"
+    },
+    {
+     "squad": 0,
+     "start": 330.0,
+     "end": 390.0,
+     "alive": 8,
+     "at": [
+      -6,
+      -44
+     ],
+     "shots": 0,
+     "stated": "protected maneuver wins candidate comparison"
+    },
+    {
+     "squad": 1,
+     "start": 500.0,
+     "end": 550.0,
+     "alive": 2,
+     "at": [
+      46,
+      -17
+     ],
+     "shots": 33,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 1,
+     "start": 560.0,
+     "end": 600.0,
+     "alive": 2,
+     "at": [
+      49,
+      -16
+     ],
+     "shots": 9,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 2,
+     "start": 280.0,
+     "end": 390.0,
+     "alive": 7,
+     "at": [
+      12,
+      11
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 2,
+     "start": 420.0,
+     "end": 470.0,
+     "alive": 7,
+     "at": [
+      13,
+      11
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 110.0,
+     "end": 150.0,
+     "alive": 8,
+     "at": [
+      -7,
+      51
+     ],
+     "shots": 24,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 260.0,
+     "end": 350.0,
+     "alive": 8,
+     "at": [
+      6,
+      52
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 410.0,
+     "end": 450.0,
+     "alive": 8,
+     "at": [
+      5,
+      53
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 460.0,
+     "end": 520.0,
+     "alive": 8,
+     "at": [
+      7,
+      53
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 530.0,
+     "end": 570.0,
+     "alive": 8,
+     "at": [
+      7,
+      53
+     ],
+     "shots": 0,
+     "stated": "BLOCKED / HOLD"
+    }
+   ],
+   "static_squad_seconds": 620.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {
+    "FLANK -> HOLD": 19,
+    "FLANK -> BOUND / COVER": 18,
+    "BOUND / MOVE -> BOUND / COVER": 15,
+    "ADVANCE -> FLANK": 13,
+    "ADVANCE -> REGROUP": 11,
+    "FLANK -> REGROUP": 8,
+    "FLANK -> ADVANCE": 7,
+    "BOUND / MOVE -> FLANK": 5
+   },
+   "key": "city-31-107-spread12s31",
+   "layout": "spread",
+   "attack_score": 0.2760416666666667,
+   "defender_loss": 0.4166666666666667,
+   "attacker_loss": 0.28125
+  },
+  {
+   "first_attacker_shot": 41.7,
+   "static_windows": [
+    {
+     "squad": 2,
+     "start": 290.0,
+     "end": 330.0,
+     "alive": 8,
+     "at": [
+      -36,
+      -50
+     ],
+     "shots": 23,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 470.0,
+     "end": 510.0,
+     "alive": 8,
+     "at": [
+      -31,
+      -30
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    }
+   ],
+   "static_squad_seconds": 80.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {
+    "FLANK -> CLEAR FIRING LANE": 220,
+    "FLANK -> HOLD": 45,
+    "BOUND / MOVE -> BOUND / COVER": 20,
+    "ADVANCE -> FLANK": 19,
+    "FLANK -> BOUND / COVER": 16,
+    "ADVANCE -> REGROUP": 12,
+    "FLANK -> ADVANCE": 9,
+    "ADVANCE -> HOLD": 5
+   },
+   "key": "city-30-107-building12s30",
+   "layout": "building",
+   "attack_score": 0.30208333333333337,
+   "defender_loss": 0.5833333333333334,
+   "attacker_loss": 0.5625
+  }
+ ],
+ "static_seconds_by_stated_reason": {
+  "PREPARE MOVEMENT": 730.0,
+  "protected maneuver wins candidate comparison": 200.0,
+  "BOUND": 170.0,
+  "BLOCKED / HOLD": 110.0,
+  "SEARCH": 40.0
+ }
+}

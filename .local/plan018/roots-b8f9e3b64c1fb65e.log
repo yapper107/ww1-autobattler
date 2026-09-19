@@ -1,0 +1,33 @@
+[b8f9e3b64c1fb65e-legacy] build
+[b8f9e3b64c1fb65e-legacy] test build and selectors
+[b8f9e3b64c1fb65e-legacy] town-dev: 20 battles
+[b8f9e3b64c1fb65e-legacy] town-dev: 20/20 complete
+[b8f9e3b64c1fb65e-legacy] trench-dev: 10 battles
+[b8f9e3b64c1fb65e-legacy] trench-dev: 10/10 complete
+[b8f9e3b64c1fb65e-legacy] town-attack-dev: 20 battles
+[b8f9e3b64c1fb65e-legacy] town-attack-dev: 20/20 complete
+[b8f9e3b64c1fb65e-legacy] town-attack-val: 15 battles
+[b8f9e3b64c1fb65e-legacy] town-attack-val: 15/15 complete
+[b8f9e3b64c1fb65e-legacy] parity and baselines
+[b8f9e3b64c1fb65e-legacy] guards pass; objective 0.48680555555555555
+{
+ "id": "b8f9e3b64c1fb65e-legacy",
+ "scores": {}
+}
+=== legacy root exit 0
+[b8f9e3b64c1fb65e-drills] build
+[b8f9e3b64c1fb65e-drills] town-dev: 20 battles
+[b8f9e3b64c1fb65e-drills] town-dev: 20/20 complete
+[b8f9e3b64c1fb65e-drills] trench-dev: 10 battles
+[b8f9e3b64c1fb65e-drills] trench-dev: 10/10 complete
+[b8f9e3b64c1fb65e-drills] town-attack-dev: 20 battles
+[b8f9e3b64c1fb65e-drills] town-attack-dev: 20/20 complete
+[b8f9e3b64c1fb65e-drills] town-attack-val: 15 battles
+[b8f9e3b64c1fb65e-drills] town-attack-val: 15/15 complete
+[b8f9e3b64c1fb65e-drills] parity and baselines
+[b8f9e3b64c1fb65e-drills] guards FAIL firing_squads,attacker_firing_squads; objective 0.27394097222222225
+{
+ "id": "b8f9e3b64c1fb65e-drills",
+ "scores": {}
+}
+=== drills root exit 0

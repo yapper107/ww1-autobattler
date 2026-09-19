@@ -14,8 +14,18 @@ from tools.loop.config import BASELINE_ROOT, BASELINES, SECONDS, spec_key
 from tools.loop.runner import run_specs
 
 
+# Plan 018: sparring rows belong to an epoch, the source fingerprint of the lineage
+# root. A human change to shared code starts a new root and therefore a new cache.
+_EPOCH = 'unversioned'
+
+
+def set_epoch(fingerprint: str):
+    global _EPOCH
+    _EPOCH = fingerprint.split('-')[0]
+
+
 def _cache_path(name, spec, seconds):
-    return BASELINE_ROOT/name/spec['set']/f'{spec_key(spec)}-{seconds}.json'
+    return BASELINE_ROOT/_EPOCH/name/spec['set']/f"{spec_key(spec)}-{spec.get('seconds', seconds)}.json"
 
 
 def cached(name, spec, seconds=SECONDS):
@@ -36,7 +46,7 @@ def rows_for(name, specs, candidate_binary, seconds=SECONDS, jobs=None, run_miss
         if row is None:
             missing.append(spec)
     if missing and run_missing:
-        fresh = run_specs(binary, base['controller'], missing, BASELINE_ROOT/name/'runs', jobs, seconds, False, progress)
+        fresh = run_specs(binary, base['controller'], missing, BASELINE_ROOT/_EPOCH/name/'runs', jobs, seconds, False, progress)
         for spec, row in zip(missing, fresh):
             row['baseline'] = name
             if row['status'] == 'complete':

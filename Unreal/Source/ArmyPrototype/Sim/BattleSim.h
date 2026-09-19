@@ -237,6 +237,10 @@ struct AcceptedPlan {
     std::string reason;
 };
 enum class ScenarioFamily { None, F1, F2, F3 };
+// Static defence: Ember occupies prepared cover around one locality and never
+// manoeuvres, so an attacking controller has a fixed problem to solve.
+enum class DefenceLayout { None, Building, Spread, Clusters };
+const char* DefenceLayoutName(DefenceLayout layout);
 struct Config {
     bool cognition=false, fullVision=false;
     float reportDelay=.75f;
@@ -249,6 +253,19 @@ struct Config {
     bool foundations=false; // Opt-in perception/belief experiment; legacy baseline remains reproducible.
     float estimateBias=0; // Interpretation only: -1 underestimates, +1 overestimates.
     bool recoveryFixture=false; // Experimental policy: controlled encounters only until acceptance.
+
+    // Layout None leaves every historical battle untouched. seed 0 means "use seed",
+    // like rosterSeed. objective/attackerObjectives are resolved once by Simulate
+    // before the first tick: they are the attacker's own pre-battle orders and never
+    // carry a defender position.
+    struct StaticDefence {
+        DefenceLayout layout=DefenceLayout::None;
+        int defenders=12;
+        uint32_t seed=0;
+        bool resolved=false;
+        Vec3 objective{};
+        std::array<Vec3,SquadsPerTeam> attackerObjectives{};
+    } staticDefence;
 
     bool drills=false;
     ScenarioFamily family=ScenarioFamily::None;
@@ -265,6 +282,10 @@ struct Config {
 inline bool SameConfig(const Config& a,const Config& b) {
     if(bool(a.battlefield)!=bool(b.battlefield)||(a.battlefield&&a.battlefield->digest!=b.battlefield->digest))return false;
     if(a.rosterSeed!=b.rosterSeed||!SameDistribution(a.statProfiles[0],b.statProfiles[0])||!SameDistribution(a.statProfiles[1],b.statProfiles[1]))return false;
+    // Only the authored static-defence inputs are compared, and only when a layout
+    // is selected: the resolved objective is derived from them and the map.
+    if(a.staticDefence.layout!=b.staticDefence.layout)return false;
+    if(a.staticDefence.layout!=DefenceLayout::None&&(a.staticDefence.defenders!=b.staticDefence.defenders||a.staticDefence.seed!=b.staticDefence.seed))return false;
     return a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
@@ -701,7 +722,31 @@ GeneratedScenario GenerateScenario(ScenarioFamily family,uint32_t genSeed);
 bool ValidateScenario(const GeneratedScenario& scenario,std::string& error);
 void ApplyScenario(const GeneratedScenario& scenario,const Config& config,Map& map,Frame& frame);
 uint64_t ScenarioDigest(const GeneratedScenario& scenario);
+// One occupied defensive position. shelter/peek are the ordinary cover pair, so a
+// defender peeks, fires, ducks, reloads and is suppressed through the usual code.
+struct DefencePosition { CoverPosition cover; bool sheltered=false; int cluster=-1; };
+struct DefencePlan {
+    DefenceLayout layout=DefenceLayout::None;
+    uint32_t seed=0;
+    // threat is the approach point the positions are protected from: sixty metres
+    // out from the objective along the attacker's own deployment axis.
+    Vec3 objective{},threat{};
+    float radius=0;                        // Locality radius actually used for placement.
+    int requested=0,exposed=0,clusters=0;  // exposed counts relaxed, unprotected positions.
+    std::vector<DefencePosition> positions;
+    std::array<int,UnitCount> occupant{};  // index into positions; -1 when not a defender.
+    std::array<Vec3,SquadsPerTeam> attackerObjectives{};
+    std::string note;
+    bool Defends(int id) const { return id>=0&&id<UnitCount&&occupant[id]>=0; }
+    const DefencePosition& At(int id) const { return positions[size_t(occupant[id])]; }
+};
+// Placement never consumes the battle RNG: every draw is a splitmix64 hash of
+// (defence seed, layout, index, attempt). Throws std::runtime_error when the map
+// cannot seat the requested defenders.
+DefencePlan PlanStaticDefence(const Config& config,const Map& map,const std::array<Vec3,UnitCount>& deployment);
+void ApplyStaticDefence(const DefencePlan& plan,const Config& config,Frame& frame);
 struct Record {
+    std::shared_ptr<const DefencePlan> defence;
     std::shared_ptr<const GeneratedScenario> generated;
     std::vector<GeometryVersion> geometryVersions;
     std::shared_ptr<Diagnostics> diagnostics;

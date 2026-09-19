@@ -1,0 +1,9 @@
+STATIC DEFENCE building legacy: shots=988 ember_shots=762 closest=36.8012 winner=1
+STATIC DEFENCE building drills: shots=270 ember_shots=250 closest=46.3935 winner=1
+STATIC DEFENCE spread legacy: shots=713 ember_shots=416 closest=15.7623 winner=1
+STATIC DEFENCE spread drills: shots=594 ember_shots=277 closest=34.741 winner=1
+STATIC DEFENCE clusters legacy: shots=333 ember_shots=146 closest=34.8698 winner=1
+STATIC DEFENCE clusters drills: shots=30 ember_shots=30 closest=62.947 winner=1
+STATIC DEFENCE contact battles=4 of those with defensive fire=4
+STATIC DEFENCE: placement, hold clamp under legacy and drills, win rule, determinism and refusals PASS
+static-defence tests exit 0

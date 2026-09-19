@@ -1,0 +1,11 @@
+[b8f9e3b64c1fb65e-legacy] tracing city-28-107-spread12s28 (attack score +0.234)
+[b8f9e3b64c1fb65e-legacy] tracing city-31-107-spread12s31 (attack score +0.276)
+[b8f9e3b64c1fb65e-legacy] tracing city-30-107-building12s30 (attack score +0.302)
+{
+ "PREPARE MOVEMENT": 730.0,
+ "protected maneuver wins candidate comparison": 200.0,
+ "BOUND": 170.0,
+ "BLOCKED / HOLD": 110.0,
+ "SEARCH": 40.0
+}
+exit 0

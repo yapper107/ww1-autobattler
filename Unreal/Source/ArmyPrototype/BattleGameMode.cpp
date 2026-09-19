@@ -58,6 +58,15 @@ void ABattleGameMode::BeginPlay() {
     if(army::TypedController(Settings)){Settings.foundations=true;FParse::Value(FCommandLine::Get(),TEXT("ArmyScenario="),CognitiveScenario);CognitiveScenario=FMath::Clamp(CognitiveScenario,0,Settings.drills?7:43);}
     FString GeneratedFamily; if(FParse::Value(FCommandLine::Get(),TEXT("ArmyGenerated="),GeneratedFamily)&&GeneratedFamily==TEXT("F1")){Settings.family=army::ScenarioFamily::F1;CognitiveScenario=0;Settings.terrain=army::Terrain::FracturedWorks;}
     FParse::Value(FCommandLine::Get(),TEXT("ArmyGenSeed="),Settings.genSeed);
+    FString DefenceLayoutName;
+    if(FParse::Value(FCommandLine::Get(),TEXT("ArmyStaticDefence="),DefenceLayoutName)) {
+        if(DefenceLayoutName==TEXT("building"))Settings.staticDefence.layout=army::DefenceLayout::Building;
+        else if(DefenceLayoutName==TEXT("spread"))Settings.staticDefence.layout=army::DefenceLayout::Spread;
+        else if(DefenceLayoutName==TEXT("clusters"))Settings.staticDefence.layout=army::DefenceLayout::Clusters;
+    }
+    FParse::Value(FCommandLine::Get(),TEXT("ArmyDefenders="),Settings.staticDefence.defenders);
+    Settings.staticDefence.defenders=FMath::Clamp(Settings.staticDefence.defenders,4,32);
+    FParse::Value(FCommandLine::Get(),TEXT("ArmyDefenceSeed="),Settings.staticDefence.seed);
     FParse::Value(FCommandLine::Get(),TEXT("ArmyBattleSeconds="),Settings.maxSeconds);
     Settings.maxSeconds=FMath::Clamp(Settings.maxSeconds,1.f,600.f);
     MapSelection=Settings.terrain==army::Terrain::Trenches?1:0;

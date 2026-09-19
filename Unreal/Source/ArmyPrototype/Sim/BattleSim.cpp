@@ -733,6 +733,15 @@ bool ResolveDeathmatch(Record& record,const Frame& frame,bool projectilesPending
     int alive[2]={0,0};for(const auto& s:frame.soldiers)if(s.Active())++alive[s.team];
     if(alive[0]&&alive[1]&&!timeLimit)return false;
     if(projectilesPending&&!timeLimit)return false;
+    if(record.config.staticDefence.layout!=DefenceLayout::None) {
+        // The attack succeeds only by clearing the position; holding it wins, and
+        // every surviving Ember soldier is a defender because the rest start dead.
+        record.winner=alive[1]?1:alive[0]?0:-1;
+        record.conclusion=alive[1]&&alive[0]?"Time limit: the position still has defenders. Ember holds.":
+            alive[1]?"Attacking force destroyed; the position holds.":
+            alive[0]?"Every defender incapacitated; the position is taken.":"Both forces eliminated.";
+        return true;
+    }
     record.winner=alive[0]==alive[1]?-1:alive[0]>alive[1]?0:1;
     record.conclusion=alive[0]==0&&alive[1]==0?"Both forces eliminated.":
         !alive[0]||!alive[1]?"Opposing force eliminated.":
@@ -759,6 +768,11 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         if(profile.shape<=0||profile.lowEdge>100||profile.highEdge<100)throw std::invalid_argument("Stat distribution tails must bracket 100 with a positive shape");
     }
     if(input.recoveryFixture&&(encounter<5||encounter>7))throw std::invalid_argument("Recovery policy requires controlled encounter 5..7 until its acceptance gates pass");
+    if(input.staticDefence.layout!=DefenceLayout::None) {
+        if(input.staticDefence.defenders<4||input.staticDefence.defenders>32)throw std::invalid_argument("Static defence requires between 4 and 32 defenders");
+        if(input.family!=ScenarioFamily::None||encounter!=0||input.recoveryFixture)throw std::invalid_argument("Static defence requires an imported or authored battlefield without generated families, encounters or fixtures");
+        if(input.leaderEffects||input.equalTroops)throw std::invalid_argument("Static defence cannot combine with leader effects or equal troops");
+    }
     auto totalStart=DiagnosticClock::now();
     Config c=input;c.maxSeconds=Clamp(c.maxSeconds,1,600);
     Record r;r.config=c;r.map=c.family==ScenarioFamily::None?MakeBattleMap(c):Map{};Frame f=InitialFrame(c);
@@ -772,7 +786,15 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         GeometryEdit change;change.time=2;change.obstacle=r.map.obstacles.front().id;change.remove=false;
         change.replacement={{0,0},{1,90},false,false,4};geometry.push_back(change);
     }
-    r.map.queryProfile=std::make_shared<QueryProfile>();CommandRuntime command;command.reactions.recoveryFixture=c.recoveryFixture;if(encounter>=4||c.family==ScenarioFamily::F1)command.fixedDefender=1;
+    std::shared_ptr<const DefencePlan> defence;
+    if(c.staticDefence.layout!=DefenceLayout::None) {
+        std::array<Vec3,UnitCount> deployment{};for(const auto& s:f.soldiers)deployment[s.id]=s.position;
+        auto plan=std::make_shared<DefencePlan>(PlanStaticDefence(c,r.map,deployment));
+        ApplyStaticDefence(*plan,c,f);
+        c.staticDefence.resolved=true;c.staticDefence.objective=plan->objective;c.staticDefence.attackerObjectives=plan->attackerObjectives;
+        r.config=c;r.defence=plan;defence=plan;
+    }
+    r.map.queryProfile=std::make_shared<QueryProfile>();CommandRuntime command;command.reactions.recoveryFixture=c.recoveryFixture;if(encounter>=4||c.family==ScenarioFamily::F1||defence)command.fixedDefender=1;
     command.reportDelay=TypedController(c)?c.reportDelay:MessageDelay;
     if(encounter>=9&&encounter<=43){command.platoon.nextSerial=9001;for(int squad=0;squad<SquadCount;++squad){
         const auto& order=f.soldiers[squad*SquadSize].platoonOrder;command.platoon.lastOrders[squad]=order;
@@ -789,6 +811,20 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         cover.shelter=cover.peek=s.position;cover.expires=c.maxSeconds;cover.geometryRevision=r.map.revision;
         float best=1e9f;for(const auto& slot:CoverPositions(r.map))if(Distance(slot.shelter,s.position)<best){best=Distance(slot.shelter,s.position);cover.coverId=slot.id;}
     }
+    // A defender already occupies its position: hand it the ordinary cover memory so
+    // the usual shelter/peek cycle starts immediately instead of searching for cover.
+    if(defence)for(const auto& s:f.soldiers)if(s.Active()&&defence->Defends(s.id)) {
+        const auto& slot=defence->At(s.id).cover;auto& cover=run[s.id].tactics;
+        cover.assigned=true;cover.halfCover=slot.crouch;cover.shelter=slot.shelter;cover.peek=slot.peek;
+        cover.coverId=slot.id;cover.geometryRevision=r.map.revision;cover.travelPosition=s.position;cover.expires=c.maxSeconds+60;
+    }
+    // A held position steps straight to its own shelter or firing edge. A routed
+    // path may detour around intervening geometry and would carry the defender out
+    // of its slot even when the goal itself is inside it.
+    auto executionPath=[&](const Soldier& s,Vec3 goal)->std::vector<Vec3>{
+        if(defence&&defence->Defends(s.id))return {goal};
+        return TaskExecutionPath(r.map,s,goal,run[s.id].tactics);
+    };
     if(!geometry.empty())r.geometryVersions.push_back({0,r.map,"initial"});
     std::vector<bool> applied(geometry.size(),false);
     std::unique_ptr<std::array<Map,UnitCount>> geometryViews;
@@ -921,6 +957,26 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     d={anchor,duck?Action::Hold:Action::Fire,duck?Reason::Suppressed:Reason::CoverFire,duck?Stance::Crouched:Stance::Standing};
                     state.tactics={};
                 }
+                if(defence&&defence->Defends(s.id)) {
+                    // A static defender never leaves its position. Any goal beyond the
+                    // slot's own shelter-to-peek reach - relocation, flanked relocation,
+                    // withdrawal, wounded support, emergency cover elsewhere - becomes the
+                    // local cycle again. Peeking, firing, ducking, reloading and
+                    // suppression are untouched.
+                    const auto& slot=defence->At(s.id).cover;
+                    if(Distance(d.goal,slot.shelter)>Distance(slot.shelter,slot.peek)+1.f) {
+                        const bool duck=understood.suppression>.52f||s.reloadUntil>f.time||d.action==Action::Retreat;
+                        const Stance sheltered=slot.crouch?Stance::Crouched:Stance::Standing;
+                        d=duck?Order{slot.shelter,Action::Hold,Reason::Suppressed,sheltered}:
+                                Order{slot.peek,Action::Fire,slot.crouch?Reason::PopUp:Reason::CoverFire,Stance::Standing};
+                        auto& memory=state.tactics;const float ready=memory.readyAt;
+                        memory={};memory.readyAt=ready;memory.assigned=true;memory.halfCover=slot.crouch;
+                        memory.shelter=slot.shelter;memory.peek=slot.peek;memory.peeking=!duck;memory.phaseUntil=-1;
+                        memory.coverId=slot.id;memory.geometryRevision=r.map.revision;memory.lastProgress=f.time;
+                        memory.travelPosition=s.position;memory.roundsAtPeek=s.rounds;memory.healthAtPeek=s.health;
+                        memory.expires=c.maxSeconds+60;
+                    }
+                }
                 if(state.tactics.assigned&&(state.tactics.coverId==0||state.tactics.geometryRevision!=r.map.revision)) {
                     state.tactics.coverId=0;state.tactics.geometryRevision=r.map.revision;
                     if(s.assignment.hasSlot&&CoverExists(r.map,s.assignment.slot.id)&&Distance(state.tactics.shelter,s.assignment.slot.shelter)<.1f)state.tactics.coverId=s.assignment.slot.id;
@@ -933,7 +989,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(detail&&!detail->choices.empty()){auto start=DiagnosticClock::now();TraceSoldier(*r.diagnostics,s,f.command[s.squad],r.map,state.tactics,f.time,detail);r.diagnostics->trace+=DiagnosticSeconds(start);}
                 auto& a=run[s.id];
                 if(Distance(a.destination,d.goal)>0.04f) {
-                    a.destination=d.goal;a.path=TaskExecutionPath(r.map,s,d.goal,a.tactics);a.cursor=0;
+                    a.destination=d.goal;a.path=executionPath(s,d.goal);a.cursor=0;
                     if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,d.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);
                     TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,a.tactics.emergency?"emergency_departure":"path_selected",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
                 }
@@ -955,6 +1011,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         for(int team=0;team<2;++team) {
             std::vector<TrafficInput> requests;
             for(const auto& s:f.soldiers)if(s.Active()&&s.team==team){const auto& a=run[s.id];
+                if(defence&&defence->Defends(s.id))continue; // A held position never yields a passage.
                 Vec3 next=a.cursor<a.path.size()?a.path[a.cursor]:s.goal;
                 requests.push_back({&s,next,(s.action!=Action::Fire&&s.action!=Action::Hold)||a.trafficWaiting});}
             auto decisions=CoordinatePassages(r.map,passages,requests,traffic,f.time);
@@ -973,7 +1030,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     s.action=Action::Hold;s.reason=Reason::PassageWait;s.stance=Stance::Crouched;s.aim=0;
                 } else if(a.trafficWaiting){a.trafficWaiting=false;a.parkingGoal={999,999};s.waitingPassage=-1;s.passageWaitSeconds=0;
                     if(TypedController(c)&&Distance(s.position,a.progressPosition)<.15f)a.avoidUntil=f.time+3;
-                    a.path=TaskExecutionPath(r.map,s,s.goal,a.tactics);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);s.action=Action::Advance;}
+                    a.path=executionPath(s,s.goal);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);s.action=Action::Advance;}
             }
         }
         for(auto& s:f.soldiers) if(s.Active()) {
@@ -982,7 +1039,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(s.action!=Action::Fire&&s.action!=Action::Hold&&Distance(s.position,s.goal)>0.7f&&
                     (a.cursor>=a.path.size()||Distance(s.position,a.progressPosition)<0.15f)) {
                     if(TypedController(c)&&Distance(s.position,a.progressPosition)<.15f)a.avoidUntil=f.time+3;
-                    a.path=TaskExecutionPath(r.map,s,s.goal,a.tactics);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
+                    a.path=executionPath(s,s.goal);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
                 }
                 a.progressPosition=s.position;a.nextPathCheck=f.time+2;
             }

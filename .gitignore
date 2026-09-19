@@ -24,6 +24,7 @@ Saved/
 /cmake-build-*/
 /.local/
 /.cache/
+/.claude/worktrees/
 /work/
 *.obj
 *.o
@@ -37,6 +38,9 @@ Saved/
 .env
 .env.*
 !.env.example
+*.key
+*.api.key
+*.pem
 
 # OS metadata
 .DS_Store

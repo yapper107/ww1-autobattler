@@ -84,6 +84,9 @@ def evaluate_guards(spec, rows_by_set, baseline_rows, external):
                         ok = (r['metrics'].get(g['metric']) or 0) > g['value']
                     elif g['rule'] == 'min_ge':
                         ok = min(r.get(g['field']) or [0]) >= g['value']
+                    elif g['rule'] == 'index_ge':
+                        # one side only: a static defence may field fewer than three squads
+                        ok = (r.get(g['field']) or [0, 0])[g['index']] >= g['value']
                     else:
                         raise ValueError(f'unknown battle rule {g["rule"]}')
                     if not ok:
@@ -118,8 +121,33 @@ def evaluate_guards(spec, rows_by_set, baseline_rows, external):
     return results
 
 
+def evaluate_attack_objective(obj, rows_by_set):
+    """Plan 018: absolute attack score against a static defence, no sparring partner.
+
+    Per set: mean of ``attack_score`` with a cluster bootstrap on the map. The node's
+    value is the lower bound on the ranking set. Cleared share and the two loss
+    fractions are reported beside it, never optimised on their own."""
+    out = {}
+    for set_name in obj['reported_sets']:
+        done = [r for r in rows_by_set.get(set_name, []) if r.get('status') == 'complete' and r['metrics'].get('attack_score') is not None]
+        summary = _summarize([(cluster_key(r), r['metrics']['attack_score']) for r in done])
+        layouts = {}
+        for r in done:
+            layouts.setdefault(r['defence']['layout'], []).append(r['metrics']['attack_score'])
+        out[set_name] = dict(attack_score=summary, mean=summary['mean'] if summary['count'] else None,
+                             lower=summary['ci95'][0] if summary['count'] else None,
+                             cleared_share=sum(r['metrics']['attack_cleared'] for r in done)/len(done) if done else None,
+                             defender_loss=sum(r['metrics']['casualty_ember'] for r in done)/len(done) if done else None,
+                             attacker_loss=sum(r['metrics']['casualty_azure'] for r in done)/len(done) if done else None,
+                             by_layout={k: sum(v)/len(v) for k, v in sorted(layouts.items())})
+    ranking = out.get(obj['ranking_set'], {})
+    return dict(kind='attack', sets=out, ranking_set=obj['ranking_set'], value=ranking.get('lower'))
+
+
 def evaluate_objective(spec, rows_by_set, baseline_rows):
     obj = spec['objective']
+    if obj.get('kind') == 'attack':
+        return evaluate_attack_objective(obj, rows_by_set)
     exch = log_exchange(obj['exchange_clip_log2'])
     out = {}
     for set_name in obj['reported_sets']:
@@ -149,7 +177,7 @@ def information(spec, rows_by_set, baseline_rows):
     """Reported, never optimised: squad-only reference, remaining strength, casualties."""
     info = {}
     for b in spec.get('information', []):
-        for set_name in ('f1-dev', 'f1-val'):
+        for set_name in spec['objective']['reported_sets']:
             base = baseline_rows.get(b, {}).get(set_name, [])
             res, _ = _paired(rows_by_set.get(set_name, []), base, attacker_result)
             info[f'{b}:{set_name}:attacker_result_delta'] = _summarize(res)

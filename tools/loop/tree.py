@@ -82,6 +82,18 @@ def write_diff(node_id: str, parent_id: str | None):
     return str(out)
 
 
+def lineage_root(node_id: str | None):
+    """The parentless ancestor of a node (itself for a root); None when unknown."""
+    seen = set()
+    while node_id and exists(node_id) and node_id not in seen:
+        seen.add(node_id)
+        parent = load(node_id).get('parent')
+        if not parent:
+            return node_id
+        node_id = parent
+    return None
+
+
 def new_node(node_id: str, parent: str | None, proposer: dict, brief: str | None = None):
     return dict(id=node_id, parent=parent, created=datetime.now().isoformat(timespec='microseconds'), proposer=proposer, brief=brief,
                 build={}, selectors={}, external={}, rows='rows.json', scores={}, verdict=None, draws={})

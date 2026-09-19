@@ -50,6 +50,15 @@ static Vec3 Sweep(const Soldier& leader,const Map& map,DrillPlan& p){
     while(p.leg%6<3&&p.center.x*sign>target.x*sign+8){++p.leg;target.x=map.halfWidth*fractions[p.leg%6]*sign;}
     return target;
 }
+// A static-defence attack carries its own pre-battle objective, never an enemy
+// track. The squad heads for it on every leg; the map sweep resumes on arrival.
+static Vec3 NextObjective(const Soldier& leader,const Map& map,const Config& config,DrillPlan& p){
+    if(config.staticDefence.layout!=DefenceLayout::None&&leader.team==0){
+        const Vec3 own=config.staticDefence.attackerObjectives[leader.squad%SquadsPerTeam];
+        if(Distance(p.center,own)>12)return own;
+    }
+    return Sweep(leader,map,p);
+}
 static bool Mouth(const Map& map,Vec3 from,Vec3 direction){
     Vec3 to=from+direction*30;return !ClearLine(map,from+Vec3{0,10},to+Vec3{0,10},.5f)||!ClearLine(map,from+Vec3{0,-10},to+Vec3{0,-10},.5f);
 }
@@ -265,7 +274,7 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
     p.center=Mean(members,-1,p);
     if(deployment){p.deployment=p.center;p.initialized=true;p.contactLastKnown.fill(-100);p.strength=Strength(members,p);
         p.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,p.deployment.y-24)};p.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,p.deployment.y+24)};
-        p.destination=config.family!=ScenarioFamily::None?cmd.mission:Sweep(leader,map,p);
+        p.destination=config.family!=ScenarioFamily::None||config.staticDefence.layout!=DefenceLayout::None?cmd.mission:Sweep(leader,map,p);
         for(const auto& s:members)Trace(d,leader,p,time,"element_assigned","deployment element "+std::to_string(p.elements[s.id%SquadSize]),s.id,s.position);
     }
     const auto knowledge=WithTracks(leader,time);int target=-1;float nearest=1e9f;bool freshContact=false;
@@ -315,7 +324,7 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
         if(!retiring){p.action={};p.kind=BattleDrill::None;}
         p.areaMin={std::max(-map.halfWidth+2,p.center.x-60),std::max(-map.halfHeight+2,p.center.y-18)};
         p.areaMax={std::min(map.halfWidth-2,p.center.x+60),std::min(map.halfHeight-2,p.center.y+18)};
-        if(!retiring)p.destination=p.center+Vec3{leader.team?-35.f:35.f,0};
+        if(!retiring)p.destination=config.staticDefence.layout!=DefenceLayout::None&&leader.team==0?NextObjective(leader,map,config,p):p.center+Vec3{leader.team?-35.f:35.f,0};
         Trace(d,leader,p,time,"drill_stage_advanced","platoon directive expired: squad-autonomous drills in local area");
     }
     const auto strength=Strength(members,p);bool below=false;
@@ -440,7 +449,7 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
                     p.action.phaseLineAt=time;p.action.objective=p.acceptedDirective.sector;p.action.assault=p.center;
                     Trace(d,leader,p,time,"drill_stage_advanced","matching flank arrivals inside directive radius: phase-line report to platoon");
                 }
-            }else p.destination=Sweep(leader,map,p);p.deadline=0;Advance(leader,p,DrillStage::Reorganise,d,time,"matching received arrivals: deployment leg complete");
+            }else p.destination=NextObjective(leader,map,config,p);p.deadline=0;Advance(leader,p,DrillStage::Reorganise,d,time,"matching received arrivals: deployment leg complete");
         }else if(p.stage==DrillStage::Bound||p.stage==DrillStage::BoundCover)p.movingElement=1-p.movingElement;
         if(p.stage==DrillStage::Travel)beginMove("matching received arrivals: traveling stage complete",p.closing);
         else if(p.stage!=DrillStage::Reorganise){Advance(leader,p,p.technique==MovementTechnique::Traveling?DrillStage::Travel:DrillStage::Bound,d,time,"matching received arrivals: quorum latched, grace complete");issue(SelectMembers(members,p,p.technique==MovementTechnique::Traveling?-1:p.movingElement));}

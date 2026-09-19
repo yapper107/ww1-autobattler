@@ -11,6 +11,7 @@ g++ -DARMY_TEST_CONTROLS -std=c++17 -O2 -Wall -Wextra -Wpedantic \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/ScenarioGen.cpp" \
+  "$repo_root/Unreal/Source/ArmyPrototype/Sim/DefenceGen.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/CognitiveSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/PerceptionSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/BeliefSim.cpp" \

@@ -126,7 +126,15 @@ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const M
         if(config.leaderEffects)order.initiativeAllowed=dials.initiative;
         order.task=task; order.taskNode=1+report.squad; order.committedStrength=strength;
         order.enemy=target; if (target>=0) order.contact=knowledge.contacts[target];
-        order.position=target<0?report.position+Vec3{direction*60,0}:knowledge.contacts[target].position;
+        // Without contact a leg runs 60 m down the squad's lane. A static-defence attack has a
+        // pre-battle objective of its own, so the leg leads there instead; never an enemy track.
+        Vec3 leg=report.position+Vec3{direction*60,0};
+        const bool ordered=config.staticDefence.layout!=DefenceLayout::None&&leader.team==0;
+        if(ordered){
+            Vec3 way=config.staticDefence.attackerObjectives[index]-report.position;way.z=0;const float far=Length(way);
+            if(far>12)leg=report.position+way*(std::min(60.f,far)/far);
+        }
+        order.position=target<0?leg:knowledge.contacts[target].position;
         order.sector=order.position;
         std::string reason=target<0?"FightHere: next 60 m leg in own advance lane":"FightHere: nearest known group; squad chooses its drill";
         if (withdraw) {
@@ -152,8 +160,8 @@ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const M
             if (done) { state.advanceDoneSeen[index]=true; state.advanceDoneObjectives[index]=previous.position; }
             // The only platoon area is the advance lane. Combat has no assigned area or corridor.
             order.hasArea=true;
-            order.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,report.position.y-24)};
-            order.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,report.position.y+24)};
+            order.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,std::min(report.position.y,order.position.y)-24)};
+            order.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,std::max(report.position.y,order.position.y)+24)};
             if (done) { order.intent.id=previous.intent.id; reason="renew committed FightHere: completed advance leg, next own-lane objective"; }
         } else state.advanceExhausted[index]=false;
         order.intent.purpose=withdraw?GoalPurpose::Withdraw:task==PlatoonTask::HelpSquad?GoalPurpose::Support:GoalPurpose::Seize;

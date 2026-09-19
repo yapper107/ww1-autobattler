@@ -1,6 +1,6 @@
 {
-  "version": "v3",
-  "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. v3, plan 018 (user decisions 18 Sep 2026): the objective is the attack on a static defence on generated town maps; symmetric town battles carry the paired behaviour guards; generated trench maps only prove soldiers still shoot. The selectors guard is relative to the lineage root (no selector the root passes may fail); parity is the lineage rule (controllers the node does not own stay digest-identical, static-defence battle included). v1 and v2 are preserved beside this file.",
+  "version": "v2",
+  "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. v2, user decision 18 Sep 2026: behaviour is judged on generated town maps only. The objective ranks on town-val; generated trench maps are kept only to prove soldiers still shoot (zero_shot, firing_squads); the static authored maps and the F1 family leave the score and remain only in the external parity spot check. v1 is preserved as guards-v1.json. Town battles are still symmetric (both sides run the same controller), so the v2 objective carries no controller-quality signal until a head-to-head battle exists; it is recorded, not yet fit to optimise.",
   "guards": [
     {
       "name": "build",
@@ -10,7 +10,7 @@
     {
       "name": "selectors",
       "kind": "external",
-      "provenance": "plan 014/015 mechanism selectors; plan 018: no selector the lineage root passes may fail"
+      "provenance": "plan 014/015: every mechanism selector passes"
     },
     {
       "name": "python_tests",
@@ -30,16 +30,16 @@
     {
       "name": "parity",
       "kind": "external",
-      "provenance": "plan 014 parity; plan 018 lineage rule: controllers the node does not own are digest-identical to the epoch root"
+      "provenance": "plan 014: legacy and cognition digests unchanged by the candidate"
     },
     {
       "name": "zero_shot",
       "kind": "battle",
       "sets": [
         "town-dev",
+        "town-val",
         "trench-dev",
-        "town-attack-dev",
-        "town-attack-val"
+        "trench-val"
       ],
       "metric": "shots",
       "rule": "gt",
@@ -51,25 +51,14 @@
       "kind": "battle",
       "sets": [
         "town-dev",
-        "trench-dev"
+        "town-val",
+        "trench-dev",
+        "trench-val"
       ],
       "field": "firing_squads",
       "rule": "min_ge",
       "value": 3,
       "provenance": "user replay 16 Sep 2026: only one or two soldiers shooting"
-    },
-    {
-      "name": "attacker_firing_squads",
-      "kind": "battle",
-      "sets": [
-        "town-attack-dev",
-        "town-attack-val"
-      ],
-      "field": "firing_squads",
-      "rule": "index_ge",
-      "index": 0,
-      "value": 3,
-      "provenance": "user replay 16 Sep 2026 (only one or two soldiers shooting); drills root 18 Sep 2026: 4 of 30 town battles had two silent squads on a side"
     },
     {
       "name": "under_2m",
@@ -117,14 +106,19 @@
     }
   ],
   "objective": {
-    "kind": "attack",
-    "ranking_set": "town-attack-val",
-    "reported_sets": [
-      "town-attack-dev",
-      "town-attack-val"
+    "baselines": [
+      "legacy",
+      "candidate90"
     ],
-    "attacker_loss_weight": 0.5,
-    "note": "Per battle: defenders put out of action (fraction of the 12) minus half the attacker's own loss fraction, against Ember soldiers who hold cover and never relocate. Mean per set with a cluster bootstrap on the map; ranked by the lower bound on town-attack-val. Cleared share and both loss fractions are reported, not optimised. Attack only: defence and a manoeuvring enemy are not measured (plan 018 limits)."
+    "ranking_set": "town-val",
+    "reported_sets": [
+      "town-dev",
+      "town-val"
+    ],
+    "result_weight": 1.0,
+    "exchange_weight": 0.25,
+    "exchange_clip_log2": 3,
+    "note": "Per set and baseline: paired delta of the Azure result (win 1, draw 0.5, loss 0) and of clipped log2 casualty exchange, cluster bootstrap on the generated map. Ranked by the lower interval bound on town-val. On symmetric battles this measures side balance, not controller quality; see the file note."
   },
   "information": []
 }

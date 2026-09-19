@@ -178,10 +178,17 @@ void UpdateSearchMission(const Soldier& officer,const std::vector<Soldier>& squa
         if(distance<nearest){nearest=distance;contact=&ct;}
     }
     Vec3 requested;
+    const Vec3 defended=config.staticDefence.attackerObjectives[officer.squad%SquadsPerTeam];
+    const bool staticObjective=config.staticDefence.layout!=DefenceLayout::None&&officer.team==0&&
+        Distance(point->position,defended)>8;
     if(contact) {
         // Approach a reported contact to rifle range, never order an assault through it.
         requested=point->position+(contact->position-point->position)*(std::max(0.f,nearest-32.f)/std::max(0.01f,nearest));
         requested.z=point->position.z;
+    } else if(staticObjective) {
+        // A static-defence attack has a pre-battle objective of its own; take it
+        // instead of sweeping map sectors. Arrival resumes the ordinary sweep.
+        requested=defended;
     } else {
         // Search mapped sectors without consulting enemy bodies. Each squad starts
         // in its own lane and continues beyond the old map centre when contact is lost.
