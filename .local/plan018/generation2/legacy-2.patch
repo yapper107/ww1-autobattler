@@ -1,0 +1,20 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+index 0ab69ab..70d7785 100755
+--- a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+@@ -456,10 +456,13 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
+         // (a report, a nearby order, the periodic sweep) must not swap it for a different
+         // task while the soldier is still en route. Only a wound, a withdrawal, lane
+         // safety or real danger (high suppression) cuts in before the soldier arrives or
+-        // the short window ends.
++        // the short window ends. The window is kept short: long enough to stop the same
++        // reissue from thrashing every planning tick, short enough that a soldier who has
++        // drifted in front of a friend's gun is back in the ordinary re-plan pool well
++        // before the friend's own report-and-hold-fire response would have reached him.
+         if(!recovery&&!TypedController(config)&&last.issuer==sender&&last.task!=task&&
+             (last.task==Task::Flank||last.task==Task::BoundMove||last.task==Task::BoundCover)&&
+-            task!=Task::PullBack&&task!=Task::ClearLane&&f.time-last.issuedAt<2.5f&&unit.understoodSuppression<0.52f&&
++            task!=Task::PullBack&&task!=Task::ClearLane&&f.time-last.issuedAt<1.0f&&unit.understoodSuppression<0.52f&&
+             !KnowsWounded(f.soldiers[sender],unit)&&Distance(unit.position,last.position)>1.5f&&
+             !FindPath(map,unit.position,last.position).empty())return;
+         // Finish a short movement commitment before refreshing a moving formation

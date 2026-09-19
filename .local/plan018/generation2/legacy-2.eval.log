@@ -1,0 +1,17 @@
+[ccdd8eaad36f1cc3] build
+[ccdd8eaad36f1cc3] test build and selectors
+[ccdd8eaad36f1cc3] town-dev: 20 battles
+[ccdd8eaad36f1cc3] town-dev: 20/20 complete
+[ccdd8eaad36f1cc3] trench-dev: 10 battles
+[ccdd8eaad36f1cc3] trench-dev: 10/10 complete
+[ccdd8eaad36f1cc3] town-attack-dev: 20 battles
+[ccdd8eaad36f1cc3] town-attack-dev: 20/20 complete
+[ccdd8eaad36f1cc3] town-attack-val: 15 battles
+[ccdd8eaad36f1cc3] town-attack-val: 15/15 complete
+[ccdd8eaad36f1cc3] parity and baselines
+[ccdd8eaad36f1cc3] guards pass; objective 0.5888888888888889
+{
+ "id": "ccdd8eaad36f1cc3",
+ "scores": {}
+}
+=== exit 0

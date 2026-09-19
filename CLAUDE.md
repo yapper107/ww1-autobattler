@@ -35,6 +35,15 @@ this work committed first), parameter search and the Dream-RSI policy layer. Lim
 disclosed in the plan: the objective measures the attack only, and shared soldier-level
 code is outside the loop's reach. Nothing is promoted; legacy remains the default.
 
+Two generations of Sonnet proposals followed (18 and 19 September 2026; details and where to
+resume are at the end of the plan). Children are scored against their lineage root on the same
+battles, and raw battle output is no longer kept (battles regenerate bit-identically from a
+node's frozen binary; `remeasure`). No survivor yet. Best so far: drills `8b6da91cb019eed0`,
+paired +0.088 and +0.115 over its root with both intervals above zero, still unscored because
+on three validation maps drills fires no shot at all, as its root does. The legacy commitment
+idea lifts attacks at 2.5 s but raises friendly fire; at 1.0 s it is the root again. The user
+paused the loop after generation 2. Tree page: `python3 -m tools.loop view`.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two

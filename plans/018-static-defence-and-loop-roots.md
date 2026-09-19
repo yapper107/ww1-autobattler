@@ -169,3 +169,34 @@ The first now looks at the whole 360 s battle before failing; the second applies
 least 1.5 s before the end. `--stats` passes on the branch source and on the legacy child's source. Tests are not part
 of the source fingerprint, so the epoch is unchanged. Disclosed as a guard repair, not made to pass a candidate: that
 child fails two other guards regardless.
+
+## Second generation, 19 September 2026
+
+The user asked for a picture of the tree and then for the loop to run; part-way through they asked that it stop after
+this generation. `python3 -m tools.loop view` now writes the tree as one page (`.local/loop/tree.html`), published
+privately for the user and refreshed after each generation. Proposers worked in worktrees the architect prepared at the
+branch tip with the parent node's exact source as a local detached commit, which removed the wrong-branch problem of
+generation 1 and makes `git diff` the proposal. Evidence: `.local/plan018/generation2/`.
+
+| Node | Parent | Change | Paired delta vs lineage root, 20 dev | 15 val | Guards |
+|---|---|---|---|---|---|
+| `8b6da91cb019eed0` | drills `e4fe94c34bd42782` | a contact FightHere directive without an area banded the squad around its start-line row; it now bands around the squad's current position (2 lines, `DrillSim.cpp`) | +0.088 [+0.019, +0.158], 15 better, 5 worse | +0.115 [+0.001, +0.223], 10 better, 2 worse | fails `zero_shot` and `attacker_firing_squads` on the same three validation maps (cluster layouts) where the drills root also fires no shot; silent-squad attack battles 3 of 35 (root 10, generation 1 12), town battles 0 of 20 (root 2) |
+| `ccdd8eaad36f1cc3` | legacy `a1498179dd29bf64` | commitment window 2.5 s -> 1.0 s (one constant, `CommandSim.cpp`) | -0.016 [-0.041, +0.000], 2 of 20 battles differ | +0.017 [+0.000, +0.052], 1 of 15 differs | all pass; does not beat its root: an order takes about 1.2 s to arrive, so a 1.0 s window almost never engages and the node is the root again in all but three battles |
+
+No survivor yet. The drills node is the first measured improvement in the tree, with both intervals above zero, and the
+band bug it fixed was exposed by plan 018's own change that sends drills squads off their start lanes toward an
+objective. What blocks it is older than the loop: on some maps the drills attackers never reach the defended locality at
+all (zero shots in 600 s on root and child alike).
+
+The legacy proposer reported that a static-defence battle gave two digests on one binary. Checked and not so: two
+simultaneous runs on its final build gave the identical digest, equal to its own first value; the other came from a
+variant build. It also established two useful negatives: exempting soldiers inside a reported blocked fire lane changes
+nothing, because friendly hits land before any lane is reported, and a 1.5 s window lifts attacks (+0.10 on its five
+maps) but still raises friendly fire.
+
+**Where to resume.** Drills: next brief from `8b6da91cb019eed0`, targeting squads that never arrive; start by tracing the
+three zero-shot validation maps (map seeds 65552, 644915, 355292, cluster layout), where root and child both fire nothing.
+Legacy: the commitment helps attacks at 2.5 s and costs friendly fire; the open question is a mechanism that separates the
+two, for instance a commitment that holds only while the soldier's path stays clear of friendly firing sectors the leader
+already knows, or one scaled to the distance still to go. Parent for that work is the root or `a1498179dd29bf64`, not
+`ccdd8eaad36f1cc3`, which is the root in effect. Proposer cost so far: four Sonnet proposals, about 0.78 million tokens.

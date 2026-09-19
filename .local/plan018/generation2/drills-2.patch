@@ -1,0 +1,18 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+index d2df1a9..7a2fb6c 100644
+--- a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+@@ -317,8 +317,11 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
+         if(higher.hasArea){p.areaMin=higher.areaMin;p.areaMax=higher.areaMax;p.platoonArea=true;p.platoonTaskNode=higher.taskNode;}
+         if(!higher.hasArea&&directive){
+             p.platoonArea=false;p.platoonTaskNode=0;
+-            p.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,p.deployment.y-24)};
+-            p.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,p.deployment.y+24)};
++            // A no-area directive (contact FightHere) must free the squad to work where it now
++            // stands, not the start line: the frozen deployment row stranded advanced squads
++            // outside their own band and left every formation/column candidate rejected forever.
++            p.areaMin={-map.halfWidth+2,std::max(-map.halfHeight+2,p.center.y-24)};
++            p.areaMax={map.halfWidth-2,std::min(map.halfHeight-2,p.center.y+24)};
+         }
+         p.platoonLift=higher.liftFire;
+     }

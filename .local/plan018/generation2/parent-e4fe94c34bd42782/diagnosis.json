@@ -1,0 +1,248 @@
+{
+ "node": "e4fe94c34bd42782",
+ "set": "town-attack-dev",
+ "battles": [
+  {
+   "first_attacker_shot": 261.2,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 530.0,
+     "end": 580.0,
+     "alive": 4,
+     "at": [
+      17,
+      -71
+     ],
+     "shots": 45,
+     "stated": "renew committed intent (75 s lifetime)"
+    },
+    {
+     "squad": 3,
+     "start": 70.0,
+     "end": 140.0,
+     "alive": 8,
+     "at": [
+      -115,
+      59
+     ],
+     "shots": 0,
+     "stated": "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal"
+    },
+    {
+     "squad": 3,
+     "start": 170.0,
+     "end": 220.0,
+     "alive": 8,
+     "at": [
+      -112,
+      61
+     ],
+     "shots": 0,
+     "stated": "matching received arrivals: deployment leg complete"
+    },
+    {
+     "squad": 3,
+     "start": 350.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      -87,
+      62
+     ],
+     "shots": 0,
+     "stated": "recovering: column position unavailable; retain moving members and retry after arrival"
+    }
+   ],
+   "static_squad_seconds": 420.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-26-107-clusters12s26",
+   "layout": "clusters",
+   "attack_score": -0.04166666666666667,
+   "defender_loss": 0.08333333333333333,
+   "attacker_loss": 0.25
+  },
+  {
+   "first_attacker_shot": 131.55,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 70.0,
+     "end": 140.0,
+     "alive": 8,
+     "at": [
+      -110,
+      -60
+     ],
+     "shots": 0,
+     "stated": "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal"
+    },
+    {
+     "squad": 1,
+     "start": 150.0,
+     "end": 250.0,
+     "alive": 8,
+     "at": [
+      -75,
+      -11
+     ],
+     "shots": 0,
+     "stated": "Blocked: local route/column remedies exhausted; column position unavailable"
+    },
+    {
+     "squad": 1,
+     "start": 300.0,
+     "end": 450.0,
+     "alive": 8,
+     "at": [
+      -78,
+      -14
+     ],
+     "shots": 0,
+     "stated": "Blocked: local route/column remedies exhausted; column position unavailable"
+    },
+    {
+     "squad": 2,
+     "start": 60.0,
+     "end": 140.0,
+     "alive": 8,
+     "at": [
+      -112,
+      24
+     ],
+     "shots": 0,
+     "stated": "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal"
+    },
+    {
+     "squad": 2,
+     "start": 310.0,
+     "end": 510.0,
+     "alive": 8,
+     "at": [
+      -46,
+      24
+     ],
+     "shots": 530,
+     "stated": "renew committed intent (75 s lifetime)"
+    },
+    {
+     "squad": 3,
+     "start": 350.0,
+     "end": 450.0,
+     "alive": 5,
+     "at": [
+      -133,
+      74
+     ],
+     "shots": 0,
+     "stated": "contact broken or rally reached: Occupy and report strength"
+    }
+   ],
+   "static_squad_seconds": 700.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-32-107-clusters12s32",
+   "layout": "clusters",
+   "attack_score": -0.02604166666666667,
+   "defender_loss": 0.08333333333333333,
+   "attacker_loss": 0.21875
+  },
+  {
+   "first_attacker_shot": 170.4,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 180.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      -59,
+      -38
+     ],
+     "shots": 0,
+     "stated": "FightHere: nearest known group; squad chooses its drill"
+    },
+    {
+     "squad": 1,
+     "start": 190.0,
+     "end": 430.0,
+     "alive": 8,
+     "at": [
+      -52,
+      10
+     ],
+     "shots": 14,
+     "stated": "FightHere: nearest known group; squad chooses its drill"
+    },
+    {
+     "squad": 1,
+     "start": 460.0,
+     "end": 510.0,
+     "alive": 8,
+     "at": [
+      -46,
+      24
+     ],
+     "shots": 0,
+     "stated": "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity"
+    },
+    {
+     "squad": 1,
+     "start": 520.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      -43,
+      24
+     ],
+     "shots": 2,
+     "stated": "recovering: column position unavailable; retain moving members and retry after arrival"
+    },
+    {
+     "squad": 2,
+     "start": 230.0,
+     "end": 340.0,
+     "alive": 8,
+     "at": [
+      -29,
+      49
+     ],
+     "shots": 138,
+     "stated": "radio assault committed: wait for delivered support evidence"
+    },
+    {
+     "squad": 2,
+     "start": 360.0,
+     "end": 400.0,
+     "alive": 8,
+     "at": [
+      -33,
+      48
+     ],
+     "shots": 0,
+     "stated": "recovering: column position unavailable; retain moving members and retry after arrival"
+    }
+   ],
+   "static_squad_seconds": 940.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {},
+   "key": "city-37-107-spread12s37",
+   "layout": "spread",
+   "attack_score": 0.07291666666666666,
+   "defender_loss": 0.16666666666666666,
+   "attacker_loss": 0.1875
+  }
+ ],
+ "static_seconds_by_stated_reason": {
+  "FightHere: nearest known group; squad chooses its drill": 660.0,
+  "recovering: column position unavailable; retain moving members and retry after arrival": 370.0,
+  "renew committed intent (75 s lifetime)": 250.0,
+  "Blocked: local route/column remedies exhausted; column position unavailable": 250.0,
+  "resolved advance endpoint or route cannot meet forward minimum; no unchanged renewal": 220.0,
+  "radio assault committed: wait for delivered support evidence": 110.0,
+  "contact broken or rally reached: Occupy and report strength": 100.0,
+  "matching received arrivals: deployment leg complete": 50.0,
+  "HelpSquad: received need unanswered for one report round trip; nearest squad with capacity": 50.0
+ }
+}

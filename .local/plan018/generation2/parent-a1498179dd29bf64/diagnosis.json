@@ -1,0 +1,292 @@
+{
+ "node": "a1498179dd29bf64",
+ "set": "town-attack-dev",
+ "battles": [
+  {
+   "first_attacker_shot": 39.95,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 270.0,
+     "end": 310.0,
+     "alive": 8,
+     "at": [
+      -63,
+      -32
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 0,
+     "start": 320.0,
+     "end": 420.0,
+     "alive": 8,
+     "at": [
+      -63,
+      -32
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 1,
+     "start": 260.0,
+     "end": 300.0,
+     "alive": 8,
+     "at": [
+      -86,
+      6
+     ],
+     "shots": 0,
+     "stated": "BLOCKED / HOLD"
+    },
+    {
+     "squad": 1,
+     "start": 350.0,
+     "end": 410.0,
+     "alive": 8,
+     "at": [
+      -85,
+      8
+     ],
+     "shots": 0,
+     "stated": "SEARCH"
+    },
+    {
+     "squad": 1,
+     "start": 530.0,
+     "end": 580.0,
+     "alive": 8,
+     "at": [
+      -85,
+      8
+     ],
+     "shots": 0,
+     "stated": "SEARCH"
+    },
+    {
+     "squad": 2,
+     "start": 240.0,
+     "end": 300.0,
+     "alive": 7,
+     "at": [
+      -84,
+      43
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 2,
+     "start": 330.0,
+     "end": 370.0,
+     "alive": 7,
+     "at": [
+      -83,
+      43
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 2,
+     "start": 380.0,
+     "end": 600.0,
+     "alive": 7,
+     "at": [
+      -81,
+      44
+     ],
+     "shots": 0,
+     "stated": "SEARCH"
+    },
+    {
+     "squad": 3,
+     "start": 160.0,
+     "end": 340.0,
+     "alive": 8,
+     "at": [
+      -61,
+      70
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    }
+   ],
+   "static_squad_seconds": 790.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {
+    "BOUND / MOVE -> BOUND / COVER": 10,
+    "FLANK -> BOUND / COVER": 3,
+    "ADVANCE -> REGROUP": 3,
+    "FLANK -> BOUND / MOVE": 1,
+    "BOUND / MOVE -> REGROUP": 1,
+    "FLANK -> REGROUP": 1
+   },
+   "key": "city-38-107-clusters12s38",
+   "layout": "clusters",
+   "attack_score": 0.234375,
+   "defender_loss": 0.25,
+   "attacker_loss": 0.03125
+  },
+  {
+   "first_attacker_shot": 72.4,
+   "static_windows": [
+    {
+     "squad": 0,
+     "start": 200.0,
+     "end": 250.0,
+     "alive": 8,
+     "at": [
+      32,
+      41
+     ],
+     "shots": 96,
+     "stated": "BOUND"
+    },
+    {
+     "squad": 0,
+     "start": 490.0,
+     "end": 560.0,
+     "alive": 6,
+     "at": [
+      49,
+      59
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 1,
+     "start": 160.0,
+     "end": 250.0,
+     "alive": 8,
+     "at": [
+      21,
+      28
+     ],
+     "shots": 0,
+     "stated": "BLOCKED / HOLD"
+    },
+    {
+     "squad": 1,
+     "start": 320.0,
+     "end": 600.0,
+     "alive": 8,
+     "at": [
+      20,
+      27
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 200.0,
+     "end": 240.0,
+     "alive": 8,
+     "at": [
+      17,
+      84
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 350.0,
+     "end": 390.0,
+     "alive": 8,
+     "at": [
+      21,
+      74
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    },
+    {
+     "squad": 3,
+     "start": 490.0,
+     "end": 530.0,
+     "alive": 7,
+     "at": [
+      50,
+      71
+     ],
+     "shots": 18,
+     "stated": "BOUND"
+    }
+   ],
+   "static_squad_seconds": 610.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {
+    "BOUND / MOVE -> BOUND / COVER": 16,
+    "FLANK -> BOUND / COVER": 15,
+    "FLANK -> HOLD": 11,
+    "BOUND / MOVE -> HOLD": 6,
+    "ADVANCE -> BOUND / COVER": 6,
+    "FLANK -> CLEAR FIRING LANE": 5,
+    "FLANK -> BOUND / MOVE": 4,
+    "ADVANCE -> HOLD": 4
+   },
+   "key": "city-23-107-clusters12s23",
+   "layout": "clusters",
+   "attack_score": 0.296875,
+   "defender_loss": 0.5,
+   "attacker_loss": 0.40625
+  },
+  {
+   "first_attacker_shot": 84.2,
+   "static_windows": [
+    {
+     "squad": 3,
+     "start": 160.0,
+     "end": 200.0,
+     "alive": 8,
+     "at": [
+      40,
+      38
+     ],
+     "shots": 24,
+     "stated": "BOUND"
+    },
+    {
+     "squad": 3,
+     "start": 220.0,
+     "end": 280.0,
+     "alive": 8,
+     "at": [
+      36,
+      38
+     ],
+     "shots": 0,
+     "stated": "PREPARE MOVEMENT"
+    }
+   ],
+   "static_squad_seconds": 100.0,
+   "attacker_squad_seconds": 2400,
+   "movement_orders_replaced_within_3s": {
+    "BOUND / MOVE -> BOUND / COVER": 26,
+    "FLANK -> HOLD": 26,
+    "ADVANCE -> REGROUP": 9,
+    "ADVANCE -> FLANK": 6,
+    "BOUND / MOVE -> HOLD": 4,
+    "FLANK -> BOUND / COVER": 4,
+    "FLANK -> WOUNDED SUPPORT": 3,
+    "FLANK -> CLEAR FIRING LANE": 2
+   },
+   "key": "city-24-107-building12s24",
+   "layout": "building",
+   "attack_score": 0.31770833333333337,
+   "defender_loss": 0.5833333333333334,
+   "attacker_loss": 0.53125
+  }
+ ],
+ "static_seconds_by_stated_reason": {
+  "PREPARE MOVEMENT": 910.0,
+  "SEARCH": 330.0,
+  "BLOCKED / HOLD": 130.0,
+  "BOUND": 130.0
+ }
+}

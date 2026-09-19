@@ -1,0 +1,398 @@
+{
+ "audit": {
+  "lines": [],
+  "required": false
+ },
+ "battle_seconds": 422.27376549900146,
+ "binary": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/battle-lab",
+ "brief": "drills-2: a contact FightHere directive without an area now bands the squad around its current position, not its start-line row, so advanced squads are no longer stranded outside their own area with every formation and column slot rejected",
+ "build": {},
+ "config_digest": "5b68b5a6ff968440",
+ "controller": "drills",
+ "created": "2026-09-19T00:30:01.076498",
+ "diff": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/diff.patch",
+ "draws": {
+  "town-attack-dev": [
+   "city-21-107-building12s21",
+   "city-22-107-spread12s22",
+   "city-23-107-clusters12s23",
+   "city-24-107-building12s24",
+   "city-25-107-spread12s25",
+   "city-26-107-clusters12s26",
+   "city-27-107-building12s27",
+   "city-28-107-spread12s28",
+   "city-29-107-clusters12s29",
+   "city-30-107-building12s30",
+   "city-31-107-spread12s31",
+   "city-32-107-clusters12s32",
+   "city-33-107-building12s33",
+   "city-34-107-spread12s34",
+   "city-35-107-clusters12s35",
+   "city-36-107-building12s36",
+   "city-37-107-spread12s37",
+   "city-38-107-clusters12s38",
+   "city-39-107-building12s39",
+   "city-40-107-spread12s40"
+  ],
+  "town-attack-val": [
+   "city-65552-107-clusters12s65552",
+   "city-143497-107-spread12s143497",
+   "city-644915-107-clusters12s644915",
+   "city-25179-107-building12s25179",
+   "city-120459-107-building12s120459",
+   "city-355292-107-clusters12s355292",
+   "city-628429-107-spread12s628429",
+   "city-276781-107-spread12s276781",
+   "city-916125-107-building12s916125",
+   "city-474129-107-building12s474129",
+   "city-237324-107-building12s237324",
+   "city-232117-107-spread12s232117",
+   "city-15870-107-building12s15870",
+   "city-432550-107-spread12s432550",
+   "city-579429-107-building12s579429"
+  ],
+  "town-dev": [
+   "city-21-107",
+   "city-22-107",
+   "city-23-107",
+   "city-24-107",
+   "city-25-107",
+   "city-26-107",
+   "city-27-107",
+   "city-28-107",
+   "city-29-107",
+   "city-30-107",
+   "city-31-107",
+   "city-32-107",
+   "city-33-107",
+   "city-34-107",
+   "city-35-107",
+   "city-36-107",
+   "city-37-107",
+   "city-38-107",
+   "city-39-107",
+   "city-40-107"
+  ],
+  "trench-dev": [
+   "trenches-21-107",
+   "trenches-22-107",
+   "trenches-23-107",
+   "trenches-24-107",
+   "trenches-25-107",
+   "trenches-26-107",
+   "trenches-27-107",
+   "trenches-28-107",
+   "trenches-29-107",
+   "trenches-30-107"
+  ]
+ },
+ "external": {
+  "build": {
+   "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/build.log",
+   "ok": true,
+   "version": "8b6da91cb019eed0-linux"
+  },
+  "parity": {
+   "detail": {
+    "candidate90:city-21-107": {
+     "digest": "15347943273721347173",
+     "reference": "15347943273721347173",
+     "status": "match"
+    },
+    "candidate90:city-21-107-building12s21": {
+     "digest": "1933085051069899387",
+     "reference": "1933085051069899387",
+     "status": "match"
+    },
+    "candidate90:t0-107": {
+     "digest": "7915867850169794547",
+     "reference": "7915867850169794547",
+     "status": "match"
+    },
+    "candidate90:t1-107": {
+     "digest": "5965647483858054261",
+     "reference": "5965647483858054261",
+     "status": "match"
+    },
+    "legacy:city-21-107": {
+     "digest": "13298098593276284674",
+     "reference": "13298098593276284674",
+     "status": "match"
+    },
+    "legacy:city-21-107-building12s21": {
+     "digest": "5357132056603423334",
+     "reference": "5357132056603423334",
+     "status": "match"
+    },
+    "legacy:t0-107": {
+     "digest": "13972642319255895688",
+     "reference": "13972642319255895688",
+     "status": "match"
+    },
+    "legacy:t1-107": {
+     "digest": "15242266433207822660",
+     "reference": "15242266433207822660",
+     "status": "match"
+    }
+   },
+   "ok": true
+  },
+  "protected_files": {
+   "mismatched": [],
+   "ok": true,
+   "pinned": 4
+  },
+  "python_tests": {
+   "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/python-tests.log",
+   "ok": true
+  },
+  "selectors": {
+   "failed": [
+    "D02",
+    "D07",
+    "D08",
+    "D17"
+   ],
+   "known_failures": [
+    "D02",
+    "D07",
+    "D08",
+    "D17"
+   ],
+   "new_failures": [],
+   "ok": true,
+   "passed": 33,
+   "results": [
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q06.log",
+     "name": "Q06"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q07.log",
+     "name": "Q07"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q08.log",
+     "name": "Q08"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q09.log",
+     "name": "Q09"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/retention.log",
+     "name": "retention"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q01.log",
+     "name": "Q01"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q05.log",
+     "name": "Q05"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/clock-arrival.log",
+     "name": "clock-arrival"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/P04.log",
+     "name": "P04"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/P05.log",
+     "name": "P05"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/P06.log",
+     "name": "P06"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/P07.log",
+     "name": "P07"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q02.log",
+     "name": "Q02"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q03.log",
+     "name": "Q03"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/Q04.log",
+     "name": "Q04"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D01.log",
+     "name": "D01"
+    },
+    {
+     "exit_code": -6,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D02.log",
+     "name": "D02"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D03.log",
+     "name": "D03"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D04.log",
+     "name": "D04"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D05.log",
+     "name": "D05"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D06.log",
+     "name": "D06"
+    },
+    {
+     "exit_code": -6,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D07.log",
+     "name": "D07"
+    },
+    {
+     "exit_code": -6,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D08.log",
+     "name": "D08"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D09.log",
+     "name": "D09"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D10.log",
+     "name": "D10"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D11.log",
+     "name": "D11"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D16.log",
+     "name": "D16"
+    },
+    {
+     "exit_code": -6,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/D17.log",
+     "name": "D17"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/close.log",
+     "name": "close"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/sprint.log",
+     "name": "sprint"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/projection.log",
+     "name": "projection"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/sector.log",
+     "name": "sector"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/positions.log",
+     "name": "positions"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/plumbing.log",
+     "name": "plumbing"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/lifecycle.log",
+     "name": "lifecycle"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/leaders.log",
+     "name": "--leaders"
+    },
+    {
+     "exit_code": 0,
+     "log": "/home/jchan/ww1-autobattler/.local/loop/tree/8b6da91cb019eed0/selectors/stats.log",
+     "name": "--stats"
+    }
+   ]
+  },
+  "static_check": {
+   "files": [
+    "DrillSim.cpp",
+    "SquadDrillSim.cpp",
+    "PlatoonTaskSim.cpp",
+    "PositionSim.cpp",
+    "LeaderSim.cpp"
+   ],
+   "hits": [],
+   "ok": true,
+   "tokens": [
+    "Frame&",
+    "const Frame",
+    ".soldiers[",
+    "f.soldiers",
+    "frame.soldiers",
+    "observer_",
+    "observer",
+    "Record&",
+    ".shots",
+    "fullVision",
+    "full_vision"
+   ]
+  }
+ },
+ "id": "8b6da91cb019eed0",
+ "lineage_root": "b8f9e3b64c1fb65e-drills",
+ "parent": "e4fe94c34bd42782",
+ "proposer": {
+  "kind": "llm",
+  "model": "sonnet",
+  "usage": null
+ },
+ "rows": "rows.json",
+ "scores": {
+  "v3": {
+   "guards_pass": false,
+   "value": null
+  }
+ },
+ "selectors": {},
+ "tie_break": {
+  "diff_lines": 7
+ },
+ "verdict": null
+}
