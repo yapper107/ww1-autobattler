@@ -121,12 +121,19 @@ def evaluate_guards(spec, rows_by_set, baseline_rows, external):
     return results
 
 
-def evaluate_attack_objective(obj, rows_by_set):
-    """Plan 018: absolute attack score against a static defence, no sparring partner.
+def evaluate_attack_objective(obj, rows_by_set, lineage=None):
+    """Plan 018: attack score against a static defence.
 
-    Per set: mean of ``attack_score`` with a cluster bootstrap on the map. The node's
-    value is the lower bound on the ranking set. Cleared share and the two loss
-    fractions are reported beside it, never optimised on their own."""
+    Per set: mean of ``attack_score`` with a cluster bootstrap on the map; cleared share
+    and the two loss fractions are reported beside it, never optimised on their own.
+
+    Validation maps are drawn fresh for every node, so two nodes' absolute means differ
+    by map luck as much as by merit (first child, 18 Sep 2026: +0.14 apart on their own
+    validation maps, +0.007 on the twenty battles both fought). A child is therefore
+    judged against its lineage root ON THE SAME BATTLES: ``lineage`` carries the root's
+    rows on this node's draws and the root's own mean (the anchor). The node's value is
+    anchor + lower bound of the paired delta, which keeps lineages comparable with each
+    other. A root has no delta and is valued at its own mean."""
     out = {}
     for set_name in obj['reported_sets']:
         done = [r for r in rows_by_set.get(set_name, []) if r.get('status') == 'complete' and r['metrics'].get('attack_score') is not None]
@@ -140,14 +147,24 @@ def evaluate_attack_objective(obj, rows_by_set):
                              defender_loss=sum(r['metrics']['casualty_ember'] for r in done)/len(done) if done else None,
                              attacker_loss=sum(r['metrics']['casualty_azure'] for r in done)/len(done) if done else None,
                              by_layout={k: sum(v)/len(v) for k, v in sorted(layouts.items())})
+        if lineage and lineage.get('root_rows', {}).get(set_name):
+            samples, unpaired = _paired(done, lineage['root_rows'][set_name], _metric('attack_score'))
+            paired = _summarize(samples)
+            paired.update(unpaired=unpaired, better=sum(1 for _, d in samples if d > 0.01), worse=sum(1 for _, d in samples if d < -0.01))
+            out[set_name]['paired_vs_root'] = paired
     ranking = out.get(obj['ranking_set'], {})
-    return dict(kind='attack', sets=out, ranking_set=obj['ranking_set'], value=ranking.get('lower'))
+    value = ranking.get('mean')
+    if lineage:
+        paired = ranking.get('paired_vs_root')
+        value = lineage['anchor'] + paired['ci95'][0] if paired and paired['count'] and lineage.get('anchor') is not None else None
+    return dict(kind='attack', sets=out, ranking_set=obj['ranking_set'], value=value,
+                anchor=lineage.get('anchor') if lineage else None, root=lineage.get('root') if lineage else None)
 
 
-def evaluate_objective(spec, rows_by_set, baseline_rows):
+def evaluate_objective(spec, rows_by_set, baseline_rows, lineage=None):
     obj = spec['objective']
     if obj.get('kind') == 'attack':
-        return evaluate_attack_objective(obj, rows_by_set)
+        return evaluate_attack_objective(obj, rows_by_set, lineage)
     exch = log_exchange(obj['exchange_clip_log2'])
     out = {}
     for set_name in obj['reported_sets']:
@@ -193,10 +210,10 @@ def information(spec, rows_by_set, baseline_rows):
     return info
 
 
-def score(spec, rows_by_set, baseline_rows, external, diff_lines=None):
+def score(spec, rows_by_set, baseline_rows, external, diff_lines=None, lineage=None):
     guards = evaluate_guards(spec, rows_by_set, baseline_rows, external)
     passed = all(g['passed'] for g in guards.values())
-    objective = evaluate_objective(spec, rows_by_set, baseline_rows)
+    objective = evaluate_objective(spec, rows_by_set, baseline_rows, lineage)
     return dict(score_version=spec['version'], guards_pass=passed, guards=guards, objective=objective,
                 value=objective['value'] if passed else None, tie_break=dict(diff_lines=diff_lines),
                 information=information(spec, rows_by_set, baseline_rows))

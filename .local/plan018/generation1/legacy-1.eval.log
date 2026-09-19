@@ -1,0 +1,17 @@
+[a1498179dd29bf64] build
+[a1498179dd29bf64] test build and selectors
+[a1498179dd29bf64] town-dev: 20 battles
+[a1498179dd29bf64] town-dev: 20/20 complete
+[a1498179dd29bf64] trench-dev: 10 battles
+[a1498179dd29bf64] trench-dev: 10/10 complete
+[a1498179dd29bf64] town-attack-dev: 20 battles
+[a1498179dd29bf64] town-attack-dev: 20/20 complete
+[a1498179dd29bf64] town-attack-val: 15 battles
+[a1498179dd29bf64] town-attack-val: 15/15 complete
+[a1498179dd29bf64] parity and baselines
+[a1498179dd29bf64] guards FAIL selectors,attacker_firing_squads,friendly_fire; objective 0.633671875
+{
+ "id": "a1498179dd29bf64",
+ "scores": {}
+}
+=== exit 0

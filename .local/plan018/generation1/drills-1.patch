@@ -1,0 +1,71 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+index 75fb36a..4d7bcbf 100644
+--- a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+@@ -94,7 +94,7 @@ static bool InvalidSlot(const Soldier& knowledge,const Map& map,const DrillPlan&
+ // Called only on a transition. Retained element orders/slots are not reconstructed.
+ static void IssueStage(const Soldier& leader,const Soldier& knowledge,const std::vector<Soldier>& members,
+     const Map& map,const Config& config,const std::vector<Vec3>& approaches,DrillPlan& p,
+-    const std::array<bool,SquadSize>& selected,Diagnostics* d,float time,bool repair=false){
++    const std::array<bool,SquadSize>& selected,Diagnostics* d,float time,bool repair=false,bool loose=false){
+     ++p.generation;p.blocked=false;p.exhausted=false;
+     if(!repair){p.waiting.fill(false);p.arrivals.fill(false);p.arrivalQuorumAt=-1;p.arrivalConsumed=false;p.movers.fill(false);p.slotWaiting.fill(false);}
+     const bool coverStage=p.stage==DrillStage::ContactCover||p.stage==DrillStage::BoundSetup||p.stage==DrillStage::BoundCover;
+@@ -200,26 +200,30 @@ static void IssueStage(const Soldier& leader,const Soldier& knowledge,const std:
+             Trace(d,leader,p,time,"drill_stage_advanced","unavailable formation slots: contract to column on accepted route");
+         }
+         for(size_t n=0;n<allocated.size();++n){const auto& s=group[n];const auto& result=allocated[n];const int slot=s.id%SquadSize;
+-            p.positions[slot]=result.valid?result.primary.cover.shelter:s.position;p.hasSlot[slot]=result.valid&&result.primary.cover.id!=0;
++            // loose: a squad with no protected/column slot for anyone marches directly to
++            // the route end rather than freezing forever; rescued only if that is reachable.
++            const bool fallback=loose&&!result.valid;
++            p.positions[slot]=result.valid?result.primary.cover.shelter:fallback?resolved:s.position;p.hasSlot[slot]=result.valid&&result.primary.cover.id!=0;
+             if(p.hasSlot[slot]){p.slots[slot]=result.primary.cover;p.slotGeometry[slot]=map.revision;++protectedCount;}
+-            p.movers[slot]=result.valid&&Distance(s.position,p.positions[slot])>.75f;
++            p.movers[slot]=(result.valid||fallback)&&Distance(s.position,p.positions[slot])>.75f;
+             if(result.valid)reserved.push_back({s.id,result.primary.cover});
+             auto memberRoute=std::make_shared<TacticalRoute>(*route);memberRoute->id=route->id*16+slot;memberRoute->start=s.position;memberRoute->destination=p.positions[slot];
+             memberRoute->points=FindPath(map,s.position,p.positions[slot]);memberRoute->stages.clear();
+             float pathLength=0;Vec3 prior=s.position;bool inside=!memberRoute->points.empty();
+             for(Vec3 point:memberRoute->points){pathLength+=Distance(prior,point);prior=point;inside&=CorridorDistance(*route,point)<=query.groupCap&&InOperationArea(point,p.areaMin,p.areaMax,query.areaRoute,query.areaRouteRadius,query.areaDiscCenter,query.areaDiscRadius);}
++            const bool rescued=fallback&&inside;
+             if(!inside){p.positions[slot]=s.position;p.hasSlot[slot]=false;p.movers[slot]=false;memberRoute->destination=s.position;memberRoute->points={s.position};}
+             memberRoute->stages.push_back({0,memberRoute->points.size(),memberRoute->destination,pathLength/1.89f,0});p.memberRoutes[slot]=memberRoute;
+-            p.slotWaiting[slot]=query.formation&&!result.valid&&
++            p.slotWaiting[slot]=query.formation&&!result.valid&&!rescued&&
+                 (s.position.x-p.center.x)*direction.x+(s.position.y-p.center.y)*direction.y>0&&
+                 Distance(query.anchors[slot],p.center)>query.coherenceRadius;
+-            if(query.formation&&(!result.valid||!inside)&&!p.slotWaiting[slot]){
++            if(query.formation&&(!result.valid||!inside)&&!p.slotWaiting[slot]&&!rescued){
+                 p.blocked=true;p.lastRejection="column position unavailable";
+                 Trace(d,leader,p,time,"drill_recovering","recovering: column position unavailable; retain moving members and retry after arrival",s.id,s.position);
+             }
+-            p.issue[slot]=true;p.waiting[slot]=result.valid&&inside;p.arrivals[slot]=false;p.expected[slot]=0;
++            p.issue[slot]=true;p.waiting[slot]=(result.valid||rescued)&&inside;p.arrivals[slot]=false;p.expected[slot]=0;
+             p.orderMethods[slot]=p.instance;p.orderGenerations[slot]=p.generation;longest=std::max(longest,pathLength);
+-            Trace(d,leader,p,time,"formation_slot",std::string(p.interval==4?"column interval 4 m":"wedge interval 10 m")+(result.valid?"; allocated":p.slotWaiting[slot]?"; ahead of centre, anchor outside coherence: wait":"; unavailable position"),s.id,p.positions[slot]);
++            Trace(d,leader,p,time,"formation_slot",std::string(p.interval==4?"column interval 4 m":"wedge interval 10 m")+(result.valid?"; allocated":rescued?"; no slot: direct file movement to route end":p.slotWaiting[slot]?"; ahead of centre, anchor outside coherence: wait":"; unavailable position"),s.id,p.positions[slot]);
+         }
+     }
+     if(!repair)p.arrivalCheckPending=false;
+@@ -343,7 +347,7 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
+     std::array<bool,SquadSize> invalid{};bool repair=false;
+     for(const auto& s:members){const int n=s.id%SquadSize;invalid[n]=InvalidSlot(knowledge,map,p,n,time);repair|=invalid[n];}
+     const bool reassess=freshContact||lost||fireChange||superiorityChange||directive||expired;
+-    auto issue=[&](const std::array<bool,SquadSize>& who,bool fixing=false){IssueStage(leader,knowledge,members,map,config,approaches,p,who,d,time,fixing);};
++    auto issue=[&](const std::array<bool,SquadSize>& who,bool fixing=false,bool loose=false){IssueStage(leader,knowledge,members,map,config,approaches,p,who,d,time,fixing,loose);};
+     auto beginMove=[&](const std::string& why,bool close){
+         Accept(leader,p,BattleDrill::MoveTactically,d,time);p.closing=close;p.blocked=false;
+         auto technique=leader.platoonOrder.fireMovement||close||(target>=0&&nearest<100)||p.effectiveFire?MovementTechnique::BoundingOverwatch:
+@@ -395,7 +399,10 @@ void UpdateDrillPlan(const Soldier& observedLeader,const std::vector<Soldier>& a
+             beginMove("Reorganise complete: blocked attack resumes supported closure",true);
+         }else if(target>=0&&nearest<100)contact("Reorganise complete: known contact");else beginMove("Reorganise complete",false);
+     }else if(p.blocked&&!p.exhausted&&noMovers&&!p.action.active){
+-        if(p.localRetries++<1){p.forceColumn=true;Advance(leader,p,p.stage,d,time,"recovering: retry accepted element corridor in column");issue(SelectMembers(members,p,p.movingElement));}
++        // Column recovery gets one attempt; a squad still without any slot then marches
++        // in file to the route end directly rather than freezing at full strength.
++        if(p.localRetries==0){p.forceColumn=true;++p.localRetries;Advance(leader,p,p.stage,d,time,"recovering: retry accepted element corridor in column");issue(SelectMembers(members,p,p.movingElement));}
++        else if(p.localRetries==1){++p.localRetries;Advance(leader,p,p.stage,d,time,"recovering: column remedies exhausted; fall back to direct file movement");issue(SelectMembers(members,p,p.movingElement),false,true);}
+         else {p.exhausted=true;p.noProgressBlocked=true;p.deadline=0;Trace(d,leader,p,time,"drill_blocked","Blocked: local route/column remedies exhausted; "+p.lastRejection);}
+     }else if(p.noProgressBlocked&&!directive&&!freshContact&&!fireChange){
+         // A timeout is consumed once. A heartbeat or superiority report cannot

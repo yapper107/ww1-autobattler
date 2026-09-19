@@ -1,0 +1,21 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+index 257d132..fc2a7c1 100755
+--- a/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp
+@@ -445,6 +445,16 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
+         }
+         auto& last=rt.lastSent[recipient];
+         const auto& unit=f.soldiers[recipient];
++        // A freshly ordered flank or bound is a maneuver commitment: routine replanning
++        // (a report, a nearby order, the periodic sweep) must not swap it for a different
++        // task while the soldier is still en route. Only a wound, a withdrawal, lane
++        // safety or real danger (high suppression) cuts in before the soldier arrives or
++        // the short window ends.
++        if(!recovery&&!TypedController(config)&&last.issuer==sender&&last.task!=task&&
++            (last.task==Task::Flank||last.task==Task::BoundMove||last.task==Task::BoundCover)&&
++            task!=Task::PullBack&&task!=Task::ClearLane&&f.time-last.issuedAt<2.5f&&unit.understoodSuppression<0.52f&&
++            !KnowsWounded(f.soldiers[sender],unit)&&Distance(unit.position,last.position)>1.5f&&
++            !FindPath(map,unit.position,last.position).empty())return;
+         // Finish a short movement commitment before refreshing a moving formation
+         // anchor. Emergency withdrawals and lane clearance can still interrupt.
+         if(!recovery&&last.issuer==sender&&last.task==task&&last.teamPlan.serial==plan.serial&&

@@ -96,6 +96,19 @@ class GuardsFile(unittest.TestCase):
         better, _ = self.town_rows(1.0, 0.25)
         self.assertLess(score.rank_key(score.score(score.load_guards(), better, base, EXTERNAL_OK)), score.rank_key(result))
 
+    def test_child_is_valued_against_its_root_on_the_same_battles(self):
+        # Lucky validation maps: the child's own mean is high, but the root does as well on those maps.
+        child, base = self.town_rows(0.9, 0.2)
+        root_on_same_maps, _ = self.town_rows(0.9, 0.2)
+        lineage = dict(root='r', anchor=0.5, root_rows={k: root_on_same_maps[k] for k in ('town-attack-dev', 'town-attack-val')})
+        result = score.score(score.load_guards(), child, base, EXTERNAL_OK, lineage=lineage)
+        self.assertAlmostEqual(result['objective']['sets']['town-attack-val']['mean'], 0.8)
+        self.assertAlmostEqual(result['value'], 0.5)      # anchor + zero paired delta, not the lucky 0.8
+        better, _ = self.town_rows(1.0, 0.2)
+        gain = score.score(score.load_guards(), better, base, EXTERNAL_OK, lineage=lineage)
+        self.assertAlmostEqual(gain['value'], 0.6)
+        self.assertEqual(gain['objective']['sets']['town-attack-val']['paired_vs_root']['better'], 10)
+
     def test_defender_squads_may_be_few_but_attacker_squads_must_fire(self):
         cand, base = self.town_rows(squads=(4, 1))
         self.assertTrue(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['attacker_firing_squads']['passed'])

@@ -81,6 +81,21 @@ def baseline_needs(spec):
     return needs
 
 
+def lineage_for(spec, node, sets, jobs=None, run_missing=True):
+    """The lineage root's rows on this node's own draws, and the root's mean as the anchor.
+    None for a root, or when the score has no attack objective."""
+    root_id = node.get('lineage_root')
+    if spec['objective'].get('kind') != 'attack' or not root_id or root_id == node['id']:
+        return None
+    root = tree.load(root_id)
+    root_score = tree.read_score(root_id, spec['version']) or {}
+    ranking = (root_score.get('objective', {}).get('sets') or {}).get(spec['objective']['ranking_set'], {})
+    controller = node.get('controller', 'drills')
+    rows = {name: baselines.rows_for(controller, sets[name], root['binary'], SECONDS, jobs, run_missing)
+            for name in spec['objective']['reported_sets'] if name in sets}
+    return dict(root=root_id, anchor=ranking.get('mean'), root_rows=rows)
+
+
 def baseline_rows_for(spec, sets, binary, jobs=None, run_missing=True, progress=None):
     out = {}
     for name, set_names in baseline_needs(spec).items():
@@ -170,13 +185,13 @@ def evaluate_candidate(parent=None, proposer=None, brief=None, jobs=None, skip_s
     reference_binary = Path(root['binary']) if root else binary
     external['parity'] = parity(binary, d, jobs, controller=controller, reference_binary=reference_binary, specs=config.parity_specs())
     baseline_rows = baseline_rows_for(spec, sets, reference_binary, jobs)
-    _finish(node, rows_by_set, baseline_rows, external, log, spec)
+    _finish(node, rows_by_set, baseline_rows, external, log, spec, lineage_for(spec, node, sets, jobs))
     return node
 
 
-def _finish(node, rows_by_set, baseline_rows, external, log, spec=None):
+def _finish(node, rows_by_set, baseline_rows, external, log, spec=None, lineage=None):
     spec = spec or scoring.load_guards()
-    result = scoring.score(spec, rows_by_set, baseline_rows, external, node.get('tie_break', {}).get('diff_lines'))
+    result = scoring.score(spec, rows_by_set, baseline_rows, external, node.get('tie_break', {}).get('diff_lines'), lineage)
     node['external'] = external
     tree.save(node)
     tree.write_score(node['id'], result)

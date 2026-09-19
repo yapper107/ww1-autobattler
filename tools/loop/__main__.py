@@ -17,7 +17,7 @@ def cmd_evaluate(a):
 
 
 def cmd_rescore(a):
-    rescore.rescore(a.guards, a.nodes or None)
+    rescore.rescore(a.guards, a.nodes or None, run_missing=a.run_missing)
 
 
 def cmd_tree(a):
@@ -102,7 +102,8 @@ def main(argv=None):
     e.add_argument('--force', action='store_true'); e.set_defaults(fn=cmd_evaluate)
 
     r = sub.add_parser('rescore', help='recompute a score version over the tree')
-    r.add_argument('--guards', help='alternative guards.json for a new score version'); r.add_argument('nodes', nargs='*'); r.set_defaults(fn=cmd_rescore)
+    r.add_argument('--guards', help='alternative guards.json for a new score version'); r.add_argument('nodes', nargs='*')
+    r.add_argument('--run-missing', action='store_true', help="fight the lineage root's missing battles on a node's draws"); r.set_defaults(fn=cmd_rescore)
 
     t = sub.add_parser('tree', help='list nodes or show one'); t.add_argument('id', nargs='?'); t.add_argument('--version', default=current); t.set_defaults(fn=cmd_tree)
 

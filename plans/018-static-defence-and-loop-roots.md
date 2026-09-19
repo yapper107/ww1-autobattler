@@ -138,3 +138,34 @@ Decision: raw output is a cache. A scored battle keeps its manifest and summary;
 the node's frozen binary when a new metric is needed and reports any digest that differs from the recorded one.
 Generated map folders keep only the `.army` files, and only the sets the score reads are generated. Determinism was
 checked before anything was deleted by re-fighting the legacy root's 65 battles and comparing every digest.
+
+## First generation, 18 September 2026 (night)
+
+Two Sonnet proposers, one per lineage, each from the brief `tools/loop/propose.py` wrote from its root's diagnosis.
+Both isolated worktrees were cut from `main` rather than the working branch; each agent rebuilt the node source and
+confirmed the fingerprint before testing, and the architect re-applied each diff on the branch tip in a fresh
+worktree for evaluation. Patches, logs and scores are under `.local/plan018/generation1/`.
+
+**Scoring amendment (score v3, same version: no guard-passing node's value changes except roots, which are now valued
+at their mean instead of their lower bound).** Validation maps are drawn fresh per node, so two nodes' absolute means
+differ by map sample as well as by merit. A child is now judged against its lineage root on the same battles: the root's
+frozen binary fights the child's draws (cached per epoch), and the child's value is the root's mean (anchor) plus the
+lower bound of the paired delta. `rescore --run-missing` fights whatever root battles are missing.
+
+| Node | Lineage | Change | Paired delta, 20 dev maps | Paired delta, 15 val maps | Guards |
+|---|---|---|---|---|---|
+| `a1498179dd29bf64` | legacy | 2.5 s commitment to an issued flank or bound in `CommandSim` `send()` (10 lines) | +0.007 [-0.072, +0.089], 10 better, 10 worse | +0.157 [+0.028, +0.282], 10 better, 4 worse | fails `friendly_fire` (+1.10 hits per 100 soldier-minutes against the root, interval above zero), `attacker_firing_squads` (one battle with two silent squads), `selectors` (`--stats`, see below) |
+| `e4fe94c34bd42782` | drills | third-tier recovery in `IssueStage`: march in file to the leg's end when no formation or column slot exists (16 lines) | +0.044 [-0.027, +0.121], 9 better, 6 worse | +0.017 [-0.055, +0.082], 7 better, 6 worse | still fails `attacker_firing_squads` (12 battles, root 10) and `firing_squads` (2); no new selector failure; parity matches |
+
+Neither is a survivor. The legacy change probably helps (about +0.07 pooled over the 35 shared battles) but pays for it
+in friendly fire, which is the expected cost of flankers no longer being recalled; the next legacy brief keeps the
+commitment and lets a friendly-lane report break it. The drills change is harmless and small; its own proposer traced
+the silent squads to the other stall family, squads that bound so slowly they never arrive, which is the next drills brief.
+
+**Test amendment.** The `--stats` group asserted two things about one default legacy battle that depend on when the
+controller brings a machine gun into action, not on the stat model: a stacked-recoil burst inside the first 120 s, and
+no recoil left in the final frame. The legacy child moved the burst later and had a gun mid-burst in the last frame.
+The first now looks at the whole 360 s battle before failing; the second applies to soldiers who stopped firing at
+least 1.5 s before the end. `--stats` passes on the branch source and on the legacy child's source. Tests are not part
+of the source fingerprint, so the epoch is unchanged. Disclosed as a guard repair, not made to pass a candidate: that
+child fails two other guards regardless.

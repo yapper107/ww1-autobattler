@@ -1,0 +1,5 @@
+[b8f9e3b64c1fb65e-legacy] v3: guards pass; value 0.5888888888888889
+[b8f9e3b64c1fb65e-drills] v3: guards FAIL firing_squads,attacker_firing_squads; value None
+[a1498179dd29bf64] v3: guards FAIL selectors,attacker_firing_squads,friendly_fire; value None
+[e4fe94c34bd42782] v3: guards FAIL firing_squads,attacker_firing_squads; value None
+=== exit 0

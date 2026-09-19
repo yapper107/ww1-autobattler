@@ -52,7 +52,14 @@ and `guards-v2.json`).
 - **Proposers.** Sonnet 5 by default, Haiku 4.5 for narrow single-function edits, recorded
   on the node with `--proposer llm --model <name>`. The `claude` CLI is not installed in
   this WSL, so the architect session launches proposer agents in isolated worktrees and
-  evaluates each with `ARMY_LOOP_ROOT` pointing at the shared tree.
+  evaluates each with `ARMY_LOOP_ROOT` pointing at the shared tree. Learned on the first
+  proposal (18 September 2026): the session's isolated agent worktrees are cut from the
+  default branch, not the branch being worked on, so a proposer must first run
+  `git checkout --detach <commit of the parent node's source>`; and a candidate is
+  evaluated in a worktree the architect creates at that commit
+  (`git worktree add --detach <dir> <commit>`, apply the proposer's diff, then
+  `ARMY_LOOP_ROOT=<main>/.local/loop python3 -m tools.loop evaluate --parent <node>
+  --controller <lineage> --proposer llm --model sonnet --brief "..."`).
 
 ## Commands
 
