@@ -1,0 +1,24 @@
+--- ../../Unreal/Source/ArmyPrototype/Sim/BattleSim.cpp	2026-09-19 11:33:54.371990503 -0700
++++ Sim/BattleSim.cpp	2026-09-19 12:23:17.748208868 -0700
+@@ -363,7 +363,9 @@
+     }
+     return risk;
+ }
+-bool ShouldHoldFire(const Soldier& s,float risk) {return risk>=(s.gun.action==WeaponAction::Automatic?0.25f:0.45f);}
++// ABLATION SCRATCH BUILD ONLY. ARMY_ABLATE_HOLDFIRE: 1 = Azure never holds fire for friends, 2 = both sides.
++static int AblateHoldFire(){static const int v=[]{const char* e=std::getenv("ARMY_ABLATE_HOLDFIRE");return e?std::atoi(e):0;}();return v;}
++bool ShouldHoldFire(const Soldier& s,float risk) {const int a=AblateHoldFire();if(a==2||(a==1&&s.team==0))return false;return risk>=(s.gun.action==WeaponAction::Automatic?0.25f:0.45f);}
+ FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
+     FireSolution best;float score=1e9f;
+     if(s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)return best;
+--- ../../Unreal/Source/ArmyPrototype/Sim/CommandSim.cpp	2026-09-18 19:13:15.547727312 -0700
++++ Sim/CommandSim.cpp	2026-09-19 12:23:17.749017141 -0700
+@@ -47,6 +47,8 @@
+     return false;
+ }
+ Vec3 ClearReportedFireLane(const Soldier& commander,const Soldier& soldier,Vec3 desired,const Map& map,float time) {
++    // ABLATION SCRATCH BUILD ONLY. ARMY_ABLATE_CLEARLANE: 1 = Azure leaders never order a lane sidestep, 2 = both sides.
++    {static const int v=[]{const char* e=std::getenv("ARMY_ABLATE_CLEARLANE");return e?std::atoi(e):0;}();if(v==2||(v==1&&commander.team==0))return desired;}
+     if(soldier.assignment.task==Task::ClearLane&&time-soldier.assignment.activatedAt<8&&Distance(soldier.position,soldier.assignment.position)>0.7f&&
+         !FindPath(map,soldier.position,soldier.assignment.position).empty()&&
+         !InReportedFireLane(commander,soldier.id,soldier.assignment.position,time))return soldier.assignment.position;

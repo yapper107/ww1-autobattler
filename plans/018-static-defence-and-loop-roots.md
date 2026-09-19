@@ -263,3 +263,34 @@ Findings.
    of the shared avoidance logic is a designed architect change that starts a new epoch, not a lineage proposal. Lead
    to test: hits land before any lane is reported (a report needs about a second of held fire plus the chain delay), so
    the reporting chain may be producing churn without preventing anything.
+
+## Lean recording and the friendly-fire ablation, 19 September 2026
+
+**Lean recording landed** (`69ff4a4`, source `efce1ef0fb0e378a`; details in `docs/BATTLE_PERFORMANCE.md`): 4.97 GB to
+0.50 to 0.61 GB per 600 s battle with byte-identical exports; the full digest is unchanged (40/40 parity) and a lean digest
+is a different number over the same fields. Both lineages were re-rooted (`efce1ef0fb0e378a-legacy`, `-drills`): every one
+of the 20 development attack scores equals the old root's, for both controllers. The three drills changes were carried
+across as `08a5a8f33d1f2732` and reproduce +0.085 [+0.008, +0.161] against the root. Battles per node fell from 505 s to
+240 to 275 s at fourteen jobs, less than the parallelism allows; the per-battle Python metrics step is the suspected limit.
+
+**Ablation** (scratch build, not a node; switches proven inert by an identical digest when off; evidence and the switch
+patch in `.local/plan018/ablation/`). Legacy and drills, 20 development attacks (attackers switched only, so the defenders
+stay fixed) and 20 symmetric town battles (both sides switched), paired against the unswitched baseline:
+
+| Controller | Condition | Attack score vs baseline | Friendly hits per 100 soldier-minutes (symmetric) |
+|---|---|---|---|
+| legacy | baseline | +0.537 | 6.59 |
+| legacy | shooter never holds fire for friends | -0.055 [-0.148, +0.040] | 15.72, +9.14 [+7.57, +10.68] |
+| legacy | leader never orders a lane sidestep | -0.005 [-0.097, +0.083] (cleared 35 % against 20 %) | 8.00, +1.42 [+0.60, +2.28] |
+| drills | baseline | +0.215 | 4.31 |
+| drills | shooter never holds fire for friends | -0.026 [-0.102, +0.053] | 8.68, +4.37 [+3.44, +5.28] |
+| drills | leader never orders a lane sidestep | exactly unchanged: drills never uses it | unchanged |
+
+Reading. Friendly-fire avoidance is **not** what holds the attack back: switching off either part does not raise the
+attack score for either controller, and the shooter's hold-fire rule alone halves friendly fire. With hold-fire off the lane
+sidestep never triggers (its reports come from blocked shooters), so "both off" equals "hold-fire off" to the digit. The
+legacy sidestep chain prevents about 1.4 of 6.6 hits and costs nothing measurable. The three legacy candidates that raised
+friendly fire did so by moving soldiers across friendly lines more, not by being freed from avoidance, and none of their
+gains survived the paired comparison. The shared avoidance logic therefore stays as it is, and stays outside the loop.
+Open for the user: whether to replace the root-relative friendly-fire guard with an absolute budget (legacy root 6.59,
+drills root 4.31; the rejected legacy candidates measured 7.7 to 8.1).
