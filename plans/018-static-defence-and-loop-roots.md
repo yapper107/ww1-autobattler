@@ -200,3 +200,24 @@ Legacy: the commitment helps attacks at 2.5 s and costs friendly fire; the open 
 two, for instance a commitment that holds only while the soldier's path stays clear of friendly firing sectors the leader
 already knows, or one scaled to the distance still to go. Parent for that work is the root or `a1498179dd29bf64`, not
 `ccdd8eaad36f1cc3`, which is the root in effect. Proposer cost so far: four Sonnet proposals, about 0.78 million tokens.
+
+## Branching rule, 19 September 2026 (user decision)
+
+The user asked what triggers another branch from a root. Until then nothing did: each generation deepened one chain
+per lineage from its best node, so the tree was two chains. Dream-RSI's learned exploration policy (plan 016 phase 4)
+needs hundreds of nodes to replay; with seven, the user approved this explicit rule instead, to be applied by the
+architect and run alongside the generation in progress:
+
+1. Every generation, one proposal per lineage deepens from that lineage's best node (best paired value; among unscored
+   nodes, the best paired delta with the fewest failed guards).
+2. When a lineage has gone two generations without a node whose paired interval lies above zero and whose guards pass,
+   one **explorer** is added from the lineage root, aimed at the largest stated stall in the root's diagnosis that the
+   chain has not addressed, and told not to work on the chain's idea. An explorer costs one more proposal (about 150 to
+   250 thousand Sonnet tokens).
+3. A change is never stacked on a parent that is harmful or unproven when the new idea can be tested cleanly from an
+   ancestor; ideas that each work alone are merged in a later proposal.
+
+First use: legacy qualified after generations 1 and 2 (no survivor), so generation 3 runs a legacy explorer from the
+root aimed at "PREPARE MOVEMENT" (730 squad-seconds static in the root's three worst attacks, healthy squads silent for
+40 to 110 s at a time), beside the two deepening proposals. With three proposers running their own check battles at
+once the explorer runs one battle at a time, because memory, not cores, is the limit on this machine.
