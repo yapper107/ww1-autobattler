@@ -102,7 +102,7 @@ def diagnose(node_id: str, set_name: str = 'town-attack-dev', count: int = 3, lo
     for row in worst:
         key = config.spec_key(row)
         log(f'[{node_id}] tracing {key} (attack score {row["metrics"]["attack_score"]:+.3f})')
-        spec = {k: row[k] for k in ('set', 'family', 'gen_seed', 'seed', 'map', 'defence', 'terrain', 'seconds') if k in row}
+        spec = {k: row[k] for k in config.SPEC_FIELDS if k in row}
         traced = run_battle(node['binary'], node.get('controller', 'drills'), spec, out_root/key, config.SECONDS, True)
         if traced['status'] != 'complete':
             battles.append(dict(key=key, error=traced.get('error')))

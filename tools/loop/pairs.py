@@ -1,15 +1,17 @@
 """Blind pairwise comparisons for score calibration.
 
-A pair copies the same scenario's run from two nodes into A and B in random
-order. ``pair.json`` shows only what the user needs to replay; ``key.json`` holds
-the mapping and is read only when the answer is recorded. Calibration compares
-the user's preferences with the score's ordering of the same two nodes.
+A pair names the same scenario in two nodes as A and B in random order.
+``pair.json`` shows only what the user needs; ``key.json`` holds the mapping and
+is read only to replay a side or record the answer. The user watches a side with
+``pairs watch <pair> A``, which rebuilds that node in Unreal without naming it
+(raw battle output is not kept, and Unreal could never load it anyway).
+Calibration compares the user's preferences with the score's ordering.
 """
 from __future__ import annotations
-import json, random, shutil, time
+import json, random, time
 from pathlib import Path
 
-from tools.loop import tree
+from tools.loop import config, tree
 from tools.loop.config import PAIRS_ROOT
 
 
@@ -22,7 +24,7 @@ def _run_for(node_id, set_name, key):
 
 
 def _key(r):
-    return f"{r['gen_seed']}-{r['seed']}" if r.get('family') else f"t{r['terrain']}-{r['seed']}"
+    return config.spec_key(r)
 
 
 def make(left, right, set_name, key, rng=None):
@@ -36,15 +38,22 @@ def make(left, right, set_name, key, rng=None):
     order = [('A', left, a), ('B', right, b)]
     if rng.random() < 0.5:
         order = [('A', right, b), ('B', left, a)]
-    for label, node_id, row in order:
-        shutil.copytree(row['run'], d/label)
-    manifest = json.loads((d/'A'/'manifest.json').read_text())
-    visible = dict(id=pid, set=set_name, key=key, seed=manifest['seed'], terrain=manifest.get('terrain'),
-                   gen_seed=manifest.get('gen_seed'), runs={'A': str(d/'A'), 'B': str(d/'B')},
-                   answered=None, note='Watch A then B; answer with: python3 -m tools.loop pairs answer ' + pid + ' A|B|neither')
+    visible = dict(id=pid, set=set_name, key=key, seed=a['seed'], terrain=a.get('terrain'), gen_seed=a.get('gen_seed'),
+                   defence=a.get('defence'), answered=None,
+                   note=f'Watch each side with: python3 -m tools.loop pairs watch {pid} A (then B); '
+                        f'answer with: python3 -m tools.loop pairs answer {pid} A|B|neither')
     (d/'pair.json').write_text(json.dumps(visible, indent=1) + '\n')
     (d/'key.json').write_text(json.dumps({label: node_id for label, node_id, _ in order}, indent=1) + '\n')
     return visible
+
+
+def watch(pid, label, build=True, launch=True):
+    """Replay one side in Unreal without revealing which node it is."""
+    from tools.loop.replay import replay
+    d = PAIRS_ROOT/pid
+    visible, key = json.loads((d/'pair.json').read_text()), json.loads((d/'key.json').read_text())
+    result = replay(key[label], visible['set'], visible['key'], build=build, launch=launch, log=lambda *_: None)
+    return dict(pair=pid, side=label, arguments=[a for a in result['arguments'] if not a.startswith(('-ArmyLegacy', '-ArmyDrills', '-ArmyCognition'))])
 
 
 def answer(pid, preference, note=None):

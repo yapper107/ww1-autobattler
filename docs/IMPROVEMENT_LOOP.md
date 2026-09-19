@@ -37,6 +37,18 @@ and `guards-v2.json`).
   cores, sets the job count (3.5 GB a job). WSL defaults to half the host RAM; raising
   `memory=` in `%UserProfile%\.wslconfig` is what lets all cores be used. Keep traces and
   other scratch files off `/tmp`: it is RAM backed and counts against the same memory.
+- **What a node keeps.** Raw battle output is a cache, not a record (user decision,
+  18 September 2026): a battle is deterministic, so the node's frozen binary, the map
+  and the seeds in its row reproduce it exactly in seconds, and the row's digest proves
+  it. After scoring, a battle directory keeps only `manifest.json` and `summary.md`; a
+  node is then about 5 MB (metric rows, scores, source snapshot, diff, binary, test
+  binary, selector logs) instead of 1.6 GB. `remeasure <node>...` fights a node's battles
+  again from its binary when a verdict needs a metric the rows do not carry, reports any
+  digest that changed, refreshes the sparring rows and re-scores. `diagnose` and `replay`
+  never needed the raw output: one reruns with a trace and deletes it, the other rebuilds
+  the node in Unreal. Blind pairs name two nodes on one scenario and are watched with
+  `pairs watch <pair> A|B`. Generated map folders keep only the `.army` battlefields, and
+  only the sets the score reads are generated.
 - **Proposers.** Sonnet 5 by default, Haiku 4.5 for narrow single-function edits, recorded
   on the node with `--proposer llm --model <name>`. The `claude` CLI is not installed in
   this WSL, so the architect session launches proposer agents in isolated worktrees and

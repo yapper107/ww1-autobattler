@@ -35,13 +35,13 @@ def cached(name, spec, seconds=SECONDS):
     return None
 
 
-def rows_for(name, specs, candidate_binary, seconds=SECONDS, jobs=None, run_missing=True, progress=None):
+def rows_for(name, specs, candidate_binary, seconds=SECONDS, jobs=None, run_missing=True, progress=None, refresh=False):
     """Rows for baseline ``name`` on ``specs``; missing rows are run and cached."""
     base = BASELINES[name]
     binary = base['binary'] or str(candidate_binary)
     rows, missing = [], []
     for spec in specs:
-        row = cached(name, spec, seconds)
+        row = None if refresh else cached(name, spec, seconds)
         rows.append(row)
         if row is None:
             missing.append(spec)

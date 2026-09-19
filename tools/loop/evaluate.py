@@ -152,7 +152,7 @@ def evaluate_candidate(parent=None, proposer=None, brief=None, jobs=None, skip_s
     version = external['build']['version']
     spec = scoring.load_guards()
     wanted = set(only_sets) if only_sets else needed_sets(spec)
-    sets = {k: v for k, v in config.scenario_sets(version).items() if k in wanted}
+    sets = config.scenario_sets(version, wanted=wanted)
     node['draws'] = {k: [config.spec_key(s) for s in v] for k, v in sets.items()}
     started = time.monotonic()
     rows_by_set = {}

@@ -316,9 +316,34 @@ class Tree(unittest.TestCase):
         text = (pairs.PAIRS_ROOT/visible['id']/'pair.json').read_text()
         self.assertNotIn('left', text)
         self.assertNotIn('right', text)
+        self.assertNotIn('runs', visible)   # raw battle output is never copied; a side is replayed instead
+        self.assertIn('pairs watch', visible['note'])
         label = pairs.answer(visible['id'], 'A')
         self.assertIn(label['preferred'], ('left', 'right'))
         self.assertEqual(len(pairs.labels()), 1)
+
+    def test_scored_battle_keeps_only_manifest_and_summary(self):
+        from tools.loop.runner import prune_exports
+        run = self.tmp/'battle'
+        run.mkdir()
+        for name in ('manifest.json', 'summary.md', 'evaluation.jsonl', 'shots.jsonl', 'events.jsonl', 'geometry.jsonl', 'battlefield.army'):
+            (run/name).write_text('x')
+        prune_exports(run)
+        self.assertEqual(sorted(p.name for p in run.iterdir()), ['manifest.json', 'summary.md'])
+
+    def test_generated_map_folder_keeps_only_battlefields(self):
+        from tools.loop import maps
+        out = self.tmp/'maps21'
+        out.mkdir()
+        for name in ('city-21.army', 'trenches-21.army', 'city-21.json', 'city-21.svg', 'index.html', 'generate.log'):
+            (out/name).write_text('x')
+        maps.prune_previews(out)
+        self.assertEqual(sorted(p.name for p in out.iterdir()), ['city-21.army', 'generate.log', 'trenches-21.army'])
+
+    def test_only_wanted_sets_are_built(self):
+        sets = config.scenario_sets('abc-linux', wanted={'works'})
+        self.assertEqual(list(sets), ['works'])
+        self.assertEqual(set(config.SET_NAMES) >= {'town-attack-val', 'trench-dev'}, True)
 
 
 if __name__ == '__main__':

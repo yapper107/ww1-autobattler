@@ -1,0 +1,13 @@
+[b8f9e3b64c1fb65e-legacy] town-dev: 20 battles
+[b8f9e3b64c1fb65e-legacy] trench-dev: 10 battles
+[b8f9e3b64c1fb65e-legacy] town-attack-dev: 20 battles
+[b8f9e3b64c1fb65e-legacy] town-attack-val: 15 battles
+[b8f9e3b64c1fb65e-legacy] remeasured; digests changed: none
+[b8f9e3b64c1fb65e-legacy] v3: guards pass; value 0.48680555555555555
+{
+ "b8f9e3b64c1fb65e-legacy": {
+  "battles": 65,
+  "digest_changed": []
+ }
+}
+exit 0

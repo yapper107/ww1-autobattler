@@ -84,26 +84,31 @@ FORBIDDEN_TOKENS = ['Frame&', 'const Frame', '.soldiers[', 'f.soldiers', 'frame.
                     'Record&', '.shots', 'fullVision', 'full_vision']
 
 
-def scenario_sets(build: str, validation_count: int = VALIDATION_COUNT, salt: str = VALIDATION_SALT):
-    """Every battle spec, grouped by set. Validation draws hash from the build."""
+# The fields of a row that define its scenario; enough to run the battle again.
+SPEC_FIELDS = ('set', 'terrain', 'family', 'gen_seed', 'seed', 'map', 'defence', 'seconds')
+SET_NAMES = ('works', 'trenches', 'f1-dev', 'f1-val', 'town-dev', 'town-val', 'trench-dev', 'trench-val', 'town-attack-dev', 'town-attack-val')
+
+
+def scenario_sets(build: str, validation_count: int = VALIDATION_COUNT, salt: str = VALIDATION_SALT, wanted=None):
+    """Battle specs grouped by set. Validation draws hash from the build. Only the
+    ``wanted`` sets are built, so maps are generated for the sets that will be run."""
     from run_family import validation_draws
     from tools.loop import maps
-    sets = {
-        'works': [dict(set='works', terrain=0, seed=s) for s in AUTHORED_SEEDS],
-        'trenches': [dict(set='trenches', terrain=1, seed=s) for s in AUTHORED_SEEDS],
-        'f1-dev': [dict(set='f1-dev', family='F1', gen_seed=g, seed=s) for g in F1_DEV_GEN_SEEDS for s in F1_DEV_SEEDS],
-        'f1-val': [dict(set='f1-val', family='F1', gen_seed=g, seed=s)
-                   for g, s in validation_draws(build, 'F1', salt, validation_count)],
+    val_seeds = lambda: maps.validation_seeds(build, salt, MAP_VALIDATION_COUNT)
+    attack_val = lambda: maps.validation_seeds(build, salt + '|attack', ATTACK_VALIDATION_COUNT)
+    builders = {
+        'works': lambda: [dict(set='works', terrain=0, seed=s) for s in AUTHORED_SEEDS],
+        'trenches': lambda: [dict(set='trenches', terrain=1, seed=s) for s in AUTHORED_SEEDS],
+        'f1-dev': lambda: [dict(set='f1-dev', family='F1', gen_seed=g, seed=s) for g in F1_DEV_GEN_SEEDS for s in F1_DEV_SEEDS],
+        'f1-val': lambda: [dict(set='f1-val', family='F1', gen_seed=g, seed=s) for g, s in validation_draws(build, 'F1', salt, validation_count)],
+        'town-dev': lambda: maps.specs('town-dev', 'city', MAP_DEV_SEEDS, MAP_BATTLE_SEED),
+        'town-val': lambda: maps.specs('town-val', 'city', val_seeds(), MAP_BATTLE_SEED),
+        'trench-dev': lambda: maps.specs('trench-dev', 'trenches', TRENCH_DEV_SEEDS, MAP_BATTLE_SEED),
+        'trench-val': lambda: maps.specs('trench-val', 'trenches', val_seeds(), MAP_BATTLE_SEED),
+        'town-attack-dev': lambda: maps.specs('town-attack-dev', 'city', MAP_DEV_SEEDS, MAP_BATTLE_SEED, attack=True),
+        'town-attack-val': lambda: maps.specs('town-attack-val', 'city', attack_val(), MAP_BATTLE_SEED, attack=True),
     }
-    val_seeds = maps.validation_seeds(build, salt, MAP_VALIDATION_COUNT)
-    for kind, name in (('city', 'town'), ('trenches', 'trench')):
-        dev = TRENCH_DEV_SEEDS if kind == 'trenches' else MAP_DEV_SEEDS
-        sets[f'{name}-dev'] = maps.specs(f'{name}-dev', kind, dev, MAP_BATTLE_SEED)
-        sets[f'{name}-val'] = maps.specs(f'{name}-val', kind, val_seeds, MAP_BATTLE_SEED)
-    attack_val = maps.validation_seeds(build, salt + '|attack', ATTACK_VALIDATION_COUNT)
-    sets['town-attack-dev'] = maps.specs('town-attack-dev', 'city', MAP_DEV_SEEDS, MAP_BATTLE_SEED, attack=True)
-    sets['town-attack-val'] = maps.specs('town-attack-val', 'city', attack_val, MAP_BATTLE_SEED, attack=True)
-    return sets
+    return {name: build_set() for name, build_set in builders.items() if wanted is None or name in wanted}
 
 
 def parity_specs():

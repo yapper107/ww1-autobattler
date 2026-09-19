@@ -125,3 +125,16 @@ directive, and "column position unavailable".
 Open: the work is uncommitted, and a proposer's isolated worktree is created from the last commit, so the first
 proposals wait for the user's go-ahead to commit. The pre-battle preview in Unreal does not show the defenders
 (playback does, because Run Battle goes through `Simulate`).
+
+## Amendment, 18 September 2026 (night): what a node keeps
+
+User question: is all the data the battles generate needed? No. Measured on the legacy root: 1.6 GB, of which
+everything the loop reads again (metric rows, scores, source snapshot, diff, binary, test binary, selector logs) is
+about 5 MB. The rest is raw battle output, mostly the per-frame evaluation export (82 to 130 MB a battle). Nothing
+reads it after the metric row exists: `diagnose` reruns with a trace, `replay` rebuilds the node in Unreal, and
+blind pairs had copied it for the user to watch although Unreal cannot load an exported battle.
+
+Decision: raw output is a cache. A scored battle keeps its manifest and summary; `remeasure` regenerates rows from
+the node's frozen binary when a new metric is needed and reports any digest that differs from the recorded one.
+Generated map folders keep only the `.army` files, and only the sets the score reads are generated. Determinism was
+checked before anything was deleted by re-fighting the legacy root's 65 battles and comparing every digest.

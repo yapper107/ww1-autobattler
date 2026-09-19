@@ -32,7 +32,7 @@ The score is layered. Only the objective layer is optimised. The user's replay i
 2. **Objective (one number).** Mean over families and authored sets of paired attacker or own-side win share and clipped log casualty exchange against two fixed sparring partners (legacy and candidate90), each with a bootstrap interval. The optimiser uses the lower bound of the interval, not the mean. Validation draws for a candidate are derived from `hash(fingerprint, family, salt)` and never reused; development draws are fixed and open and are reported separately.
 3. **Tie-break.** Smaller diff from the parent wins at equal objective.
 
-Every node stores its raw exports, so any score version can be recomputed over the whole tree. A guard added from a user verdict re-scores history for free; that is the property the loop relies on to never repeat a caught mistake.
+Every node stores its metric rows, so any score version can be recomputed over the whole tree. A guard added from a user verdict re-scores history; that is the property the loop relies on to never repeat a caught mistake. Amended 18 September 2026 ([plan 018](018-static-defence-and-loop-roots.md)): raw battle exports are no longer kept, because a node was 1.6 GB and 99 % of it was never read again. Battles are deterministic, so when a new guard needs a metric the rows lack, `python3 -m tools.loop remeasure` fights the node's battles again from its frozen binary and checks the recorded digests. The re-score then costs minutes of battles rather than nothing.
 
 ## Tree
 

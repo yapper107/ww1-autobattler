@@ -33,7 +33,16 @@ def ensure(seed: int) -> dict:
     missing = [k for k, p in paths.items() if not p.exists()]
     if code != 0 or missing:
         raise RuntimeError(f'map generation failed for seed {seed}: exit {code}, missing {missing}; see {log}')
+    prune_previews(out)
     return paths
+
+
+def prune_previews(out: Path):
+    """The loop reads only the .army battlefields; the JSON, SVG and HTML previews are
+    thirty times their size and the generator rebuilds them on request."""
+    for path in out.iterdir():
+        if path.is_file() and path.suffix in ('.json', '.svg', '.html'):
+            path.unlink()
 
 
 def validation_seeds(build: str, salt: str, count: int, low: int = 1000, span: int = 1_000_000):

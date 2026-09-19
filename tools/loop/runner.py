@@ -5,7 +5,7 @@ metrics), ``order_metrics.evaluate`` (soldier orders per minute per side) and th
 shots export (firing squads per side). Traces are off unless asked for.
 """
 from __future__ import annotations
-import gzip, json, os, shutil, subprocess, time
+import json, os, subprocess, time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import get_context
 from pathlib import Path
@@ -60,14 +60,19 @@ def attack_metrics(metrics: dict) -> dict:
     return dict(attack_score=defender - ATTACKER_LOSS_WEIGHT*attacker, attack_cleared=int(bool(metrics.get('win_azure'))))
 
 
-def compress_exports(run: Path):
-    """The per-frame evaluation export is nine tenths of a node's size and plain text.
-    It is kept, compressed, so a metric added from a later verdict can still be computed."""
-    source = run/'evaluation.jsonl'
-    if source.exists() and source.stat().st_size:
-        with source.open('rb') as raw, gzip.open(run/'evaluation.jsonl.gz', 'wb', compresslevel=1) as packed:
-            shutil.copyfileobj(raw, packed, 1 << 20)
-        source.unlink()
+KEPT_EXPORTS = ('manifest.json', 'summary.md')
+
+
+def prune_exports(run: Path):
+    """Raw battle output is a cache, not a record (user decision 18 Sep 2026).
+
+    A battle is deterministic: the node's frozen binary, the map and the seeds in its
+    row reproduce it exactly in seconds (``python3 -m tools.loop remeasure``), and the
+    row keeps the digest that proves it. So once the metric row exists only the
+    manifest and summary stay; the per-frame export was 99 % of a 1.6 GB node."""
+    for path in run.iterdir():
+        if path.is_file() and path.name not in KEPT_EXPORTS:
+            path.unlink()
 
 
 def firing_squads(run: Path):
@@ -121,7 +126,7 @@ def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
                    survivors=evaluated['survivors'], initial_actives=evaluated['initial_actives'],
                    digest=evaluated['digest'], scenario_digest=evaluated['scenario_digest'])
         if not trace:
-            compress_exports(run)
+            prune_exports(run)
     except Exception as exc:  # recorded, never hidden
         row['error'] = f'{type(exc).__name__}: {exc}'
     return row

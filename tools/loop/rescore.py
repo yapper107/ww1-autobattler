@@ -19,7 +19,7 @@ def rescore(guards_path=None, node_ids=None, log=print):
         rows_by_set = tree.read_rows(node['id'])
         sets = {}
         for name, rows in rows_by_set.items():
-            sets[name] = [{k: r[k] for k in ('set', 'terrain', 'family', 'gen_seed', 'seed', 'map', 'defence', 'seconds') if k in r} for r in rows]
+            sets[name] = [{k: r[k] for k in config.SPEC_FIELDS if k in r} for r in rows]
         baselines.set_epoch(node.get('lineage_root') or node['id'])
         baseline_rows = baseline_rows_for(spec, sets, node.get('binary'), run_missing=False)
         result = scoring.score(spec, rows_by_set, baseline_rows, node.get('external', {}), node.get('tie_break', {}).get('diff_lines'))
