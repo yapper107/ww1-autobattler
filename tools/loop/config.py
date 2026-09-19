@@ -63,6 +63,11 @@ ATTACK_VALIDATION_COUNT = 15
 # Measured 18 Sep 2026: the defended locality is 165 to 235 m from the attacker's start line and
 # legacy squads were still closing at 340 to 360 s, so a 360 s attack mostly measures the walk.
 ATTACK_SECONDS = 600
+# A battle is chaotic: any code change perturbs the whole trajectory, so one battle a map carries about
+# +/-0.3 of noise and generation 1 to 4 produced development and validation sets that contradicted each
+# other. Lean battles are cheap, so every attack map is fought with three battle seeds; the bootstrap
+# still clusters on the map.
+ATTACK_BATTLE_SEEDS = (107, 108, 109)
 
 # Spot checks proving legacy and cognition are unchanged on the candidate binary.
 PARITY_SPECS = [dict(set='works', terrain=0, seed=107), dict(set='trenches', terrain=1, seed=107)]
@@ -146,7 +151,7 @@ def config_digest() -> str:
     payload = json.dumps(dict(seconds=SECONDS, authored=AUTHORED_SEEDS, f1_dev=[F1_DEV_GEN_SEEDS, F1_DEV_SEEDS],
                               validation=[VALIDATION_COUNT, VALIDATION_SALT], baselines=BASELINES,
                               maps=[MAP_DEV_SEEDS, MAP_VALIDATION_COUNT, MAP_BATTLE_SEED, TRENCH_DEV_SEEDS],
-                              attack=[ATTACK_LAYOUTS, ATTACK_DEFENDERS, ATTACK_VALIDATION_COUNT, ATTACK_SECONDS], lineages=LINEAGES,
+                              attack=[ATTACK_LAYOUTS, ATTACK_DEFENDERS, ATTACK_VALIDATION_COUNT, ATTACK_SECONDS, ATTACK_BATTLE_SEEDS], lineages=LINEAGES,
                               selectors=SELECTORS + SELECTOR_GROUPS, policy=POLICY_FILES, tokens=FORBIDDEN_TOKENS),
                          sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()[:16]

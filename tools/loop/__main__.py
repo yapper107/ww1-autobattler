@@ -71,7 +71,7 @@ def cmd_brief(a):
 
 def cmd_remeasure(a):
     from tools.loop.remeasure import remeasure
-    print(json.dumps(remeasure(a.nodes or None, a.jobs, not a.no_baselines), indent=1))
+    print(json.dumps(remeasure(a.nodes or None, a.jobs, not a.no_baselines, respec=a.respec), indent=1))
 
 
 def cmd_view(a):
@@ -126,7 +126,8 @@ def main(argv=None):
     pr.set_defaults(fn=cmd_pairs)
 
     rm = sub.add_parser('remeasure', help="fight a node's battles again from its frozen binary (new metric, or an integrity check)")
-    rm.add_argument('nodes', nargs='*'); rm.add_argument('--jobs', type=int); rm.add_argument('--no-baselines', action='store_true'); rm.set_defaults(fn=cmd_remeasure)
+    rm.add_argument('nodes', nargs='*'); rm.add_argument('--jobs', type=int); rm.add_argument('--no-baselines', action='store_true')
+    rm.add_argument('--respec', action='store_true', help='draw the scenario sets again from the current config'); rm.set_defaults(fn=cmd_remeasure)
     dg = sub.add_parser('diagnose', help="trace a node's worst attack battles: static windows and cancelled orders")
     dg.add_argument('id'); dg.add_argument('--set', default='town-attack-dev'); dg.add_argument('--count', type=int, default=3); dg.set_defaults(fn=cmd_diagnose)
     br = sub.add_parser('brief', help='write the proposer brief for a node'); br.add_argument('id'); br.set_defaults(fn=cmd_brief)

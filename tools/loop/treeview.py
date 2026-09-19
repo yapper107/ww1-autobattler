@@ -47,7 +47,7 @@ def _interval_plot(sets: dict) -> str:
         return ''
     body, y = [], 16
     for name, paired in rows:
-        label = ('development' if name.endswith('dev') else 'validation') + f" · {paired['count']} maps"
+        label = ('development' if name.endswith('dev') else 'validation') + f" · {paired['count']} battles"
         body.append(_interval_row(y, label, paired))
         y += 26
     axis_y = y - 8

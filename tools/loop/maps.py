@@ -65,12 +65,13 @@ def specs(set_name: str, kind: str, seeds, battle_seed: int = 107, attack: bool 
     out = []
     for seed in seeds:
         paths = ensure(seed)
-        spec = dict(set=set_name, family=kind, gen_seed=seed, seed=battle_seed, map=str(paths[kind]))
-        if attack:
-            from tools.loop.config import ATTACK_DEFENDERS, ATTACK_LAYOUTS, ATTACK_SECONDS
-            spec['defence'] = dict(layout=ATTACK_LAYOUTS[seed % len(ATTACK_LAYOUTS)], defenders=ATTACK_DEFENDERS, seed=seed)
-            spec['seconds'] = ATTACK_SECONDS
-        out.append(spec)
+        if not attack:
+            out.append(dict(set=set_name, family=kind, gen_seed=seed, seed=battle_seed, map=str(paths[kind])))
+            continue
+        from tools.loop.config import ATTACK_BATTLE_SEEDS, ATTACK_DEFENDERS, ATTACK_LAYOUTS, ATTACK_SECONDS
+        for fight in ATTACK_BATTLE_SEEDS:  # same map and defence, three battles
+            out.append(dict(set=set_name, family=kind, gen_seed=seed, seed=fight, map=str(paths[kind]), seconds=ATTACK_SECONDS,
+                            defence=dict(layout=ATTACK_LAYOUTS[seed % len(ATTACK_LAYOUTS)], defenders=ATTACK_DEFENDERS, seed=seed)))
     return out
 
 

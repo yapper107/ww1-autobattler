@@ -369,6 +369,17 @@ class Tree(unittest.TestCase):
         self.assertIn('--lean', runner.battle_command('/fake/lean', 'legacy', dict(set='works', terrain=0, seed=107), out='o'))
         self.assertNotIn('--lean', runner.battle_command('/fake/lean', 'legacy', dict(set='works', terrain=0, seed=107), trace=True, out='o'))
 
+    def test_attack_maps_are_fought_with_three_battle_seeds(self):
+        import unittest.mock as mock
+        from tools.loop import maps
+        with mock.patch.object(maps, 'ensure', lambda seed: {'city': f'/m/city-{seed}.army', 'trenches': f'/m/trenches-{seed}.army'}):
+            attack = maps.specs('town-attack-dev', 'city', [21, 22], 107, attack=True)
+            plain = maps.specs('town-dev', 'city', [21, 22], 107)
+        self.assertEqual(len(attack), 2*len(config.ATTACK_BATTLE_SEEDS))
+        self.assertEqual(len(plain), 2)
+        self.assertEqual(len({config.spec_key(s) for s in attack}), len(attack))
+        self.assertEqual({config.cluster_key(s) for s in attack}, {21, 22})   # still clustered on the map
+
     def test_only_wanted_sets_are_built(self):
         sets = config.scenario_sets('abc-linux', wanted={'works'})
         self.assertEqual(list(sets), ['works'])

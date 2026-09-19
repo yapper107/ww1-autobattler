@@ -14,7 +14,7 @@ from tools.loop.evaluate import baseline_needs
 from tools.loop.runner import run_specs
 
 
-def remeasure(node_ids=None, jobs=None, with_baselines=True, log=print):
+def remeasure(node_ids=None, jobs=None, with_baselines=True, log=print, respec=False):
     nodes = [n for n in tree.list_nodes() if (not node_ids or n['id'] in node_ids) and (tree.node_dir(n['id'])/'rows.json').exists()]
     spec = scoring.load_guards()
     report = {}
@@ -24,8 +24,12 @@ def remeasure(node_ids=None, jobs=None, with_baselines=True, log=print):
             log(f"[{node['id']}] no frozen binary; skipped")
             continue
         old, fresh, changed = tree.read_rows(node['id']), {}, []
+        # respec: the scenario sets changed (for instance more battle seeds per map); draw them again
+        # for this node's own build, so its validation maps stay the ones hashed from its fingerprint.
+        current = config.scenario_sets(node['external']['build']['version'], wanted=set(old)) if respec else {}
         for name, rows in old.items():
-            specs = [{k: r[k] for k in config.SPEC_FIELDS if k in r} for r in rows]
+            specs = current[name] if respec else [{k: r[k] for k in config.SPEC_FIELDS if k in r} for r in rows]
+            rows = [next((r for r in rows if config.spec_key(r) == config.spec_key(s)), {}) for s in specs] if respec else rows
             log(f"[{node['id']}] {name}: {len(specs)} battles")
             fresh[name] = run_specs(binary, controller, specs, tree.node_dir(node['id'])/'runs', jobs, config.SECONDS, False)
             changed += [f'{name}:{config.spec_key(a)}' for a, b in zip(rows, fresh[name]) if a.get('digest') and a.get('digest') != b.get('digest')]
@@ -40,5 +44,5 @@ def remeasure(node_ids=None, jobs=None, with_baselines=True, log=print):
                         baselines.rows_for(baseline, specs, root.get('binary') or binary, config.SECONDS, jobs, refresh=True)
         report[node['id']] = dict(battles=sum(len(v) for v in fresh.values()), digest_changed=changed)
         log(f"[{node['id']}] remeasured; digests changed: {changed or 'none'}")
-    rescore.rescore(None, [n['id'] for n in nodes], log)
+    rescore.rescore(None, [n['id'] for n in nodes], log, run_missing=True)  # the root fights any of the node's draws it has not fought
     return report
