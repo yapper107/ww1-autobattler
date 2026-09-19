@@ -74,6 +74,11 @@ def cmd_remeasure(a):
     print(json.dumps(remeasure(a.nodes or None, a.jobs, not a.no_baselines), indent=1))
 
 
+def cmd_view(a):
+    from tools.loop.treeview import write
+    print(write())
+
+
 def cmd_replay(a):
     from tools.loop.replay import replay
     print(json.dumps(replay(a.id, a.set, a.key, build=not a.no_build, launch=not a.no_launch), indent=1))
@@ -126,6 +131,7 @@ def main(argv=None):
     dg.add_argument('id'); dg.add_argument('--set', default='town-attack-dev'); dg.add_argument('--count', type=int, default=3); dg.set_defaults(fn=cmd_diagnose)
     br = sub.add_parser('brief', help='write the proposer brief for a node'); br.add_argument('id'); br.set_defaults(fn=cmd_brief)
 
+    sub.add_parser('view', help='write the tree as one HTML page (.local/loop/tree.html)').set_defaults(fn=cmd_view)
     rp = sub.add_parser('replay', help="build a node's snapshot into the Windows mirror and run one of its battles in Unreal")
     rp.add_argument('id'); rp.add_argument('--set', default=current_ranking); rp.add_argument('--key', help='battle key as listed in the node rows (default: first)')
     rp.add_argument('--no-build', action='store_true'); rp.add_argument('--no-launch', action='store_true'); rp.set_defaults(fn=cmd_replay)
