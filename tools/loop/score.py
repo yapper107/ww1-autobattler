@@ -110,6 +110,8 @@ def evaluate_guards(spec, rows_by_set, baseline_rows, external):
                     ok = summary['ci95'][0] <= 0
                 elif g['rule'] == 'mean_le_0':
                     ok = summary['mean'] <= 0
+                elif g['rule'] == 'ci_upper_ge_0':   # higher is better: not significantly below the baseline
+                    ok = summary['ci95'][1] >= 0
                 else:
                     raise ValueError(f'unknown paired rule {g["rule"]}')
                 summary['passed'] = ok

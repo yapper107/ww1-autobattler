@@ -152,7 +152,9 @@ def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
         metrics = dict(evaluated['metrics'])
         metrics['orders_azure_per_minute'], metrics['orders_ember_per_minute'] = orders['orders_per_minute']
         if spec.get('defence'):
+            import conduct_metrics
             metrics.update(attack_metrics(metrics))
+            metrics.update(conduct_metrics.evaluate(run))   # how the attackers fought (user verdict, 19 Sep 2026)
         row.update(status='complete', run=str(run), build=manifest['build'], metrics=metrics,
                    unavailable=evaluated['unavailable'], firing_squads=firing_squads(run),
                    survivors=evaluated['survivors'], initial_actives=evaluated['initial_actives'],

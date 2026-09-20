@@ -1,6 +1,6 @@
 {
-  "version": "v4",
-  "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. v4 adds two conduct guards from the user's replay verdict of 19 Sep 2026 (the drills survivor hung back and fought from the open). v3, plan 018 (user decisions 18 Sep 2026): the objective is the attack on a static defence on generated town maps; symmetric town battles carry the paired behaviour guards; generated trench maps only prove soldiers still shoot. The selectors guard is relative to the lineage root (no selector the root passes may fail); parity is the lineage rule (controllers the node does not own stay digest-identical, static-defence battle included). v1 and v2 are preserved beside this file.",
+  "version": "v3",
+  "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. v3, plan 018 (user decisions 18 Sep 2026): the objective is the attack on a static defence on generated town maps; symmetric town battles carry the paired behaviour guards; generated trench maps only prove soldiers still shoot. The selectors guard is relative to the lineage root (no selector the root passes may fail); parity is the lineage rule (controllers the node does not own stay digest-identical, static-defence battle included). v1 and v2 are preserved beside this file.",
   "guards": [
     {
       "name": "build",
@@ -114,28 +114,6 @@
       "baseline": "legacy",
       "rule": "ci_lower_le_0",
       "provenance": "plan 014 metrics: friendly-fire hits bounded"
-    },
-    {
-      "name": "force_at_the_fight",
-      "kind": "paired",
-      "sets": [
-        "town-attack-dev"
-      ],
-      "metric": "at_fight_share",
-      "baseline": "legacy",
-      "rule": "ci_upper_ge_0",
-      "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: once some soldiers are in a firefight the rest hang back in cover or stand idle, so only a couple fight. Share of living attackers within 100 m of a living defender after the first shot; legacy 0.90, drills root 0.43, that survivor 0.67 on twelve maps. Must not be significantly below legacy."
-    },
-    {
-      "name": "fights_from_cover",
-      "kind": "paired",
-      "sets": [
-        "town-attack-dev"
-      ],
-      "metric": "contact_exposed_share",
-      "baseline": "legacy",
-      "rule": "ci_lower_le_0",
-      "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: on seeing an enemy soldiers do not take a covered firing position, they shoot from where they stand, sometimes in the middle of the road; legacy does take cover. Share of attacker-seconds at the fight with an enemy line of sight on the man (a soldier working from cover is exposed only while he peeks); legacy 0.06, that survivor 0.09. Must not be significantly above legacy."
     }
   ],
   "objective": {
