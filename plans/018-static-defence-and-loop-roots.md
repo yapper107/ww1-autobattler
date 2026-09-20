@@ -485,3 +485,44 @@ Findings.
 
 Next, at the user's request: [plan 019](019-fire-on-the-move.md), fire on the move, a shared soldier-code change that
 re-roots both lineages again.
+
+## Fire on the move, the fourth epoch and generation 9, 20 September 2026
+
+**Plan 019 landed** ([plan](019-fire-on-the-move.md), commit `4624840`, source `24e7fba35634d590`): soldiers on an attack
+movement fire while walking, with the user's rulings (only on an attack, flanks quiet, 80 % pace, the gun from the hip).
+Both lineages were re-rooted. Paired over the same 60 development battles, fire on the move changed neither root
+measurably (legacy attack score -0.029 [-0.083, +0.026], drills -0.018 [-0.058, +0.031]; shots, losses, exposure and
+friendly fire all inside their intervals). The legacy survivor carried forward (`e536f82ee9608605`) is +0.138
+[+0.075, +0.201] on development and +0.015 [-0.066, +0.092] on its new validation draw: not a survivor in this epoch.
+Its validation gains on three draws were +0.069, +0.077 and +0.015: a draw of 15 maps moves that much.
+
+**The user's verdict on the legacy survivor** (three replay videos): "Flanks are still thin... squads still aren't
+utilizing all of their men. Also the flanking still doesn't work, they do not go on a flank to put more fire on the
+enemy." Two new conduct measures (`tools/conduct_metrics.py`): `flank_fire_share` (share of a squad's aimed rifle rounds
+reaching the target 45 degrees or more off the line from the target to the squad's own machine gun) and
+`flank_fire_squads`; legacy root about 0.01, no squad. `engaged_firing_share` was already there: 0.19 to 0.23 for legacy.
+The user also corrected the architect: **loop proposers are Sonnet**; an Opus proposer launched for the larger flank
+brief was stopped and the brief re-issued to Sonnet in three ordered steps. Briefs now share one rules file
+(`.local/loop/briefs/`), and the user allowed more proposers at once (five in generation 9, all cores).
+
+| Node | Lineage, parent | Change | 60 dev vs root | 45 val vs root | Guards |
+|---|---|---|---|---|---|
+| **`a6ac2f2526ec1b34`** | legacy `e536…` | a flank candidate qualifies as a firing position with a clear line to the known enemy, 25 to 60 m from him, 45 degrees or more off the squad's own gun; the rifle group moves as one during a committed flank; an arrived flank that is delivering fire holds | **+0.189 [+0.124, +0.264]** | **+0.138 [+0.039, +0.234]** | friendly fire significantly down (-1.9 [-3.1, -0.7]); flank fire share 0.13 against the parent's 0.09; **fails only `fights_from_cover`, 2.29 points against the 2.0 tolerance** |
+| (withdrawn) | legacy `e536…` | firing-position search radius 12 m to 20 m | | | proposer's own set flat on participation, friendly fire up; finding: a Hold rifleman may only fire at an enemy he has personally seen in the last six seconds (shared soldier code), which caps what command-level positioning can do for participation |
+| **`03491c1460892ae9`** | drills `a52f…` (chain + march) | a no-contact advance leg is complete within 25 m, not 12 m: a column on a narrow street never brought its centroid within 12 m, restarted the same leg for ten minutes and froze the platoon (the three battles without a shot) | **+0.245 [+0.168, +0.322]** | **+0.160 [+0.105, +0.217]** | no silent battle; at the fight -0.069 [-0.106, -0.030] (was -0.18); exposed +2.25 points; both still fail |
+| `59793720dd0307bd` | drills `a52f…` | accepting any new drill clears an unfinished help approach (a stale flag returned early before the no-evidence timeout could run: one squad silent for a whole battle) | +0.155 [+0.060, +0.265] (parent +0.171) | +0.117 [+0.015, +0.211] | as the parent; a correct fix with no measurable gain |
+| `4163eda5ad775894` | drills `a52f…` | march rule restated as no enemy known, over 170 m to the destination and no blind corner ahead | +0.103 (the chain without the march) | +0.022 | the destination is the 60 m leg, so the rule never fires: the march is undone |
+| `e89e53878c35eb05` | drills `a52f…` (architect) | march when the platoon directive carries an advance lane | stopped early | | breaks selector Q01 (no squad chooses support under a platoon intent) |
+| `a52fe037dc125e5e` | drills chain + march, carried | | +0.171 [+0.080, +0.274] | +0.154 [+0.074, +0.237] | three battles without a shot (maps 34 and 37), now explained and fixed by `0349…` |
+
+Findings.
+- **Both lineages are one guard-width from a survivor**, and both best nodes are the largest gains measured so far.
+- A latent test premise surfaced: the whole-battle sweep asserted a terminal impact for every round with a victim; a
+  round that has exited a body and is still in the air when the battle ends has none. The unchanged source shows it on
+  3 of 40 other seeds. The assertion was restated (`1a7a51c`); no simulator change.
+- The march rule still carries a scenario gate. Third restatement, under evaluation as generation 10: the platoon
+  commander marks a no-contact leg as a march while the ordered objective is more than 100 m away, and the squad
+  marches only on that order (`7e022bced6c6259e`).
+Generation 10 (four Sonnet proposers): legacy on `a6ac…`: a covered approach for the flank, and what the flank group
+does after it arrives; drills on `0349…`: squads that reach the fight late, and base-of-fire positions covered from
+every known enemy.

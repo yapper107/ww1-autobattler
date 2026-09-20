@@ -95,6 +95,19 @@ fixed), the flank goes at the enemy's front, the squad that calls a flank stops 
 share of 7 battles and low priority (`.local/loop/max_jobs`). Next: [plan 019](plans/019-fire-on-the-move.md), fire on
 the move (user rulings recorded there), a shared soldier-code change that re-roots both lineages.
 
+Fire on the move and generation 9 (20 September 2026): [plan 019](plans/019-fire-on-the-move.md) landed on source
+`24e7fba35634d590` (walking fire on attack movements with heavy penalties, user rulings in the plan; implemented by an
+Opus agent, reviewed and extended by Fable; full suite, 40/40 references regenerated, 3/3 trace parity, Unreal
+compiles); it changed neither root's attack score measurably. **Loop proposers are Sonnet** (user correction; an Opus
+proposer was stopped). After watching the legacy survivor the user said flanks are thin and "do not go on a flank to
+put more fire on the enemy"; new measures `flank_fire_share` and `flank_fire_squads`. Generation 9 (five Sonnet
+proposers) produced the best node of each lineage, each failing by a guard-width: legacy `a6ac2f2526ec1b34`, a flank
+that qualifies a firing position at an angle and moves the rifle group as one (+0.189 [+0.124, +0.264] and +0.138
+[+0.039, +0.234], friendly fire down, exposure 2.29 points against the 2.0 tolerance); drills `03491c1460892ae9`, the
+25 m arrival radius that ends the silent battles (+0.245 and +0.160, men at the fight -0.069, exposure +2.25 points).
+Generation 10 is running on both. The march rule in drills still carries a scenario-type gate that the architect is
+replacing. Details at the end of plan 018.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
