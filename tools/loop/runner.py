@@ -34,12 +34,25 @@ def supports_lean(binary) -> bool:
     return _LEAN_SUPPORT[key]
 
 
+def available_bytes() -> int:
+    """Memory the kernel says can be given to new work. Not SC_AVPHYS_PAGES: that is *free* pages and
+    leaves out the file cache, so after a few evaluations it read under 2 GB on a machine with 26 GB
+    available and the runner fought its battles one at a time (found 19 Sep 2026)."""
+    try:
+        for line in open('/proc/meminfo'):
+            if line.startswith('MemAvailable:'):
+                return int(line.split()[1])*1024
+    except OSError:
+        pass
+    try:
+        return os.sysconf('SC_AVPHYS_PAGES')*os.sysconf('SC_PAGE_SIZE')
+    except (ValueError, OSError):
+        return 8*(1 << 30)
+
+
 def default_jobs(requested=None, authored=True, seconds=SECONDS, lean=False):
     cpu = os.cpu_count() or 2
-    try:
-        avail = os.sysconf('SC_AVPHYS_PAGES')*os.sysconf('SC_PAGE_SIZE')
-    except (ValueError, OSError):
-        avail = 8*(1 << 30)
+    avail = available_bytes()
     per = BYTES_PER_LEAN_JOB if lean else (BYTES_PER_AUTHORED_JOB if authored else 1.5*(1 << 30))*max(1.0, seconds/SECONDS)
     cap = max(1, min(cpu - 2, int(avail//per)))
     return max(1, min(requested, cap)) if requested else cap
