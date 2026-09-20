@@ -364,3 +364,57 @@ values, 5 to 8 s down to 1 to 3 s a battle); parallel compilation (38 s to 15 s)
 battles; early stop on a failed cheap guard or a new selector failure; one shared validation draw per generation. An
 evaluation fell from 674 s to 367 s. The tree page became a collapsed tree with generation badges, plain titles, proposals
 in flight and the whole history.
+
+## The user's replay verdict, score v4 and the sixth generation, 19 September 2026
+
+**Verdict on the survivor (`a5b94b2706ad71c6`): rejected.** The user replayed it in Unreal and reported three things the
+attack score cannot see: the soldiers do not take a covered firing position on contact ("they shoot from where they see
+them at, sometimes in the middle of the road"), once some are in a firefight the rest hang back ("only a couple of
+soldiers fighting"), and inside the defended buildings they move back and forth and wander into the next building. "The
+drills lineage still needs more direction." The verdict is stored on the node.
+
+**Score v4** turns the first two into guards, measured by `tools/conduct_metrics.py` from the evaluation export (observer
+truth, attackers only, from their first shot) and paired against baseline legacy on the 60 development attacks:
+`force_at_the_fight` (share of living attackers within 100 m of a living defender must not be significantly below
+legacy's) and `fights_from_cover` (share of attacker-seconds at the fight with an enemy line of sight on the man must not
+be significantly above legacy's). Both roots, the survivor and every generation 6 node were measured under v4; no digest
+changed. v3 is kept as `guards-v3.json`.
+
+Generation 6: three Sonnet proposers and three architect merges. Validation draw `generation6`. Evidence:
+`.local/plan018/generation6/`.
+
+| Node | Parent | Change | 60 dev vs lineage root | 45 val | At the fight vs legacy | Exposed at the fight vs legacy | Other guards |
+|---|---|---|---|---|---|---|---|
+| drills root | | | | | -0.467 | +0.029 | firing squads fail |
+| `a5b94b2706ad71c6` | (generation 5 survivor) | | +0.100 [+0.035, +0.169] | +0.085 [+0.040, +0.138] (its own draw) | -0.179 [-0.231, -0.126] | +0.023 [+0.012, +0.036] | pass |
+| `4cad62af1f23f394` | survivor | a plain support or help position that never establishes delivered fire reports Blocked after 30 s (trace: a squad sent to help sat 76 m from the target, out of sight, silent for 89 s until the 75 s directive lifetime expired) | +0.088 [+0.031, +0.146] | +0.051 [-0.035, +0.133] | -0.170 | +0.029 | pass |
+| `a6274e53068f0f1f` | survivor | a Bound leg of the moving element prefers a catalogued covered firing position over a bare formation slot (trace: contact cover is assigned correctly; the exposure comes one drill later, when bounds end on open-ground slots and a man seen in transit halts and fires where he stands) | +0.064 [+0.009, +0.122] | +0.048 [-0.030, +0.129] | -0.150 | **+0.014 [+0.002, +0.026]** | one validation battle with two squads firing |
+| `8630dc9d64b11667` | survivor | both of the above (architect merge) | +0.093 [+0.044, +0.146] | +0.035 [-0.044, +0.110] | -0.147 [-0.190, -0.102] | +0.020 [+0.007, +0.033] | the same validation battle |
+| `a8455114f78c31d3`, `8519c316856a1909` | survivor | merges with the generation 5 slot-search and stale-order ideas | +0.096, +0.100 | +0.028, +0.025 (intervals cross zero) | -0.153, -0.160 | +0.025, +0.023 | pass |
+| **`34bcb81ab1cc24ad`** | legacy root | a corporal holding a sergeant-ordered Flank, PullBack or BoundMove is exempt from the drift-based regrouping halt | **+0.058 [+0.000, +0.118]** | **+0.069 [-0.001, +0.150]** | +0.021 [+0.002, +0.041] | +0.013 [+0.007, +0.018] fails | friendly fire, spacing and order rate pass |
+
+Findings.
+- **No survivor under v4.** The drills chain is a third of the way from its root to legacy on force at the fight
+  (-0.47 to about -0.15) and the covered-bound change halves its exposure gap; neither closes. On the generation 6
+  validation draw every drills node's interval crosses zero, the old survivor's gain included in all likelihood (it was
+  measured on its own draw): drills' proven gain is on development only.
+- **The first legacy gain in eight proposals**, from fixing the root cause found in generation 5 rather than its symptom.
+  On `city-28` the root's squad 3 corporal stands at one corner from 112 s to 494 s holding re-issued flank orders; with
+  the change he leads the flank through two blocks and the battle ends with 2 defenders left instead of 6 and 20
+  attackers instead of 15. It fails `fights_from_cover` by 1.3 points: a flank that happens is seen more than one that
+  does not. Whether the guard should carry a tolerance is the user's decision; it was not changed.
+- **The user's review of the flank video** (`tools/battle_video.py`, side by side, sent as an MP4; the user wants future
+  behaviour shown this way): in both versions some soldiers stutter back and forth rapidly, and with the fix the corporal
+  flanked with only part of his men, slowly, while another squad did the fighting.
+- **The stutter is real, large and in shared soldier code.** New metric `stutter_share` (share of living
+  attacker-seconds inside a burst of four or more direction reversals at most 1.5 s apart): legacy 3.7 % over five
+  attacks, the drills survivor 0.4 %. On `city-28` the legacy squad 3 sergeant reverses 375 times and walks 355 m in
+  170 s without leaving a 5 m stretch; two riflemen walk 443 m and 194 m to move 2 m. Trace (`BattleSim.cpp`, the
+  soldier's cover decision): under a Hold order at an exposed post `protectHold` assigns an emergency shelter 5 m away;
+  after a step a second contact becomes visible from which that shelter is not protected, `flanked` releases it, no
+  other candidate qualifies, he walks back to his post ("Advancing under squad orders"), where the second contact is
+  out of sight again and the shelter is re-assigned. There is no memory of the rejected shelter and no dwell time, so the
+  pair of states flips every 0.2 to 0.4 s, at zero suppression. Every controller shares this code, so the loop cannot
+  touch it (lineage parity); a repair is an architect change that moves every digest and re-roots both lineages.
+- Same battle, the under-strength flank: riflemen 26 and 27 stand 25 m behind for 170 s with zero metres walked under
+  REGROUP orders, so the corporal flanks with the three men who are with him. Next legacy brief.

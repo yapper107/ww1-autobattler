@@ -66,6 +66,19 @@ seeds. Four proposals a generation (user decision). **First survivor: drills
 its next target is a corporal who freezes waiting on pinned riflemen. An evaluation now takes
 about six minutes. Details at the end of the plan.
 
+Generation 6 (19 September 2026): the user replayed the survivor and **rejected it** (soldiers fire from where they stand,
+most of the force hangs back, back-and-forth in buildings). Score v4 adds two conduct guards paired against legacy on the
+development attacks, `force_at_the_fight` and `fights_from_cover` (`tools/conduct_metrics.py`); under v4 no node survives.
+Drills: at the fight -0.47 (root) to about -0.15 below legacy; a covered-bound change (`a6274e53068f0f1f`) halves the
+exposure gap; drills' gain is proven on development only. **Legacy's first gain**, `34bcb81ab1cc24ad` (a corporal on a
+committed flank no longer halts to regroup): +0.058 [+0.000, +0.118] and +0.069 [-0.001, +0.150], failing only
+`fights_from_cover` by 1.3 points; whether that guard gets a tolerance is the user's open decision. The user reviews
+behaviour from side-by-side videos (`tools/battle_video.py`) and saw a rapid back-and-forth stutter: measured by the new
+`stutter_share` (legacy 3.7 % of attacker time, drills 0.4 %) and traced to the shared soldier cover decision in
+`BattleSim.cpp` (emergency shelter assigned, released as flanked one step later, re-assigned at the post, every 0.2 to
+0.4 s); outside the loop's reach, so a repair is an architect change that re-roots both lineages. Details at the end of
+the plan.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
