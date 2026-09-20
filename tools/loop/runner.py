@@ -50,11 +50,20 @@ def available_bytes() -> int:
         return 8*(1 << 30)
 
 
+def machine_share() -> int:
+    """The user's cap on parallel battles: ARMY_LOOP_MAX_JOBS, or the number in <loop root>/max_jobs (read each time, so
+    it also slows an evaluation that is already running from its next set on). No cap when neither is set."""
+    try:
+        return max(1, int(os.environ.get('ARMY_LOOP_MAX_JOBS') or (config.LOOP_ROOT/'max_jobs').read_text().strip()))
+    except (OSError, ValueError):
+        return 1 << 20
+
+
 def default_jobs(requested=None, authored=True, seconds=SECONDS, lean=False):
     cpu = os.cpu_count() or 2
     avail = available_bytes()
     per = BYTES_PER_LEAN_JOB if lean else (BYTES_PER_AUTHORED_JOB if authored else 1.5*(1 << 30))*max(1.0, seconds/SECONDS)
-    cap = max(1, min(cpu - 2, int(avail//per)))
+    cap = max(1, min(cpu - 2, int(avail//per), machine_share()))
     return max(1, min(requested, cap)) if requested else cap
 
 
