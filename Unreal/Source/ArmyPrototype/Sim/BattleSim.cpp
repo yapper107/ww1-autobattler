@@ -277,13 +277,44 @@ void MakeMGEncounter(const Config& config,int variant,Map& map,Frame& frame) {
     }
     PrepareGeometry(map);
 }
-float AimSeconds(const Soldier& s) {
-    return 0.45f/(s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)))*(1+3*s.suppression)*(s.health<55?1.3f:1.f);
+bool AttackMovementTask(Task t) {return t==Task::Advance||t==Task::BoundMove||t==Task::Flank||t==Task::ClearLane;}
+bool AttackMovement(const Soldier& s) {
+    if(!AttackMovementTask(s.assignment.task)&&!s.assignment.execution.attackMove)return false;
+    // A lane clearance walks under Action::Cover; every other shelter, peek, rally or
+    // rearward move is excluded by its action or its reason.
+    if(s.action==Action::Cover)return s.reason==Reason::ClearLane;
+    return s.action==Action::Advance&&s.reason!=Reason::Peek&&s.reason!=Reason::Regroup&&s.reason!=Reason::EmergencyCover;
 }
-float ShotSpread(const Soldier& s) {return s.gun.baseDeviation+0.040f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))+s.suppression*0.10f;}
-float VerticalSpread(const Soldier& s) {return 0.014f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))+s.suppression*0.024f;}
+bool FlankHoldsFire(const Soldier& s,float time) {
+    // Keep the flank quiet: he opens fire once he has been fired on or is close.
+    if(s.assignment.task!=Task::Flank||s.suppression>0.08f||s.health<s.maxHealth)return false;
+    for(const auto& ct:s.contacts)if(ct.known&&ct.visible&&time-ct.observedAt<=2&&Distance(s.position,ct.position)<=30)return false;
+    return true;
+}
+bool WalkingFire(const Soldier& s,float time) {return AttackMovement(s)&&s.magazineRemaining>0&&!FlankHoldsFire(s,time);}
+float WalkingFireRange(const Soldier& s) {return s.gun.moving.range;}
+float MovePenalty(float factor,float scale) {return 1+(factor-1)/std::max(0.01f,scale);}
+float AimReady(const Soldier& s) {return s.movingFire?Clamp(s.gun.moving.aimCap,0.05f,1.f):1.f;}
+float AimSeconds(const Soldier& s) {
+    const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
+    return 0.45f/(s.gun.ergonomics*dexterity)*(1+3*s.suppression)*(s.health<55?1.3f:1.f)*
+        (s.movingFire?MovePenalty(s.gun.moving.aimSeconds,dexterity):1.f);
+}
+// The walk widens what the shooter contributes; the weapon's mechanical deviation stays.
+// The factor is exactly 1 when he is not moving, so a stationary shot is bit-identical.
+static float SpreadWalk(const Soldier& s) {return s.movingFire?MovePenalty(s.gun.moving.spread,StatScale(s.stats.Get(Stat::Composure))):1.f;}
+float ShotSpread(const Soldier& s) {
+    const float m=SpreadWalk(s);
+    return s.gun.baseDeviation+0.040f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+s.suppression*0.10f*m;
+}
+float VerticalSpread(const Soldier& s) {
+    const float m=SpreadWalk(s);
+    return 0.014f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+s.suppression*0.024f*m;
+}
 float SwayAmplitude(const Soldier& s) {
-    return 0.010f/(s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)))*(s.stance==Stance::Crouched?0.7f:1.f)*(1+2*s.suppression);
+    const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
+    return 0.010f/(s.gun.ergonomics*dexterity)*(s.stance==Stance::Crouched?0.7f:1.f)*(1+2*s.suppression)*
+        (s.movingFire?MovePenalty(s.gun.moving.sway,dexterity):1.f);
 }
 Vec3 SwayOffset(const Soldier& s,float time) {
     // Two incommensurate periods, so the aim point wanders instead of retracing a closed figure.
@@ -291,22 +322,31 @@ Vec3 SwayOffset(const Soldier& s,float time) {
     return {a*std::sin(6.28318531f*time/2.3f+s.swayPhase),a*std::sin(6.28318531f*time/3.7f+s.swayPhase2),0};
 }
 float RecoilKick(const Soldier& s) {
-    return s.gun.recoil/(s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)))*(s.stance==Stance::Crouched?0.8f:1.f);
+    const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
+    return s.gun.recoil/(s.gun.ergonomics*dexterity)*(s.stance==Stance::Crouched?0.8f:1.f)*
+        (s.movingFire?MovePenalty(s.gun.moving.recoilKick,dexterity):1.f);
 }
 void ApplyRecoil(Soldier& s) {const float kick=RecoilKick(s);s.recoil.x+=0.3f*s.recoilSign*kick;s.recoil.y+=kick;}
 void DecayRecoil(Soldier& s,float seconds) {
     // Rate 4 at the reference weapon and dexterity: a quarter-second time constant, so a bolt
     // shot decays to nothing before the next round and a burst settles near three kicks.
-    const float k=std::exp(-seconds*4*s.gun.ergonomics*StatScale(s.stats.Get(Stat::Dexterity)));
+    // A table recovery of 0.5 halves the rate at the reference; the time constant is what
+    // the movement penalty stretches, so a better soldier loses less of it. The factor is
+    // exactly 1 when he is not moving, so a stationary decay is bit-identical.
+    const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
+    const float walk=s.movingFire?1.f/MovePenalty(1.f/std::max(0.01f,s.gun.moving.recoilRecovery),dexterity):1.f;
+    const float k=std::exp(-seconds*4*s.gun.ergonomics*dexterity*walk);
     s.recoil.x*=k;s.recoil.y*=k;
 }
 float ReportDelay(float base,const Soldier& sender) {return base/StatScale(sender.stats.Get(Stat::Wisdom));}
 void UpdateAim(Soldier& s,int target,Vec3 point,float dt) {
-    if(target<0||s.action!=Action::Fire||s.suppression>=0.8f) {s.aim=0;s.aimTarget=-1;return;}
+    if(target<0||(s.action!=Action::Fire&&!s.movingFire)||s.suppression>=0.8f) {s.aim=0;s.aimTarget=-1;return;}
     if(s.aimTarget!=target)s.aim=0;
     else if(Distance(s.aimPoint,point)>1.5f)s.aim*=0.5f;
     s.aimTarget=target;s.aimPoint=point;
-    s.aim=Clamp(s.aim+std::max(0.f,dt)/AimSeconds(s),0,1);
+    // Walking fire never settles: the aim stops at the weapon's moving cap, which is also
+    // the readiness threshold, so a man who halts goes on settling to a full aim.
+    s.aim=Clamp(s.aim+std::max(0.f,dt)/AimSeconds(s),0,AimReady(s));
 }
 float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
     Vec3 direction=Normal(Vec3{aim.x-s.position.x,aim.y-s.position.y,0});
@@ -478,7 +518,7 @@ std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,co
     }
     return FindPath(map,s.position,goal);
 }
-struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999}; };
+struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999};int burstRounds=0,burstLength=0,bursts=0; };
 struct Projectile { Vec3 p,velocity;int owner;size_t shot;float mass=0,dragK=0;std::array<bool,UnitCount> suppressed{},struck{}; bool delivered=false; };
 // Decision code receives only self/remembered contacts and friendly positions.
 // It has no authoritative enemy roster or hidden enemy positions.
@@ -682,7 +722,13 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     if(((s.assignment.task==Task::Hold||s.assignment.task==Task::BoundCover)&&Distance(s.position,objective)<1)||s.regrouping)
         return {s.position,visible?Action::Fire:Action::Hold,s.regrouping?Reason::Regroup:Reason::AtWaypoint};
     float preferred=d==Doctrine::Aggressive?15.f:d==Doctrine::Cautious?34.f:26.f;
-    if(visible&&nearest<preferred) return {s.position,Action::Fire,Reason::ClearShot};
+    // Fire on the move: a man attacking with a visible enemy inside walking-fire range
+    // presses on to his ordered objective and shoots as he goes, instead of stopping
+    // where he happens to stand. Outside that range, or on any other movement, he halts
+    // and fires as before. The walking order itself is checked once he is moving.
+    const bool pressOn=c.movingFire&&visible&&nearest<=WalkingFireRange(s)&&Distance(s.position,objective)>0.7f&&
+        AttackMovementTask(s.assignment.task)&&s.magazineRemaining>0&&!FlankHoldsFire(s,time);
+    if(visible&&nearest<preferred&&!pressOn) return {s.position,Action::Fire,Reason::ClearShot};
     return {objective,Action::Advance,visible?Reason::Search:Reason::LostContact};
 }
 // Segment against a vertical body cylinder, expressed relative to its moving centre.
@@ -1051,7 +1097,10 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(c.recoveryFixture||TypedController(c))while(a.cursor+1<a.path.size()&&Distance(s.position,a.path[a.cursor])<.35f&&
                     std::abs(s.position.z-a.path[a.cursor+1].z)<.05f&&ClearLine(r.map,s.position,a.path[a.cursor+1],.48f))++a.cursor;
                 Vec3 dest=a.path[a.cursor];float dist=Distance(s.position,dest);
-                float speed=(s.machineGun?2.55f:3.15f)*(s.health<55?0.72f:1.f)*(1-s.suppression*0.45f)*(s.stance==Stance::Crouched?0.6f:1.f);
+                // Walking fire costs pace: the flag is what the firing stage measured at the
+                // end of the previous tick, so a man who opens fire slows from the next step.
+                float speed=(s.machineGun?2.55f:3.15f)*(s.health<55?0.72f:1.f)*(1-s.suppression*0.45f)*(s.stance==Stance::Crouched?0.6f:1.f)*
+                    (s.movingFire?s.gun.moving.pace:1.f);
                 Vec3 dir=Normal(dest-s.position);Vec3 next=s.position+dir*std::min(dist,speed*TickSeconds);
                 if(TypedController(c)&&f.time<a.avoidUntil&&!OnStairs(r.map,s.position)){
                     // A short, collision-checked sidestep breaks a friendly crowd deadlock.
@@ -1131,7 +1180,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     shot.hit=true;shot.target=shot.victims.front().soldier;
                     event(EventKind::Hit,b.owner,hit,std::string(Name(b.owner))+" hit "+Name(hit));r.events.back().time=endTime;
                     if(!victim.Active()) {
-                        victim.action=rng.Next()<0.55f?Action::Wounded:Action::Killed;victim.reason=Reason::Down;victim.aim=0;victim.aimTarget=-1;
+                        victim.action=rng.Next()<0.55f?Action::Wounded:Action::Killed;victim.reason=Reason::Down;victim.aim=0;victim.aimTarget=-1;victim.movingFire=false;
                         run[hit].tactics.assigned=false;
                         for(auto& contact:victim.contacts) contact.visible=false;
                         event(EventKind::Casualty,hit,b.owner,std::string(Name(hit))+(victim.action==Action::Killed?" killed in action":" incapacitated"));
@@ -1171,11 +1220,20 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         for(auto& s:f.soldiers) if(s.Active()) {
             auto& a=run[s.id];
             a.cooldown-=TickSeconds;
+            s.movingFire=false;
+            // A magazine emptied on the move is carried empty; the reload starts at the
+            // first halt, which is also the only place it can be started from.
+            if(s.reloadDeferred&&s.action!=Action::Advance&&s.action!=Action::Cover&&s.action!=Action::Retreat) {
+                s.reloadUntil=f.time+s.gun.reloadSeconds/StatScale(s.stats.Get(Stat::Dexterity));s.reloadDeferred=false;
+            }
             // A reload is only ever started by an empty magazine, so fixtures that
             // drive reloadUntil directly to silence a soldier keep working.
-            if(s.magazineRemaining<=0&&f.time>=s.reloadUntil)s.magazineRemaining=s.gun.magazine;
-            // Fire only after stopping: movement and settling are deliberate commitments.
-            if(s.action!=Action::Fire||s.suppression>=0.8f||f.time<s.reloadUntil) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;continue;}
+            if(s.magazineRemaining<=0&&!s.reloadDeferred&&f.time>=s.reloadUntil)s.magazineRemaining=s.gun.magazine;
+            // Fire after stopping, or on the move while attacking on foot (plan 019).
+            const bool walking=c.movingFire&&WalkingFire(s,f.time);
+            if((s.action!=Action::Fire&&!walking)||s.suppression>=0.8f||f.time<s.reloadUntil) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;continue;}
+            // From here the aim model, the friendly-fire cone and the pace read this flag.
+            s.movingFire=walking;
             const Vec3 muzzle{s.position.x,s.position.y,s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f)};
             const bool automatic=s.gun.action==WeaponAction::Automatic;
             const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
@@ -1183,14 +1241,19 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             if((s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)||f.time-a.burst.observedAt>6||(s.assignment.id&&s.assignment.teamPlan.liftFire&&Distance(a.burst.point,s.assignment.teamPlan.liftedSector)<12))a.burst={};
             FireSolution solution=SelectFireSolution(s,r.map,f.time);
             if(sustained&&a.burst.enemy>=0&&f.time-a.burst.observedAt<=6)solution=a.burst;
-            if(solution.enemy<0) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;continue;}
+            if(solution.enemy<0) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;s.movingFire=false;continue;}
+            // Walking fire goes at a man he sees or saw duck in the last two seconds (the same
+            // memory a halted rifleman shoots on): keeping that man down is what it is for.
+            if(walking&&Distance(s.position,s.contacts[solution.enemy].position)>WalkingFireRange(s)) {
+                UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;s.movingFire=false;continue;
+            }
             s.friendlyRisk=FriendlyFireRisk(s,r.map,solution.point,f.time);
             if(ShouldHoldFire(s,s.friendlyRisk)) {
                 if(!s.holdingFire){s.blockedSince=f.time;event(EventKind::Decision,s.id,-1,std::string(Name(s.id))+": holding fire for friendly troops");}
                 if(f.time-s.lastBlockedAt>5)s.blockedSeconds=0;
                 s.blockedSeconds+=TickSeconds;s.lastBlockedAt=f.time;
                 s.aimPoint={solution.point.x,solution.point.y,solution.point.z-1.5f};
-                s.holdingFire=true;UpdateAim(s,-1,{},TickSeconds);a.burst={};continue;
+                s.holdingFire=true;UpdateAim(s,-1,{},TickSeconds);a.burst={};s.movingFire=false;continue;
             }
             s.holdingFire=false;
             if(sustained&&a.burst.enemy<0)a.burst=solution;
@@ -1199,9 +1262,8 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             Vec3 aim{solution.point.x,solution.point.y,solution.point.z-1.5f};
             float best=Length({aim.x-s.position.x,aim.y-s.position.y,0});
             UpdateAim(s,target,aim,TickSeconds);
-            if(a.cooldown>0||s.aim<1)continue;
-            float spread=ShotSpread(s)+(!automatic&&solution.area?.015f:0.f);
-            if(s.action==Action::Advance||s.action==Action::Cover) spread+=0.030f;
+            if(a.cooldown>0||s.aim<AimReady(s))continue;
+            const float spread=ShotSpread(s)+(!automatic&&solution.area?.015f:0.f);
             const Vec3 off=SwayOffset(s,f.time)+s.recoil;
             float angle=std::atan2(aim.y-s.position.y,aim.x-s.position.x)+off.x+(rng.Next()-0.5f)*2*spread;
             Vec3 direction={std::cos(angle),std::sin(angle)};s.facing=direction;
@@ -1209,16 +1271,27 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             // Aim at the last seen torso; small vertical spread and gravity compensation.
             const float flightTime=FlightTime(best,speed,s.gun.dragK);
             float vz=(solution.point.z-muzzle.z)/std::max(0.001f,flightTime)+4.905f*flightTime+speed*std::tan(off.y)+(rng.Next()-0.5f)*speed*VerticalSpread(s);
-            Shot shot;shot.suppressive=solution.area;shot.aimedAt=solution.point;shot.time=shot.impactTime=f.time;shot.owner=s.id;shot.aimedEnemy=solution.enemy;shot.start=shot.end=s.position;
+            Shot shot;shot.suppressive=solution.area;shot.movingFire=walking;shot.aimedAt=solution.point;shot.time=shot.impactTime=f.time;shot.owner=s.id;shot.aimedEnemy=solution.enemy;shot.start=shot.end=s.position;
             shot.flight.push_back({f.time,muzzle});r.shots.push_back(shot);
             bullets.push_back({muzzle,{direction.x*speed,direction.y*speed,vz},s.id,r.shots.size()-1,s.gun.bulletMass,s.gun.dragK,{},{}});
             ++s.rounds;s.lastShotAt=f.time;ApplyRecoil(s);s.aim=sustained?0.98f:automatic?0.8f:s.gun.action==WeaponAction::SemiAuto?0.5f:0.2f;
             s.blockedSeconds=0;s.lastBlockedAt=-100;
             // Cyclic rate is mechanical and never stat-modified; burst structure is behaviour.
-            a.cooldown=automatic||s.gun.action==WeaponAction::SemiAuto?s.gun.cyclicSeconds:s.gun.cycleSeconds/dexterity+s.suppression*0.5f;
+            a.cooldown=automatic||s.gun.action==WeaponAction::SemiAuto?s.gun.cyclicSeconds:
+                s.gun.cycleSeconds/dexterity*(walking?MovePenalty(s.gun.moving.cadence,dexterity):1.f)+s.suppression*0.5f;
             if(sustained&&s.rounds%18==0){a.cooldown=1.f;a.burst={};}
-            if(automatic&&!sustained&&s.rounds%3==0)a.cooldown=0.6f/(s.gun.ergonomics*dexterity);
-            if(--s.magazineRemaining<=0)s.reloadUntil=f.time+s.gun.reloadSeconds/dexterity;
+            if(automatic&&!sustained) {
+                // Hip bursts of burstMin..burstMax rounds with the usual pause. The length is a
+                // deterministic function of the shooter and his burst count: no new random draw.
+                if(walking&&s.gun.moving.burstMin>0&&s.gun.moving.burstMax>=s.gun.moving.burstMin) {
+                    if(a.burstLength<=0)a.burstLength=s.gun.moving.burstMin+(s.id+a.bursts)%(s.gun.moving.burstMax-s.gun.moving.burstMin+1);
+                    if(++a.burstRounds>=a.burstLength){a.cooldown=0.6f/(s.gun.ergonomics*dexterity);a.burstRounds=0;a.burstLength=0;++a.bursts;}
+                } else {a.burstRounds=0;a.burstLength=0;if(s.rounds%3==0)a.cooldown=0.6f/(s.gun.ergonomics*dexterity);}
+            }
+            if(--s.magazineRemaining<=0) {
+                if(walking)s.reloadDeferred=true;   // he finishes the rush and reloads at the halt
+                else s.reloadUntil=f.time+s.gun.reloadSeconds/dexterity;
+            }
             a.tactics.readyAt=std::max(f.time+a.cooldown,s.reloadUntil);
         }
         r.diagnostics->firing+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();

@@ -381,7 +381,7 @@ static void ReliabilityLocalCoverScenario(){
             if(p.localUseful){useful=true;assert(acknowledged&&f.time>=assignedAt+config.reportDelay*2);}
         }
         for(const auto& s:record.shots)shot|=s.owner==source&&s.aimedEnemy==33&&s.time>assignedAt;
-        std::cerr<<"local cover "<<variant<<": assigned="<<assigned<<" acknowledged="<<acknowledged<<" useful="<<useful<<" shot="<<shot<<"\n";
+        std::cerr<<"local cover "<<variant<<": assigned="<<assigned<<" source="<<source<<" acknowledged="<<acknowledged<<" useful="<<useful<<" shot="<<shot<<"\n";
         if(variant==32){
             assert(assigned&&acknowledged&&useful&&shot);
             const Frame* established=nullptr;

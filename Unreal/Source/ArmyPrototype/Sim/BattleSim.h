@@ -139,6 +139,7 @@ struct ExecutionContract {
     bool rifleSupport=false;int supportThreat=-1;
     bool arrivalCheck=false; // Drills: stage-clock expiry requests a physical arrival receipt.
     float rushSeconds=0; // Drills only: bounded movement permission after activation.
+    bool attackMove=false; // Drills only: the moving element of a bound toward the enemy (plan 019 walking fire).
 };
 struct ObservationCoverage {
     int observer=-1,method=0,stage=0,generation=0;
@@ -268,6 +269,10 @@ struct Config {
         std::array<Vec3,SquadsPerTeam> attackerObjectives{};
     } staticDefence;
 
+    // Fire on the move (plan 019). On by default; --no-moving-fire is the A/B control
+    // and reproduces the pre-019 battle exactly.
+    bool movingFire=true;
+
     bool drills=false;
     ScenarioFamily family=ScenarioFamily::None;
     uint32_t genSeed=1;
@@ -287,7 +292,7 @@ inline bool SameConfig(const Config& a,const Config& b) {
     // is selected: the resolved objective is derived from them and the map.
     if(a.staticDefence.layout!=b.staticDefence.layout)return false;
     if(a.staticDefence.layout!=DefenceLayout::None&&(a.staticDefence.defenders!=b.staticDefence.defenders||a.staticDefence.seed!=b.staticDefence.seed))return false;
-    return a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+    return a.movingFire==b.movingFire&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
 inline bool TypedController(const Config& c){return c.cognition||c.drills;}
@@ -436,6 +441,10 @@ struct Soldier {
     int waitingPassage=-1;
     float passageWaitSeconds=0;
     float reloadUntil = 0;
+    // Walking fire: movingFire is "delivering fire on an attack movement right now" and
+    // drives the aim model, the pace and the exports; reloadDeferred is an empty magazine
+    // carried at the walk, reloaded at the next halt.
+    bool movingFire = false, reloadDeferred = false;
     bool areaFire = false;
     bool holdingFire = false;
     float friendlyRisk = 0;
@@ -631,6 +640,19 @@ struct SquadCommand {
     int preparedPlatoonSerial=0;
     DrillPlan battleDrill;
 };
+// Fire on the move (plan 019). AttackMovement is the user's WHO rule: an attack
+// movement only, never a move to shelter, a peek, a rally, a pull-back or the rear.
+// WalkingFire adds the quiet-flank rule and an empty magazine. Neither reads the map
+// or any enemy truth, and neither consults Config: the caller applies config.movingFire.
+bool AttackMovementTask(Task task);
+bool AttackMovement(const Soldier& soldier);
+bool FlankHoldsFire(const Soldier& soldier,float time);
+bool WalkingFire(const Soldier& soldier,float time);
+// How far the moving shooter may reach, and the reference-scaled movement penalty:
+// factor at stats 100, less for a better soldier, more for a worse one.
+float WalkingFireRange(const Soldier& soldier);
+float MovePenalty(float factor,float statScale);
+float AimReady(const Soldier& soldier);
 float AimSeconds(const Soldier& soldier);
 float ShotSpread(const Soldier& soldier);
 float VerticalSpread(const Soldier& soldier);
@@ -689,7 +711,7 @@ struct Shot {
     float time = 0, impactTime = 0;
     int owner = -1;
     Vec3 start{}, end{};
-    bool hit = false, suppressive = false;
+    bool hit = false, suppressive = false, movingFire = false;
     Vec3 aimedAt{};
     enum class Impact { None, Ground, Cover, Soldier, OutOfBounds };
     Impact impact = Impact::None;   // The terminal stop; a round that over-penetrates keeps flying.

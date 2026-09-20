@@ -828,7 +828,9 @@ void MakeCognitiveEncounter(const Config& config,int variant,Map& map,Frame& fra
         frame.soldiers[32].position={30,-15};EquipWeapon(frame.soldiers[32],{WeaponId::MachineGun,{}});frame.soldiers[32].role=Role::MachineGunner;
         frame.soldiers[33].position={40,25};
         for(int id:{32,33}){frame.soldiers[id].health=10000;frame.soldiers[id].reloadUntil=600;}
-        if(variant==33)frame.soldiers[2].reloadUntil=600;
+        // The control's premise is that no forward rifleman can deliver covering fire.
+        // Since plan 019 a mover can also fire on the move, so every mover is silenced.
+        if(variant==33)for(int id:{1,2,3,4})frame.soldiers[id].reloadUntil=600;
         for(auto& s:frame.soldiers)s.goal=s.position;
         auto& p=frame.command[0].accepted;p.revision=1;p.directive=9000;p.method=CognitiveMethod::SupportedAdvance;p.stage=MethodStage::Prepare;
         p.support=7;p.supportSquad=0;p.supportThreat=32;p.sector={30,-15};p.requiresSupport=true;p.supportWaitStarted=0;

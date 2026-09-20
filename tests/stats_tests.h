@@ -228,6 +228,88 @@ static void SwayAndRecoilTests() {
              <<" mrad, ten machine-gun rounds reach "<<burst/mgKick<<" kicks, the 1.0 s pause leaves "
              <<afterPause/mgKick<<" and 1.25 s leaves "<<gunner.recoil.y/mgKick<<" PASS\n";
 }
+// Plan 019: the walking-fire table, its stat scaling and the rule for who may use it.
+static void MovingFireValueTests() {
+    Soldier rifleman;const MovingFire& walk=rifleman.gun.moving;
+    assert(walk.aimSeconds==2.5f&&walk.aimCap==.5f&&walk.spread==3.f&&walk.sway==4.f);
+    assert(walk.recoilKick==1.5f&&walk.recoilRecovery==.5f&&walk.cadence==1.5f&&walk.range==70.f&&walk.pace==.8f);
+    assert(walk.burstMin==0&&walk.burstMax==0);   // the rifle keeps its own cadence structure
+    Soldier moving=rifleman;moving.movingFire=true;
+    // The reference soldier walks at exactly the table values.
+    assert(std::abs(AimSeconds(moving)-2.5f*AimSeconds(rifleman))<1e-6f);
+    assert(std::abs((ShotSpread(moving)-rifleman.gun.baseDeviation)-3.f*(ShotSpread(rifleman)-rifleman.gun.baseDeviation))<1e-6f);
+    assert(std::abs(VerticalSpread(moving)-3.f*VerticalSpread(rifleman))<1e-7f);
+    assert(std::abs(SwayAmplitude(moving)-4.f*SwayAmplitude(rifleman))<1e-7f);
+    assert(std::abs(RecoilKick(moving)-1.5f*RecoilKick(rifleman))<1e-7f);
+    assert(ShotSpread(moving)>rifleman.gun.baseDeviation);   // the mechanical deviation is not multiplied
+    // Recovery at half the rate: one second of walking decay is the square root of one
+    // second of standing decay, because exp(-2t) = sqrt(exp(-4t)).
+    {Soldier a=moving,b=rifleman;a.recoil=b.recoil={0,.02f,0};
+     for(int n=0;n<20;++n){DecayRecoil(a,.05f);DecayRecoil(b,.05f);}
+     assert(a.recoil.y>b.recoil.y&&std::abs(a.recoil.y/.02f-std::sqrt(b.recoil.y/.02f))<1e-5f);}
+    // The aim never settles above the cap, and that cap is the readiness threshold.
+    assert(AimReady(rifleman)==1.f&&AimReady(moving)==.5f);
+    {Soldier settling=moving;settling.action=Action::Advance;
+     UpdateAim(settling,32,{20,0,1.45f},10.f);assert(std::abs(settling.aim-.5f)<1e-6f);
+     settling.movingFire=false;settling.action=Action::Fire;UpdateAim(settling,32,{20,0,1.45f},10.f);assert(settling.aim==1.f);
+     Soldier halted=rifleman;halted.action=Action::Advance;UpdateAim(halted,32,{20,0,1.45f},10.f);assert(halted.aim==0.f);}
+    // Dexterity carries the handling terms and composure the spread: a better soldier
+    // loses less to the walk, a worse one more, and the reference exactly the table.
+    auto ratio=[](Soldier s,float(*value)(const Soldier&)){Soldier m=s;m.movingFire=true;return value(m)/value(s);};
+    Soldier quick=rifleman;quick.stats.value[size_t(Stat::Dexterity)]=140;
+    Soldier clumsy=rifleman;clumsy.stats.value[size_t(Stat::Dexterity)]=80;
+    assert(ratio(quick,AimSeconds)<2.5f&&ratio(quick,AimSeconds)>1.f&&ratio(clumsy,AimSeconds)>2.5f);
+    assert(ratio(quick,SwayAmplitude)<4.f&&ratio(clumsy,SwayAmplitude)>4.f);
+    assert(ratio(quick,RecoilKick)<1.5f&&ratio(clumsy,RecoilKick)>1.5f);
+    Soldier calm=rifleman;calm.stats.value[size_t(Stat::Composure)]=140;
+    Soldier nervous=rifleman;nervous.stats.value[size_t(Stat::Composure)]=80;
+    assert(ratio(calm,VerticalSpread)<3.f&&ratio(calm,VerticalSpread)>1.f&&ratio(nervous,VerticalSpread)>3.f);
+    assert(std::abs(MovePenalty(3.f,1.f)-3.f)<1e-6f&&MovePenalty(3.f,2.f)<3.f&&MovePenalty(3.f,.5f)>3.f);
+    // The machine gun is heavier in every term and fires short bursts from the hip.
+    Soldier gunner;EquipWeapon(gunner,{WeaponId::MachineGun,{}});
+    const MovingFire& hip=gunner.gun.moving;
+    assert(hip.spread==5.f&&hip.sway==6.f&&hip.recoilKick==2.f&&hip.recoilRecovery==.25f&&hip.range==60.f&&hip.pace==.6f);
+    assert(hip.burstMin==4&&hip.burstMax==6&&hip.cadence==1.f);   // the cyclic rate is mechanical
+    Soldier hipFire=gunner;hipFire.movingFire=true;
+    assert(std::abs(SwayAmplitude(hipFire)-6.f*SwayAmplitude(gunner))<1e-7f&&std::abs(RecoilKick(hipFire)-2.f*RecoilKick(gunner))<1e-7f);
+    assert(WalkingFireRange(rifleman)==70.f&&WalkingFireRange(gunner)==60.f);
+    std::cout<<"MOVING FIRE table: rifle spread "<<ShotSpread(moving)*1000<<" mrad against "<<ShotSpread(rifleman)*1000
+             <<" standing, aim "<<AimSeconds(moving)<<"s to a cap of "<<AimReady(moving)<<" PASS\n";
+}
+static void MovingFireRuleTests() {
+    // Only an attack movement, and only what the soldier himself has.
+    Soldier s;s.assignment.task=Task::Advance;s.action=Action::Advance;s.reason=Reason::OrderedAdvance;
+    assert(AttackMovement(s)&&WalkingFire(s,10));
+    for(Task task:{Task::BoundMove,Task::Flank,Task::ClearLane,Task::Advance})assert(AttackMovementTask(task));
+    for(Task task:{Task::Rally,Task::PullBack,Task::Overwatch,Task::BoundCover,Task::RearGuard,Task::Hold,Task::Window,Task::None})assert(!AttackMovementTask(task));
+    // Moving to a shelter, to a peek, regrouping, falling back or holding: no walking fire.
+    {Soldier cover=s;cover.action=Action::Cover;cover.reason=Reason::EmergencyCover;assert(!WalkingFire(cover,10));}
+    {Soldier cover=s;cover.action=Action::Cover;cover.reason=Reason::Contact;assert(!WalkingFire(cover,10));}
+    {Soldier peek=s;peek.reason=Reason::Peek;assert(!WalkingFire(peek,10));}
+    {Soldier rally=s;rally.assignment.task=Task::Rally;rally.reason=Reason::Regroup;assert(!WalkingFire(rally,10));}
+    {Soldier back=s;back.assignment.task=Task::PullBack;back.action=Action::Retreat;back.reason=Reason::SquadPullBack;assert(!WalkingFire(back,10));}
+    {Soldier rear=s;rear.assignment.task=Task::RearGuard;rear.action=Action::Cover;rear.reason=Reason::RearPosition;assert(!WalkingFire(rear,10));}
+    {Soldier halted=s;halted.action=Action::Fire;halted.reason=Reason::ClearShot;assert(!WalkingFire(halted,10));}
+    {Soldier lane=s;lane.assignment.task=Task::ClearLane;lane.action=Action::Cover;lane.reason=Reason::ClearLane;assert(WalkingFire(lane,10));}
+    {Soldier bound=s;bound.assignment.task=Task::BoundMove;bound.reason=Reason::BoundAdvance;assert(WalkingFire(bound,10));}
+    // A gun ordered to support from a position is untouched by any of this.
+    {Soldier gun=s;EquipWeapon(gun,{WeaponId::MachineGun,{}});gun.assignment.task=Task::Overwatch;gun.action=Action::Fire;gun.reason=Reason::SuppressiveFire;
+     Soldier plain;EquipWeapon(plain,{WeaponId::MachineGun,{}});
+     assert(!AttackMovement(gun)&&!WalkingFire(gun,10)&&!gun.movingFire);
+     assert(AimSeconds(gun)==AimSeconds(plain)&&ShotSpread(gun)==ShotSpread(plain)&&SwayAmplitude(gun)==SwayAmplitude(plain)&&RecoilKick(gun)==RecoilKick(plain));}
+    // An empty magazine is carried in silence.
+    {Soldier empty=s;empty.magazineRemaining=0;assert(AttackMovement(empty)&&!WalkingFire(empty,10));}
+    // The flank stays quiet until he is fired on, wounded, or close.
+    {Soldier flank=s;flank.assignment.task=Task::Flank;flank.reason=Reason::SquadFlank;
+     assert(FlankHoldsFire(flank,10)&&!WalkingFire(flank,10));
+     Soldier far=flank;far.contacts[TeamSize]={true,true,{35,0},9.5f};assert(!WalkingFire(far,10));
+     Soldier near=flank;near.contacts[TeamSize]={true,true,{25,0},9.5f};assert(WalkingFire(near,10));
+     Soldier stale=flank;stale.contacts[TeamSize]={true,true,{25,0},5.f};assert(!WalkingFire(stale,10));
+     Soldier remembered=flank;remembered.contacts[TeamSize]={true,false,{25,0},9.5f};assert(!WalkingFire(remembered,10));
+     Soldier fired=flank;fired.suppression=.2f;assert(WalkingFire(fired,10));
+     Soldier hurt=flank;hurt.health=90;assert(WalkingFire(hurt,10));}
+    std::cout<<"MOVING FIRE rule: attack movements only, quiet flank, empty magazine, stationary support gun PASS\n";
+}
 static void StatBattleTests() {
     Config c;c.maxSeconds=120;const auto record=std::make_unique<Record>(Simulate(c));const auto& r=*record;
     assert(!r.shots.empty());
@@ -293,6 +375,6 @@ static void StatBattleTests() {
     std::cout<<"STATS battle: "<<reloads<<" rifle reloads between "<<fastest<<"s and "<<slowest<<"s; "<<decaySamples<<" composure decay samples PASS\n";
 }
 static void StatsTests() {
-    StatSamplerTests();StatGenerationTests();WeaponItemTests();BallisticEnergyTests();SwayAndRecoilTests();StatBattleTests();
-    std::cout<<"PASS: stat sampler, roster generation, weapon items, fire control references, magazine tracking, energy ballistics, over-penetration, sway and recoil\n";
+    StatSamplerTests();StatGenerationTests();WeaponItemTests();BallisticEnergyTests();SwayAndRecoilTests();MovingFireValueTests();MovingFireRuleTests();StatBattleTests();
+    std::cout<<"PASS: stat sampler, roster generation, weapon items, fire control references, magazine tracking, energy ballistics, over-penetration, sway and recoil, the walking-fire table and its rule\n";
 }

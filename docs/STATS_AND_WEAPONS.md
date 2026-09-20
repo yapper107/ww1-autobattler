@@ -160,9 +160,81 @@ soldier in the frame-0 block and `recoil.x`/`recoil.y` per soldier per frame; th
 `evaluation.jsonl` carry `sway_yaw`, `sway_pitch`, `recoil_yaw` and `recoil_pitch`; the HUD
 inspector shows `SWAY ... RECOIL ... mrad` on the selected soldier.
 
+## Fire on the move (plan 019)
+
+Walking fire is a movement factor on the existing fire control, not a second firing system. Every
+number lives in one table, `MovingFire` in `Sim/Weapons.h`, one row per weapon, resolved into
+`WeaponStats::moving` so a later parameter search can reach it:
+
+| Quantity | Rifle | Machine gun | Applied to |
+|---|---|---|---|
+| Aim time (`AimSeconds`) | x2.5 | x2.5 | dexterity |
+| Aim cap (`AimReady`) | 0.5 | 0.5 | - |
+| Shot and vertical spread | x3 | x5 | composure |
+| Sway amplitude | x4 | x6 | dexterity |
+| Recoil kick | x1.5 | x2 | dexterity |
+| Recoil recovery rate | x0.5 | x0.25 | dexterity |
+| Time between shots | x1.5 | x1 (cyclic is mechanical) | dexterity |
+| Burst on the move | the weapon's own | 4 to 6 rounds, normal pause | - |
+| Walking-fire range | 70 m | 60 m | - |
+| Pace while firing | x0.8 | x0.6 | - |
+
+A factor `f` from the table becomes `MovePenalty(f, StatScale(stat)) = 1 + (f-1)/scale`: the
+reference soldier (stat 100) suffers exactly the table value, a better soldier less, a worse one
+more. The recovery row is a rate multiplier, so its time constant is what is stretched. Only what
+the shooter contributes is widened; `gun.baseDeviation` is mechanical and is not multiplied. The
+aim cap is also the readiness threshold: a walking shooter fires once `aim` reaches 0.5 and it
+never settles further, so a halted man goes on settling to a full aim as before. No new random
+draw is made and the per-shot draw order is unchanged.
+
+**Who may do it.** `WalkingFire(soldier, time)` in `Sim/BattleSim.cpp`, from the soldier's own order
+and senses only:
+
+- his task is an attack movement: `Task::Advance`, `Task::BoundMove`, `Task::Flank` or
+  `Task::ClearLane` (`AttackMovementTask`), and
+- he is moving under it: `Action::Advance`, or `Action::Cover` with `Reason::ClearLane`; never
+  `Reason::Peek`, `Reason::Regroup` or `Reason::EmergencyCover` (`AttackMovement`), which excludes
+  movement to a shelter or a peek point, emergency shelter, `Task::Rally`, `Task::PullBack`,
+  `Action::Retreat` and the rear guard, and
+- his magazine is not empty, and
+- the target he selects is a man he sees or saw within the last two seconds (the same memory a
+  halted rifleman fires on: keeping a man who has just ducked down is the purpose), within the
+  weapon's walking-fire range, and
+- the friendly-fire check passes, evaluated with the moving spread, so he holds fire more often
+  near his own men.
+
+Suppression is unchanged: at 0.8 he cannot fire at all, and below that the existing cover, pinned
+and pressure rules take him to ground exactly as before, which ends the walking fire.
+
+**The quiet flank.** On a `Task::Flank` leg he holds his fire until he has been fired on
+(suppression above 0.08 or a wound) or a visible enemy is within 30 m (`FlankHoldsFire`), so a flank
+is not announced by its own shooting. This applies to walking fire only; a flanker who has stopped
+fires as before.
+
+**Reloading.** A magazine emptied on the move is carried empty (`Soldier::reloadDeferred`): he keeps
+moving silently and the reload starts at his first halt, that is, the first tick on which his action
+is not Advance, Cover or Retreat. A magazine emptied while stationary reloads as before.
+
+**Pressing on.** A soldier on an attack movement who sees an enemy inside walking-fire range no
+longer takes the `ClearShot` "stop where you are and shoot" return in `ChooseOrder`: he continues to
+his ordered objective and fires as he goes. Outside that range, and for every other movement,
+today's behaviour is unchanged.
+
+**A gun ordered to support from a position** (`Task::Overwatch`, support by fire, `BoundCover` area
+fire) is not a mover, so nothing above applies to it: walking fire never replaces a base of fire.
+
+**Switch and evidence.** `Config::movingFire` defaults to true; `--no-moving-fire` is the A/B control
+and reproduces the pre-019 battle bit for bit. `Soldier::movingFire` is true exactly while he is
+delivering walking fire; it drives the aim model, the pace on the next tick, the trace entry,
+`evaluation.jsonl` (`moving_fire`, `reload_deferred`) and `shots.jsonl` (`moving_fire`). The digest
+hashes both soldier flags, folded only when one of them is true, so a battle in which nobody fires
+on the move keeps its historical digest.
+
 ## Verification and references
 
-`scripts/test-sim.sh --stats` runs the stat suite. Reference digests for the 40 authored battles are
+`scripts/test-sim.sh --stats` runs the stat suite, including the walking-fire table, its stat
+scaling and the rule for who may use it; `scripts/test-sim.sh --moving-fire` runs the crossing
+mechanism pair (also part of the default suite). Reference digests for the 40 authored battles are
 regenerated after each phase into `.local/baselines/{legacy,candidate90}/{works,trenches}`; the
 pre-017 references are archived under `.local/baselines-pre017/<phase>/`. Weapon values and the
 energy constants are chosen once from the pre-017 abstraction and physical reasoning; they are never

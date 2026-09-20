@@ -473,6 +473,8 @@ std::vector<PlannedOrder> DrillOrders(const Soldier& leader,const std::vector<So
         PlannedOrder o{};o.recipient=s.id;o.task=p.retreat?Task::PullBack:p.stage==DrillStage::Travel?Task::BoundMove:Task::Overwatch;
         o.position=p.positions[n];o.sector=p.sector;o.hasSlot=p.hasSlot[n];o.slot=p.slots[n];o.teamPlan.route=p.memberRoutes[n];o.teamPlan.targetEnemy=p.target;o.teamPlan.released=p.movers[n];
         o.execution.completion=p.stage==DrillStage::Travel?Completion::Transit:Completion::Occupy;o.execution.method=p.orderMethods[n];o.execution.generation=p.orderGenerations[n];o.execution.stage=p.leg;o.execution.arrivalCheck=p.arrivalCheckPending&&p.waiting[n]&&!p.arrivals[n];o.execution.deadline=0; // Squad progress clock owns expiry, including shelter pauses.
+        // A bound's moving element carries an Overwatch/Occupy order; it is an attack movement all the same.
+        o.execution.attackMove=p.movers[n]&&!p.retreat&&p.stage==DrillStage::Bound;
         if(p.action.closureFallback&&!p.movers[n]&&p.elements[n]==0){
             o.task=Task::BoundCover;o.execution.completion=Completion::Support;o.execution.rifleSupport=true;o.execution.supportThreat=p.target;
         }
