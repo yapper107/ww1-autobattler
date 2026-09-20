@@ -1,6 +1,6 @@
 # Plan 020: threat-aware soldier paths, and orders that beat a comfortable position
 
-Status: **draft for the user's review, 20 September 2026.** The user approved the direction ("Do it, however we need to
+Status: **approved by the user on 20 September 2026 with the rulings at the end; implementation by an Opus agent at the user's instruction, reviewed by the architect.** The user approved the direction ("Do it, however we need to
 plan this out") and set the threshold idea: a path is judged by the **seconds it reveals the soldier to a particular
 enemy, around 3 seconds**, and warned that this "may lead to path finding issues later down the line". Nothing is
 implemented. Author: Fable (architect). Questions are at the end.
@@ -27,7 +27,7 @@ change:
 
 **The measure (user's):** for a candidate path, `revealed seconds` = for each enemy the soldier KNOWS (his own contacts
 and the reports he has received: `contacts[i].known`, position as he believes it, seen or reported within the memory
-window), the time he would spend on that path with a clear line between that enemy's believed position and his body at
+window: **30 s, user ruling**), the time he would spend on that path with a clear line between that enemy's believed position and his body at
 walking pace; the path's figure is the WORST single enemy. Sampled every metre of path with the existing memoised
 line-of-sight query. Own knowledge only: never enemy truth.
 
@@ -38,8 +38,7 @@ line-of-sight query. Own knowledge only: never enemy truth.
    across a gap is fine.
 3. Otherwise search for a covered alternative with the existing cost search (`FindCostPath`, cost = distance plus a
    heavy charge for cells seen from a known enemy position, bounded expansion budget). Accept it when it is at most the
-   threshold, or at least halves the revealed seconds, AND it is no longer than the detour limit (2.5 times the shortest
-   path and at most 25 s more). Otherwise take the shortest path: a man who has been ordered somewhere still goes.
+   threshold, or at least halves the revealed seconds, AND it is no longer than the detour limit (**1.5 times the shortest path, user ruling**). Otherwise take the shortest path: a man who has been ordered somewhere still goes.
 4. The chosen path is kept until the goal changes (as today). It is re-planned early only when a newly known enemy
    reveals the REMAINING path for more than the threshold.
 
@@ -64,13 +63,22 @@ decides WHICH path the soldier asks for).
   threshold. Battle wall clock is measured before and after on twenty battles; more than 15 % slower is a defect to fix
   before landing.
 
-## Part 2: an order to move beats a comfortable position, not a dangerous situation
+## Part 2: who may leave cover, and when (user ruling)
 
-In `ChooseOrder` a movement order whose destination is well away from the man's remembered cover (more than 12 m:
-`Rally`, `Flank`, `BoundMove`, `PullBack`, `Advance`) releases that cover unless he is in real danger at that moment:
-suppressed above the duck threshold, or under the existing `pressure`/`pinned`/`openFire` conditions. Self-preservation
-still wins; "I have a nice window here" no longer does. `usefulCover` stops renewing the expiry of a position the man
-has been ordered away from. With part 1 the move he then makes is by a covered path.
+The user's rule: **"Men should never leave cover under enemy fire unless a squad wide retreat order is given or he has
+better cover somewhere close by."** In `ChooseOrder`:
+- **Under enemy fire** (the existing danger conditions: suppressed above the duck threshold, `pressure`, `pinned`,
+  `openFire`, or rounds received in the last few seconds) a man in cover STAYS in cover whatever movement order he holds
+  (`Advance`, `Flank`, `BoundMove`, `Rally`, `ClearLane`), with two exceptions: a squad-wide retreat (`Task::PullBack`),
+  which he obeys, by a covered path; and better cover close by (the existing shelter search finds a position within a
+  short distance, say 12 m, that protects him from the enemies firing on him when his present one does not, or protects
+  him from more of the enemies he knows): then he moves to it. Today some of these orders already wait for
+  `!localSafety`; the rule is made uniform and explicit, and a man who is NOT in cover when fired on seeks the nearest
+  cover as now.
+- **Not under fire**, an order to move well away from his remembered cover (more than 12 m: `Rally`, `Flank`,
+  `BoundMove`, `PullBack`, `Advance`) releases that cover: "I have a useful window here" no longer beats the order, and
+  `usefulCover` stops renewing the expiry of a position he has been ordered away from. This is what ends the two
+  riflemen in the start building and the flankers' hesitancy. With part 1 the move he then makes is by a covered path.
 
 ## Verification
 
@@ -95,11 +103,11 @@ has been ordered away from. With part 1 the move he then makes is by a covered p
 - Believed enemy positions can be wrong or stale: a man may detour around a dead defender for up to the memory window.
 - Timing-sensitive mechanism selectors may move again (they are reported, not repaired, as in plans 017 and 019).
 
-## Questions for the user
+## The user's rulings, 20 September 2026
 
-1. **How long does a soldier keep avoiding a place an enemy was seen?** Assumed 60 s after the last sighting or report
-   (the defenders here never move, but a general rule should fade).
-2. **How far may he go out of his way?** Assumed up to 2.5 times the direct distance and at most 25 s more; beyond that he
-   takes the direct path.
-3. **Who implements it?** Assumed a Sonnet agent in its own worktree with the architect reviewing, as for the loop; the
-   alternative is the architect writing it directly. No Opus unless you say so.
+1. "Men should never leave cover under enemy fire unless a squad wide retreat order is given or he has better cover
+   somewhere close by." (Part 2 is rewritten around it.)
+2. A soldier keeps avoiding a place an enemy was seen for **30 s** (the architect had assumed 60 s).
+3. He may go out of his way up to **1.5 times** the direct distance (the architect had assumed 2.5 times).
+4. The revealed-seconds threshold is about **3 s** to a particular enemy.
+5. "Just have an Opus agent implement."
