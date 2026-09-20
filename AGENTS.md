@@ -75,9 +75,25 @@ committed flank no longer halts to regroup): +0.058 [+0.000, +0.118] and +0.069 
 `fights_from_cover` by 1.3 points; whether that guard gets a tolerance is the user's open decision. The user reviews
 behaviour from side-by-side videos (`tools/battle_video.py`) and saw a rapid back-and-forth stutter: measured by the new
 `stutter_share` (legacy 3.7 % of attacker time, drills 0.4 %) and traced to the shared soldier cover decision in
-`BattleSim.cpp` (emergency shelter assigned, released as flanked one step later, re-assigned at the post, every 0.2 to
-0.4 s); outside the loop's reach, so a repair is an architect change that re-roots both lineages. Details at the end of
+`BattleSim.cpp` (first reading of the trace was wrong; the corrected cause and the repair are in the next
+paragraph); outside the loop's reach, so a repair is an architect change that re-roots both lineages. Details at the end of
 the plan.
+
+Stutter fix, score v5, generations 7 and 8 (19 September 2026): the stutter was two order shuttles with no enemy
+involved (a holder's emergency shelter offered up to 8 m from his post and released beyond 3 m, in shared
+`BattleSim.cpp`; a clear-lane move re-issued to a man already out of the lane, in legacy `CommandSim.cpp`), fixed by the
+architect at the user's instruction on source `9613abbd8e140498`: stutter 3.7 % to 0.1 % of attacker time, both roots
+score as before, full suite, 40 references regenerated (40/40, 3/3 trace parity), Unreal compiles. Score v5: cleared
+battles are exempt from the squads-firing guard, and by user decision `fights_from_cover` tolerates 2 points above
+legacy. **Legacy's first survivors:** `0321f54854ba31db` (the corporal fix carried forward, +0.099 [+0.052, +0.150] and
++0.077 [+0.028, +0.120], value 0.642 against the root's 0.614) and three children that pass but do not beat it. Drills:
+marching instead of traveling overwatch while no enemy is known gives the largest gain in the tree (+0.145 and +0.215)
+but leaves three battles without a shot and is gated on the scenario type; drills still has 15 points fewer men at the
+fight than legacy. The user reviews behaviour from side-by-side videos (`tools/battle_video.py`); his open
+observations: two riflemen of a flanking squad stay in the start building (covering team never displaced; partly
+fixed), the flank goes at the enemy's front, the squad that calls a flank stops committing. The loop runs at a machine
+share of 7 battles and low priority (`.local/loop/max_jobs`). Next: [plan 019](plans/019-fire-on-the-move.md), fire on
+the move (user rulings recorded there), a shared soldier-code change that re-roots both lineages.
 
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 

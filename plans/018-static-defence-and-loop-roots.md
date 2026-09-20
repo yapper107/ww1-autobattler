@@ -409,12 +409,79 @@ Findings.
 - **The stutter is real, large and in shared soldier code.** New metric `stutter_share` (share of living
   attacker-seconds inside a burst of four or more direction reversals at most 1.5 s apart): legacy 3.7 % over five
   attacks, the drills survivor 0.4 %. On `city-28` the legacy squad 3 sergeant reverses 375 times and walks 355 m in
-  170 s without leaving a 5 m stretch; two riflemen walk 443 m and 194 m to move 2 m. Trace (`BattleSim.cpp`, the
-  soldier's cover decision): under a Hold order at an exposed post `protectHold` assigns an emergency shelter 5 m away;
-  after a step a second contact becomes visible from which that shelter is not protected, `flanked` releases it, no
-  other candidate qualifies, he walks back to his post ("Advancing under squad orders"), where the second contact is
-  out of sight again and the shelter is re-assigned. There is no memory of the rejected shelter and no dwell time, so the
-  pair of states flips every 0.2 to 0.4 s, at zero suppression. Every controller shares this code, so the loop cannot
-  touch it (lineage parity); a repair is an architect change that moves every digest and re-roots both lineages.
+  170 s without leaving a 5 m stretch; two riflemen walk 443 m and 194 m to move 2 m. The first reading of the trace
+  (a second contact flanking the shelter) was wrong and is corrected in the next section. Every controller shares this
+  code, so the loop cannot touch it (lineage parity); a repair is an architect change that moves every digest and
+  re-roots both lineages.
 - Same battle, the under-strength flank: riflemen 26 and 27 stand 25 m behind for 170 s with zero metres walked under
   REGROUP orders, so the corporal flanks with the three men who are with him. Next legacy brief.
+
+## The stutter fix, score v5 and generations 7 and 8, 19 September 2026
+
+**The stutter, corrected diagnosis and repair (user: "Fix it").** Two order shuttles, neither involving an enemy:
+- `BattleSim.cpp` `ChooseOrder` (shared soldier code): a man under a Hold order at a post exposed toward his order's
+  sector, with no contact at all, gets an emergency shelter through `protectHold`, which accepts shelters up to 8 m from
+  the post; the stale-cover rule at the top of the same function releases any shelter more than 3 m from the post when
+  there is no threat. So he set off for the shelter, was released on the next decision, walked back, and was assigned it
+  again, every 0.4 s. Repair: the release allows a holder's emergency shelter the same 8 m, and that shelter is kept
+  alive while he holds, with or without a contact. (Refusing shelters beyond 3 m was tried first and breaks a unit test
+  that pins "an idle holder exposed to his sector takes cover".)
+- `CommandSim.cpp` `ClearReportedFireLane` (legacy relay): a clearing move was re-issued for eight seconds to a man
+  already out of the reported lane; with a second of order transport it alternated with his real order (a flank) every
+  cycle, and two riflemen shuttled at one spot for 280 s. It is kept only while he or his destination is in a lane.
+Measured with `stutter_share` on five town attacks: legacy 3.7 % of attacker time before, 0.1 % after. Source
+`9613abbd8e140498`, commit `885ed96`: full Linux suite, 40 references archived to `.local/baselines-pre018/stutter/`
+and regenerated, 40/40 parity, 3/3 drills trace parity and a determinism repeat, Unreal module compiles on UE 5.4,
+before/after video sent to the user. **Both roots score as before** (legacy +0.563 development and +0.614 validation
+against +0.569 and +0.609; drills +0.252 against +0.250): the stutter was ugly, not costly.
+
+**Score v5** (`guards-v4.json` keeps v4). Two changes: a battle the attackers won by clearing the position is exempt from
+the three-squads-firing guard (the new legacy root cleared one in 422 s with two squads having fired, score +0.83;
+architect's call, disclosed to the user); and, **user decision**, `fights_from_cover` allows a mean of 2 points above
+legacy, because a flank that happens is seen a little more than one that never starts, while the drills conduct the
+user rejected measured 2.3 points and more. The runner honours a machine share (`.local/loop/max_jobs`, currently 7, and
+low priority) at the user's request.
+
+**Third epoch (`9613abbd8e140498`), carried nodes and generations 7 and 8.** Children compare with their parent only on
+the 60 development battles, which never change; each generation has its own validation draw.
+
+| Node | Lineage, parent | Change | 60 dev vs root | 45 val vs root | Guards |
+|---|---|---|---|---|---|
+| **`0321f54854ba31db`** | legacy root (gen 6 carried) | a corporal on a committed flank is exempt from the regrouping halt | +0.099 [+0.052, +0.150] | +0.077 [+0.028, +0.120] | **all pass: legacy's first survivor**, value 0.642 against the root's 0.614 |
+| **`db5db5ec5a560586`** | `0321…` (gen 7 carried) | the fire team covering a bound is left out of the flank leg's arrival majority | +0.118 [+0.061, +0.184] | +0.078 [+0.009, +0.151] | all pass, value 0.623; the user saw the squad that called the flank stop committing its men |
+| `123c7ac3836794c7` | `0321…` (gen 8, architect variant) | a covering rifleman more than 45 m behind the corporal closes up instead of covering | +0.103 [+0.052, +0.150] | +0.071 [+0.013, +0.134] | all pass, value 0.627 |
+| `b0653592d675647f` | `0321…` (gen 8) | the same at the 14 m regroup threshold | +0.087 [+0.033, +0.147] | +0.067 [+0.007, +0.133] | all pass, value 0.621 |
+| `ce92c23cb29a1c62` | `0321…` (gen 8) | flank candidates are scored toward the far end of the known enemy group on their side, not the nearest known man | +0.087 [+0.031, +0.143] | +0.055 [-0.009, +0.116] | all pass, no value gain |
+| `84602e20ebc000b9` | drills root (chain through gen 6 carried) | seven accepted proposals | +0.108 [+0.049, +0.167] | +0.070 [+0.001, +0.136] | at the fight -0.148, exposed +2.4 points |
+| `6f0e6426015852e6` | drills `8630…` (gen 7, second epoch) | with no enemy known a static-defence attacker marches in one Travel stage instead of traveling overwatch | **+0.145 [+0.076, +0.209]** | **+0.215 [+0.141, +0.293]** | three development battles without a shot (maps 34, 37); at the fight -0.165; first shot 102 s against the parent's 178 s and legacy's 62 s; **gated on the scenario type**, which a controller must not know |
+| `5016c14a19a272c3` | drills `8630…` (gen 7, second epoch) | a different nearest defender within 40 m is not a changed enemy group (no new FightHere directive) | +0.056 [+0.010, +0.105] | +0.154 [+0.094, +0.225] | at the fight -0.160; below its parent's +0.093 on development |
+| (not evaluated) | drills `8630…` (gen 7) | scoring bonus for support positions protected from every known contact | | | proposer's own ten: exposure +3 points worse; withdrawn |
+| `bc972c5163914724` | legacy `34bc…` (gen 7, second epoch) | the flank-pace change before carrying | +0.122 [+0.077, +0.170] | +0.049 [-0.027, +0.127] | one validation battle with two squads firing |
+
+Findings.
+- **Legacy has survivors.** The corporal fix holds on both sets after the stutter repair. Nothing in generation 8 beats it
+  on the development battles (+0.087 to +0.103 against its +0.099): the loop cannot resolve effects this small.
+- **The user's video observations, traced.** (1) Two riflemen of the flanking squad never leave the start building: they
+  are the covering fire team of a bound whose moving team is 95 m away; the relay re-issues BoundCover at their own
+  position every cycle and any regroup order is overwritten within two seconds. Closing them up at 14 m fixes what is
+  seen (both within 13 m of the corporal at 300 s) but pulls covering fire off ordinary bounds; at 45 m one man closes
+  by 300 s and the other only by 500 s. Not solved. (2) The flank goes at the enemy's front: the sergeant's flank
+  candidates are all scored by approach to the single nearest known contact, and in that battle he never learns of the
+  lone defender, so no knowledge-only rule could have taken him first. Aiming at the known group's end helps the three
+  hardest maps (+0.15 to +0.73 on one) and loses elsewhere. (3) In the flank-pace build the squad that called the flank
+  stops committing its men: noted on the node, not yet worked on.
+- **Drills approaches too slowly and too carefully.** With no enemy known, a blind corridor ahead switches a squad to
+  traveling overwatch, the same alternating-element machinery as bounding under fire, so the platoon halts and swaps
+  elements every 40 m for three minutes. Marching instead gives the largest attack gain in the tree, and exposes a
+  second defect: a squad pulled off its first firing position by a HelpSquad order that then never fires, and three
+  battles in which nobody fires. Next drills briefs: the same change without the scenario gate (the general version
+  broke D03 and D09, which exercise that path just before contact), and the silent battles.
+- Other drills findings from the proposers' traces: the squad assault sequence never runs on these maps because the
+  flank search finds no covered route; most remaining exposure is in the base of fire's stationary positions at 30 to
+  60 m, protected only against the one target they were chosen for.
+- Harness faults found and fixed during these generations: a waiter that matched its own command line; the
+  evaluate wrapper broken for one queue by a misplaced `exec`; conduct metrics missing on nodes measured before score v4
+  (they show as failing the conduct guards; they are closed nodes and were not re-measured).
+
+Next, at the user's request: [plan 019](019-fire-on-the-move.md), fire on the move, a shared soldier-code change that
+re-roots both lineages again.
