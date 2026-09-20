@@ -554,3 +554,48 @@ Findings.
 Generation 11 (four Sonnet proposers): legacy on `fe76…`: why most squads never commit a qualifying flank
 (`flank_fire_squads` is 0.05), and what a squad does after the enemy in front of it is dead; drills on `0206…`: which
 no-enemy-known situations the gate marched through, and the passive support waits.
+
+## Generations 11 and 12, score v6, plan 020 and the fifth epoch, 20 September 2026
+
+**A WSL crash** (memory: fourteen battles plus four proposers, each free to trace at 5 GB) interrupted generation 11.
+Nothing was lost: commits and worktree diffs survived, the half-made node was re-evaluated with `--force`, and the three
+interrupted proposers were resumed from their transcripts. Since then traces go through a machine-wide lock
+(`.local/loop/trace.lock`), proposers run three lean battles at most, and the loop's pool is capped at ten.
+
+**Score v6 (user decisions).** `fights_from_cover` now counts `idle_exposed_share`: attacker-seconds at the fight in which
+the man stands still in an enemy's sight with NO shot of his own, not every second he is seen (the flank nodes were
+seen more because they shoot more and lost no more men). The architect's first evidence for the change came from the
+frozen evaluator's both-teams measure; on the attackers-only measure the flank nodes are +0.22 points above legacy's
+0.75 %, reliably, which the architect reported to the user before any node was called a survivor. The user then set a
+tolerance of half a point. The old measure stays as a loose backstop (`seen_at_the_fight`, 4 points). **Legacy survivors
+under v6:** `fe7696c3cf753277` (value 0.651 against the root's 0.552) and its parent `a6ac2f2526ec1b34` (0.591).
+
+**The user's verdict on `fe76…`** (four replays): it does flank, but "the squads keep moving around very rapidly when
+there are still enemies", men cross open ground "when they should do a safer path if they know enemies are around" and
+are shot, some are left in the backline, two squads stood split outside a building: "a lack of general intelligence".
+Measured: soldiers do not forget the enemy (4 to 6 % of the time near a defender they have faced); they are re-ordered
+every 6 to 9 s and start a new move every 15 to 25 s, and a third to a half of all wounds are taken while displacing.
+New conduct measures: `moves_per_soldier_minute`, `orders_per_soldier_minute`, `moving_share`, `wounded_moving_share`.
+
+| Node | Lineage, parent | Change | 60 dev vs root | 45 val vs root | Result |
+|---|---|---|---|---|---|
+| **`568f3f306cc9d1a7`** | drills `0206…` (gen 11) | a squad that holds NO platoon order (deployment, or a lapsed 75 s directive) and knows no enemy marches | **+0.237 [+0.164, +0.313]** | **+0.225 [+0.145, +0.307]** | the whole gated march gain from a rule the leader can apply; every selector passes; the drills mainline |
+| `c8dd2b0657f68804` | drills `0206…` (gen 11) | a squad that only supports posts its whole roster on the base of fire | +0.110 | +0.183 | friendly fire +1.4 (significant) and three other guards: closed |
+| `827b74aab5a4880a` | legacy `fe76…` (gen 11) | a contact not seen for 25 s no longer holds the squad | +0.185 | +0.054 [-0.016, +0.116] | below its parent on validation: closed |
+| (withdrawn) | legacy `fe76…` (gen 11) | wider flank candidate search | | | score -0.04 on its own set; finding: the gun and the flankers share one street, so flanks stay shallow, and the gun drifts toward the flankers |
+| (withdrawn) | legacy `fe76…` (gen 12) | `UsefulFiringPosition` may answer "stay here" | | | a real defect, a rare trigger, a wash; finding: regroup orders re-target the corporal's live position every 2 s (up to half of relay orders) |
+| `925674ad1ac39697` | drills `568f…` (gen 12) | a member whose slot is still legal keeps his order (41 to 45 % of orders at the fight went to the identical position) | stopped early | | broke D09, D10 and sprint, which its proposer had reported unchanged |
+
+**Plan 020** ([plan](020-threat-aware-paths-and-rejoin.md), commit `1fccf05`, source `fa0ce26c574eec38`): threat-aware soldier
+paths on the user's measure (seconds revealed to one known enemy, 3 s, 30 s memory, 1.5 times detour) and his cover rule
+("men should never leave cover under enemy fire unless a squad wide retreat order is given or he has better cover
+somewhere close by"); implemented by an Opus agent at the user's instruction. **Fifth epoch.** Paired over the same 60
+development battles plan 020 moved neither root measurably (legacy score +0.014 [-0.041, +0.059], attackers lost -1.7
+points [-6.8, +3.7]; drills +0.016 and -1.3 points), like plan 019 before it: about 8 % of path decisions take a covered
+detour. Carried forward: **legacy `dd847612977627b1` survives** (+0.150 [+0.079, +0.222] and +0.127 [+0.033, +0.223],
+value 0.641 against 0.608, every guard passing); drills `ff4aff9f66a5f5a3` +0.164 and +0.125, men at the fight 8 points
+below legacy, seen-and-shotless half a point above. Legacy receives a new order every 6 s at the fight (10.0 a
+soldier-minute; drills 5.6).
+Generation 13 (four Sonnet proposers): legacy on `dd84…`: the regroup order that chases the corporal, and the
+sergeant's re-planning cadence; drills on `ff4a…`: slot retention that keeps the drills' execution contracts intact,
+and the anatomy of standing in the enemy's sight with no shot.

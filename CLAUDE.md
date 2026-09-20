@@ -108,6 +108,20 @@ that qualifies a firing position at an angle and moves the rifle group as one (+
 Generation 10 is running on both. The march rule in drills still carries a scenario-type gate that the architect is
 replacing. Details at the end of plan 018.
 
+Generations 11 and 12, score v6, plan 020 (20 September 2026): after a WSL crash (memory) traces run through a
+machine-wide lock and the loop pool is capped at ten. Score v6 by user decision: `fights_from_cover` counts standing
+still in an enemy's sight with no shot of one's own (`idle_exposed_share`), half a point of tolerance, with the old
+seen-at-all measure as a 4-point backstop. The user's verdict on the best legacy node: it flanks, but squads keep moving
+rapidly while enemies remain, men cross open ground and are shot, some are left behind: "a lack of general
+intelligence"; measured as a new order every 6 to 9 s and a third to a half of wounds taken while displacing (new
+restlessness measures). Drills found its march rule without a scenario gate (`568f3f306cc9d1a7`: a squad with no platoon
+order and no known enemy marches; +0.237 and +0.225). [Plan 020](plans/020-threat-aware-paths-and-rejoin.md) landed on
+source `fa0ce26c574eec38` (covered soldier paths on the user's 3 s revealed-to-one-enemy measure; a man in cover under
+fire stays except for a squad retreat or better cover close by; Opus implemented at the user's instruction; full suite,
+40/40, 3/3, Unreal compiles); like plan 019 it moved neither root measurably. **Fifth epoch: legacy
+`dd847612977627b1` survives** (+0.150 [+0.079, +0.222], +0.127 [+0.033, +0.223]); drills `ff4aff9f66a5f5a3` still fails
+men at the fight and seen-and-shotless. Generation 13 is on restlessness in both lineages. Details at the end of plan 018.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
