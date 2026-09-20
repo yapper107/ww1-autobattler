@@ -18,6 +18,7 @@ WINDOW = 30.0        # firing is counted in half-minute windows
 DITHER_WINDOW = 20.0
 DITHER_PATH = 6.0    # a window counts once the soldier has walked this far in it
 DITHER_RATIO = 3.0   # and walked three times farther than he got
+RELOCATION = 6.0     # metres between where a move began and where it ended for it to count as a relocation
 REVERSAL_STEP = 0.08 # a frame's movement counts once it is this long (0.4 m/s at the 0.2 s export step)
 REVERSAL_GAP = 1.5   # reversals closer together than this belong to one burst
 REVERSAL_BURST = 4   # and a burst of this many is a stutter: the man is shuttling, not manoeuvring
@@ -92,10 +93,12 @@ def restlessness(frames, step) -> dict:
     """The user's 20 September 2026 verdict on the best legacy node: "the squads keep moving around very rapidly when
     there are still enemies... soldiers... leave their positions into open ground to get shot frequently".
     For living attackers within 100 m of a living defender: moves_per_soldier_minute (a move starts when a man who stood
-    still begins to displace), orders_per_soldier_minute (his order id changes), moving_share (time displacing), and
+    still begins to displace; this includes leaning out of cover to fire), relocations_per_soldier_minute (moves ending
+    six metres or more from where they began: the shuffling the user sees) with the seconds seen while relocating, orders_per_soldier_minute (his order id changes), moving_share (time displacing), and
     wounded_moving_share (of the wounds taken there, those taken while displacing)."""
-    fight = moving = legs = orders = hit_moving = hit_still = 0
-    last, was_moving, last_order, last_health = {}, {}, {}, {}
+    fight = moving = legs = orders = hit_moving = hit_still = relocations = 0
+    relocation_seen = 0.0
+    last, was_moving, last_order, last_health, leg, idle = {}, {}, {}, {}, {}, {}
     for frame in frames:
         defenders = [d['position'] for d in frame['soldiers'] if d['team'] == 1 and d['alive']]
         for s in frame['soldiers']:
@@ -111,9 +114,24 @@ def restlessness(frames, step) -> dict:
                 if i in last_health and s['health'] < last_health[i] - 0.5:
                     hit_moving += int(displaced)
                     hit_still += int(not displaced)
+                # A relocation is a move that ends (one second at rest) RELOCATION metres or more from where it began:
+                # a lean out of cover to fire is a move but not a relocation.
+                if displaced:
+                    if i not in leg:
+                        leg[i] = dict(origin=last[i], seen=0.0)
+                    leg[i]['seen'] += step if s['observer_exposed'] else 0.0
+                    idle[i] = 0
+                elif i in leg:
+                    idle[i] = idle.get(i, 0) + 1
+                    if idle[i]*step >= 1.0:
+                        done = leg.pop(i)
+                        if math.hypot(p[0] - done['origin'][0], p[1] - done['origin'][1]) >= RELOCATION:
+                            relocations += 1
+                            relocation_seen += done['seen']
             last[i], was_moving[i], last_order[i], last_health[i] = p, displaced, s['order'], s['health']
     minutes = fight*step/60
-    return dict(moves_per_soldier_minute=legs/minutes if minutes else None, orders_per_soldier_minute=orders/minutes if minutes else None,
+    return dict(relocations_per_soldier_minute=relocations/minutes if minutes else None, relocation_seen_seconds_per_soldier_minute=relocation_seen/minutes if minutes else None,
+                moves_per_soldier_minute=legs/minutes if minutes else None, orders_per_soldier_minute=orders/minutes if minutes else None,
                 moving_share=moving/fight if fight else None, wounded_moving_share=hit_moving/(hit_moving + hit_still) if hit_moving + hit_still else None)
 
 
