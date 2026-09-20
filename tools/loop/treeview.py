@@ -120,6 +120,13 @@ def render() -> str:
     roots = [n for n in nodes.values() if not n.get('parent')]
     current = [n for n in roots if (tree.read_score(n['id'], version) or {}).get('objective', {}).get('kind') == 'attack'
                and ((tree.read_score(n['id'], version) or {}).get('objective', {}).get('sets') or {}).get('town-attack-val', {}).get('mean') is not None]
+    # One epoch at a time: a human change to shared code (static defenders, lean recording) starts new
+    # roots on a new fingerprint. They are the same controllers measured on a fresh validation draw, so
+    # showing two epochs side by side reads as two lineages with different scores. Only the newest epoch
+    # is drawn; earlier roots and their children are history.
+    if current:
+        newest = max(current, key=lambda n: n.get('created', ''))['id'].split('-')[0]
+        current = [n for n in current if n['id'].split('-')[0] == newest]
     earlier = [n for n in roots if n not in current]
     lineages, survivors, candidates, generations = [], 0, 0, 0
     for root in sorted(current, key=lambda n: n.get('controller', '')):
@@ -141,7 +148,7 @@ def render() -> str:
     for key, text in (('@@LINEAGES@@', ''.join(lineages)), ('@@CANDIDATES@@', str(candidates)), ('@@SURVIVORS@@', str(survivors)),
                       ('@@GENERATIONS@@', str(generations)), ('@@VERSION@@', html.escape(version)),
                       ('@@STAMP@@', datetime.now().strftime('%d %B %Y, %H:%M')),
-                      ('@@EARLIER@@', f'<details class="earlier"><summary>{len(earlier)} earlier roots, before the static defenders existed</summary><ul>{old}</ul></details>' if earlier else '')):
+                      ('@@EARLIER@@', f'<details class="earlier"><summary>{len(earlier)} earlier roots (the same controllers before a change to shared code; their validation maps were a different draw, so their averages are not comparable with the current ones)</summary><ul>{old}</ul></details>' if earlier else '')):
         page = page.replace(key, text)
     return page
 
