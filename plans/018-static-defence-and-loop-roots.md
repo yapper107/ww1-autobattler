@@ -599,3 +599,22 @@ soldier-minute; drills 5.6).
 Generation 13 (four Sonnet proposers): legacy on `dd84…`: the regroup order that chases the corporal, and the
 sergeant's re-planning cadence; drills on `ff4a…`: slot retention that keeps the drills' execution contracts intact,
 and the anatomy of standing in the enemy's sight with no shot.
+
+## Generation 13, 20 September 2026
+
+Four Sonnet proposers on the fifth epoch, all aimed at the user's restlessness verdict. Evidence: `.local/plan018/generation13/`.
+
+| Node | Lineage, parent | Change | 60 dev vs root | 45 val vs root | Result |
+|---|---|---|---|---|---|
+| **`22b8504a0d673627`** | legacy `dd84…` | a paused crossing rules out the ground within 15 m (was 6 m); the preparation clock restarts only when the best candidate moves more than 10 m (was 3 m) | +0.150 [+0.087, +0.217] (parent +0.150) | +0.159 [+0.084, +0.245] | every guard passes, value 0.692: the best legacy node; but orders, moves and wounds while moving are UNCHANGED on the 60 battles (10.1, 4.06, 42 %): its proposer's gains on thirteen battles did not hold |
+| `6c847fd1f4729081` | legacy `dd84…` (measured without selectors) | a lagging man is sent to a rally point that stays put | +0.091 [+0.036, +0.153] | +0.076 [-0.009, +0.167] | orders -13 %, moves -10 %, wounds while moving 42 to 39 %, attackers lost 37.6 to 34.3 %, friendly fire down a further 1.0: the calm the user asked for, for 0.06 of attack score (defenders out 88.5 to 81 %); moves two pinned single-battle fixtures |
+| **`b893ce78cc634f93`** | drills `ff4a…` | a support slot is protected from every known enemy within 12 m of its target, not from the target alone | +0.171 [+0.110, +0.235] (parent +0.164) | +0.147 [+0.088, +0.202] | seen-and-shotless 0.58 to 0.55 points over legacy (tolerance 0.50); men at the fight -0.080; the drills mainline |
+| (withdrawn) | drills `ff4a…` | identical re-orders suppressed where orders are built, execution contracts intact (every selector unchanged) | | | ten of twelve check battles bit-identical: the re-orders never moved anyone |
+
+Finding: the restlessness measure was too blunt. On two battles of the best legacy node a quarter of the "moves" at
+the fight are men leaning out of cover to fire; about half are relocations of six metres or more, and those carry
+nearly all the time a man is seen while moving (a relocation every 35 to 45 s). New measures:
+`relocations_per_soldier_minute` and `relocation_seen_seconds_per_soldier_minute`.
+Generation 14 (four Sonnet proposers): legacy on `22b8…`: what orders each relocation and which are pointless, and a
+rally point that stays put but slides to cover with a line of fire; drills on `b893…`: the anatomy of the 8 points
+missing from the fight, and the same relocation attribution for drills.
