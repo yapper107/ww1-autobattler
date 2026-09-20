@@ -47,7 +47,10 @@ bool InReportedFireLane(const Soldier& commander,int soldier,Vec3 p,float time) 
     return false;
 }
 Vec3 ClearReportedFireLane(const Soldier& commander,const Soldier& soldier,Vec3 desired,const Map& map,float time) {
+    // Keep a clearing move only while there is still a lane to clear: orders take a second to arrive, and
+    // re-issuing it to a man already out of the lane alternated with his real order every cycle.
     if(soldier.assignment.task==Task::ClearLane&&time-soldier.assignment.activatedAt<8&&Distance(soldier.position,soldier.assignment.position)>0.7f&&
+        (InReportedFireLane(commander,soldier.id,soldier.position,time)||InReportedFireLane(commander,soldier.id,desired,time))&&
         !FindPath(map,soldier.position,soldier.assignment.position).empty()&&
         !InReportedFireLane(commander,soldier.id,soldier.assignment.position,time))return soldier.assignment.position;
     Vec3 base=InReportedFireLane(commander,soldier.id,soldier.position,time)?soldier.position:desired;

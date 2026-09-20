@@ -504,8 +504,11 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     }
     // Old cover is not an indefinite hold order. Once contact has expired,
     // follow a changed mission unless incoming fire still demands shelter.
+    // A holder's protective shelter may lie up to 8 m from his post (protectHold below). Releasing it at 3 m
+    // sent him back to the post, where it was assigned again: a shuttle every 0.4 s with no enemy in sight.
+    const bool holdingPost=s.assignment.task==Task::Hold||s.assignment.task==Task::BoundCover||s.assignment.task==Task::RearGuard;
     if(threat<0&&s.suppression<0.08f&&memory.assigned&&
-        Distance(memory.shelter,objective)>3&&s.assignment.task!=Task::None) {
+        Distance(memory.shelter,objective)>(holdingPost&&memory.emergency?8.f:3.f)&&s.assignment.task!=Task::None) {
         const float ready=memory.readyAt;memory={};memory.readyAt=ready;
     }
     if(memory.assigned){
@@ -532,7 +535,7 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     const bool contactExposure=visible&&exposed&&!nearShelter&&
         (s.assignment.task==Task::Advance||s.assignment.task==Task::Hold||s.assignment.task==Task::Rally||s.assignment.task==Task::None);
     if(memory.emergency&&memory.assigned&&ProtectedAt(map,memory.shelter,enemy,memory.halfCover?Stance::Crouched:Stance::Standing)&&
-        (pressure||(threat>=0&&(s.assignment.task==Task::Hold||s.assignment.task==Task::BoundCover||rearGuard)&&Distance(memory.shelter,objective)<8)))memory.expires=std::max(memory.expires,time+3);
+        (pressure||(holdingPost&&Distance(memory.shelter,objective)<8)))memory.expires=std::max(memory.expires,time+3);
     if(memory.emergency&&time>=memory.expires&&!pressure){memory.assigned=false;memory.emergency=false;}
     const bool localSafety=(pressure&&exposed)||openFire||exposedStop||contactExposure||protectHold||(memory.emergency&&memory.assigned&&time<memory.expires);
     const bool maneuverArrival=s.assignment.task==Task::BoundMove||s.assignment.task==Task::Flank;
