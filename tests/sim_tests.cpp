@@ -901,8 +901,10 @@ int main(int argc,char** argv) {
             assert(shot.hit==!shot.victims.empty());
             if(!shot.victims.empty()) {
                 assert(shot.target>=0&&shot.target==shot.victims.front().soldier);
-                // A round that over-penetrates stops somewhere later; impact is the terminal kind.
-                assert(shot.impact==Shot::Impact::Soldier||shot.impact==Shot::Impact::Cover||
+                // A round that over-penetrates stops somewhere later; impact is the terminal kind. One that
+                // has left a body and is still in the air when the battle ends has no terminal kind yet.
+                const bool airborneAtEnd=shot.impact==Shot::Impact::None&&r.duration-shot.time<3;
+                assert(airborneAtEnd||shot.impact==Shot::Impact::Soldier||shot.impact==Shot::Impact::Cover||
                        shot.impact==Shot::Impact::Ground||shot.impact==Shot::Impact::OutOfBounds);
                 for(const auto& victim:shot.victims) {
                     bool eventFound=false;
