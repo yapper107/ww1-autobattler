@@ -88,6 +88,35 @@ def flank_fire_share(root, frames) -> dict:
                 flank_fire_squads=sum(1 for q in squads if per_squad.get(q, 0) >= 20)/len(squads) if squads else None)
 
 
+def restlessness(frames, step) -> dict:
+    """The user's 20 September 2026 verdict on the best legacy node: "the squads keep moving around very rapidly when
+    there are still enemies... soldiers... leave their positions into open ground to get shot frequently".
+    For living attackers within 100 m of a living defender: moves_per_soldier_minute (a move starts when a man who stood
+    still begins to displace), orders_per_soldier_minute (his order id changes), moving_share (time displacing), and
+    wounded_moving_share (of the wounds taken there, those taken while displacing)."""
+    fight = moving = legs = orders = hit_moving = hit_still = 0
+    last, was_moving, last_order, last_health = {}, {}, {}, {}
+    for frame in frames:
+        defenders = [d['position'] for d in frame['soldiers'] if d['team'] == 1 and d['alive']]
+        for s in frame['soldiers']:
+            if s['team'] != 0 or not s['alive']:
+                continue
+            p, i = s['position'], s['id']
+            displaced = i in last and math.hypot(p[0] - last[i][0], p[1] - last[i][1]) > 0.1
+            if defenders and min(math.hypot(p[0] - x[0], p[1] - x[1]) for x in defenders) <= CONTACT:
+                fight += 1
+                moving += int(displaced)
+                legs += int(displaced and not was_moving.get(i, False))
+                orders += int(i in last_order and s['order'] != last_order[i])
+                if i in last_health and s['health'] < last_health[i] - 0.5:
+                    hit_moving += int(displaced)
+                    hit_still += int(not displaced)
+            last[i], was_moving[i], last_order[i], last_health[i] = p, displaced, s['order'], s['health']
+    minutes = fight*step/60
+    return dict(moves_per_soldier_minute=legs/minutes if minutes else None, orders_per_soldier_minute=orders/minutes if minutes else None,
+                moving_share=moving/fight if fight else None, wounded_moving_share=hit_moving/(hit_moving + hit_still) if hit_moving + hit_still else None)
+
+
 def evaluate(root) -> dict:
     """All shares are of the ATTACKERS (team 0), from their first shot to the end.
 
@@ -105,7 +134,8 @@ def evaluate(root) -> dict:
     root = Path(root)
     frames = list(rows(root/'evaluation.jsonl'))
     flank = flank_fire_share(root, frames) if frames else dict(flank_fire_share=None, flank_fire_squads=None)
-    none = dict(**flank, idle_exposed_share=None, stutter_share=None, at_fight_share=None, engaged_firing_share=None, contact_exposed_share=None, close_dither_share=None, first_attacker_shot=None)
+    restless = restlessness(frames, frames[1]['time'] - frames[0]['time'] if len(frames) > 1 else 0.2) if frames else {}
+    none = dict(**flank, **restless, idle_exposed_share=None, stutter_share=None, at_fight_share=None, engaged_firing_share=None, contact_exposed_share=None, close_dither_share=None, first_attacker_shot=None)
     seen, first_shot = {}, None
     for frame in frames:
         for s in frame['soldiers']:
@@ -164,7 +194,7 @@ def evaluate(root) -> dict:
                     net = math.hypot(p[0] - state['origin'][0], p[1] - state['origin'][1])
                     dithering += int(state['path'] >= DITHER_RATIO*max(net, 0.5))
                 track[s['id']] = dict(start=t, origin=p, last=p, path=0.0, close=0, frames=0)
-    return dict(**flank, idle_exposed_share=idle_exposed/contact_seconds if contact_seconds else None, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
+    return dict(**flank, **restless, idle_exposed_share=idle_exposed/contact_seconds if contact_seconds else None, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
                 engaged_firing_share=engaged_fired/engaged_windows if engaged_windows else None,
                 contact_exposed_share=contact_exposed/contact_seconds if contact_seconds else None,
                 close_dither_share=dithering/dither_windows if dither_windows else None,
