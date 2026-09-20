@@ -7,7 +7,7 @@ forth in and between buildings. These are observer-truth measurements of the ATT
 (team 0) from the per-frame evaluation export, counted from the attackers' first shot.
 """
 from __future__ import annotations
-import math
+import json, math
 from pathlib import Path
 
 from phase0_metrics import rows
@@ -51,6 +51,43 @@ def stutter_share(frames, step) -> float | None:
     return seconds/alive_seconds if alive_seconds else None
 
 
+FLANK_ANGLE = 45.0   # a round counts as flanking fire when it arrives this far off the squad's base-of-fire line
+FLANK_MEMORY = 60.0  # the base-of-fire line is the squad's gun, or else its median firing bearing of the last minute
+
+
+def flank_fire_share(root, frames) -> dict:
+    """The user's 20 September 2026 observation: "they do not go on a flank to put more fire on the enemy".
+    For every aimed rifle round of an attacking squad, the bearing from the target to the shooter is compared with
+    the bearing from the target to the squad's machine gun at that moment (the base of fire). flank_fire_share is
+    the share of those rounds arriving 45 degrees or more off that line; flank_fire_squads the share of squads that
+    ever deliver twenty such rounds. A squad that closes frontally in short bounds scores near zero on both."""
+    import bisect
+    times = [f['time'] for f in frames]
+    rounds = flanking = 0
+    per_squad = {}
+    for line in open(Path(root)/'shots.jsonl'):
+        if '"team":0' not in line:
+            continue
+        s = json.loads(line)
+        if s.get('support_weapon') or s.get('aimed_enemy', -1) < 0:
+            continue
+        frame = frames[min(len(frames) - 1, bisect.bisect_left(times, s['time']))]
+        gun = next((m for m in frame['soldiers'] if m['team'] == 0 and m['squad'] == s['squad'] and m['machine_gun'] and m['alive']), None)
+        target = next((m for m in frame['soldiers'] if m['id'] == s['aimed_enemy']), None)
+        if gun is None or target is None:
+            continue
+        t = target['position']
+        a = math.atan2(s['start'][1] - t[1], s['start'][0] - t[0])
+        b = math.atan2(gun['position'][1] - t[1], gun['position'][0] - t[0])
+        off = abs(math.degrees(math.atan2(math.sin(a - b), math.cos(a - b))))
+        rounds += 1
+        flanking += int(off >= FLANK_ANGLE)
+        per_squad[s['squad']] = per_squad.get(s['squad'], 0) + int(off >= FLANK_ANGLE)
+    squads = {m['squad'] for m in frames[0]['soldiers'] if m['team'] == 0}
+    return dict(flank_fire_share=flanking/rounds if rounds else None,
+                flank_fire_squads=sum(1 for q in squads if per_squad.get(q, 0) >= 20)/len(squads) if squads else None)
+
+
 def evaluate(root) -> dict:
     """All shares are of the ATTACKERS (team 0), from their first shot to the end.
 
@@ -64,7 +101,8 @@ def evaluate(root) -> dict:
     """
     root = Path(root)
     frames = list(rows(root/'evaluation.jsonl'))
-    none = dict(stutter_share=None, at_fight_share=None, engaged_firing_share=None, contact_exposed_share=None, close_dither_share=None, first_attacker_shot=None)
+    flank = flank_fire_share(root, frames) if frames else dict(flank_fire_share=None, flank_fire_squads=None)
+    none = dict(**flank, stutter_share=None, at_fight_share=None, engaged_firing_share=None, contact_exposed_share=None, close_dither_share=None, first_attacker_shot=None)
     seen, first_shot = {}, None
     for frame in frames:
         for s in frame['soldiers']:
@@ -119,7 +157,7 @@ def evaluate(root) -> dict:
                     net = math.hypot(p[0] - state['origin'][0], p[1] - state['origin'][1])
                     dithering += int(state['path'] >= DITHER_RATIO*max(net, 0.5))
                 track[s['id']] = dict(start=t, origin=p, last=p, path=0.0, close=0, frames=0)
-    return dict(stutter_share=stutter, at_fight_share=at_fight/living if living else None,
+    return dict(**flank, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
                 engaged_firing_share=engaged_fired/engaged_windows if engaged_windows else None,
                 contact_exposed_share=contact_exposed/contact_seconds if contact_seconds else None,
                 close_dither_share=dithering/dither_windows if dither_windows else None,
