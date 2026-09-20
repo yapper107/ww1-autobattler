@@ -86,6 +86,10 @@ def _node_card(node: dict, result: dict | None, is_root: bool) -> str:
         pill = '<span class="pill good">✓ survivor · beats its root</span>' if beats else '<span class="pill flat">✓ guards pass · does not beat its root</span>'
     proposer = node.get('proposer', {})
     who = 'root' if is_root else (proposer.get('model') or proposer.get('kind') or 'unknown')
+    if node.get('carried_from'):
+        who = f"generations 1 to {node.get('generation')} carried over"
+    elif node.get('generation'):
+        who = f"generation {node['generation']} · {who}"
     paired = ranking.get('paired_vs_root') or {}
     if value is not None:
         figure, figure_label = f'{value:+.3f}', 'value'
@@ -129,18 +133,20 @@ def render() -> str:
         current = [n for n in current if n['id'].split('-')[0] == newest]
     earlier = [n for n in roots if n not in current]
     lineages, survivors, candidates, generations = [], 0, 0, 0
+    # The tally covers the whole history, earlier epochs included: a candidate tried before a re-rooting was still tried.
+    proposed = [n for n in nodes.values() if n.get('generation') and not n.get('carried_from')]
+    candidates = len(proposed)
+    generations = max((n['generation'] for n in proposed), default=0)
     for root in sorted(current, key=lambda n: n.get('controller', '')):
         stack, depth = [(root['id'], 0)], 0
         while stack:
             node_id, d = stack.pop()
             depth = max(depth, d)
             for k in children.get(node_id, []):
-                candidates += 1
                 result = tree.read_score(k, version) or {}
                 anchor = result.get('objective', {}).get('anchor')
                 survivors += int(bool(result.get('guards_pass')) and result.get('value') is not None and anchor is not None and result['value'] > anchor)
                 stack.append((k, d + 1))
-        generations = max(generations, depth)
         lineages.append(f'<section class="lineage"><h2>{html.escape(root.get("controller", "drills"))} <span>lineage</span></h2>'
                         f'{_branch(root["id"], children, nodes, version, True)}</section>')
     old = ''.join(f'<li><code>{html.escape(n["id"])}</code> {html.escape(n.get("brief") or "")}</li>' for n in earlier)
