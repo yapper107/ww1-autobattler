@@ -1,0 +1,40 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+index 7a2fb6c..538a087 100644
+--- a/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/DrillSim.cpp
+@@ -109,6 +109,17 @@ static void IssueStage(const Soldier& leader,const Soldier& knowledge,const std:
+     const bool coverStage=p.stage==DrillStage::ContactCover||p.stage==DrillStage::BoundSetup||p.stage==DrillStage::BoundCover;
+     Vec3 direction=Unit(p.destination-p.center);if(coverStage&&p.target>=0)direction=Unit(p.sector-p.center);
+     Vec3 left{-direction.y,direction.x};p.interval=!p.forceColumn&&ClearLine(map,p.center-left*12,p.center+left*12,.5f)?10.f:4.f;
++    // A squad-autonomous leg (no platoon area: p.areaMin/areaMax is just the row the squad
++    // currently stands on) toward a destination well off that row rejects every column and
++    // formation candidate along the way, so the squad cycles Blocked forever without moving.
++    // Widen only this stage's own movement search to include the leg's own destination; the
++    // plan's stored area is untouched, so Pause/RecoverSupport/BeginContactAction (which read
++    // p.areaMin/areaMax directly, outside this function) keep their existing, tighter band.
++    Vec3 areaMin=p.areaMin,areaMax=p.areaMax;
++    if(!p.platoonArea&&!coverStage&&!repair){
++        areaMin.y=std::min(areaMin.y,std::max(-map.halfHeight+2,p.destination.y-24));
++        areaMax.y=std::max(areaMax.y,std::min(map.halfHeight-2,p.destination.y+24));
++    }
+     std::vector<ReservedPosition> reserved;
+     for(Vec3 at:approaches){CoverPosition c;c.shelter=c.peek=at;reserved.push_back({-1,c});}
+     for(const auto& s:members)if(!selected[s.id%SquadSize]){
+@@ -162,7 +173,7 @@ static void IssueStage(const Soldier& leader,const Soldier& knowledge,const std:
+             continue;
+         }
+         route->id=700000000ULL+uint64_t(leader.squad)*1000000+uint64_t(p.instance)*1000+p.generation*2+element;route->owner=leader.id;route->plan=p.instance;p.routes[element]=route;
+-        GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=p.areaMin;query.areaMax=p.areaMax;query.coherenceRadius=90;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
++        GroupPositionQuery query;query.center=p.center;query.target=p.sector;query.areaMin=areaMin;query.areaMax=areaMax;query.coherenceRadius=90;query.groupCap=35;query.corridor=route;query.radius=25;query.reserved=reserved;
+         if(p.platoonArea&&leader.platoonOrder.areaRouteRadius>0){query.areaRoute=leader.platoonOrder.corridor;query.areaRouteRadius=25;query.areaDiscCenter=leader.platoonOrder.areaDiscCenter;query.areaDiscRadius=60;}
+         const bool protectedBound=p.action.closureFallback&&!coverStage&&!repair&&p.effectiveFire&&!p.superiority;
+         query.formation=!coverStage&&!repair&&!protectedBound;query.protectedPosition=coverStage||repair||protectedBound;
+@@ -219,7 +230,7 @@ static void IssueStage(const Soldier& leader,const Soldier& knowledge,const std:
+             auto memberRoute=std::make_shared<TacticalRoute>(*route);memberRoute->id=route->id*16+slot;memberRoute->start=s.position;memberRoute->destination=p.positions[slot];
+             memberRoute->points=FindPath(map,s.position,p.positions[slot]);memberRoute->stages.clear();
+             float pathLength=0;Vec3 prior=s.position;bool inside=!memberRoute->points.empty();
+-            for(Vec3 point:memberRoute->points){pathLength+=Distance(prior,point);prior=point;inside&=CorridorDistance(*route,point)<=query.groupCap&&InOperationArea(point,p.areaMin,p.areaMax,query.areaRoute,query.areaRouteRadius,query.areaDiscCenter,query.areaDiscRadius);}
++            for(Vec3 point:memberRoute->points){pathLength+=Distance(prior,point);prior=point;inside&=CorridorDistance(*route,point)<=query.groupCap&&InOperationArea(point,areaMin,areaMax,query.areaRoute,query.areaRouteRadius,query.areaDiscCenter,query.areaDiscRadius);}
+             const bool rescued=fallback&&inside;
+             if(!inside){p.positions[slot]=s.position;p.hasSlot[slot]=false;p.movers[slot]=false;memberRoute->destination=s.position;memberRoute->points={s.position};}
+             memberRoute->stages.push_back({0,memberRoute->points.size(),memberRoute->destination,pathLength/1.89f,0});p.memberRoutes[slot]=memberRoute;

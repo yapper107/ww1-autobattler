@@ -1,0 +1,34 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp b/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp
+index f2015fe..818115f 100755
+--- a/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp
+@@ -218,9 +218,27 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
+         float crossingPressure=pressure;
+         if(cmd.route){crossingPressure=0;for(const auto& member:squad)if(member.Active()&&member.assignment.teamPlan.route&&member.assignment.teamPlan.route->id==cmd.route->id&&member.assignment.task==Task::BoundMove)
+             crossingPressure=std::max(crossingPressure,std::max(member.understoodSuppression,FireDanger(leader,member.position,time)));}
+-        if(cmd.maneuver!=Maneuver::PullBack&&(crossingPressure>.72f||(!support&&cmd.moveExposure>=.2f)||refusals>=2))
++        const bool timedOut=time>cmd.maneuverUntil&&!done;
++        // A crossing that already failed once at this same waypoint (failedMoves) and then
++        // times out again is stuck repeating the identical candidate: PauseSquadMovement only
++        // records the failure and blocks for a tick, after which the next comparison picks the
++        // same candidate again (nothing about the squad or the map changed). Only a *repeat*
++        // timeout at the same spot bypasses the block; a first-time timeout still behaves as
++        // before, so isolated crossings are unaffected.
++        bool repeat=false;for(int i=0;i<std::min(4,cmd.failedMoveCount);++i)if(Distance(cmd.waypoint,cmd.failedMoves[i])<6)repeat=true;
++        const bool expired=timedOut&&repeat;
++        if(cmd.maneuver!=Maneuver::PullBack&&!expired&&(crossingPressure>.72f||(!support&&cmd.moveExposure>=.2f)||refusals>=2))
+             PauseSquadMovement(leader,squad,cmd,!support?MoveBlock::Support:MoveBlock::Fire,time);
+-        else if(time>cmd.maneuverUntil&&!done)PauseSquadMovement(leader,squad,cmd,MoveBlock::Execution,time);
++        else if(timedOut&&!expired)PauseSquadMovement(leader,squad,cmd,MoveBlock::Execution,time);
++        // Accept wherever the group actually is and plan the next segment from there instead
++        // of re-preparing the same failed one.
++        else if(expired&&cmd.route&&size_t(cmd.routeStage+1)<cmd.route->stages.size()){
++            ++cmd.routeStage;const auto& stage=cmd.route->stages[cmd.routeStage];cmd.waypoint=stage.destination;
++            cmd.moveExposure=stage.exposedSeconds/std::max(.01f,stage.seconds);cmd.teamPlan.moving=1-cmd.teamPlan.moving;++cmd.boundsCompleted;cmd.teamPlan.bounding=false;cmd.teamPlan.released=false;
++            cmd.opportunitySince=time;cmd.planReason="execution deadline reached; accept position and prepare next segment";
++            cmd.maneuverUntil=time+std::max(30.f,stage.seconds*2+15);return;
++        }
++        else if(expired){cmd.hasWaypoint=false;cmd.teamPlan.bounding=false;cmd.teamPlan.released=false;cmd.planReason="execution deadline reached; accept current position";cmd.opportunitySince=-1;return;}
+         else if(!emergency||cmd.maneuver==Maneuver::PullBack)return;
+     }
+     if(quiet)return;

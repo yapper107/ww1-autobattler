@@ -54,6 +54,18 @@ lean battle mode (frames dropped after digest and evaluation rows are folded) be
 generation 4, then runs a friendly-fire ablation on scratch builds so the user can set an
 absolute friendly-fire budget in place of the root-relative guard.
 
+Generations 4 and 5 (19 September 2026): lean recording landed (`--lean`, 5 GB to 0.5 GB a
+battle, identical scores, a different digest number; source `efce1ef0fb0e378a`, both lineages
+re-rooted with identical development scores). The friendly-fire ablation showed avoidance is
+not the brake (switching it off does not raise the attack score; hold-fire alone halves
+friendly fire), so the shared logic stays as it is. Attack maps are fought with three battle
+seeds. Four proposals a generation (user decision). **First survivor: drills
+`a5b94b2706ad71c6`**, every guard passing, +0.100 [+0.035, +0.169] on development and +0.085
+[+0.040, +0.138] on validation against the drills root; awaiting the user's replay review
+(`python3 -m tools.loop replay a5b94b2706ad71c6`). Legacy has no gain after seven proposals;
+its next target is a corporal who freezes waiting on pinned riflemen. An evaluation now takes
+about six minutes. Details at the end of the plan.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two

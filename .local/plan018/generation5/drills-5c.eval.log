@@ -1,0 +1,17 @@
+[18a991576780ea1a] build
+[18a991576780ea1a] selectors and Python tests run beside the battles
+[18a991576780ea1a] town-dev: 20 battles
+[18a991576780ea1a] town-dev: 20/20 complete
+[18a991576780ea1a] trench-dev: 10 battles
+[18a991576780ea1a] trench-dev: 10/10 complete
+[18a991576780ea1a] town-attack-dev: 60 battles
+[18a991576780ea1a] town-attack-dev: 60/60 complete
+[18a991576780ea1a] town-attack-val: 45 battles
+[18a991576780ea1a] town-attack-val: 45/45 complete
+[18a991576780ea1a] parity and baselines
+[18a991576780ea1a] guards FAIL zero_shot,attacker_firing_squads; objective 0.3004456018518519
+{
+ "id": "18a991576780ea1a",
+ "scores": {}
+}
+=== exit 0

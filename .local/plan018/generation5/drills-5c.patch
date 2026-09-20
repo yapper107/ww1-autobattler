@@ -1,0 +1,69 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/BattleSim.h b/Unreal/Source/ArmyPrototype/Sim/BattleSim.h
+index fc30960..1ead98c 100755
+--- a/Unreal/Source/ArmyPrototype/Sim/BattleSim.h
++++ b/Unreal/Source/ArmyPrototype/Sim/BattleSim.h
+@@ -380,6 +380,11 @@ struct PlatoonTaskState {
+     float observeStarted=-1;Vec3 observeObjective{};
+     bool withdrawing=false;float believedRatio=1;
+     std::array<float,SquadsPerTeam> needSince{{-1,-1,-1,-1}};
++    // No-progress tracking under a committed intent: reset when the intent is (re)issued,
++    // refreshed from the squad's own reported position and delivered fire. Neither read
++    // nor written from anything but received reports and this commander's own orders.
++    std::array<Vec3,SquadsPerTeam> progressPosition{};
++    std::array<float,SquadsPerTeam> lastMovedAt{{-1,-1,-1,-1}},lastFiredAt{{-1,-1,-1,-1}};
+ };
+ struct PlatoonCommand {
+     int leader=-1, sergeant=-1, supportSquad=-1, flankSquad=-1, mainEffortSquad=-1, reserveSquad=-1, plans=0;
+diff --git a/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp b/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
+index 75e2150..1276280 100644
+--- a/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/PlatoonTaskSim.cpp
+@@ -41,6 +41,10 @@ void Lifetime(PlatoonDirective& order, int issuer, float time) {
+     order.issuer=issuer; order.issuedAt=time; order.expiresAt=time+75;
+     order.intent.expiresAt=order.expiresAt;
+ }
++// A committed intent that produces neither reported movement nor reported fire for this
++// long is treated as stalled: the commander reassesses instead of renewing it unchanged.
++constexpr float NoProgressWindow=50.f;
++constexpr float NoProgressMoveMetres=4.f;
+ }
+ 
+ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const Map& map,
+@@ -101,6 +105,17 @@ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const M
+         const int index=report.squad%SquadsPerTeam;
+         auto& previous=state.assigned[index];
+         if(config.leaderEffects)previous.initiativeAllowed=dials.initiative;
++        // Track the squad's own reported progress under whatever intent is currently
++        // committed; reset when a new intent is issued below. Received report only.
++        if (state.lastMovedAt[index]<0 || Distance(report.position,state.progressPosition[index])>NoProgressMoveMetres) {
++            state.progressPosition[index]=report.position; state.lastMovedAt[index]=time;
++        }
++        // report.deliveries also carries covering-fire evidence relayed from other squads
++        // (support awareness), so only a delivery from this squad's own roster counts.
++        for(const auto& delivery:report.deliveries)if(delivery.shooter>=0&&delivery.shooter/SquadSize==report.squad){state.lastFiredAt[index]=time;break;}
++        const bool committed=previous.taskNode && previous.issuer==leader.id;
++        const bool noProgress=committed && time-state.lastMovedAt[index]>=NoProgressWindow &&
++            time-state.lastFiredAt[index]>=NoProgressWindow;
+         const bool matching=previous.intent.id && report.goalId==previous.intent.id && report.directive==previous.serial;
+         const bool done=matching && report.goalStatus==TaskStatus::Done;
+         const bool blocked=matching && report.goalStatus==TaskStatus::Blocked;
+@@ -114,7 +129,7 @@ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const M
+         const bool knownChanged=(previous.enemy>=0)!=(target>=0) ||
+             (target>=0 && (previous.enemy!=target || Distance(previous.sector,knowledge.contacts[target].position)>40));
+         const bool change=!previous.taskNode || done || blocked ||
+-            (!retiring && (previous.task!=task || knownChanged));
++            (!retiring && (previous.task!=task || knownChanged || noProgress));
+         const bool advancing=target<0 && task==PlatoonTask::FightHere;
+         if (!change) {
+             // A leg already proven unreachable (route_exhausted below) must not be kept
+@@ -170,6 +185,10 @@ std::vector<PlannedPlatoonOrder> PlanPlatoonTasks(const Soldier& leader, const M
+         } else state.advanceExhausted[index]=false;
+         order.intent.purpose=withdraw?GoalPurpose::Withdraw:task==PlatoonTask::HelpSquad?GoalPurpose::Support:GoalPurpose::Seize;
+         order.intent.objective=task==PlatoonTask::HelpSquad?order.sector:order.position; order.intent.radius=12;
++        if (noProgress && !done && !blocked) reason+="; no progress: neither moved nor delivered fire under prior committed intent";
++        // Fresh commitment starts its own progress clock; carrying the stale one over would
++        // immediately reassess the replacement too.
++        state.lastMovedAt[index]=state.lastFiredAt[index]=time; state.progressPosition[index]=report.position;
+         Lifetime(order,leader.id,time); previous=order; orders.push_back({report.leader,order});
+         if(config.leaderEffects){
+             reason+="; leader judgement="+std::to_string(leader.officer.judgment)+" risk="+std::to_string(leader.officer.risk)+" picture multiplier="+std::to_string(dials.enemyScale)+" believed ratio="+std::to_string(state.believedRatio)+" retreat threshold="+std::to_string(dials.retreatRatio)+" initiative="+(dials.initiative?"delegated":"requires intent");

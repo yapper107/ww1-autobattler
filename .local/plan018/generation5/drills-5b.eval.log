@@ -1,0 +1,17 @@
+[f3b92cc62b71255b] build
+[f3b92cc62b71255b] test build and selectors
+[f3b92cc62b71255b] town-dev: 20 battles
+[f3b92cc62b71255b] town-dev: 20/20 complete
+[f3b92cc62b71255b] trench-dev: 10 battles
+[f3b92cc62b71255b] trench-dev: 10/10 complete
+[f3b92cc62b71255b] town-attack-dev: 60 battles
+[f3b92cc62b71255b] town-attack-dev: 60/60 complete
+[f3b92cc62b71255b] town-attack-val: 45 battles
+[f3b92cc62b71255b] town-attack-val: 45/45 complete
+[f3b92cc62b71255b] parity and baselines
+[f3b92cc62b71255b] guards FAIL attacker_firing_squads; objective 0.271875
+{
+ "id": "f3b92cc62b71255b",
+ "scores": {}
+}
+=== exit 0

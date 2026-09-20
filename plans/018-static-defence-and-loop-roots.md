@@ -330,3 +330,37 @@ stall from the parent's diagnosis, and is told which stalls other proposers hold
 tokens a proposal). The branching rule stands: legacy gets its explorer from the root each generation while its chain has
 no proven gain. The user also asked whether lean scoring differs from standard: it does not; evaluation and shots exports
 are byte-identical and both re-rooted roots reproduced all twenty development scores; only the digest is a different number.
+
+## Fifth generation, 19 September 2026: the first survivor
+
+Four Sonnet proposers (three drills, one legacy explorer), three battle seeds a map, and the legacy generation 1 node
+re-measured at the user's prompting. Evidence: `.local/plan018/generation5/`.
+
+| Node | Parent | Change | Paired delta vs lineage root, 60 dev | 45 val | Guards |
+|---|---|---|---|---|---|
+| **`a5b94b2706ad71c6`** | drills `a2f0b34f44950e0b` | a committed assault that never receives its first delivered-support evidence gives up the wait after 30 s and falls back to Reorganise and supported closure (one branch, `SquadDrillSim.cpp`); the wait had no bound | **+0.100 [+0.035, +0.169]**, 39 better, 20 worse | **+0.085 [+0.040, +0.138]**, 26 better, 16 worse | **all pass: the first survivor** (value 0.367 against the root's 0.327) |
+| `f3b92cc62b71255b` | drills `08a5a8f33d1f2732` | movement stages search positions in a working band widened to include the leg's destination (the 48 m strip around the squad's row rejected every candidate toward an off-row goal) | +0.114 [+0.062, +0.167], 44 better, 15 worse | -0.005 [-0.055, +0.044] | fails `attacker_firing_squads` (one battle) |
+| `18a991576780ea1a` | drills `a2f0b34f44950e0b` | the platoon reassesses a squad whose reports show no movement over 4 m and no own-squad fire for 50 s under a committed intent | +0.097 [+0.035, +0.158] | +0.043 [-0.026, +0.116] | fails `zero_shot` and `attacker_firing_squads` (one battle) |
+| `8fc504e6f6aab1b0` | legacy root (explorer) | a repeated execution-deadline timeout at one waypoint no longer re-blocks; the squad accepts the ground reached | +0.015 [-0.029, +0.059] | -0.005 [-0.035, +0.027] | fails `attacker_firing_squads` (two battles) |
+| `3272f20315669fe4` | legacy root (generation 1 carried for re-measurement) | 2.5 s hold on issued flank and bound orders | -0.006 [-0.074, +0.054] | -0.021 [-0.078, +0.031] | fails `friendly_fire` (+1.10 [+0.04, +2.26]) |
+
+Findings.
+- **Survivor.** The drills chain now passes every guard and beats its root on both sets with intervals above zero. Most of
+  the gain was already in its parents (+0.013 against its own parent on the same development battles); this step made the
+  validation interval clear zero. For the user's replay review: `python3 -m tools.loop replay a5b94b2706ad71c6`.
+- **The legacy order-hold idea is closed.** Its one significant result (generation 1 validation, +0.157 on one battle a map)
+  does not survive three seeds a map.
+- **A legacy root cause found, not yet fixed.** The explorer's trace: a committed flank counts the corporal in its arrival
+  majority, and the corporal freezes "regrouping with the squad corporal" when the mean of his riflemen is over 10 m away
+  because two of them are pinned by fire; the flank never completes, times out and is re-picked every 57 to 90 s. Next
+  legacy brief: the corporal freeze itself.
+- The slot-search repair has the strongest development result in the tree and nothing on validation: it helps some
+  geometries and hurts others. A merge with the survivor is worth one proposal.
+
+Harness changes made during this generation (all committed): the runner sized its pool from free pages, which exclude the
+file cache, and had been fighting one battle at a time (now MemAvailable: fourteen jobs); `scripts/loop-evaluate.sh` syncs
+the current harness into a worktree before evaluating; metrics parse each evaluation export once with orjson (identical
+values, 5 to 8 s down to 1 to 3 s a battle); parallel compilation (38 s to 15 s); selectors and Python tests run beside the
+battles; early stop on a failed cheap guard or a new selector failure; one shared validation draw per generation. An
+evaluation fell from 674 s to 367 s. The tree page became a collapsed tree with generation badges, plain titles, proposals
+in flight and the whole history.

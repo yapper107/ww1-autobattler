@@ -1,0 +1,16 @@
+diff --git a/Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp b/Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+index 72332a7..5d503e1 100644
+--- a/Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/SquadDrillSim.cpp
+@@ -556,6 +556,11 @@ bool UpdateSquadAction(const Soldier& l,const Soldier& knowledge,const std::vect
+     if(p.stage==DrillStage::SupportPrepare||p.stage==DrillStage::SupportHold){
+         if(p.action.established&&p.action.attack){p.action.routeStep=0;p.action.buddy=0;Rush(l,members,map,p,d,time);}
+         else if(p.stage==DrillStage::SupportPrepare&&p.action.established)Stage(l,p,d,time,DrillStage::SupportHold,"established base of fire; hold and report no covered assault route");
++        // A committed assault waiting on its own or a called squad's support evidence has no
++        // other bound: against a supporter that can never see or hit the objective this was an
++        // unbounded wait. Thirty seconds (the same allowance used once support is lost after
++        // Rush) gives up the wait and reports for supported closure instead of holding forever.
++        else if(p.action.attack&&!p.action.established&&time-p.action.acceptedAt>=30)Fail(l,p,d,time,TaskCause::Support,"Blocked: no delivered support evidence within 30 s; Reorganise then supported closure");
+         return true;
+     }
+     if(p.stage==DrillStage::AttackMove){
