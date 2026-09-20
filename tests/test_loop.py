@@ -136,6 +136,9 @@ class GuardsFile(unittest.TestCase):
         for r in cand['town-attack-dev']:                # v6: standing in the enemy's sight with no shot of one's own
             r['metrics']['idle_exposed_share'] = 0.05
         self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['fights_from_cover']['passed'])
+        for r in cand['town-attack-dev']:                # user decision: half a point above legacy is tolerated
+            r['metrics']['idle_exposed_share'] = 0.013
+        self.assertTrue(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['fights_from_cover']['passed'])
         cand, base = self.town_rows()
         for r in cand['town-attack-dev']:                # seen more because they shoot more: allowed up to the backstop
             r['metrics']['contact_exposed_share'] = 0.085
