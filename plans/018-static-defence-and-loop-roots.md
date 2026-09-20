@@ -319,3 +319,14 @@ Findings.
   map and the loop cannot resolve effects below about +/-0.1. With lean battles the remedy is cheap: three battle seeds
   per map on the attack sets (105 attack battles a node instead of 35), clustered by map as now, roots re-scored the same
   way. To be done before generation 5.
+
+## Four proposals a generation, 19 September 2026 (user decision)
+
+With lean battles memory no longer limits proposers (a check battle is about 0.6 GB; the evaluator's fourteen battles about
+8 GB of the 30 GB WSL keeps). The user asked whether more proposals per generation were possible and chose **four**. The
+binding limits are now the serial evaluator (12 to 15 minutes a candidate with three battle seeds a map, so four proposals
+keep it busy for about an hour without a queue), the need for distinct targets (each proposal takes a different stated
+stall from the parent's diagnosis, and is told which stalls other proposers hold), and tokens (about 170 thousand Sonnet
+tokens a proposal). The branching rule stands: legacy gets its explorer from the root each generation while its chain has
+no proven gain. The user also asked whether lean scoring differs from standard: it does not; evaluation and shots exports
+are byte-identical and both re-rooted roots reproduced all twenty development scores; only the digest is a different number.
