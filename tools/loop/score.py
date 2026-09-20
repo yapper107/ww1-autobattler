@@ -80,6 +80,8 @@ def evaluate_guards(spec, rows_by_set, baseline_rows, external):
                     if r.get('status') != 'complete':
                         failures.append(dict(set=set_name, key=config.spec_key(r), reason=r.get('error', 'incomplete')))
                         continue
+                    if g.get('unless_metric') and (r.get('metrics') or {}).get(g['unless_metric']):
+                        continue  # the guard exists for stalled attacks, not for one already won
                     if g['rule'] == 'gt':
                         ok = (r['metrics'].get(g['metric']) or 0) > g['value']
                     elif g['rule'] == 'min_ge':
@@ -110,6 +112,8 @@ def evaluate_guards(spec, rows_by_set, baseline_rows, external):
                     ok = summary['ci95'][0] <= 0
                 elif g['rule'] == 'mean_le_0':
                     ok = summary['mean'] <= 0
+                elif g['rule'] == 'mean_le':         # a stated tolerance above the baseline, in the metric's own unit
+                    ok = summary['mean'] <= g['value']
                 elif g['rule'] == 'ci_upper_ge_0':   # higher is better: not significantly below the baseline
                     ok = summary['ci95'][1] >= 0
                 else:

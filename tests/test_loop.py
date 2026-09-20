@@ -60,7 +60,7 @@ class GuardsFile(unittest.TestCase):
 
     def test_current_spec_ranks_the_attack_and_keeps_trenches_for_shooting_only(self):
         spec = score.load_guards()
-        self.assertEqual(spec['version'], 'v4')
+        self.assertEqual(spec['version'], 'v5')
         self.assertEqual(spec['objective']['kind'], 'attack')
         self.assertEqual(spec['objective']['ranking_set'], 'town-attack-val')
         for g in spec['guards']:
@@ -119,6 +119,10 @@ class GuardsFile(unittest.TestCase):
         result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
         self.assertFalse(result['guards']['attacker_firing_squads']['passed'])
         self.assertIsNone(result['value'])
+        for rows in cand.values():                       # v5: an attack already won is not a stalled one
+            for r in rows:
+                r['metrics']['attack_cleared'] = 1
+        self.assertTrue(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['attacker_firing_squads']['passed'])
 
     def test_a_force_that_hangs_back_or_fights_from_the_open_has_no_score(self):
         cand, base = self.town_rows()
@@ -132,6 +136,10 @@ class GuardsFile(unittest.TestCase):
         for r in cand['town-attack-dev']:
             r['metrics']['contact_exposed_share'] = 0.12
         self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['fights_from_cover']['passed'])
+        base_exposed = base['legacy']['town-attack-dev'][0]['metrics']['contact_exposed_share']
+        for r in cand['town-attack-dev']:                # v5, user decision: up to 2 points above legacy is allowed
+            r['metrics']['contact_exposed_share'] = base_exposed + 0.015
+        self.assertTrue(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['fights_from_cover']['passed'])
 
     def test_silent_trench_battle_fails_the_shooting_guard(self):
         cand, base = self.town_rows()

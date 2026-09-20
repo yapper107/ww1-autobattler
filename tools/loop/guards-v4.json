@@ -1,5 +1,5 @@
 {
-  "version": "v5",
+  "version": "v4",
   "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. v4 adds two conduct guards from the user's replay verdict of 19 Sep 2026 (the drills survivor hung back and fought from the open). v3, plan 018 (user decisions 18 Sep 2026): the objective is the attack on a static defence on generated town maps; symmetric town battles carry the paired behaviour guards; generated trench maps only prove soldiers still shoot. The selectors guard is relative to the lineage root (no selector the root passes may fail); parity is the lineage rule (controllers the node does not own stay digest-identical, static-defence battle included). v1 and v2 are preserved beside this file.",
   "guards": [
     {
@@ -69,8 +69,7 @@
       "rule": "index_ge",
       "index": 0,
       "value": 3,
-      "provenance": "user replay 16 Sep 2026 (only one or two soldiers shooting); drills root 18 Sep 2026: 4 of 30 town battles had two silent squads on a side; v5, 19 Sep 2026: a battle the attackers won by clearing the position is exempt (the stutter-fixed legacy root cleared one in 422 s with two squads having fired, score +0.83)",
-      "unless_metric": "attack_cleared"
+      "provenance": "user replay 16 Sep 2026 (only one or two soldiers shooting); drills root 18 Sep 2026: 4 of 30 town battles had two silent squads on a side"
     },
     {
       "name": "under_2m",
@@ -135,9 +134,8 @@
       ],
       "metric": "contact_exposed_share",
       "baseline": "legacy",
-      "rule": "mean_le",
-      "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: on seeing an enemy soldiers do not take a covered firing position, they shoot from where they stand, sometimes in the middle of the road; legacy does take cover. Share of attacker-seconds at the fight with an enemy line of sight on the man (a soldier working from cover is exposed only while he peeks); legacy 0.06, that survivor 0.09. Must not be significantly above legacy.; v5, user decision 19 Sep 2026: a tolerance of 2 points above legacy (mean paired delta), because a flank that actually happens is seen a little more than one that never starts (the corporal fix, +0.9 to +1.5 points), while the drills conduct the user rejected measured +2.3 points and more",
-      "value": 0.02
+      "rule": "ci_lower_le_0",
+      "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: on seeing an enemy soldiers do not take a covered firing position, they shoot from where they stand, sometimes in the middle of the road; legacy does take cover. Share of attacker-seconds at the fight with an enemy line of sight on the man (a soldier working from cover is exposed only while he peeks); legacy 0.06, that survivor 0.09. Must not be significantly above legacy."
     }
   ],
   "objective": {

@@ -145,7 +145,8 @@ def main():
             draw.rectangle([off, 0, off + args.panel, HEADER], fill=(250, 250, 247, 255))
             draw.text((off + 12, 6), label, font=big, fill=(0, 0, 0, 255))
             who = f'squad {args.focus_squad}' if args.focus_squad is not None else 'attackers'
-            draw.text((off + 12, 36), f't = {t:5.0f} s    defenders left {defenders}    attackers left {attackers}    {who} seen by an enemy: {exposed_seconds[r]:.0f} soldier-seconds', font=small, fill=(40, 40, 40, 255))
+            wide = args.panel >= 800
+            draw.text((off + 12, 36), f't = {t:5.0f} s    defenders left {defenders}    attackers left {attackers}    ' + (f'{who} seen by an enemy: {exposed_seconds[r]:.0f} soldier-seconds' if wide else f'{who} seen: {exposed_seconds[r]:.0f} s'), font=small, fill=(40, 40, 40, 255))
             if r:
                 draw.line([off, 0, off, height + HEADER], fill=(0, 0, 0, 255), width=2)
         ffmpeg.stdin.write(canvas.tobytes())
