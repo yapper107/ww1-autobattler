@@ -6,7 +6,8 @@
 Attackers (team 0) are blue dots, one shade per squad, the corporal ringed; a red halo means an
 enemy has a clear line of sight on the man in that frame (observer truth, the same field the
 fights_from_cover guard counts). Defenders are orange squares. Walls are dark, low cover is tan.
-A corporal holding a Flank order is joined to its goal by a line. Needs Pillow and ffmpeg.
+A corporal holding a Flank order is joined to its goal by a line. Rounds fired on the move (plan 019)
+are thick green lines. Needs Pillow and ffmpeg.
 """
 from __future__ import annotations
 import argparse, json, subprocess, sys
@@ -90,6 +91,7 @@ def main():
                                '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', args.out], stdin=subprocess.PIPE)
     count = min(len(run['frames']) for _, run in runs)
     exposed_seconds = [0.0]*len(runs)
+    moving_rounds = [0]*len(runs)
     cursor = [0]*len(runs)
     trails = [dict() for _ in runs]
     for i in range(count):
@@ -106,7 +108,9 @@ def main():
             while k < len(shots) and shots[k]['time'] <= t:
                 s = shots[k]; k += 1
                 a, b = px(s['start'][0], s['start'][1], off), px(s['end'][0], s['end'][1], off)
-                draw.line([a, b], fill=(40, 110, 220, 150) if s['team'] == 0 else (230, 120, 20, 150), width=1)
+                walking = bool(s.get('moving_fire'))
+                moving_rounds[r] += int(walking)
+                draw.line([a, b], fill=(0, 150, 60, 230) if walking else (40, 110, 220, 150) if s['team'] == 0 else (230, 120, 20, 150), width=3 if walking else 1)
                 if s['hit']:
                     draw.ellipse([b[0] - 5, b[1] - 5, b[0] + 5, b[1] + 5], outline=(200, 0, 0, 255), width=2)
             attackers = defenders = 0
@@ -146,7 +150,7 @@ def main():
             draw.text((off + 12, 6), label, font=big, fill=(0, 0, 0, 255))
             who = f'squad {args.focus_squad}' if args.focus_squad is not None else 'attackers'
             wide = args.panel >= 800
-            draw.text((off + 12, 36), f't = {t:5.0f} s    defenders left {defenders}    attackers left {attackers}    ' + (f'{who} seen by an enemy: {exposed_seconds[r]:.0f} soldier-seconds' if wide else f'{who} seen: {exposed_seconds[r]:.0f} s'), font=small, fill=(40, 40, 40, 255))
+            draw.text((off + 12, 36), f't = {t:5.0f} s    defenders left {defenders}    attackers left {attackers}    ' + (f'{who} seen by an enemy: {exposed_seconds[r]:.0f} soldier-seconds' if wide and not moving_rounds[r] else f'{who} seen: {exposed_seconds[r]:.0f} s') + (f'    fired on the move: {moving_rounds[r]}' if moving_rounds[r] else ''), font=small, fill=(40, 40, 40, 255))
             if r:
                 draw.line([off, 0, off, height + HEADER], fill=(0, 0, 0, 255), width=2)
         ffmpeg.stdin.write(canvas.tobytes())
