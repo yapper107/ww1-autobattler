@@ -526,3 +526,31 @@ Findings.
 Generation 10 (four Sonnet proposers): legacy on `a6ac…`: a covered approach for the flank, and what the flank group
 does after it arrives; drills on `0349…`: squads that reach the fight late, and base-of-fire positions covered from
 every known enemy.
+
+## Generation 10, 20 September 2026
+
+Four Sonnet proposers and three architect variants of the march rule. Evidence: `.local/plan018/generation10/`.
+
+| Node | Lineage, parent | Change | 60 dev vs root | 45 val vs root | Guards |
+|---|---|---|---|---|---|
+| **`fe7696c3cf753277`** | legacy `a6ac…` | an arrived flank holds while engaged or for 25 s after its last effective fire, unless in emergency (the hold dropped the instant a defender ducked, and HOLD and FLANK orders alternated every 2 to 8 s for whole battles, so riflemen never got their firing slots) | **+0.203 [+0.135, +0.278]** | **+0.175 [+0.099, +0.251]** | friendly fire -2.2; fails only `fights_from_cover` (+2.31 points) |
+| (withdrawn) | legacy `a6ac…` | flank candidates charged for their route's exposed seconds | | | proposer's set: exposure -0.2 points for -30 % flanking fire; stronger weights made exposure worse |
+| `2337be6cb8e4c0d7` | drills `0349…` | a squad reacting to or closing on its own contact refuses the radio hand-off into another squad's passive support wait | +0.219 [+0.138, +0.303] (parent +0.245) | +0.215 [+0.143, +0.289] | neutral; at the fight unchanged (-0.066) |
+| (withdrawn) | drills `0349…` | base-of-fire candidates seen by any known contact sorted last | | | proposer's set: score -0.08, exposure +2 points: it trades the line onto the target for concealment |
+| `7e022bced6c6259e`, **`020643643985b080`** | drills `0349…` (architect) | the platoon commander marks a no-contact leg as a march while the ordered objective is more than 100 m / 60 m away; the squad marches only on that order | +0.122, **+0.123 [+0.045, +0.199]** | +0.168, **+0.179 [+0.110, +0.250]** | every selector passes; half the gated rule's development gain, whatever the distance |
+| `02cbe15d8b19b9dd` | drills `0349…` (architect) | the same, plus marching under any live FightHere/HelpSquad directive | stopped early | | breaks D03 |
+
+Findings.
+- **What the exposure guard measures.** The covered-approach proposer split the flank node's extra exposure: most of it is
+  stationary men in their firing positions, not the approach. Paired against the legacy root on the 60 development
+  battles, the frozen evaluator's `exposed_without_firing` (stationary, in an enemy's sight, no shot available) is
+  unchanged for the flank node (+0.16 s per soldier [-0.49, +0.86]) while its total exposed share is +2.29 points; it
+  loses no more men (+0.8 points) and puts 19 points more defenders out of action. The same measure is significantly
+  worse for drills (+3.85 s [+2.77, +4.86] for its best node), which is what the user described there. The architect
+  asked the user whether `fights_from_cover` should measure that instead; the guard was not changed.
+- **The drills mainline is now the ungated march** (`020643643985b080`): a controller may not know the scenario type, so
+  the gated nodes (`a52f…`, `0349…`, `2337…`) cannot be promoted whatever they score. Generation 11 asks where the other
+  half of the gain came from.
+Generation 11 (four Sonnet proposers): legacy on `fe76…`: why most squads never commit a qualifying flank
+(`flank_fire_squads` is 0.05), and what a squad does after the enemy in front of it is dead; drills on `0206…`: which
+no-enemy-known situations the gate marched through, and the passive support waits.
