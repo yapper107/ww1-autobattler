@@ -618,3 +618,33 @@ nearly all the time a man is seen while moving (a relocation every 35 to 45 s). 
 Generation 14 (four Sonnet proposers): legacy on `22b8…`: what orders each relocation and which are pointless, and a
 rally point that stays put but slides to cover with a line of fire; drills on `b893…`: the anatomy of the 8 points
 missing from the fight, and the same relocation attribution for drills.
+
+## Generation 14, 20 September 2026: what the restlessness is made of
+
+Four Sonnet proposers, each told to decompose its problem with data before proposing. Evidence: `.local/plan018/generation14/`.
+
+| Node | Lineage, parent | Change | Result |
+|---|---|---|---|
+| `bca46c81924eea7e` | drills `b893…` | an established base of fire more than 90 m from its objective re-seats up to 30 m closer, into a protected slot, at most every 45 s | +0.181 [+0.117, +0.249] development (parent +0.171), +0.220 validation; men at the fight unchanged (-0.080): fires in too few battles; the drills mainline |
+| (withdrawn) | legacy `22b8…` | a rejoining rifleman is sent once to a covered spot with a line of fire near the corporal's destination | own set: orders -26 %, relocations -21 %, attackers lost -4.7 points, but defenders out -6.9 points and men at the fight -25.7 points: riflemen sit back on good spots while the fight moves on |
+| (withdrawn) | legacy `22b8…` | `UsefulFiringPosition` keeps the present slot unless a candidate is clearly better | own set: score +0.012, relocations flat |
+| (withdrawn) | drills `b893…` | members who fired from a still-legal slot are not re-seated when contact cover is re-issued | own set: score -0.016, relocations not reduced; broader versions broke D03 or cost more |
+
+Findings.
+- **Drills' missing men.** 94 % of the man-seconds missing from the fight are men 100 to 150 m out, mostly support elements
+  that set up once and never moved while the nearest living defender got farther away. The architect checked whether the
+  100 m ring was unfair to men who were shooting: it is not (within 100 m OR fired in the last 30 s: drills 0.778
+  against 0.772; legacy 0.92; far and silent 22 % against 8 %). Wounded men are not counted as living. The larger cause
+  is a different path: a squad within 70 m of a known threat under effective fire without superiority never resumes
+  closure (`closeAfterCover`): the next drills target.
+- **Legacy's relocations, attributed.** Of the moves of six metres or more at the fight, 46 to 52 % are made under a Flank
+  order (the manoeuvre itself: the relay's formation offsets around a moving corporal, and the shared 12 m route-stage
+  segmentation), 15 to 21 % under Hold with the task unchanged (the shared soldier cover decision), 13 % under Advance,
+  and only 3 to 8 % come from the firing-position search that three proposals had worked on.
+- **Seven proposals in three generations tried to calm the squads by deleting, freezing or damping re-positioning
+  orders; every one either traded the calm for attack or changed nothing.** In both controllers the advance is MADE of
+  those re-positionings: legacy closes on the enemy by continually re-seating its riflemen toward a moving corporal;
+  drills by re-optimising cover slots whenever a new defender comes into view. The restlessness the user sees is the
+  way these controllers move, not surplus orders on top of it. Calming it needs a different way of moving (deliberate
+  bounds: few, long, covered legs with a base of fire, each man moving once per leg), which is a design change, not a
+  one-mechanism proposal.
