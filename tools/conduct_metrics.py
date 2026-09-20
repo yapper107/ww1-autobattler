@@ -95,6 +95,9 @@ def evaluate(root) -> dict:
     engaged_firing_share  of attackers at the fight for most of a 30 s window, those who fired in it
     contact_exposed_share of attacker-seconds at the fight, those with an enemy line of sight on the man
                           (a soldier working from cover is exposed only while he peeks)
+    idle_exposed_share    of attacker-seconds at the fight, those in which the man stands still (Fire or Hold, no
+                          displacement), an enemy has a line of sight on him and he has no fire solution of his own:
+                          seen and unable to shoot, as opposed to seen because he is shooting (score v6)
     close_dither_share    of 20 s windows in close quarters with 6 m walked, those walked 3x the ground gained
     stutter_share         of living attacker-seconds in the WHOLE battle, those inside a burst of rapid direction
                           reversals (the user's 19 September 2026 observation: soldiers move back and forth rapidly)
@@ -102,7 +105,7 @@ def evaluate(root) -> dict:
     root = Path(root)
     frames = list(rows(root/'evaluation.jsonl'))
     flank = flank_fire_share(root, frames) if frames else dict(flank_fire_share=None, flank_fire_squads=None)
-    none = dict(**flank, stutter_share=None, at_fight_share=None, engaged_firing_share=None, contact_exposed_share=None, close_dither_share=None, first_attacker_shot=None)
+    none = dict(**flank, idle_exposed_share=None, stutter_share=None, at_fight_share=None, engaged_firing_share=None, contact_exposed_share=None, close_dither_share=None, first_attacker_shot=None)
     seen, first_shot = {}, None
     for frame in frames:
         for s in frame['soldiers']:
@@ -117,7 +120,8 @@ def evaluate(root) -> dict:
     none['stutter_share'] = stutter
     if first_shot is None:
         return none
-    living = at_fight = contact_seconds = contact_exposed = 0.0
+    living = at_fight = contact_seconds = contact_exposed = idle_exposed = 0.0
+    previous_position = {}
     last_rounds, window, track = {}, {}, {}
     engaged_windows = engaged_fired = dither_windows = dithering = 0
     for frame in frames:
@@ -137,6 +141,9 @@ def evaluate(root) -> dict:
                 at_fight += step
                 contact_seconds += step
                 contact_exposed += step if s['observer_exposed'] else 0.0
+                still = s['action'] in (2, 4) and math.hypot(p[0] - previous_position.get(s['id'], p)[0], p[1] - previous_position.get(s['id'], p)[1]) <= 0.1
+                idle_exposed += step if still and s['observer_exposed'] and not s['solution'] else 0.0
+            previous_position[s['id']] = p
             w = window.setdefault(s['id'], dict(start=t, near=0, frames=0, fired=False))
             w['frames'] += 1
             w['near'] += int(nearest <= CONTACT)
@@ -157,7 +164,7 @@ def evaluate(root) -> dict:
                     net = math.hypot(p[0] - state['origin'][0], p[1] - state['origin'][1])
                     dithering += int(state['path'] >= DITHER_RATIO*max(net, 0.5))
                 track[s['id']] = dict(start=t, origin=p, last=p, path=0.0, close=0, frames=0)
-    return dict(**flank, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
+    return dict(**flank, idle_exposed_share=idle_exposed/contact_seconds if contact_seconds else None, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
                 engaged_firing_share=engaged_fired/engaged_windows if engaged_windows else None,
                 contact_exposed_share=contact_exposed/contact_seconds if contact_seconds else None,
                 close_dither_share=dithering/dither_windows if dither_windows else None,

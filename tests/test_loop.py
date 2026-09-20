@@ -60,7 +60,7 @@ class GuardsFile(unittest.TestCase):
 
     def test_current_spec_ranks_the_attack_and_keeps_trenches_for_shooting_only(self):
         spec = score.load_guards()
-        self.assertEqual(spec['version'], 'v5')
+        self.assertEqual(spec['version'], 'v6')
         self.assertEqual(spec['objective']['kind'], 'attack')
         self.assertEqual(spec['objective']['ranking_set'], 'town-attack-val')
         for g in spec['guards']:
@@ -80,7 +80,7 @@ class GuardsFile(unittest.TestCase):
             if attack:
                 r['defence'] = dict(layout=config.ATTACK_LAYOUTS[gen % 3], defenders=12, seed=gen)
                 r['firing_squads'] = list(squads)
-                r['metrics'].update(casualty_ember=defender_loss, casualty_azure=attacker_loss, at_fight_share=0.9, contact_exposed_share=0.06)
+                r['metrics'].update(casualty_ember=defender_loss, casualty_azure=attacker_loss, at_fight_share=0.9, contact_exposed_share=0.06, idle_exposed_share=0.01)
                 r['metrics'].update(attack_metrics(r['metrics']))
             return r
         cand = {s: [town(s, g, 'attack' in s) for g in range(21, 31)] for s in ('town-dev', 'trench-dev', 'town-attack-dev', 'town-attack-val')}
@@ -133,13 +133,18 @@ class GuardsFile(unittest.TestCase):
         self.assertTrue(result['guards']['fights_from_cover']['passed'])
         self.assertIsNone(result['value'])
         cand, base = self.town_rows()
+        for r in cand['town-attack-dev']:                # v6: standing in the enemy's sight with no shot of one's own
+            r['metrics']['idle_exposed_share'] = 0.05
+        self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['fights_from_cover']['passed'])
+        cand, base = self.town_rows()
+        for r in cand['town-attack-dev']:                # seen more because they shoot more: allowed up to the backstop
+            r['metrics']['contact_exposed_share'] = 0.085
+        result = score.score(score.load_guards(), cand, base, EXTERNAL_OK)
+        self.assertTrue(result['guards']['fights_from_cover']['passed'])
+        self.assertTrue(result['guards']['seen_at_the_fight']['passed'])
         for r in cand['town-attack-dev']:
             r['metrics']['contact_exposed_share'] = 0.12
-        self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['fights_from_cover']['passed'])
-        base_exposed = base['legacy']['town-attack-dev'][0]['metrics']['contact_exposed_share']
-        for r in cand['town-attack-dev']:                # v5, user decision: up to 2 points above legacy is allowed
-            r['metrics']['contact_exposed_share'] = base_exposed + 0.015
-        self.assertTrue(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['fights_from_cover']['passed'])
+        self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['seen_at_the_fight']['passed'])
 
     def test_silent_trench_battle_fails_the_shooting_guard(self):
         cand, base = self.town_rows()

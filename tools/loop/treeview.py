@@ -19,7 +19,7 @@ GUARD_WORDS = {
     'firing_squads': 'a squad never fired (town battle)', 'attacker_firing_squads': 'an attacking squad never fired',
     'under_2m': 'bunches more than the root', 'orders_azure_per_minute': 'more order churn than the root',
     'orders_ember_per_minute': 'more order churn than the root', 'friendly_fire': 'more friendly fire than the root',
-    'force_at_the_fight': 'too much of the force hangs back (your verdict)', 'fights_from_cover': 'fights from the open more than legacy (your verdict)',
+    'force_at_the_fight': 'too much of the force hangs back (your verdict)', 'fights_from_cover': 'stands in the enemy\'s sight with no shot more than legacy (your verdict)', 'seen_at_the_fight': 'seen by the enemy far more than legacy',
 }
 DOMAIN = 0.4  # paired deltas are drawn on -0.4 .. +0.4 attack-score points
 
