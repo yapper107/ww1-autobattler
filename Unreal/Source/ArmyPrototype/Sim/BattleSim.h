@@ -238,6 +238,32 @@ struct AcceptedPlan {
     uint64_t knowledge=0;
     std::string reason;
 };
+// Threat-aware paths and the cover rule (plan 020). Every number the feature uses lives
+// here, in one place, so a later parameter search can reach it; nothing else carries them.
+struct PathCaution {
+    float revealedSeconds=3;         // s a path may reveal him to ONE known enemy before a covered search (user ruling)
+    float memorySeconds=30;          // s a place an enemy was seen keeps being avoided (user ruling)
+    float detour=1.5f;               // the covered alternative may be this many times the shortest (user ruling)
+    float nearPath=120;              // m; no known enemy this close to the path means no search at all
+    int   budget=4000;               // expansion budget of the covered cost search
+    float sightCharge=8;             // extra cost of a metre seen from a known enemy position
+    int   chargedThreats=4;          // enemies the cost field may carry; the measure still uses every one
+    float betterCover=12;            // m; how far "better cover close by" may be while under fire
+    float orderedAway=12;            // m; an order this far from his remembered cover releases it
+    float underFireSuppression=.08f; // rounds close enough to suppress him this recently: he is under fire
+    float sampleStep=1;              // m between samples of a candidate path
+    float bodyHeight=1.3f;           // m; the standing body a path reveals
+};
+inline const PathCaution& Caution(){static const PathCaution table;return table;}
+// What one path decision cost, for the trace and the battle totals. Never read by policy.
+struct PathChoice {
+    bool searched=false,covered=false;
+    float shortestLength=0,shortestRevealed=0,alternativeLength=0,alternativeRevealed=0;
+    uint64_t known=0;            // the enemies he knew when the path was chosen, one bit per id
+    const char* why="shortest";
+};
+// Which cover-rule decision the last order carried (plan 020): trace only, never behaviour.
+enum class CoverRule { None, StayedUnderFire, ReleasedByOrder, BetterCover, ObeyedRetreat };
 enum class ScenarioFamily { None, F1, F2, F3 };
 // Static defence: Ember occupies prepared cover around one locality and never
 // manoeuvres, so an attacking controller has a fixed problem to solve.
@@ -273,6 +299,10 @@ struct Config {
     // and reproduces the pre-019 battle exactly.
     bool movingFire=true;
 
+    // Threat-aware paths and the cover rule (plan 020). On by default; one switch covers
+    // both parts, and --no-threat-aware-paths reproduces the pre-020 battle exactly.
+    bool threatAwarePaths=true;
+
     bool drills=false;
     ScenarioFamily family=ScenarioFamily::None;
     uint32_t genSeed=1;
@@ -292,7 +322,7 @@ inline bool SameConfig(const Config& a,const Config& b) {
     // is selected: the resolved objective is derived from them and the map.
     if(a.staticDefence.layout!=b.staticDefence.layout)return false;
     if(a.staticDefence.layout!=DefenceLayout::None&&(a.staticDefence.defenders!=b.staticDefence.defenders||a.staticDefence.seed!=b.staticDefence.seed))return false;
-    return a.movingFire==b.movingFire&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
 inline bool TypedController(const Config& c){return c.cognition||c.drills;}
@@ -445,6 +475,8 @@ struct Soldier {
     // drives the aim model, the pace and the exports; reloadDeferred is an empty magazine
     // carried at the walk, reloaded at the next halt.
     bool movingFire = false, reloadDeferred = false;
+    // Plan 020: his current path was the covered alternative, not the shortest one.
+    bool coveredPath = false;
     bool areaFire = false;
     bool holdingFire = false;
     float friendlyRisk = 0;
@@ -689,6 +721,7 @@ void CheckWeaponConsistency(const Frame& frame);
 // Tactical input contains personal observations and friendly reservations only.
 struct Tactics {
     uint64_t coverId=0,geometryRevision=0;
+    CoverRule coverRule=CoverRule::None; // Plan 020 trace only; Tactics is runtime state, never digested.
     bool assigned = false, peeking = false, halfCover = false;
     bool defensiveOnly = false, emergency = false;
     int roundsAtPeek = 0;
@@ -698,6 +731,13 @@ struct Tactics {
     float phaseUntil = -1, expires = 0, lastProgress = 0, lastDistance = 1e9f;
 };
 struct DecisionAlternatives;
+// Plan 020, the one way out of cover while under fire: a position within PathCaution::betterCover
+// that protects him from more of the enemies he knows than the one he holds. Rewrites memory and
+// returns true when it found one. Own knowledge only; never an enemy body.
+bool BetterCoverNearby(const Map& map,const Soldier& soldier,const std::vector<Vec3>& friendlyReservations,Tactics& memory,float time);
+// Plan 020's measure, for tests and tools: the seconds this walk would leave him with a clear
+// line to ONE enemy he knows, at his own pace; the figure is the worst single enemy.
+float PathRevealedSeconds(const Map& map,const Soldier& soldier,Vec3 from,const std::vector<Vec3>& path,float time);
 struct Order { Vec3 goal; Action action; Reason reason; Stance stance = Stance::Standing; };
 Order ChooseOrder(const Soldier& self, const Map& map, const Config& config,
     const std::vector<Vec3>& friendlyReservations, Tactics& memory, float time, DecisionAlternatives* alternatives=nullptr);
@@ -773,7 +813,11 @@ struct DefencePlan {
 // cannot seat the requested defenders.
 DefencePlan PlanStaticDefence(const Config& config,const Map& map,const std::array<Vec3,UnitCount>& deployment);
 void ApplyStaticDefence(const DefencePlan& plan,const Config& config,Frame& frame);
+// Threat-aware path totals of one battle, so the covered-path rate and the detour are
+// readable from a trace-free export (the per-choice rows need the trace).
+struct PathCautionTotals { int searched=0,covered=0; double detour=0,shortestRevealed=0,coveredRevealed=0; };
 struct Record {
+    PathCautionTotals caution;
     std::shared_ptr<const DefencePlan> defence;
     std::shared_ptr<const GeneratedScenario> generated;
     std::vector<GeometryVersion> geometryVersions;

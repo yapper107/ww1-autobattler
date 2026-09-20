@@ -230,11 +230,106 @@ delivering walking fire; it drives the aim model, the pace on the next tick, the
 hashes both soldier flags, folded only when one of them is true, so a battle in which nobody fires
 on the move keeps its historical digest.
 
+## Threat-aware paths and the cover rule (plan 020)
+
+Two shared soldier-level rules, both behind one switch, `Config::threatAwarePaths`
+(`--no-threat-aware-paths`, `-ArmyNoThreatAwarePaths` is not wired; the CLI flag is the A/B
+control and reproduces the pre-020 battle bit for bit). Every number is in one table,
+`PathCaution` in `Sim/BattleSim.h`, reachable by a later parameter search:
+
+| Quantity | Value | Why |
+|---|---|---|
+| `revealedSeconds` | 3 s | the seconds a path may reveal him to ONE known enemy (user ruling) |
+| `memorySeconds` | 30 s | how long a place an enemy was seen keeps being avoided (user ruling) |
+| `detour` | 1.5 | the covered alternative may be this many times the shortest path (user ruling) |
+| `nearPath` | 120 m | no known enemy this close to the path means nothing is searched |
+| `budget` | 4000 | expansion budget of the covered cost search |
+| `sightCharge` | 8 | extra cost of a metre seen from a known enemy position |
+| `chargedThreats` | 4 | enemies the cost field may carry; the measure still uses every one |
+| `betterCover` | 12 m | how far "better cover close by" may be while under fire |
+| `orderedAway` | 12 m | an order this far from his remembered cover releases it |
+| `underFireSuppression` | 0.08 | rounds this recently close enough to suppress him: he is under fire |
+| `sampleStep` | 1 m | spacing of the samples along a candidate path |
+| `bodyHeight` | 1.3 m | the standing body a path reveals |
+
+### Part 1: which path he asks for
+
+`FindPath` is untouched. `TaskExecutionPath` (`Sim/BattleSim.cpp`) now decides *which* path a
+soldier asks for:
+
+1. The shortest path is computed first and is always the fallback.
+2. **Revealed seconds.** For each enemy he KNOWS (his own `contacts[i]` merged with the
+   `reports[i]` he has received, at the position he believes, observed or reported inside
+   `memorySeconds`), the time he would spend on that path with a clear line from that enemy's
+   believed position at its `aimHeight` to his body at `bodyHeight`, sampled every `sampleStep`
+   at his own pace (the gunner's 2.55 m/s, a badly wounded man's 0.72 factor; suppression is left
+   out, because the figure judges the whole crossing and not the instant he starts it). The
+   path's figure is the **worst single enemy**, never the sum.
+3. The search is skipped entirely when he knows no enemy, when no known enemy lies within
+   `nearPath` of the path, and when the path is so short that `length / pace` cannot reach the
+   threshold. A march in the rear and a fixture without enemies are the pre-020 path exactly.
+4. Above the threshold he asks `FindCostPath` for a covered alternative: cost one per metre plus
+   `sightCharge` for a metre any charged enemy can see, bounded by `budget`. The cost field
+   carries only the enemies that actually revealed the shortest path (at most `chargedThreats`,
+   worst first), because those are the ones the detour has to beat; the accept test still measures
+   against every enemy he knows.
+5. It is accepted when it is at most `detour` times the shortest path AND its revealed seconds are
+   at most the threshold or at most half the shortest path's. Otherwise he takes the shortest path:
+   a man who has been ordered somewhere still goes.
+6. The chosen path is kept until the goal changes. The one early replan is an enemy he did **not**
+   know when he chose it who now reveals more than the threshold of what is LEFT of it; that check
+   runs on the existing two-second path cadence.
+
+**Left alone:** emergency shelter departures (`Tactics::emergency`), peek and duck moves inside a
+slot, moves under three metres, static defenders, and the squad corridor a leader's tactical
+planner already produced (`FollowCorridor`/`FollowFinalApproach`) — except the join leg back onto
+it, which is the soldier's own walk and is chosen this way.
+
+### Part 2: who may leave cover (the user's rule)
+
+> "Men should never leave cover under enemy fire unless a squad wide retreat order is given or he
+> has better cover somewhere close by."
+
+**Under fire** is what the soldier himself has: rounds close enough to suppress him above
+`underFireSuppression` within the last second or two (suppression decays at 0.15/s, so 0.08 is
+about one near miss a second ago), or suppression above his doctrine's duck threshold. The shot
+record and enemy truth are never read.
+
+- **In cover and under fire**, he stays, whatever movement order he holds (`Advance`, `Rally`,
+  `Flank`, `BoundMove`, `ClearLane`), and his remembered position's expiry is renewed so it cannot
+  time out under him. In `ChooseOrder` most movement orders already waited on `!memory.assigned`;
+  `Task::ClearLane` did not, and is now stopped explicitly. In `ExecuteTask` the typed controllers
+  get the same rule between "rounds are landing near me" and the duck threshold, and
+  `PrepareTaskExecution` no longer discards a remembered cover for a movement order while he is
+  under fire.
+- **The two exceptions.** A squad-wide retreat (`Task::PullBack`) releases the cover whatever the
+  fire, and he goes by a covered path. `BetterCoverNearby` is the other: a position within
+  `betterCover` that protects him from strictly more of the enemies he knows than the one he holds,
+  unoccupied, walkable and reachable. A man who is NOT in cover when fired on seeks the nearest
+  cover exactly as before.
+- **Not under fire**, a movement order more than `orderedAway` from his remembered cover releases
+  it, so "I have a useful window here" no longer beats the order and `UsefulCover` can no longer
+  renew the expiry of a position he has been ordered away from. This is what ends the two riflemen
+  who sat in the start building and the flankers' hesitancy.
+
+### Evidence
+
+`Soldier::coveredPath` is true while his current path is the covered alternative; it appears in
+`evaluation.jsonl` (`covered_path`), in the trace entry, and is folded into the gameplay digest
+**only when true**, so a battle in which nobody detours keeps its historical digest and
+`--no-threat-aware-paths` is a provable off switch. `paths.jsonl` gains a `path_choice` row per
+searched decision (shortest length and revealed seconds, alternative length and revealed seconds,
+which was taken and why) and a `cover_rule` row per verdict change (stayed under fire, released by
+order, moved to better cover, obeyed retreat); a replan carries the kind `path_rethreat`. The
+manifest carries `threat_aware_paths`, `path_choices`, `covered_paths`, `covered_path_detour`,
+`path_revealed_seconds` and `covered_revealed_seconds`, so the rate is readable from a trace-free
+export. `scripts/test-sim.sh --paths` is the mechanism group (also part of the default suite).
+
 ## Verification and references
 
 `scripts/test-sim.sh --stats` runs the stat suite, including the walking-fire table, its stat
 scaling and the rule for who may use it; `scripts/test-sim.sh --moving-fire` runs the crossing
-mechanism pair (also part of the default suite). Reference digests for the 40 authored battles are
+mechanism pair and `--paths` the threat-aware path and cover-rule group (both part of the default suite). Reference digests for the 40 authored battles are
 regenerated after each phase into `.local/baselines/{legacy,candidate90}/{works,trenches}`; the
 pre-017 references are archived under `.local/baselines-pre017/<phase>/`. Weapon values and the
 energy constants are chosen once from the pre-017 abstraction and physical reasoning; they are never

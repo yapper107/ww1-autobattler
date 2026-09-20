@@ -3,6 +3,7 @@
 #include "Diagnostics.h"
 #include "TacticalRouteSim.h"
 #include "PerceptionSim.h"
+#include <algorithm>
 #include <cmath>
 namespace army {
 const char* TaskStatusName(TaskStatus s){const char* n[]={"Issued","Received","Executing","Interrupted","Blocked","Done","Failed","Superseded"};return n[int(s)];}
@@ -65,7 +66,7 @@ void UpdateTaskReports(Frame& f,CommandRuntime& rt){
     }
     for(int squad=0;squad<SquadCount;++squad)rt.taskLeaders[squad]=f.command[squad].leader;
 }
-void PrepareTaskExecution(const Soldier& s,Tactics& memory,float time){
+void PrepareTaskExecution(const Soldier& s,Tactics& memory,float time,bool cautiousCover){
     // Safety selected the same cover as the order. Once pressure subsides the
     // soldier may resume toward its peek without ever touching the shelter centre.
     if(s.cognition&&memory.emergency&&memory.assigned&&
@@ -77,8 +78,11 @@ void PrepareTaskExecution(const Soldier& s,Tactics& memory,float time){
         // Completion still requires the existing firing-position predicate.
         const auto& slot=s.assignment.slot;memory.emergency=memory.emergency&&s.assignment.execution.paused&&Distance(s.position,slot.shelter)>=.2f;memory.assigned=true;memory.coverId=slot.id;memory.geometryRevision=s.assignment.geometry;memory.shelter=slot.shelter;memory.peek=slot.peek;memory.halfCover=slot.crouch;memory.expires=time+180;memory.lastProgress=time;
     }
+    // Plan 020: a movement order no longer discards cover while rounds are still landing
+    // near him. Below the under-fire threshold this is the pre-020 release exactly.
     if(moving&&memory.assigned&&Distance(memory.shelter,s.assignment.position)>2&&
-        (!memory.emergency||s.suppression<.08f)&&s.suppression<.35f&&s.reloadUntil<=time)memory={};
+        (!memory.emergency||s.suppression<.08f)&&s.suppression<.35f&&s.reloadUntil<=time&&
+        !(cautiousCover&&s.suppression>Caution().underFireSuppression))memory={};
 }
 Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std::vector<Vec3>& reservations,Tactics& memory,float time,DecisionAlternatives* alternatives){
     const bool typed=s.assignment.execution.completion!=Completion::Legacy;
@@ -132,6 +136,20 @@ Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std
         }
     }
     if(pressure||s.reloadUntil>time)return {s.position,Action::Hold,Reason::Suppressed,Stance::Crouched};
+    // The user's cover rule (plan 020), for a typed soldier too: in cover and under fire he
+    // holds it whatever his movement order says, and the only way out is better cover close by.
+    // A squad-wide retreat is exempt; not under fire he goes, exactly as before. The branch
+    // above already keeps a man who is exposed or pressed, so this closes the gap between
+    // "rounds are landing near me" and the duck threshold.
+    if(config.threatAwarePaths&&memory.assigned&&!s.assignment.execution.paused&&s.assignment.task!=Task::PullBack&&
+        s.suppression>Caution().underFireSuppression&&Distance(s.position,s.assignment.position)>.7f&&
+        std::min(Distance(s.position,memory.shelter),Distance(s.position,memory.peek))<=1.5f){
+        if(BetterCoverNearby(map,s,reservations,memory,time))
+            return {memory.shelter,Action::Cover,Reason::Relocate,memory.halfCover?Stance::Crouched:Stance::Standing};
+        memory.coverRule=CoverRule::StayedUnderFire;
+        return {memory.shelter,Distance(s.position,memory.shelter)>.12f?Action::Cover:Action::Hold,Reason::Contact,
+            memory.halfCover?Stance::Crouched:Stance::Standing};
+    }
     if(s.assignment.drillInstance>0&&s.assignment.execution.rushSeconds>0&&
         !s.assignment.execution.paused&&time-s.assignment.activatedAt-s.assignment.drillRushPausedSeconds>=s.assignment.execution.rushSeconds&&Distance(s.position,s.assignment.position)>.75f)
         return {s.position,Action::Hold,Reason::AwaitOrders,Stance::Crouched};

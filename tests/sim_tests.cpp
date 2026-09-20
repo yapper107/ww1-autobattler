@@ -762,11 +762,13 @@ static void CoordinationTests() {
 #include "stats_tests.h"
 #include "static_defence_tests.h"
 #include "moving_fire_tests.h"
+#include "paths_tests.h"
 int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--leaders"){LeaderTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--stats"){StatsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--static-defence"){StaticDefenceTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--moving-fire"){MovingFireTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--paths"){PathsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--platoon"){PlatoonTests(argc>2?argv[2]:"all");return 0;}
     if(argc>1&&std::string(argv[1])=="--drills"){DrillsTests(argc>2?argv[2]:"all");return 0;}
     if(argc>1&&std::string(argv[1])=="--generated"){ScenarioGeneratorTests();return 0;}
@@ -788,7 +790,7 @@ int main(int argc,char** argv) {
         switch(field){case 0:++changed.seed;break;case 1:changed.doctrine=Doctrine::Cautious;break;case 2:changed.approach=Approach::North;break;case 3:changed.supportWeapon=false;break;case 4:changed.maxSeconds=60;break;case 5:changed.terrain=Terrain::Trenches;break;}
         assert(!SameConfig(original,changed));
     }
-    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();StaticDefenceTests();MovingFireTests();
+    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();StaticDefenceTests();MovingFireTests();PathsTests();
     if(argc>1){std::cout<<"Focused simulation checks passed\n";return 0;}
     MGEncounterTests();
     Map m; m.obstacles={{{0,0},{2,5},true}};

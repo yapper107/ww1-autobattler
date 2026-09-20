@@ -35,7 +35,7 @@ static void RecoveryGateTests(){
     // the route corridor used to reach the shelter.
     auto peeker=movers.front();peeker.position={41.2f,-26};peeker.assignment.id=900;peeker.assignment.task=Task::BoundMove;peeker.assignment.hasSlot=true;peeker.assignment.slot.shelter=peeker.position;peeker.assignment.slot.peek={43.2f,-23};
     auto oldRoute=std::make_shared<TacticalRoute>();oldRoute->start={-55,-25};oldRoute->destination={38,-23};oldRoute->points={{38,-23}};peeker.assignment.teamPlan.route=oldRoute;
-    auto peekPath=TaskExecutionPath(map,peeker,peeker.assignment.slot.peek,{});
+    auto peekPath=TaskExecutionPath(map,peeker,peeker.assignment.slot.peek,{},Config{},0.f);
     assert(!peekPath.empty()&&Distance(peekPath.back(),peeker.assignment.slot.peek)<.01f);
     float length=0;Vec3 previous=peeker.position;for(Vec3 point:peekPath){assert(ClearLine(map,previous,point,.46f));length+=Distance(previous,point);previous=point;}assert(length<5);
     // Emergency cover at a valid assigned slot is resumable, not an eternal

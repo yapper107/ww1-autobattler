@@ -40,7 +40,7 @@ struct TraceEntry {
     Vec3 position{},goal{},cover{},orderGoal{};
     uint64_t coverId=0,routeId=0;int routeStage=0;
     bool assigned=false,protectedPosition=false,nearShelter=false,supportReady=false,blocked=false,alive=true;
-    bool movingFire=false,reloadDeferred=false;
+    bool movingFire=false,reloadDeferred=false,coveredPath=false;
     int action=0,task=0,stance=0,rounds=0,role=0,movementBlock=0;
     float aim=0,suppression=0,danger=0,health=100,orderIssued=0,orderReceived=0;
     Stats stats;float maxHealth=100;const char* weapon="Rifle";int magazine=8;
@@ -54,6 +54,9 @@ struct TracePrevious { bool valid=false; TraceEntry state; float heartbeat=-100;
 struct PathEvidence {
     uint64_t decision=0,geometry=0,route=0; float time=0; int soldier=-1,squad=-1,order=0;
     Vec3 start{},goal{}; std::string kind,status; std::vector<Vec3> points;
+    // Plan 020: what a path_choice or cover_rule row carries. Zero on every other kind.
+    bool covered=false; float shortestLength=0,shortestRevealed=0,alternativeLength=0,alternativeRevealed=0;
+    std::string why;
 };
 struct Diagnostics {
     DiagnosticOptions options;
@@ -75,6 +78,11 @@ void TraceSoldier(Diagnostics& data,const Soldier& soldier,const SquadCommand& c
 void TraceProposal(Diagnostics* data,const Soldier& leader,const SquadCommand& command,const Map& map,float time,const char* kind,const std::string& reason);
 void TraceOrder(Diagnostics* diagnostics,const Soldier& recipient,const Assignment& order,float time,const char* kind);
 void TracePath(Diagnostics* data,const Soldier& soldier,const Map& map,float time,const std::vector<Vec3>& path,const char* kind,uint64_t route=0);
+// Plan 020: one row per path decision that ran the covered search, and one per cover-rule
+// verdict. Both are evidence, never inputs; the battle totals live on the Record.
+void TracePathChoice(Diagnostics* data,const Soldier& soldier,const Map& map,float time,const PathChoice& choice,Vec3 goal);
+void TraceCoverRule(Diagnostics* data,const Soldier& soldier,float time,CoverRule rule,Vec3 goal);
+const char* CoverRuleName(CoverRule rule);
 // digest: a GameplayDigest already computed for this record, or 0 to compute it here.
 // The digest walks every recorded frame, so callers that also print it pass it in.
 // Lean recording (plan 018, 19 Sep 2026): a loop battle does not need its 1.6 MB frames once

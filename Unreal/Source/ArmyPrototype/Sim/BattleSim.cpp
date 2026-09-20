@@ -17,6 +17,7 @@
 #include <limits>
 #include <queue>
 #include <sstream>
+#include <unordered_map>
 
 namespace army {
 // Let covering fire create a lasting maneuver window across gaps between bursts.
@@ -495,7 +496,104 @@ struct Random {
     explicit Random(uint32_t seed):state(seed?seed:1){}
     float Next() { state^=state<<13;state^=state>>17;state^=state<<5;return float(state>>8)/16777216.f; }
 };
-std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,const Tactics& tactics){
+static float SegmentDistance(Vec3 a,Vec3 b,Vec3 p);
+// Threat-aware paths (plan 020). Soldier knowledge only: his own contacts merged with the
+// reports he has received, at the position he believes, seen or reported inside the memory
+// window. Never an enemy body, never the shot record.
+struct KnownThreat { int id=-1; Vec3 position{},eye{}; };
+static void KnownThreats(const Soldier& s,float time,std::vector<KnownThreat>& out,uint64_t& known){
+    out.clear();known=0;
+    for(int i=0;i<UnitCount;++i){
+        const Contact* best=nullptr;
+        if(s.contacts[i].known&&time-s.contacts[i].observedAt<=Caution().memorySeconds)best=&s.contacts[i];
+        if(s.reports[i].known&&time-s.reports[i].observedAt<=Caution().memorySeconds&&(!best||s.reports[i].observedAt>best->observedAt))best=&s.reports[i];
+        if(!best)continue;
+        out.push_back({i,best->position,{best->position.x,best->position.y,best->aimHeight}});known|=uint64_t(1)<<i;
+    }
+}
+// The user's measure: the seconds the walk would leave him with a clear line to ONE enemy,
+// sampled every metre at his own pace. The path's figure is the worst single enemy.
+static float RevealedSeconds(const Map& map,Vec3 from,const std::vector<Vec3>& path,const std::vector<KnownThreat>& threats,float pace,std::vector<float>* perThreat=nullptr){
+    if(perThreat)perThreat->assign(threats.size(),0.f);
+    if(threats.empty()||path.empty())return 0;
+    std::vector<float> seconds(threats.size(),0.f);Vec3 previous=from;
+    for(Vec3 end:path){
+        const float length=Distance(previous,end);const int n=std::max(1,int(std::ceil(length/Caution().sampleStep)));
+        const float share=length/float(n)/pace;
+        for(int k=0;k<n;++k){
+            const Vec3 at=previous+(end-previous)*((float(k)+.5f)/float(n)),body{at.x,at.y,at.z+Caution().bodyHeight};
+            for(size_t t=0;t<threats.size();++t)if(ClearLine3D(map,threats[t].eye,body))seconds[t]+=share;
+        }
+        previous=end;
+    }
+    float worst=0;for(float value:seconds)worst=std::max(worst,value);
+    if(perThreat)*perThreat=seconds;
+    return worst;
+}
+static float PathLength(Vec3 from,const std::vector<Vec3>& path){float total=0;Vec3 previous=from;for(Vec3 end:path){total+=Distance(previous,end);previous=end;}return total;}
+// The pace the movement stage would give him; the gunner is slower. Suppression is left out:
+// the figure judges the whole crossing, not the instant he starts it.
+static float CautionPace(const Soldier& s){return std::max(.5f,(s.machineGun?2.55f:3.15f)*(s.understoodHealth<55?.72f:1.f));}
+float PathRevealedSeconds(const Map& map,const Soldier& s,Vec3 from,const std::vector<Vec3>& path,float time){
+    std::vector<KnownThreat> threats;uint64_t known=0;KnownThreats(s,time,threats,known);
+    return RevealedSeconds(map,from,path,threats,CautionPace(s));
+}
+// Shortest first, and always the fallback: a failed, budget-exhausted or over-long covered
+// search can never leave a soldier without a path or send him across the map.
+static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,float time,PathChoice* choice){
+    auto shortest=FindPath(map,s.position,goal);
+    if(shortest.empty())return shortest;
+    const float pace=CautionPace(s),shortestLength=PathLength(s.position,shortest);
+    std::vector<KnownThreat> threats;uint64_t known=0;KnownThreats(s,time,threats,known);
+    if(choice){choice->known=known;choice->shortestLength=shortestLength;}
+    // A walk this short cannot reach the threshold however open it is, and a march with no
+    // known enemy near it is the pre-020 path exactly.
+    if(threats.empty()||shortestLength/pace<=Caution().revealedSeconds)return shortest;
+    bool near=false;
+    for(const auto& threat:threats){Vec3 previous=s.position;
+        for(Vec3 end:shortest){if(SegmentDistance(previous,end,threat.position)<=Caution().nearPath){near=true;break;}previous=end;}
+        if(near)break;}
+    if(!near)return shortest;
+    std::vector<float> perThreat;
+    const float shortestRevealed=RevealedSeconds(map,s.position,shortest,threats,pace,&perThreat);
+    if(choice){choice->searched=true;choice->shortestRevealed=shortestRevealed;choice->why="shortest under the threshold";}
+    if(shortestRevealed<=Caution().revealedSeconds)return shortest;
+    // The cost field carries only the enemies that actually reveal the shortest path: the
+    // search is trying to beat them, and every sight line it charges is paid for.
+    std::vector<size_t> charged;
+    for(size_t t=0;t<threats.size();++t)if(perThreat[t]>Caution().revealedSeconds*.5f)charged.push_back(t);
+    if(charged.empty()){size_t worst=0;for(size_t t=1;t<threats.size();++t)if(perThreat[t]>perThreat[worst])worst=t;charged.push_back(worst);}
+    if(int(charged.size())>Caution().chargedThreats){
+        std::stable_sort(charged.begin(),charged.end(),[&](size_t a,size_t b){return perThreat[a]>perThreat[b];});
+        charged.resize(size_t(Caution().chargedThreats));std::sort(charged.begin(),charged.end());
+    }
+    std::unordered_map<int64_t,bool> cells;
+    auto exposedCell=[&](Vec3 p){
+        const int64_t key=(int64_t(std::lround(p.z*2))*4096+std::lround(p.y))*4096+std::lround(p.x);
+        auto found=cells.find(key);if(found!=cells.end())return found->second;
+        bool value=false;const Vec3 body{p.x,p.y,p.z+Caution().bodyHeight};
+        for(size_t t:charged)if(ClearLine3D(map,threats[t].eye,body)){value=true;break;}
+        cells.emplace(key,value);return value;
+    };
+    int expanded=0;RouteStatus status=RouteStatus::Unreachable;
+    auto covered=FindCostPath(map,s.position,goal,[&](Vec3 p){return exposedCell(p)?1+Caution().sightCharge:1.f;},Caution().budget,expanded,status);
+    if(covered.empty()){if(choice)choice->why="no covered alternative";return shortest;}
+    const float coveredLength=PathLength(s.position,covered);
+    if(choice)choice->alternativeLength=coveredLength;
+    if(coveredLength>shortestLength*Caution().detour){if(choice)choice->why="covered detour longer than the limit";return shortest;}
+    const float coveredRevealed=RevealedSeconds(map,s.position,covered,threats,pace);
+    if(choice)choice->alternativeRevealed=coveredRevealed;
+    if(coveredRevealed<=Caution().revealedSeconds||coveredRevealed<=shortestRevealed*.5f){
+        if(choice){choice->covered=true;choice->why=coveredRevealed<=Caution().revealedSeconds?"covered alternative under the threshold":"covered alternative halves the exposure";}
+        return covered;
+    }
+    if(choice)choice->why="covered alternative no better";
+    return shortest;
+}
+std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,const Tactics& tactics,const Config& c,float time,PathChoice* choice){
+    // Emergency shelter and peek moves are two metres long and must be instant; the covered
+    // search is for the legs that cross ground.
+    auto cautious=[&](Vec3 to){return c.threatAwarePaths&&!tactics.emergency?CautiousPath(map,s,to,time,choice):FindPath(map,s.position,to);};
     if(s.assignment.id&&s.assignment.hasSlot&&!tactics.emergency){
         const auto& slot=s.assignment.slot;
         const bool localGoal=Distance(goal,slot.peek)<.05f||Distance(goal,slot.shelter)<.05f;
@@ -511,14 +609,16 @@ std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,co
             FollowFinalApproach(map,*route,s.position,goal):FollowCorridor(map,*route,s.position,goal);
         if(path.empty()&&s.assignment.id&&CorridorDistance(*route,s.position)>4){
             // Rejoin through the route entry after a local interruption, never cut its interior.
-            auto join=FindPath(map,s.position,route->start),rest=FollowCorridor(map,*route,route->start,goal);
+            // The join leg is his own walk, so it takes the cautious path; the corridor does not.
+            auto join=cautious(route->start),rest=FollowCorridor(map,*route,route->start,goal);
             if(!join.empty()&&!rest.empty()){join.insert(join.end(),rest.begin(),rest.end());return join;}
         }
         return path;
     }
-    return FindPath(map,s.position,goal);
+    return cautious(goal);
 }
-struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999};int burstRounds=0,burstLength=0,bursts=0; };
+struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999};int burstRounds=0,burstLength=0,bursts=0;
+    uint64_t pathKnown=0;CoverRule lastCoverRule=CoverRule::None; };
 struct Projectile { Vec3 p,velocity;int owner;size_t shot;float mass=0,dragK=0;std::array<bool,UnitCount> suppressed{},struck{}; bool delivered=false; };
 // Decision code receives only self/remembered contacts and friendly positions.
 // It has no authoritative enemy roster or hidden enemy positions.
@@ -531,6 +631,31 @@ static bool UsefulCover(const Soldier& s,const Map& map,const Tactics& memory,fl
             ClearLine3D(map,memory.peek+Vec3{0,0,1.5f},{ct.position.x,ct.position.y,ct.aimHeight}))angle=true;
     }
     return angle;
+}
+bool BetterCoverNearby(const Map& map,const Soldier& s,const std::vector<Vec3>& friends,Tactics& memory,float time){
+    if(!memory.assigned)return false;
+    std::vector<KnownThreat> threats;uint64_t known=0;KnownThreats(s,time,threats,known);
+    if(threats.empty())return false;
+    auto protects=[&](Vec3 p,Stance posture){int count=0;for(const auto& threat:threats)if(ProtectedAt(map,p,threat.position,posture))++count;return count;};
+    const int current=protects(memory.shelter,memory.halfCover?Stance::Crouched:Stance::Standing);
+    if(current>=int(threats.size()))return false; // His cover already answers every enemy he knows about.
+    const CoverPosition* best=nullptr;int bestCount=current;float bestTravel=1e9f;
+    for(const auto& cover:CoverPositions(map)){
+        const float travel=Distance(s.position,cover.shelter);
+        if(travel<.5f||travel>Caution().betterCover||!Walkable(map,cover.shelter)||!ClearLine(map,cover.shelter,cover.peek,.48f))continue;
+        bool occupied=false;
+        for(Vec3 ally:friends)if(Distance(ally,cover.shelter)<2.f||Distance(ally,cover.peek)<1.8f)occupied=true;
+        if(occupied)continue;
+        const int count=protects(cover.shelter,cover.crouch?Stance::Crouched:Stance::Standing);
+        if(count<=current)continue;
+        if(!best||count>bestCount||(count==bestCount&&travel<bestTravel)){best=&cover;bestCount=count;bestTravel=travel;}
+    }
+    if(!best||FindPath(map,s.position,best->shelter).empty())return false;
+    const float ready=memory.readyAt;memory={};memory.readyAt=ready;
+    memory.assigned=true;memory.halfCover=best->crouch;memory.shelter=best->shelter;memory.peek=best->peek;
+    memory.coverId=best->id;memory.geometryRevision=map.revision;memory.lastProgress=time;memory.travelPosition=s.position;
+    memory.expires=time+12+bestTravel/1.5f;memory.coverRule=CoverRule::BetterCover;
+    return true;
 }
 Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vector<Vec3>& friends,Tactics& memory,float time,DecisionAlternatives* alternatives) {
     Doctrine d=s.team?c.emberDoctrine:c.doctrine;
@@ -568,20 +693,47 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     const bool openFire=exposed&&!nearShelter&&s.suppression>0.08f;
     const bool exposedStop=visible&&exposed&&!nearShelter&&(s.action==Action::Fire||s.action==Action::Hold);
     const bool protectHold=(s.assignment.task==Task::Hold||s.assignment.task==Task::BoundCover||rearGuard)&&Distance(s.position,objective)<1.5f&&exposed&&!memory.assigned;
+    // The user's rule (plan 020). Under fire is what the soldier himself has: rounds close
+    // enough to suppress him within the last second or two. A movement order more than a short
+    // walk from his remembered cover releases it when he is NOT under fire, so "I have a useful
+    // window here" no longer beats the order and usefulCover cannot renew what he has left; a
+    // squad-wide retreat is obeyed whatever the fire. nearShelter above is deliberately read
+    // before the release: on the tick he gives up the cover he is still standing in it.
+    const bool orderedMove=s.assignment.task==Task::Advance||s.assignment.task==Task::Rally||s.assignment.task==Task::Flank||
+        s.assignment.task==Task::BoundMove||s.assignment.task==Task::ClearLane||s.assignment.task==Task::PullBack;
+    const bool underFire=pressure||s.suppression>Caution().underFireSuppression;
+    // Only a position he has actually reached is released: releasing one he is still walking to
+    // would let the cover search re-choose every think and shuttle him between two shelters.
+    const bool atShelter=memory.assigned&&std::min(Distance(s.position,memory.shelter),Distance(s.position,memory.peek))<1.5f;
+    CoverRule verdict=CoverRule::None; // survives the resets the cover search makes below, so the trace still sees it
+    if(c.threatAwarePaths&&memory.assigned&&!memory.emergency&&orderedMove&&
+        (s.assignment.task==Task::PullBack||(atShelter&&!underFire&&Distance(memory.shelter,objective)>Caution().orderedAway))){
+        const float ready=memory.readyAt;const bool retreat=s.assignment.task==Task::PullBack;
+        memory={};memory.readyAt=ready;verdict=retreat?CoverRule::ObeyedRetreat:CoverRule::ReleasedByOrder;memory.coverRule=verdict;
+    }
     const bool usefulCover=UsefulCover(s,map,memory,time);
     if(alternatives&&usefulCover)alternatives->Add(memory.shelter,-1,"retain useful current cover");
     const bool assignedHold=s.assignment.task==Task::Hold||s.assignment.task==Task::BoundCover||s.assignment.task==Task::Overwatch||s.assignment.task==Task::Window||rearGuard;
     if(usefulCover||(nearShelter&&threat>=0&&(!visible||assignedHold)))memory.expires=std::max(memory.expires,time+12);
+    // Under fire in cover he stays, so the position may not expire out from under him.
+    if(c.threatAwarePaths&&underFire&&nearShelter&&memory.assigned)memory.expires=std::max(memory.expires,time+12);
     const bool contactExposure=visible&&exposed&&!nearShelter&&
         (s.assignment.task==Task::Advance||s.assignment.task==Task::Hold||s.assignment.task==Task::Rally||s.assignment.task==Task::None);
     if(memory.emergency&&memory.assigned&&ProtectedAt(map,memory.shelter,enemy,memory.halfCover?Stance::Crouched:Stance::Standing)&&
         (pressure||(holdingPost&&Distance(memory.shelter,objective)<8)))memory.expires=std::max(memory.expires,time+3);
     if(memory.emergency&&time>=memory.expires&&!pressure){memory.assigned=false;memory.emergency=false;}
     const bool localSafety=(pressure&&exposed)||openFire||exposedStop||contactExposure||protectHold||(memory.emergency&&memory.assigned&&time<memory.expires);
+    // The one way out of cover while under fire: better cover close by. Otherwise he stays,
+    // which the memory block below does once its expiry is renewed above.
+    if(c.threatAwarePaths&&underFire&&nearShelter&&orderedMove&&memory.assigned&&!memory.emergency&&!localSafety){
+        if(BetterCoverNearby(map,s,friends,memory,time))
+            return {memory.shelter,Action::Cover,Reason::Relocate,memory.halfCover?Stance::Crouched:Stance::Standing};
+        memory.coverRule=CoverRule::StayedUnderFire;
+    }
     const bool maneuverArrival=s.assignment.task==Task::BoundMove||s.assignment.task==Task::Flank;
     if(maneuverArrival&&!memory.assigned&&Distance(s.position,objective)<1.5f){
         for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,objective)<.75f&&ClearLine(map,cover.shelter,cover.peek,.48f)){
-            memory={};memory.assigned=true;memory.halfCover=cover.crouch;memory.shelter=cover.shelter;memory.peek=cover.peek;
+            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=cover.crouch;memory.shelter=cover.shelter;memory.peek=cover.peek;
             memory.coverId=cover.id;memory.geometryRevision=map.revision;memory.lastProgress=time;memory.expires=time+180;
             if(!cover.crouch)for(int step=1;step<=60;++step){Vec3 trial=cover.shelter+(cover.peek-cover.shelter)*(step/60.f);
                 if(ClearLine3D(map,trial+Vec3{0,0,1.5f},enemy+Vec3{0,0,1.45f})){memory.peek=trial;break;}}
@@ -592,7 +744,9 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
         memory.assigned=false;
         return {objective,Distance(s.position,objective)>0.7f?Action::Advance:visible?Action::Fire:Action::Hold,Reason::BoundAdvance};
     }
-    if(s.assignment.task==Task::ClearLane&&!localSafety) {
+    // A lane clearance is the one movement order that runs with cover assigned, so the cover
+    // rule has to stop it explicitly; every other one already waits on !memory.assigned.
+    if(s.assignment.task==Task::ClearLane&&!localSafety&&!(c.threatAwarePaths&&underFire&&nearShelter&&memory.assigned)) {
         memory.assigned=false;
         return {objective,Distance(s.position,objective)>0.7f?Action::Cover:visible?Action::Fire:Action::Hold,Reason::ClearLane};
     }
@@ -614,7 +768,7 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
             bool safe=ProtectedAt(map,cover.shelter,enemy,sheltered);
             for(const auto& ct:s.contacts)if(ct.visible&&!ProtectedAt(map,cover.shelter,ct.position,sheltered))safe=false;
             if(!safe)continue;
-            memory={};memory.assigned=true;memory.halfCover=cover.crouch;memory.shelter=cover.shelter;memory.peek=cover.peek;
+            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=cover.crouch;memory.shelter=cover.shelter;memory.peek=cover.peek;
             if(!cover.crouch)for(int step=1;step<=60;++step){Vec3 trial=cover.shelter+(cover.peek-cover.shelter)*(step/60.f);
                 if(ClearLine3D(map,trial+Vec3{0,0,1.5f},enemy+Vec3{0,0,1.45f})){memory.peek=trial;break;}}
             memory.expires=time+180;memory.lastProgress=time;break;
@@ -625,7 +779,7 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
         for(const auto& ct:s.contacts)if(ct.known&&!ProtectedAt(map,objective,ct.position,Stance::Crouched))safe=false;
         if(safe) {
             const float ready=memory.readyAt;
-            memory={};memory.assigned=true;memory.halfCover=true;memory.readyAt=ready;
+            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=true;memory.readyAt=ready;
             memory.shelter=memory.peek=objective;memory.expires=time+300;memory.lastProgress=time;
         }
     }
@@ -706,7 +860,7 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
             if(score<bestScore&&!FindPath(map,s.position,p).empty()) {bestScore=score;best=p;bestPeek=peek;bestHalf=candidate.crouch;bestDefensive=defensive;}
     }
     if(bestScore<1e8f) {
-        memory={};memory.assigned=true;memory.halfCover=bestHalf;memory.shelter=best;memory.peek=bestPeek;memory.lastProgress=time;
+        memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=bestHalf;memory.shelter=best;memory.peek=bestPeek;memory.lastProgress=time;
         memory.emergency=localSafety;memory.defensiveOnly=bestDefensive;
         memory.expires=time+Distance(s.position,best)/1.5f+(localSafety?6.f:d==Doctrine::Cautious?22.f:d==Doctrine::Aggressive?10.f:16.f);
         return {best,Action::Cover,localSafety?Reason::EmergencyCover:pinned?Reason::Suppressed:flanked?Reason::Flanked:relocating?Reason::Relocate:Reason::Contact};
@@ -871,9 +1025,17 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     // A held position steps straight to its own shelter or firing edge. A routed
     // path may detour around intervening geometry and would carry the defender out
     // of its slot even when the goal itself is inside it.
-    auto executionPath=[&](const Soldier& s,Vec3 goal)->std::vector<Vec3>{
+    auto executionPath=[&](Soldier& s,Vec3 goal,float time)->std::vector<Vec3>{
         if(defence&&defence->Defends(s.id))return {goal};
-        return TaskExecutionPath(r.map,s,goal,run[s.id].tactics);
+        PathChoice choice;auto path=TaskExecutionPath(r.map,s,goal,run[s.id].tactics,c,time,&choice);
+        run[s.id].pathKnown=choice.known;s.coveredPath=choice.covered;
+        if(choice.searched){
+            ++r.caution.searched;r.caution.covered+=choice.covered;r.caution.shortestRevealed+=choice.shortestRevealed;
+            if(choice.covered){r.caution.coveredRevealed+=choice.alternativeRevealed;
+                r.caution.detour+=choice.shortestLength>0?double(choice.alternativeLength/choice.shortestLength):1.0;}
+            TracePathChoice(r.diagnostics.get(),s,r.map,time,choice,goal);
+        }
+        return path;
     };
     if(!geometry.empty())r.geometryVersions.push_back({0,r.map,"initial"});
     std::vector<bool> applied(geometry.size(),false);
@@ -997,7 +1159,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 understood.health=s.understoodHealth;understood.suppression=s.understoodSuppression;
                 DecisionAlternatives alternatives;
                 auto* detail=DetailedFor(r.diagnostics.get(),s.id,s.squad,f.time)?&alternatives:nullptr;
-                if(s.assignment.id)PrepareTaskExecution(understood,state.tactics,f.time);
+                if(s.assignment.id)PrepareTaskExecution(understood,state.tactics,f.time,c.threatAwarePaths);
                 Order d=s.assignment.id?ExecuteTask(understood,geometryViews?(*geometryViews)[s.id]:r.map,c,allies,state.tactics,f.time,detail):ChooseOrder(understood,geometryViews?(*geometryViews)[s.id]:r.map,c,allies,state.tactics,f.time,detail);
                 if(c.recoveryFixture&&s.team==command.fixedDefender){
                     // Fixed defenders may duck and fire at their authored low
@@ -1035,11 +1197,17 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(s.action!=d.action||s.reason!=d.reason)
                     event(EventKind::Decision,s.id,-1,std::string(Name(s.id))+": "+ReasonText(d.reason));
                 s.action=d.action;s.reason=d.reason;s.goal=d.goal;s.stance=d.stance;
+                // The cover rule is traced when the verdict changes, not every think.
+                if(state.tactics.coverRule!=state.lastCoverRule){
+                    if(state.tactics.coverRule!=CoverRule::None)TraceCoverRule(r.diagnostics.get(),s,f.time,state.tactics.coverRule,d.goal);
+                    state.lastCoverRule=state.tactics.coverRule;
+                }
+                state.tactics.coverRule=CoverRule::None;
                 if(s.assignment.id)EvaluateTaskExecution(s,r.map,state.tactics,f.time,command.diagnostics);
                 if(detail&&!detail->choices.empty()){auto start=DiagnosticClock::now();TraceSoldier(*r.diagnostics,s,f.command[s.squad],r.map,state.tactics,f.time,detail);r.diagnostics->trace+=DiagnosticSeconds(start);}
                 auto& a=run[s.id];
                 if(Distance(a.destination,d.goal)>0.04f) {
-                    a.destination=d.goal;a.path=executionPath(s,d.goal);a.cursor=0;
+                    a.destination=d.goal;a.path=executionPath(s,d.goal,f.time);a.cursor=0;
                     if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,d.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);
                     TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,a.tactics.emergency?"emergency_departure":"path_selected",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
                 }
@@ -1080,16 +1248,28 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     s.action=Action::Hold;s.reason=Reason::PassageWait;s.stance=Stance::Crouched;s.aim=0;
                 } else if(a.trafficWaiting){a.trafficWaiting=false;a.parkingGoal={999,999};s.waitingPassage=-1;s.passageWaitSeconds=0;
                     if(TypedController(c)&&Distance(s.position,a.progressPosition)<.15f)a.avoidUntil=f.time+3;
-                    a.path=executionPath(s,s.goal);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);s.action=Action::Advance;}
+                    a.path=executionPath(s,s.goal,f.time);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);s.action=Action::Advance;}
             }
         }
         for(auto& s:f.soldiers) if(s.Active()) {
             auto& a=run[s.id];
+            if(a.cursor>=a.path.size())s.coveredPath=false; // the detour is over once he has walked it
             if(f.time>=a.nextPathCheck) {
-                if(s.action!=Action::Fire&&s.action!=Action::Hold&&Distance(s.position,s.goal)>0.7f&&
-                    (a.cursor>=a.path.size()||Distance(s.position,a.progressPosition)<0.15f)) {
+                const bool moving=s.action!=Action::Fire&&s.action!=Action::Hold&&Distance(s.position,s.goal)>0.7f;
+                if(moving&&(a.cursor>=a.path.size()||Distance(s.position,a.progressPosition)<0.15f)) {
                     if(TypedController(c)&&Distance(s.position,a.progressPosition)<.15f)a.avoidUntil=f.time+3;
-                    a.path=executionPath(s,s.goal);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
+                    a.path=executionPath(s,s.goal,f.time);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
+                } else if(c.threatAwarePaths&&moving&&!a.tactics.emergency&&a.cursor<a.path.size()) {
+                    // The chosen path is kept until the goal changes; the one early replan is an
+                    // enemy he did not know about when he chose it who now reveals what is left.
+                    std::vector<KnownThreat> threats,fresh;uint64_t known=0;KnownThreats(s,f.time,threats,known);
+                    for(const auto& threat:threats)if(!((a.pathKnown>>threat.id)&1))fresh.push_back(threat);
+                    std::vector<Vec3> remaining(a.path.begin()+long(a.cursor),a.path.end());
+                    if(!fresh.empty()&&RevealedSeconds(r.map,s.position,remaining,fresh,CautionPace(s))>Caution().revealedSeconds){
+                        a.path=executionPath(s,s.goal,f.time);a.cursor=0;
+                        if(s.assignment.id&&!a.tactics.emergency)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);
+                        TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_rethreat",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
+                    }
                 }
                 a.progressPosition=s.position;a.nextPathCheck=f.time+2;
             }
