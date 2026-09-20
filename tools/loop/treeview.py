@@ -115,7 +115,13 @@ def _node_card(node: dict, result: dict | None, is_root: bool) -> str:
     chips = ''.join(f'<li>{html.escape(GUARD_WORDS.get(name, name))}</li>' for name in failed)
     brief = html.escape((node.get('brief') or '').replace('root: ', ''))
     title = html.escape(node.get('title') or (node.get('brief') or node['id'])[:60])
-    row = (f'<summary><span class="rowmain"><span class="chev" aria-hidden="true"></span><span class="title">{title}</span></span>'
+    if is_root:
+        badge = '<span class="gen rootgen">root</span>'
+    elif node.get('carried_from'):
+        badge = f'<span class="gen">gen 1–{node.get("generation")}</span>'
+    else:
+        badge = f'<span class="gen">gen {node["generation"]}</span>' if node.get('generation') else ''
+    row = (f'<summary><span class="rowmain"><span class="chev" aria-hidden="true"></span>{badge}<span class="title">{title}</span></span>'
            f'<span class="rowmeta">{pill}{_glyph(paired)}<span class="num small">{figure}</span></span></summary>')
     return (f'<details class="node{" root" if is_root else ""}" id="node-{html.escape(node["id"])}">{row}<div class="body">'
             f'<div class="ident"><span class="who">{html.escape(str(who))}</span><code>{html.escape(node["id"].split("-")[0])}</code>'
@@ -134,7 +140,7 @@ def _branch(node_id: str, children: dict, nodes: dict, version: str, is_root: bo
     node = nodes[node_id]
     pending = pending or {}
     kids = ''.join(f'<li>{_branch(k, children, nodes, version, False, pending)}</li>' for k in children.get(node_id, []))
-    kids += ''.join(f'<li><div class="ghost"><span class="title">{html.escape(g["title"])}</span><span class="who">generation {pending.get("generation")} · being proposed</span></div></li>'
+    kids += ''.join(f'<li><div class="ghost"><span class="rowmain"><span class="gen">gen {pending.get("generation")}</span><span class="title">{html.escape(g["title"])}</span></span><span class="who">being proposed</span></div></li>'
                     for g in pending.get('proposals', []) if g.get('parent') == node_id)
     return _node_card(node, tree.read_score(node_id, version), is_root) + (f'<ul class="kids">{kids}</ul>' if kids else '')
 
@@ -175,13 +181,20 @@ def render() -> str:
                 stack.append((k, d + 1))
         lineages.append(f'<section class="lineage"><h2>{html.escape(root.get("controller", "drills"))} <span>lineage</span></h2>'
                         f'{_branch(root["id"], children, nodes, version, True, pending)}</section>')
-    old = ''.join(f'<li><code>{html.escape(n["id"])}</code> {html.escape(n.get("brief") or "")}</li>' for n in earlier)
+    epochs: dict = {}
+    for n in sorted(earlier, key=lambda n: n.get('created', ''), reverse=True):
+        epochs.setdefault(n['id'].split('-')[0], []).append(n)
+    old = ''
+    for fingerprint, members in epochs.items():
+        trees = ''.join(f'<section class="lineage"><h2>{html.escape(r.get("controller", r["id"].split("-")[-1]))} <span>lineage</span></h2>'
+                        f'{_branch(r["id"], children, nodes, version, True)}</section>' for r in sorted(members, key=lambda n: n.get('controller', n['id'])))
+        old += f'<h3 class="epoch">Source {html.escape(fingerprint)}</h3><div class="forest">{trees}</div>'
     page = TEMPLATE
     for key, text in (('@@LINEAGES@@', ''.join(lineages)), ('@@CANDIDATES@@', str(candidates)), ('@@SURVIVORS@@', str(survivors)),
                       ('@@GENERATIONS@@', str(generations)),
                       ('@@RUNNING@@', f'<div><b>{len(pending.get("proposals", []))}</b><span>being proposed now (generation {pending.get("generation")})</span></div>' if pending.get('proposals') else ''), ('@@VERSION@@', html.escape(version)),
                       ('@@STAMP@@', datetime.now().strftime('%d %B %Y, %H:%M')),
-                      ('@@EARLIER@@', f'<details class="earlier"><summary>{len(earlier)} earlier roots (the same controllers before a change to shared code; their validation maps were a different draw, so their averages are not comparable with the current ones)</summary><ul>{old}</ul></details>' if earlier else '')):
+                      ('@@EARLIER@@', f'<details class="earlier"><summary>Earlier history: generations 1 to 3 as they were first tried</summary><p>The same two controllers before a change to shared code (static defenders, then lean recording). Each source had its own validation maps and one battle a map, so these averages are not comparable with the current ones; the differences from each root are. The drills work was carried forward as one node; the legacy ideas measured no gain and were not.</p>{old}</details>' if earlier else '')):
         page = page.replace(key, text)
     return page
 
@@ -229,6 +242,9 @@ h2 span{color:var(--muted);font-size:16px;letter-spacing:.08em}
 .num.small{font-size:24px;min-width:3.2em;text-align:right}
 .ghost{border:1.5px dashed var(--line);border-radius:3px;padding:9px 14px;display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:space-between;align-items:baseline;color:var(--muted)}
 .ghost .title{font-weight:500}
+.gen{flex:none;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);border:1px solid var(--line);border-radius:2px;padding:1px 6px;white-space:nowrap}
+.gen.rootgen{color:var(--muted)}
+.earlier>p{max-width:70ch;margin:10px 0 0}.earlier .epoch{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink);margin:18px 0 10px}
 .controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--muted);font-size:13px}
 .controls button{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:5px 12px;cursor:pointer}
 .controls button:hover{background:var(--flatwash)}.controls button:focus-visible{outline:2px solid var(--azure);outline-offset:2px}
