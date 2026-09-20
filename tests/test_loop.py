@@ -380,6 +380,26 @@ class Tree(unittest.TestCase):
         self.assertEqual(len({config.spec_key(s) for s in attack}), len(attack))
         self.assertEqual({config.cluster_key(s) for s in attack}, {21, 22})   # still clustered on the map
 
+    def test_a_generation_shares_one_validation_draw_and_the_next_gets_another(self):
+        from tools.loop import maps
+        six = maps.validation_seeds('efce1ef0fb0e378a|generation6', 'plan016|attack', 5)
+        self.assertEqual(six, maps.validation_seeds('efce1ef0fb0e378a|generation6', 'plan016|attack', 5))
+        self.assertNotEqual(six, maps.validation_seeds('efce1ef0fb0e378a|generation7', 'plan016|attack', 5))
+        self.assertNotEqual(six, maps.validation_seeds('efce1ef0fb0e378a-linux', 'plan016|attack', 5))
+
+    def test_evaluation_export_is_parsed_once_and_streams_everything_else(self):
+        import phase0_metrics
+        run = self.tmp/'parse'
+        run.mkdir()
+        (run/'evaluation.jsonl').write_text('{"time":0.0,"soldiers":[]}\n\n{"time":0.2,"soldiers":[]}\n')
+        (run/'shots.jsonl').write_text('{"time":1.5}\n')
+        first = list(phase0_metrics.rows(run/'evaluation.jsonl'))
+        self.assertEqual([r['time'] for r in first], [0.0, 0.2])
+        self.assertIs(next(phase0_metrics.rows(run/'evaluation.jsonl')), first[0])   # reused, not parsed again
+        self.assertEqual(list(phase0_metrics.rows(run/'shots.jsonl')), [{'time': 1.5}])
+        (run/'evaluation.jsonl').write_text('{"time":9.0,"soldiers":[]}\n')
+        self.assertEqual([r['time'] for r in phase0_metrics.rows(run/'evaluation.jsonl')], [9.0])   # a changed file is read again
+
     def test_only_wanted_sets_are_built(self):
         sets = config.scenario_sets('abc-linux', wanted={'works'})
         self.assertEqual(list(sets), ['works'])

@@ -40,7 +40,7 @@ def _argv(binary: Path, name: str):
     return [str(binary), group, name]
 
 
-def run_selectors(node_dir: Path, jobs=4, names=None):
+def run_selectors(node_dir: Path, jobs=6, names=None):
     """Run every selector from a frozen copy of the test binary; returns dict(ok, passed, failed, results)."""
     names = list(names or (SELECTORS + SELECTOR_GROUPS))
     frozen = node_dir/'sim-tests'

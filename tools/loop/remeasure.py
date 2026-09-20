@@ -26,7 +26,7 @@ def remeasure(node_ids=None, jobs=None, with_baselines=True, log=print, respec=F
         old, fresh, changed = tree.read_rows(node['id']), {}, []
         # respec: the scenario sets changed (for instance more battle seeds per map); draw them again
         # for this node's own build, so its validation maps stay the ones hashed from its fingerprint.
-        current = config.scenario_sets(node['external']['build']['version'], wanted=set(old)) if respec else {}
+        current = config.scenario_sets(node.get('draw_key') or node['external']['build']['version'], wanted=set(old)) if respec else {}
         for name, rows in old.items():
             specs = current[name] if respec else [{k: r[k] for k in config.SPEC_FIELDS if k in r} for r in rows]
             rows = [next((r for r in rows if config.spec_key(r) == config.spec_key(s)), {}) for s in specs] if respec else rows

@@ -4,11 +4,31 @@ import math
 from pathlib import Path
 
 
+try:  # three to four times faster than the standard parser; identical values (checked 19 Sep 2026)
+    import orjson as _fast
+except ImportError:  # the metrics do not depend on it
+    _fast = None
+_PARSED = {}  # the last evaluation export only: family_metrics walks it eleven times a battle
+
+
 def rows(path):
-    with Path(path).open() as stream:
+    """Rows of a .jsonl export. The per-frame evaluation export (up to 200 MB) is parsed once per
+    process and reused; callers only read it. Everything else streams."""
+    path = Path(path)
+    loads = _fast.loads if _fast else json.loads
+    if path.name == 'evaluation.jsonl':
+        stat = path.stat()
+        key = (str(path), stat.st_mtime_ns, stat.st_size)
+        if key not in _PARSED:
+            _PARSED.clear()
+            with path.open('rb') as stream:
+                _PARSED[key] = [loads(line) for line in stream if line.strip()]
+        yield from _PARSED[key]
+        return
+    with path.open('rb') as stream:
         for line in stream:
             if line.strip():
-                yield json.loads(line)
+                yield loads(line)
 
 
 def discover_runs(inputs):

@@ -9,5 +9,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 worktree="$(cd "$1" && pwd)"; shift
 rsync -a --delete --exclude=__pycache__ "$repo_root/tools/loop/" "$worktree/tools/loop/"
 cp "$repo_root/tests/test_loop.py" "$worktree/tests/test_loop.py"
+cp "$repo_root"/tools/*.py "$worktree/tools/"   # the metrics code is part of the harness, not of the candidate
+cp "$repo_root/scripts/battle-lab.sh" "$repo_root/scripts/test-sim.sh" "$repo_root/scripts/parallel-compile.sh" "$worktree/scripts/"
 cd "$worktree"
 ARMY_LOOP_ROOT="$repo_root/.local/loop" exec python3 -u -m tools.loop evaluate "$@"

@@ -6,7 +6,7 @@ selectors, Python tests, candidate battles, parity spot checks, baseline rows
 failed node is still evidence.
 """
 from __future__ import annotations
-import hashlib, json, shutil, time
+import hashlib, json, shutil, threading, time
 from pathlib import Path
 
 from tools.loop import baselines, config, score as scoring, selectors, static_check, tree
@@ -155,33 +155,58 @@ def evaluate_candidate(parent=None, proposer=None, brief=None, jobs=None, skip_s
     donor = tree.load(external_from)['external'] if external_from else None
     if donor and external_from.split('-')[0] != fingerprint:
         raise SystemExit(f'{external_from} is another source; its selector results cannot be reused')
-    if donor:
-        external['selectors'] = dict(donor['selectors'], reused_from=external_from)
-    elif skip_selectors:
-        external['selectors'] = dict(ok=False, reason='skipped')
-    else:
-        log(f'[{node_id}] test build and selectors')
-        built = selectors.build_tests(d/'tests-build.log')
-        external['selectors'] = selectors.run_selectors(d) if built['ok'] else dict(ok=False, reason='test build failed', log=built['log'])
-    selectors_against_root(external['selectors'], root['external'] if root else None)
-    if donor:
-        external['python_tests'] = dict(donor['python_tests'], reused_from=external_from)
-    else:
-        external['python_tests'] = dict(ok=False, reason='skipped') if skip_python else selectors.run_python_tests(d/'python-tests.log')
+
+    def checks():
+        """Selectors and Python tests describe the source and do not need the battles, so they
+        run beside them (19 Sep 2026: about 100 s a candidate). Battles use the frozen lab binary
+        and the test build writes elsewhere, so the two do not touch."""
+        if donor:
+            external['selectors'] = dict(donor['selectors'], reused_from=external_from)
+        elif skip_selectors:
+            external['selectors'] = dict(ok=False, reason='skipped')
+        else:
+            built = selectors.build_tests(d/'tests-build.log')
+            external['selectors'] = selectors.run_selectors(d) if built['ok'] else dict(ok=False, reason='test build failed', log=built['log'])
+        selectors_against_root(external['selectors'], root['external'] if root else None)
+        if donor:
+            external['python_tests'] = dict(donor['python_tests'], reused_from=external_from)
+        else:
+            external['python_tests'] = dict(ok=False, reason='skipped') if skip_python else selectors.run_python_tests(d/'python-tests.log')
+
+    # A candidate that already cannot score is recorded without its ten minutes of battles.
+    cheap = [name for name in ('static_check', 'protected_files') if not external[name].get('ok')]
+    if cheap and not force:
+        log(f"[{node_id}] {', '.join(cheap)} failed; recording node without battles")
+        checks()
+        node['stopped_early'] = cheap
+        _finish(node, {}, {}, external, log)
+        return node
     tree.save(node)
+    log(f'[{node_id}] selectors and Python tests run beside the battles')
+    checking = threading.Thread(target=checks, name='loop-checks')
+    checking.start()
 
     version = external['build']['version']
     spec = scoring.load_guards()
     wanted = set(only_sets) if only_sets else needed_sets(spec)
-    sets = config.scenario_sets(version, wanted=wanted)
+    # Candidates of one generation share one fresh validation draw, so their root fights it once
+    # (45 battles a generation instead of 45 a candidate). The maps are still unseen by proposers,
+    # who only ever get development maps. Roots and carried nodes keep a draw of their own.
+    node['draw_key'] = f"{(root_id or node_id).split('-')[0]}|generation{generation}"  # no dash: the seed function keys on the text before the first one if (generation and root_id and not carried_from) else version
+    sets = config.scenario_sets(node['draw_key'], wanted=wanted)
     node['draws'] = {k: [config.spec_key(s) for s in v] for k, v in sets.items()}
     started = time.monotonic()
     rows_by_set = {}
     for name, specs in sets.items():
+        if not checking.is_alive() and external.get('selectors', {}).get('new_failures') and not force:
+            log(f"[{node_id}] new selector failures {external['selectors']['new_failures']}; remaining battles skipped")
+            node['stopped_early'] = ['selectors']
+            break
         log(f'[{node_id}] {name}: {len(specs)} battles')
         rows_by_set[name] = run_specs(binary, controller, specs, d/'runs', jobs, SECONDS, False)
         done = sum(1 for r in rows_by_set[name] if r['status'] == 'complete')
         log(f'[{node_id}] {name}: {done}/{len(specs)} complete')
+    checking.join()
     tree.write_rows(node_id, rows_by_set)
     node['battle_seconds'] = time.monotonic() - started
 

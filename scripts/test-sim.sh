@@ -2,8 +2,8 @@
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mkdir -p "$repo_root/.local/tests"
-g++ -DARMY_TEST_CONTROLS -std=c++17 -O2 -Wall -Wextra -Wpedantic \
-  -I "$repo_root/Unreal/Source/ArmyPrototype/Sim" \
+"$repo_root/scripts/parallel-compile.sh" "$repo_root/.local/tests/sim_tests" -DARMY_TEST_CONTROLS -std=c++17 -O2 -Wall -Wextra -Wpedantic \
+  -I "$repo_root/Unreal/Source/ArmyPrototype/Sim" -- \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/Stats.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/Weapons.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/PositionSim.cpp" \
@@ -33,5 +33,5 @@ g++ -DARMY_TEST_CONTROLS -std=c++17 -O2 -Wall -Wextra -Wpedantic \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/TrafficSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/EnvironmentSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp" \
-  "$repo_root/tests/sim_tests.cpp" -o "$repo_root/.local/tests/sim_tests"
+  "$repo_root/tests/sim_tests.cpp"
 "$repo_root/.local/tests/sim_tests" "$@"
