@@ -107,7 +107,7 @@ def baseline_rows_for(spec, sets, binary, jobs=None, run_missing=True, progress=
 
 
 def evaluate_candidate(parent=None, proposer=None, brief=None, jobs=None, skip_selectors=False, skip_python=False,
-                       only_sets=None, suffix=None, force=False, log=print, controller='drills', external_from=None, generation=None, carried_from=None):
+                       only_sets=None, suffix=None, force=False, log=print, controller='drills', external_from=None, generation=None, carried_from=None, title=None):
     fingerprint = selectors.source_id()
     node_id = fingerprint + (f'-{suffix}' if suffix else '')
     if tree.exists(node_id) and not force:
@@ -115,6 +115,8 @@ def evaluate_candidate(parent=None, proposer=None, brief=None, jobs=None, skip_s
     node = tree.new_node(node_id, parent, proposer or dict(kind='human'), brief)
     node['config_digest'] = config.config_digest()
     node['controller'] = controller
+    if title:
+        node['title'] = title   # the plain words the tree page shows on the collapsed row
     if generation is not None:
         node['generation'] = generation   # which round of proposals produced it (the tree page counts these)
     if carried_from:

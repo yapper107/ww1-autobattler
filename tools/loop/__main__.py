@@ -12,7 +12,7 @@ def cmd_evaluate(a):
     proposer = dict(kind=a.proposer, model=a.model, usage=None)
     node = evaluate_candidate(parent=a.parent, proposer=proposer, brief=a.brief, jobs=a.jobs, skip_selectors=a.skip_selectors,
                               skip_python=a.skip_python, only_sets=a.sets.split(',') if a.sets else None, suffix=a.suffix, force=a.force,
-                              controller=a.controller, external_from=a.external_from, generation=a.generation, carried_from=a.carried_from)
+                              controller=a.controller, external_from=a.external_from, generation=a.generation, carried_from=a.carried_from, title=a.title)
     print(json.dumps(dict(id=node['id'], scores=node['scores']), indent=1))
 
 
@@ -104,6 +104,7 @@ def main(argv=None):
     e.add_argument('--skip-selectors', action='store_true'); e.add_argument('--skip-python', action='store_true')
     e.add_argument('--controller', default='drills', choices=sorted(config.CONTROLLER_FLAG), help='controller the node is scored as')
     e.add_argument('--external-from', help='reuse selector and Python test results of a node on the same source')
+    e.add_argument('--title', help='a few plain words for the tree page row')
     e.add_argument('--generation', type=int, help='round of proposals this candidate belongs to')
     e.add_argument('--carried-from', help='node of an earlier epoch this one re-applies (not counted as a new candidate)')
     e.add_argument('--force', action='store_true'); e.set_defaults(fn=cmd_evaluate)

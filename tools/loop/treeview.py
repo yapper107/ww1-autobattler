@@ -5,7 +5,7 @@ regenerated after every generation and republished to the same address, so it
 reads recorded scores only: nothing here fights a battle or changes a node.
 """
 from __future__ import annotations
-import html
+import html, json
 from datetime import datetime
 from pathlib import Path
 
@@ -59,6 +59,20 @@ def _interval_plot(sets: dict) -> str:
             f'{ticks}{zero}{"".join(body)}</svg></div></figure>')
 
 
+def _glyph(paired: dict) -> str:
+    """The ranking-set difference from the root as a tiny interval, for the collapsed row."""
+    if not paired or not paired.get('count'):
+        return ''
+    low, high, mean = paired['ci95'][0], paired['ci95'][1], paired['mean']
+    state = 'good' if low > 0 else 'bad' if high < 0 else 'flat'
+    x = lambda v: 50 + max(-DOMAIN, min(DOMAIN, v))/DOMAIN*46
+    tip = f"validation: {mean:+.3f} against its root on the same {paired['count']} battles, 95% interval {low:+.3f} to {high:+.3f}"
+    return (f'<span class="delta"><svg class="glyph iv {state}" viewBox="0 0 100 16" role="img" aria-label="{html.escape(tip)}"><title>{html.escape(tip)}</title>'
+            f'<line class="zero" x1="50" x2="50" y1="1" y2="15"></line><line class="whisker" x1="{x(low):.1f}" x2="{x(high):.1f}" y1="8" y2="8"></line>'
+            f'<circle class="ring" cx="{x(mean):.1f}" cy="8" r="5"></circle><circle class="dot" cx="{x(mean):.1f}" cy="8" r="3.4"></circle></svg>'
+            f'<span class="deltanum">{mean:+.3f}</span></span>')
+
+
 def _outcome_bars(stats: dict) -> str:
     if not stats or stats.get('defender_loss') is None:
         return ''
@@ -78,12 +92,12 @@ def _node_card(node: dict, result: dict | None, is_root: bool) -> str:
     if not result:
         pill = '<span class="pill none">not scored</span>'
     elif failed:
-        pill = f'<span class="pill bad">✕ no score · {len(failed)} guard{"s" if len(failed) != 1 else ""} failed</span>'
+        pill = f'<span class="pill bad">✕ {len(failed)} guard{"s" if len(failed) != 1 else ""} failed</span>'
     elif is_root:
-        pill = '<span class="pill good">✓ root · every guard passes</span>'
+        pill = '<span class="pill good">✓ guards pass</span>'
     else:
         beats = value is not None and objective.get('anchor') is not None and value > objective['anchor']
-        pill = '<span class="pill good">✓ survivor · beats its root</span>' if beats else '<span class="pill flat">✓ guards pass · does not beat its root</span>'
+        pill = '<span class="pill good">★ survivor</span>' if beats else '<span class="pill flat">✓ guards pass · gain not proven</span>'
     proposer = node.get('proposer', {})
     who = 'root' if is_root else (proposer.get('model') or proposer.get('kind') or 'unknown')
     if node.get('carried_from'):
@@ -100,17 +114,28 @@ def _node_card(node: dict, result: dict | None, is_root: bool) -> str:
         figure, figure_label = (f'{ranking["mean"]:+.3f}' if ranking.get('mean') is not None else '—'), 'own mean, unranked'
     chips = ''.join(f'<li>{html.escape(GUARD_WORDS.get(name, name))}</li>' for name in failed)
     brief = html.escape((node.get('brief') or '').replace('root: ', ''))
-    return (f'<article class="node{" root" if is_root else ""}"><header>{pill}<span class="who">{html.escape(str(who))}</span></header>'
-            f'<div class="ident"><code>{html.escape(node["id"].split("-")[0])}</code>'
+    title = html.escape(node.get('title') or (node.get('brief') or node['id'])[:60])
+    row = (f'<summary><span class="rowmain"><span class="chev" aria-hidden="true"></span><span class="title">{title}</span></span>'
+           f'<span class="rowmeta">{pill}{_glyph(paired)}<span class="num small">{figure}</span></span></summary>')
+    return (f'<details class="node{" root" if is_root else ""}" id="node-{html.escape(node["id"])}">{row}<div class="body">'
+            f'<div class="ident"><span class="who">{html.escape(str(who))}</span><code>{html.escape(node["id"].split("-")[0])}</code>'
             + (f'<span class="verdict">your verdict: {html.escape(node["verdict"])}</span>' if node.get('verdict') else '') + '</div>'
             f'<p class="brief">{brief}</p>'
             f'<div class="facts"><div class="figure"><span class="num">{figure}</span><span class="numlabel">{figure_label}</span></div>{_outcome_bars(ranking)}</div>'
-            + _interval_plot(sets) + (f'<ul class="chips" aria-label="Failed guards">{chips}</ul>' if chips else '') + '</article>')
+            + _interval_plot(sets) + (f'<ul class="chips" aria-label="Failed guards">{chips}</ul>' if chips else '') + '</div></details>')
 
 
-def _branch(node_id: str, children: dict, nodes: dict, version: str, is_root: bool = False) -> str:
+def _in_progress() -> dict:
+    path = LOOP_ROOT/'in_progress.json'
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def _branch(node_id: str, children: dict, nodes: dict, version: str, is_root: bool = False, pending: dict | None = None) -> str:
     node = nodes[node_id]
-    kids = ''.join(f'<li>{_branch(k, children, nodes, version)}</li>' for k in children.get(node_id, []))
+    pending = pending or {}
+    kids = ''.join(f'<li>{_branch(k, children, nodes, version, False, pending)}</li>' for k in children.get(node_id, []))
+    kids += ''.join(f'<li><div class="ghost"><span class="title">{html.escape(g["title"])}</span><span class="who">generation {pending.get("generation")} · being proposed</span></div></li>'
+                    for g in pending.get('proposals', []) if g.get('parent') == node_id)
     return _node_card(node, tree.read_score(node_id, version), is_root) + (f'<ul class="kids">{kids}</ul>' if kids else '')
 
 
@@ -133,6 +158,7 @@ def render() -> str:
         current = [n for n in current if n['id'].split('-')[0] == newest]
     earlier = [n for n in roots if n not in current]
     lineages, survivors, candidates, generations = [], 0, 0, 0
+    pending = _in_progress()
     # The tally covers the whole history, earlier epochs included: a candidate tried before a re-rooting was still tried.
     proposed = [n for n in nodes.values() if n.get('generation') and not n.get('carried_from')]
     candidates = len(proposed)
@@ -148,11 +174,12 @@ def render() -> str:
                 survivors += int(bool(result.get('guards_pass')) and result.get('value') is not None and anchor is not None and result['value'] > anchor)
                 stack.append((k, d + 1))
         lineages.append(f'<section class="lineage"><h2>{html.escape(root.get("controller", "drills"))} <span>lineage</span></h2>'
-                        f'{_branch(root["id"], children, nodes, version, True)}</section>')
+                        f'{_branch(root["id"], children, nodes, version, True, pending)}</section>')
     old = ''.join(f'<li><code>{html.escape(n["id"])}</code> {html.escape(n.get("brief") or "")}</li>' for n in earlier)
     page = TEMPLATE
     for key, text in (('@@LINEAGES@@', ''.join(lineages)), ('@@CANDIDATES@@', str(candidates)), ('@@SURVIVORS@@', str(survivors)),
-                      ('@@GENERATIONS@@', str(generations)), ('@@VERSION@@', html.escape(version)),
+                      ('@@GENERATIONS@@', str(generations)),
+                      ('@@RUNNING@@', f'<div><b>{len(pending.get("proposals", []))}</b><span>being proposed now (generation {pending.get("generation")})</span></div>' if pending.get('proposals') else ''), ('@@VERSION@@', html.escape(version)),
                       ('@@STAMP@@', datetime.now().strftime('%d %B %Y, %H:%M')),
                       ('@@EARLIER@@', f'<details class="earlier"><summary>{len(earlier)} earlier roots (the same controllers before a change to shared code; their validation maps were a different draw, so their averages are not comparable with the current ones)</summary><ul>{old}</ul></details>' if earlier else '')):
         page = page.replace(key, text)
@@ -184,9 +211,28 @@ h1{font-family:"Big Shoulders Display","Arial Narrow",sans-serif;font-weight:800
 .lineage{display:flex;flex-direction:column;gap:14px;min-width:0}
 h2{font-family:"Big Shoulders Display","Arial Narrow",sans-serif;font-weight:700;font-size:26px;text-transform:uppercase;letter-spacing:.03em;margin:0;line-height:1}
 h2 span{color:var(--muted);font-size:16px;letter-spacing:.08em}
-.node{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.node{background:var(--surface);border:1px solid var(--line);border-radius:3px;min-width:0}
 .node.root{border-width:2px;border-color:var(--ink)}
-.node header{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between}
+.node>summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:space-between;padding:10px 14px}
+.node>summary::-webkit-details-marker{display:none}
+.node>summary:hover{background:var(--flatwash)}
+.node>summary:focus-visible{outline:2px solid var(--azure);outline-offset:2px}
+.rowmain{display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 240px}
+.rowmeta{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
+.chev{flex:none;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.node[open]>summary .chev{transform:rotate(45deg)}
+.title{font-weight:600;overflow-wrap:anywhere}
+.node .body{display:flex;flex-direction:column;gap:10px;padding:4px 16px 14px;border-top:1px solid var(--line)}
+.delta{display:inline-flex;align-items:center;gap:6px}
+.glyph{width:100px;height:16px;flex:none}
+.deltanum{font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--muted);min-width:3.4em}
+.num.small{font-size:24px;min-width:3.2em;text-align:right}
+.ghost{border:1.5px dashed var(--line);border-radius:3px;padding:9px 14px;display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:space-between;align-items:baseline;color:var(--muted)}
+.ghost .title{font-weight:500}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;color:var(--muted);font-size:13px}
+.controls button{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:5px 12px;cursor:pointer}
+.controls button:hover{background:var(--flatwash)}.controls button:focus-visible{outline:2px solid var(--azure);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
 .pill{font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:2px;letter-spacing:.01em}
 .pill.good{background:var(--goodwash);color:var(--good)}.pill.bad{background:var(--badwash);color:var(--bad)}.pill.flat,.pill.none{background:var(--flatwash);color:var(--flat)}
 .who{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
@@ -220,7 +266,7 @@ figcaption{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-s
 .chips li{font-size:12.5px;border:1px solid var(--bad);color:var(--bad);padding:2px 8px;border-radius:2px}
 .kids{list-style:none;margin:0;padding:0 0 0 22px;border-left:2px solid var(--line);margin-left:14px;display:flex;flex-direction:column;gap:14px}
 .kids>li{position:relative;display:flex;flex-direction:column;gap:14px;min-width:0}
-.kids>li::before{content:"";position:absolute;left:-22px;top:26px;width:22px;border-top:2px solid var(--line)}
+.kids>li::before{content:"";position:absolute;left:-22px;top:21px;width:22px;border-top:2px solid var(--line)}
 .key{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px 32px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:13.5px}
 .key h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink);margin:0 0 4px}
 .key p{margin:0;max-width:60ch}
@@ -232,9 +278,11 @@ figcaption{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-s
 <div class="page">
 <header><h1>Army AI discovery tree</h1>
 <p class="lede">Every version of the squad AI the improvement loop has tried, scored by attacking twelve defenders who hold cover on a generated town map for ten minutes. A candidate only counts if it passes every guard and beats its root on the very same battles.</p></header>
-<div class="tally"><div><b>@@GENERATIONS@@</b><span>generations</span></div><div><b>@@CANDIDATES@@</b><span>candidates tried</span></div><div><b>@@SURVIVORS@@</b><span>survivors for your review</span></div><div><span>score @@VERSION@@ · updated @@STAMP@@</span></div></div>
+<div class="tally"><div><b>@@GENERATIONS@@</b><span>generations</span></div><div><b>@@CANDIDATES@@</b><span>candidates tried</span></div><div><b>@@SURVIVORS@@</b><span>survivors for your review</span></div>@@RUNNING@@<div><span>score @@VERSION@@ · updated @@STAMP@@</span></div></div>
+<div class="controls"><button type="button" id="expand-all">Open every node</button><button type="button" id="collapse-all">Close all</button><span>Click a row for its detail.</span></div>
 <div class="forest">@@LINEAGES@@</div>
 <section class="key">
+<div><h3>Reading a row</h3><p>Status, then the change in plain words. The small interval is the node's difference from its root on its validation battles (the line through the middle is zero); the large figure is its value, or what it would be if its guards passed. Dashed rows are proposals being written now.</p></div>
 <div><h3>The number</h3><p>Attack score per battle: share of defenders put out of action minus half the share of attackers lost, from −0.5 to +1. A root shows its own mean. A child shows its root's mean plus the cautious end of its measured difference, so luck with the maps cannot lift it.</p></div>
 <div><h3>The bars</h3><p><span class="swatch" style="background:var(--ember)"></span>defenders (Ember) out of action and <span class="swatch" style="background:var(--azure)"></span>attackers (Azure) lost, averaged over that node's fifteen validation attacks.</p></div>
 <div><h3>The interval</h3><p>The dot is the child's average difference from its root over the same battles; the line is the 95% range. ▲ entirely above zero is a real gain, ◆ across zero is not proven, ▼ below is a loss.</p></div>
@@ -242,4 +290,9 @@ figcaption{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-s
 </section>
 @@EARLIER@@
 </div>
+<script>
+(function(){var all=function(open){document.querySelectorAll('details.node').forEach(function(d){d.open=open;});};
+document.getElementById('expand-all').addEventListener('click',function(){all(true);});
+document.getElementById('collapse-all').addEventListener('click',function(){all(false);});})();
+</script>
 """
