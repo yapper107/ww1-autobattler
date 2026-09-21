@@ -227,6 +227,14 @@ on a moving leader, skipped when the corporal is gone, the leader's own route se
 failure for another; the architect proposes a plan-sized redesign of the relay with the user's rulings. Table at the end
 of plan 018.
 
+**[Plan 023](plans/023-the-rifle-group-moves-as-one.md), drafted 21 September 2026 at the user's instruction, awaiting his
+rulings:** one design for the rifle group's relay in place of single-branch fixes: every member, the leader included,
+holds a fixed covered station that belongs to the group's objective; behind and ahead are measured along the group's
+axis, not as distance to a man; a man behind is called to his station once, a man ahead in a bearing place keeps it and
+the group comes up to him; an order is re-sent only when its content changes; the relay never goes dark; the support
+and the platoon staff are included. Four stages, each scored as a loop node; nothing is built until the six rulings in
+its section 6 are answered.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
