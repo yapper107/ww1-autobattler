@@ -197,6 +197,23 @@ line leaves behind; the platoon keeps its mover and side; succession when a corp
 have passed his command to his second in command, and further down the chain"); an uncontested flank moves fast; one
 order at a time for a rifleman. The user sees only survivors.
 
+**Generation 18 on the path-fix build (21 September 2026; parent `6e16adfd8b5c3ae2` chosen by the policy, development 0.806,
+value 0.754; root 0.705 and 0.744).** Four of five survive, every guard passing: the rifle group is led by whoever can lead
+it `f7d7aa48ecc1e453` (the relay, regroup point, lagging test, bound origin and order authorisation were hard-wired to the
+corporal's roster slot, wounded, dead or not; one recursive helper; development 0.839, +0.033 over the parent, attackers
+lost 31.7 %, **value 0.799, the best of the epoch**; two suite assertions encode the old design and fail: "the sergeant
+becomes the point" in `ReassessmentTests` and `MGEncounterTests` 2 of 3: to be restated if the node lands); the platoon
+keeps its mover, base of fire and side `d8c602861821ae02` (role changes 24 to 2 a battle, quiet squads 0.27 to 0.17,
+value 0.794; the proposer's friendly-fire alarm on two maps was noise on twenty); a gunner left behind rejoins
+`03fcf0867579b9f7` (his next position was searched only within 55 m of himself; stragglers 6.2 % to 3.9 %, men at the fight
+93.2 % to 94.3 %, quiet squads 0.27 to 0.43, value 0.791); an uncontested flank chains its bounds `0f005820dd9052c2` (2 s
+instead of 10 s for latecomers while nobody is under fire; flanking fire 25 % to 31 %, value 0.789). Not surviving: a
+rifleman keeps the order he is carrying out `075cfc94cdb385cf` (the relay re-judged "lagging" from raw distance every 2 s,
+recalling a man closing on a flank goal; regroup orders halve and development is the generation's best at 0.818, but men at
+the fight fall to 92.0 %, failing `force_at_the_fight`). Videos of the four survivors sent to the user. Machine: not memory
+bound (16 of 30 GB, load 4 to 6 of 16 cores): the wait is proposer time; next brief: the architect runs the parent's suite
+once for all, six check battles at a time per proposer.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
