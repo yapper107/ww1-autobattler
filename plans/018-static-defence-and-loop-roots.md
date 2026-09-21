@@ -763,3 +763,26 @@ side that is kept once chosen (the generation 17 late-squads finding); (3) succe
 the senior rifleman and the group is not regrouped on a man going to the rear; (4) an uncontested flank moves fast: no waits
 for covering fire or for latecomers while no enemy is known on the route, bounds chained without halts; (5) architect: why a
 man with a route and a movement order stands still (shared soldier code).
+
+
+## Why soldiers stand with a movement order (architect, 21 September 2026, at the user's request)
+
+Cause, in shared soldier code (`TaskExecutionPath`, `BattleSim.cpp`): a man on Flank, Rally, BoundMove or PullBack whose order
+carries the squad's tactical route is pathed by `FollowCorridor`, which forbids ground more than 4 m off the route's lane. When
+the man stands more than about 5 m off the lane, or his goal lies off it (a regroup on the corporal issued with the squad's
+route still attached), it returns no path. The fallback "rejoin through the route entry" is gated on `s.assignment.id`, a
+typed-task id that only the cognition and drills controllers set; a legacy order has none. So a legacy rifleman off the lane
+gets NO path, keeps action Advance, asks again every 2 s (`path_recovery`, `no_executable_path`) and stands until his order
+is replaced. One traced battle (map 39 seed 107, 200 s): 557 failed path requests against 687 executable ones among the
+attackers, every one with the man or the goal off the lane (462 man off / goal on, 76 both off, 19 goal off), none without
+a route. It predates the loop (the corridor is plan 010 era); plan 021's slots and the generation 16 flanks put more men off
+the lane and made it visible.
+
+Scratch experiment (`.local/loop/gen18/stall/scratch-fix.patch`, three lines: with no typed task and no corridor path the man
+takes his own cautious path to the goal), eight battles of `5b37f519e6320986` (maps 39, 28, 24, 26, seeds 107 and 108):
+soldier-seconds standing with a movement order 1224 to 90 a battle, `behind_corporal_share` 0.34 to 0.13, stragglers 10.3 %
+to 6.0 %, quiet squads 0.25 to 0, attackers lost 43 % to 36 %, seen 8.7 % to 10.2 %; attack score 0.762 to 0.727 on the
+mean, five battles better or equal and two much worse (24/108: 0.750 to 0.125, the attack fails to clear and loses 75 %;
+28/108: 0.812 to 0.547), so more men at the front is not yet more defenders out: not tuned, eight battles are noise-level for
+the score. A repair is an architect change in shared code that changes every legacy digest (20 legacy references, a seventh
+epoch for the legacy lineage; cognition and drills set the id and should stay bit-identical): the user's decision.
