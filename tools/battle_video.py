@@ -7,8 +7,8 @@ Attackers (team 0) are blue dots, one shade per squad, the corporal ringed; a re
 enemy has a clear line of sight on the man in that frame (observer truth, the same field the
 fights_from_cover guard counts). Defenders are orange squares. Walls are dark, low cover is tan.
 A corporal holding a Flank order is joined to its goal by a line. Rounds fired on the move (plan 019)
-are thick green lines; a green ring marks a man walking a covered detour instead of the shortest path
-(plan 020). Needs Pillow and ffmpeg.
+are thick green lines; a green ring marks a man walking a covered detour instead of the shortest path;
+a yellow ring marks a sprinting man, and the focus squad's mean stamina is read out in the header (plan 022). Needs Pillow and ffmpeg.
 """
 from __future__ import annotations
 import argparse, json, subprocess, sys
@@ -38,7 +38,7 @@ def load(run, start, end, stride):
             continue
         if frame['time'] > end:
             break
-        frames.append((frame['time'], [(s['id'], s['team'], s['squad'], bool(s['alive']), s['position'][0], s['position'][1], bool(s['observer_exposed']), s['task'], s['goal'][0], s['goal'][1], bool(s.get('covered_path'))) for s in frame['soldiers']]))
+        frames.append((frame['time'], [(s['id'], s['team'], s['squad'], bool(s['alive']), s['position'][0], s['position'][1], bool(s['observer_exposed']), s['task'], s['goal'][0], s['goal'][1], bool(s.get('covered_path')), bool(s.get('sprinting')), float(s.get('stamina') or 0), bool(s.get('winded'))) for s in frame['soldiers']]))
     shots = [json.loads(line) for line in open(run/'shots.jsonl') if line.strip()]
     boxes = []
     for line in open(run/'battlefield.army'):
@@ -94,6 +94,9 @@ def main():
     exposed_seconds = [0.0]*len(runs)
     moving_rounds = [0]*len(runs)
     covered_seconds = [0.0]*len(runs)
+    sprint_seconds = [0.0]*len(runs)
+    focus_stamina = [[] for _ in runs]
+    focus_winded = [0]*len(runs)
     cursor = [0]*len(runs)
     trails = [dict() for _ in runs]
     for i in range(count):
@@ -116,7 +119,7 @@ def main():
                 if s['hit']:
                     draw.ellipse([b[0] - 5, b[1] - 5, b[0] + 5, b[1] + 5], outline=(200, 0, 0, 255), width=2)
             attackers = defenders = 0
-            for sid, team, squad, alive, x, y, exposed, task, gx, gy, covered in soldiers:
+            for sid, team, squad, alive, x, y, exposed, task, gx, gy, covered, sprinting, stamina, winded in soldiers:
                 c = px(x, y, off)
                 if not (off <= c[0] < off + args.panel):
                     attackers += int(alive and team == 0); defenders += int(alive and team == 1)
@@ -146,16 +149,25 @@ def main():
                 if covered:
                     covered_seconds[r] += stride*step
                     draw.ellipse([c[0] - 8, c[1] - 8, c[0] + 8, c[1] + 8], outline=(0, 150, 60, 255), width=2)
+                if sprinting:
+                    sprint_seconds[r] += stride*step
+                    draw.ellipse([c[0] - 7, c[1] - 7, c[0] + 7, c[1] + 7], outline=(240, 200, 40, 255), width=2)
+                if focus:
+                    focus_stamina[r].append(stamina)
+                    focus_winded[r] += int(winded)
                 colour = SQUAD_BLUES[squad % 4] if focus else (150, 170, 205)
                 radius = 5 if focus else 4
                 draw.ellipse([c[0] - radius, c[1] - radius, c[0] + radius, c[1] + radius], fill=colour + (255,), outline=(0, 0, 0, 255) if corporal else None, width=2)
                 if corporal and focus:
                     draw.text((c[0] + 8, c[1] - 8), 'cpl', font=small, fill=(0, 0, 0, 255))
+            focused = f'squad {args.focus_squad}' if args.focus_squad is not None else 'attackers'
+            stamina_note = (f'    {focused} stamina {sum(focus_stamina[r])/len(focus_stamina[r]):.1f} s' + (f' ({focus_winded[r]} winded)' if focus_winded[r] else '')) if focus_stamina[r] else ''
+            focus_stamina[r] = []; focus_winded[r] = 0
             draw.rectangle([off, 0, off + args.panel, HEADER], fill=(250, 250, 247, 255))
             draw.text((off + 12, 6), label, font=big, fill=(0, 0, 0, 255))
             who = f'squad {args.focus_squad}' if args.focus_squad is not None else 'attackers'
             wide = args.panel >= 800
-            draw.text((off + 12, 36), f't = {t:5.0f} s    defenders left {defenders}    attackers left {attackers}    ' + (f'{who} seen by an enemy: {exposed_seconds[r]:.0f} soldier-seconds' if wide and not moving_rounds[r] else f'{who} seen: {exposed_seconds[r]:.0f} s') + (f'    fired on the move: {moving_rounds[r]}' if moving_rounds[r] else '') + (f'    on covered detours: {covered_seconds[r]:.0f} s' if covered_seconds[r] else ''), font=small, fill=(40, 40, 40, 255))
+            draw.text((off + 12, 36), f't = {t:5.0f} s    defenders left {defenders}    attackers left {attackers}    ' + (f'{who} seen by an enemy: {exposed_seconds[r]:.0f} soldier-seconds' if wide and not moving_rounds[r] else f'{who} seen: {exposed_seconds[r]:.0f} s') + (f'    fired on the move: {moving_rounds[r]}' if moving_rounds[r] else '') + (f'    on covered detours: {covered_seconds[r]:.0f} s' if covered_seconds[r] else '') + (f'    sprinting: {sprint_seconds[r]:.0f} s' if sprint_seconds[r] else '') + stamina_note, font=small, fill=(40, 40, 40, 255))
             if r:
                 draw.line([off, 0, off, height + HEADER], fill=(0, 0, 0, 255), width=2)
         ffmpeg.stdin.write(canvas.tobytes())

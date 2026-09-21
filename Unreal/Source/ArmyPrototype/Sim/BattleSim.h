@@ -255,6 +255,25 @@ struct PathCaution {
     float bodyHeight=1.3f;           // m; the standing body a path reveals
 };
 inline const PathCaution& Caution(){static const PathCaution table;return table;}
+// Stamina and the sprint to cover (plan 022). Every number the feature uses lives here, in one
+// place, so a later parameter search can reach it; nothing else carries them. Paces are
+// multiples of the man's own walking pace, capacity and recovery are seconds at stat 100.
+struct SprintTable {
+    float pace=1.6f;            // sprint pace of a rifleman at Speed 100, times his walking pace
+    float gunnerPace=1.35f;     // the gun is heavy: his own multiple of his own slower pace
+    float capacitySeconds=8;    // s of sprinting he holds at Endurance 100
+    float recoverySeconds=30;   // s from empty to full at rest at Endurance 100
+    float walkRecovery=.5f;     // fraction of the resting recovery rate while he is walking
+    float gunnerDrain=4.f/3.f;  // the gunner drains a third faster
+    float woundedHealth=55;     // health below this: no sprint (the existing wounded cutoff)
+    float windedSway=1.5f;      // sway amplitude multiplier at empty, fading to 1 at full
+    float windedAim=1.3f;       // aim-time multiplier at empty, fading to 1 at full
+    float lookAhead=6;          // m of the path ahead tested for a known enemy's sight
+    float checkSeconds=.5f;     // s between those tests; never one per tick per enemy
+    float lookThreats=95;       // m; a believed enemy farther than this is not tested (AssumedEnemyReach)
+    float minimumRun=4;         // m; a shorter hop (a peek, a duck, a slot adjustment) is walked
+};
+inline const SprintTable& Sprint(){static const SprintTable table;return table;}
 // What one path decision cost, for the trace and the battle totals. Never read by policy.
 struct PathChoice {
     bool searched=false,covered=false;
@@ -303,6 +322,10 @@ struct Config {
     // both parts, and --no-threat-aware-paths reproduces the pre-020 battle exactly.
     bool threatAwarePaths=true;
 
+    // Stamina and the sprint to cover (plan 022). On by default; --no-stamina reproduces the
+    // pre-022 battle exactly, and no stamina state is then digested.
+    bool stamina=true;
+
     bool drills=false;
     ScenarioFamily family=ScenarioFamily::None;
     uint32_t genSeed=1;
@@ -322,7 +345,7 @@ inline bool SameConfig(const Config& a,const Config& b) {
     // is selected: the resolved objective is derived from them and the map.
     if(a.staticDefence.layout!=b.staticDefence.layout)return false;
     if(a.staticDefence.layout!=DefenceLayout::None&&(a.staticDefence.defenders!=b.staticDefence.defenders||a.staticDefence.seed!=b.staticDefence.seed))return false;
-    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
 inline bool TypedController(const Config& c){return c.cognition||c.drills;}
@@ -477,6 +500,11 @@ struct Soldier {
     bool movingFire = false, reloadDeferred = false;
     // Plan 020: his current path was the covered alternative, not the shortest one.
     bool coveredPath = false;
+    // Plan 022, the three fields the animation layer reads: seconds of sprint left in him,
+    // the latch that keeps him at a walk until he is full again, and what the movement stage
+    // applied this tick. stamina starts at his capacity; with the feature off nothing moves.
+    float stamina = 8;
+    bool winded = false, sprinting = false;
     bool areaFire = false;
     bool holdingFire = false;
     float friendlyRisk = 0;
@@ -684,6 +712,18 @@ bool WalkingFire(const Soldier& soldier,float time);
 // factor at stats 100, less for a better soldier, more for a worse one.
 float WalkingFireRange(const Soldier& soldier);
 float MovePenalty(float factor,float statScale);
+// Stamina and the sprint (plan 022). Capacity and recovery come from endurance, the sprint
+// pace from speed. StaminaPenalty is exactly 1 at full stamina, so every formula it enters
+// keeps its pre-022 value while the feature is off. SprintTrigger is the user's rule on the
+// soldier's own state: revealedAhead is "the stretch of path ahead is in the sight of an
+// enemy he knows", which the movement stage measures for him.
+float StaminaCapacity(const Soldier& soldier);
+float SprintPace(const Soldier& soldier);
+float StaminaRecovery(const Soldier& soldier);
+bool CanSprint(const Soldier& soldier);
+float StaminaPenalty(const Soldier& soldier,float factorAtEmpty);
+bool SprintTrigger(const Soldier& soldier,bool revealedAhead,float remaining);
+void StepStamina(Soldier& soldier,bool sprinting,bool displaced,float seconds);
 float AimReady(const Soldier& soldier);
 float AimSeconds(const Soldier& soldier);
 float ShotSpread(const Soldier& soldier);
@@ -737,7 +777,9 @@ struct DecisionAlternatives;
 bool BetterCoverNearby(const Map& map,const Soldier& soldier,const std::vector<Vec3>& friendlyReservations,Tactics& memory,float time);
 // Plan 020's measure, for tests and tools: the seconds this walk would leave him with a clear
 // line to ONE enemy he knows, at his own pace; the figure is the worst single enemy.
-float PathRevealedSeconds(const Map& map,const Soldier& soldier,Vec3 from,const std::vector<Vec3>& path,float time);
+// stamina true charges the revealed stretches at the pace he will actually have: he sprints
+// them while his stamina lasts and walks the rest (plan 022).
+float PathRevealedSeconds(const Map& map,const Soldier& soldier,Vec3 from,const std::vector<Vec3>& path,float time,bool stamina=false);
 struct Order { Vec3 goal; Action action; Reason reason; Stance stance = Stance::Standing; };
 Order ChooseOrder(const Soldier& self, const Map& map, const Config& config,
     const std::vector<Vec3>& friendlyReservations, Tactics& memory, float time, DecisionAlternatives* alternatives=nullptr);

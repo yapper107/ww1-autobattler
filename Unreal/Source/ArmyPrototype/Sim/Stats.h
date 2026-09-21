@@ -6,10 +6,18 @@
 #include <cstddef>
 #include <cstdint>
 namespace army {
-enum class Stat { Perception, Dexterity, Toughness, Strength, Wisdom, Initiative, Composure, Count };
+enum class Stat { Perception, Dexterity, Endurance, Strength, Wisdom, Initiative, Composure, Speed, Count };
 constexpr size_t StatCount=size_t(Stat::Count);
+// The seven stats of the original sampler sequence. Speed (plan 022) is drawn from its own
+// hashed stream instead of an eighth step of that sequence, so every soldier of every earlier
+// battle keeps exactly the stats he had.
+constexpr size_t SampledStatCount=7;
+// Salt offset of the non-stat hashes (sway phases 0 and 1, recoil direction 2, speed 3).
+// Frozen at the original seven stats plus one, so adding a stat never moves them.
+constexpr uint64_t SoldierHashBase=SampledStatCount+1;
+constexpr uint32_t SpeedStatSalt=3;
 struct Stats {
-    std::array<float,StatCount> value{{100,100,100,100,100,100,100}};
+    std::array<float,StatCount> value{{100,100,100,100,100,100,100,100}};
     float Get(Stat s) const { return value[size_t(s)]; }
 };
 inline bool SameStats(const Stats& a,const Stats& b){return a.value==b.value;}

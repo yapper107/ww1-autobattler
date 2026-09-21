@@ -186,6 +186,7 @@ void NeutraliseStats(Frame& f) {
         if(wisdom>0)s.officer={std::min(1.f,s.officer.judgment/wisdom),s.officer.risk,std::min(1.f,s.officer.adaptability/wisdom),std::min(1.f,s.officer.communication/wisdom)};
         if(s.health==s.maxHealth)s.health=100;
         s.stats={};s.maxHealth=100;s.reactionBase=ReferenceReactionSeconds;
+        s.stamina=StaminaCapacity(s);s.winded=s.sprinting=false;
     }
 }
 // Built in place: a Frame is 1.5 MB, so the makers must not stack a temporary.
@@ -211,7 +212,8 @@ void InitialFrameInto(const Config& c,Frame& f) {
         s.swayPhase=float(SoldierHash(roster,rosterSlot,0)>>40)/16777216.f*6.28318531f;
         s.swayPhase2=float(SoldierHash(roster,rosterSlot,1)>>40)/16777216.f*6.28318531f;
         s.recoilSign=(SoldierHash(roster,rosterSlot,2)&1ull)?1.f:-1.f;
-        s.maxHealth=100*StatScale(s.stats.Get(Stat::Toughness));s.health=s.maxHealth;
+        s.maxHealth=100*StatScale(s.stats.Get(Stat::Endurance));s.health=s.maxHealth;
+        s.stamina=StaminaCapacity(s);
         EquipWeapon(s,{s.squad%SquadsPerTeam==0&&slot==SquadSize-1&&(s.team==1||c.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
         s.role=slot==0?Role::Sergeant:slot==1?Role::Corporal:s.machineGun?Role::MachineGunner:Role::Rifleman;
         if(s.squad%SquadsPerTeam==0&&slot==5)s.role=Role::Lieutenant;
@@ -292,14 +294,58 @@ bool FlankHoldsFire(const Soldier& s,float time) {
     for(const auto& ct:s.contacts)if(ct.known&&ct.visible&&time-ct.observedAt<=2&&Distance(s.position,ct.position)<=30)return false;
     return true;
 }
-bool WalkingFire(const Soldier& s,float time) {return AttackMovement(s)&&s.magazineRemaining>0&&!FlankHoldsFire(s,time);}
+bool WalkingFire(const Soldier& s,float time) {return !s.sprinting&&AttackMovement(s)&&s.magazineRemaining>0&&!FlankHoldsFire(s,time);}
+// Stamina and the sprint to cover (plan 022). Endurance owns the capacity and the recovery,
+// speed the pace; the gunner carries the weight both ways. Nothing here reads the map, an
+// enemy body or the Config: the movement stage applies config.stamina.
+float StaminaCapacity(const Soldier& s) {return Sprint().capacitySeconds*StatScale(s.stats.Get(Stat::Endurance));}
+float SprintPace(const Soldier& s) {return std::max(1.f,(s.machineGun?Sprint().gunnerPace:Sprint().pace)*StatScale(s.stats.Get(Stat::Speed)));}
+// Full again in recoverySeconds/endurance at rest: a tougher man holds more and refills sooner.
+float StaminaRecovery(const Soldier& s) {return StaminaCapacity(s)*StatScale(s.stats.Get(Stat::Endurance))/std::max(.01f,Sprint().recoverySeconds);}
+bool CanSprint(const Soldier& s) {return !s.winded&&s.stamina>0&&s.health>=Sprint().woundedHealth;}
+// Empty lungs cost him his aim and steadiness, fading linearly back as the stamina returns.
+// Exactly 1 at full stamina, so a fresh man, and every battle with the feature off, is
+// bit-identical to the pre-022 arithmetic.
+float StaminaPenalty(const Soldier& s,float atEmpty) {
+    const float capacity=StaminaCapacity(s);
+    if(capacity<=0||s.stamina>=capacity)return 1.f;
+    return 1+(atEmpty-1)*(1-s.stamina/capacity);
+}
+// One tick of the stamina clock, the only writer of stamina and of the winded latch. He
+// spends it only while sprinting, recovers at half the rate while walking and at the full
+// rate standing still, empties into winded and comes out of it only when he is FULL again
+// (the user's rule).
+void StepStamina(Soldier& s,bool sprinting,bool displaced,float seconds) {
+    const float capacity=StaminaCapacity(s);
+    if(sprinting) {
+        s.stamina=std::max(0.f,s.stamina-seconds*(s.machineGun?Sprint().gunnerDrain:1.f));
+        if(s.stamina<=0)s.winded=true;
+    } else {
+        s.stamina=std::min(capacity,s.stamina+seconds*StaminaRecovery(s)*(displaced?Sprint().walkRecovery:1.f));
+        if(s.stamina>=capacity)s.winded=false;
+    }
+}
+// The user's rule. A man moving under one of these runs; otherwise he walks and recovers.
+bool SprintTrigger(const Soldier& s,bool revealedAhead,float remaining) {
+    if(s.action==Action::Fire||s.action==Action::Hold||s.action==Action::Wounded||s.action==Action::Killed)return false;
+    // A peek, a duck or a slot adjustment is two metres: he walks those, as the path code
+    // leaves them alone, and a seated defender therefore never sprints.
+    if(remaining<Sprint().minimumRun)return false;
+    if(revealedAhead)return true;                                        // a stretch a known enemy watches
+    if(s.assignment.task==Task::PullBack||s.action==Action::Retreat)return true;  // a squad retreat
+    if(s.assignment.execution.rushSeconds>0)return true;                 // the bounded rush of a typed assault
+    if(s.action!=Action::Cover)return false;
+    if(s.suppression>Caution().underFireSuppression)return true;         // under fire, on his way to cover
+    return s.reason==Reason::EmergencyCover||s.reason==Reason::Contact||s.reason==Reason::Suppressed||
+        s.reason==Reason::Flanked||s.reason==Reason::Relocate;           // his reaction move into cover
+}
 float WalkingFireRange(const Soldier& s) {return s.gun.moving.range;}
 float MovePenalty(float factor,float scale) {return 1+(factor-1)/std::max(0.01f,scale);}
 float AimReady(const Soldier& s) {return s.movingFire?Clamp(s.gun.moving.aimCap,0.05f,1.f):1.f;}
 float AimSeconds(const Soldier& s) {
     const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
     return 0.45f/(s.gun.ergonomics*dexterity)*(1+3*s.suppression)*(s.health<55?1.3f:1.f)*
-        (s.movingFire?MovePenalty(s.gun.moving.aimSeconds,dexterity):1.f);
+        (s.movingFire?MovePenalty(s.gun.moving.aimSeconds,dexterity):1.f)*StaminaPenalty(s,Sprint().windedAim);
 }
 // The walk widens what the shooter contributes; the weapon's mechanical deviation stays.
 // The factor is exactly 1 when he is not moving, so a stationary shot is bit-identical.
@@ -315,7 +361,7 @@ float VerticalSpread(const Soldier& s) {
 float SwayAmplitude(const Soldier& s) {
     const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
     return 0.010f/(s.gun.ergonomics*dexterity)*(s.stance==Stance::Crouched?0.7f:1.f)*(1+2*s.suppression)*
-        (s.movingFire?MovePenalty(s.gun.moving.sway,dexterity):1.f);
+        (s.movingFire?MovePenalty(s.gun.moving.sway,dexterity):1.f)*StaminaPenalty(s,Sprint().windedSway);
 }
 Vec3 SwayOffset(const Soldier& s,float time) {
     // Two incommensurate periods, so the aim point wanders instead of retracing a closed figure.
@@ -513,16 +559,23 @@ static void KnownThreats(const Soldier& s,float time,std::vector<KnownThreat>& o
 }
 // The user's measure: the seconds the walk would leave him with a clear line to ONE enemy,
 // sampled every metre at his own pace. The path's figure is the worst single enemy.
-static float RevealedSeconds(const Map& map,Vec3 from,const std::vector<Vec3>& path,const std::vector<KnownThreat>& threats,float pace,std::vector<float>* perThreat=nullptr){
+// Plan 022: the pace he will actually have. A sample a known enemy can see is covered at the
+// sprint pace while his remaining stamina (budget, in seconds of sprinting) lasts, and at his
+// walking pace after that. budget 0 is the pre-022 measure, arithmetic included.
+static float RevealedSeconds(const Map& map,Vec3 from,const std::vector<Vec3>& path,const std::vector<KnownThreat>& threats,float pace,float sprintPace,float budget,std::vector<float>* perThreat=nullptr){
     if(perThreat)perThreat->assign(threats.size(),0.f);
     if(threats.empty()||path.empty())return 0;
-    std::vector<float> seconds(threats.size(),0.f);Vec3 previous=from;
+    std::vector<float> seconds(threats.size(),0.f);std::vector<char> seen(threats.size(),0);Vec3 previous=from;
     for(Vec3 end:path){
         const float length=Distance(previous,end);const int n=std::max(1,int(std::ceil(length/Caution().sampleStep)));
         const float share=length/float(n)/pace;
         for(int k=0;k<n;++k){
             const Vec3 at=previous+(end-previous)*((float(k)+.5f)/float(n)),body{at.x,at.y,at.z+Caution().bodyHeight};
-            for(size_t t=0;t<threats.size();++t)if(ClearLine3D(map,threats[t].eye,body))seconds[t]+=share;
+            bool revealed=false;
+            for(size_t t=0;t<threats.size();++t){seen[t]=ClearLine3D(map,threats[t].eye,body)?1:0;revealed|=seen[t]!=0;}
+            float taken=share;
+            if(revealed&&budget>0){taken=length/float(n)/sprintPace;budget-=taken;}
+            for(size_t t=0;t<threats.size();++t)if(seen[t])seconds[t]+=taken;
         }
         previous=end;
     }
@@ -534,16 +587,42 @@ static float PathLength(Vec3 from,const std::vector<Vec3>& path){float total=0;V
 // The pace the movement stage would give him; the gunner is slower. Suppression is left out:
 // the figure judges the whole crossing, not the instant he starts it.
 static float CautionPace(const Soldier& s){return std::max(.5f,(s.machineGun?2.55f:3.15f)*(s.understoodHealth<55?.72f:1.f));}
-float PathRevealedSeconds(const Map& map,const Soldier& s,Vec3 from,const std::vector<Vec3>& path,float time){
+float PathRevealedSeconds(const Map& map,const Soldier& s,Vec3 from,const std::vector<Vec3>& path,float time,bool stamina){
     std::vector<KnownThreat> threats;uint64_t known=0;KnownThreats(s,time,threats,known);
-    return RevealedSeconds(map,from,path,threats,CautionPace(s));
+    const float pace=CautionPace(s),sprint=stamina&&CanSprint(s)?pace*SprintPace(s):pace;
+    return RevealedSeconds(map,from,path,threats,pace,sprint,stamina&&CanSprint(s)?s.stamina:0.f);
+}
+// Plan 022, the trigger the soldier cannot read off his own order: is the next few metres of
+// his path in the sight of an enemy he knows? Bounded by the look-ahead, by the believed
+// reach of an enemy and by the check cadence of the caller, and it stops at the first line.
+static bool RevealedAhead(const Map& map,const Soldier& s,const std::vector<Vec3>& path,size_t cursor,float time){
+    if(cursor>=path.size())return false;
+    std::vector<KnownThreat> all;uint64_t known=0;KnownThreats(s,time,all,known);
+    std::vector<KnownThreat> threats;
+    for(const auto& threat:all)if(Distance(s.position,threat.position)<=Sprint().lookThreats)threats.push_back(threat);
+    if(threats.empty())return false;
+    float left=Sprint().lookAhead;Vec3 previous=s.position;
+    for(size_t i=cursor;i<path.size()&&left>0;++i){
+        const Vec3 end=path[i];const float length=Distance(previous,end),span=std::min(length,left);
+        const int n=std::max(1,int(std::ceil(span/Caution().sampleStep)));
+        for(int k=0;k<n;++k){
+            const float travel=span*(float(k)+.5f)/float(n);
+            const Vec3 at=length>.001f?previous+(end-previous)*(travel/length):previous;
+            const Vec3 body{at.x,at.y,at.z+Caution().bodyHeight};
+            for(const auto& threat:threats)if(ClearLine3D(map,threat.eye,body))return true;
+        }
+        left-=length;previous=end;
+    }
+    return false;
 }
 // Shortest first, and always the fallback: a failed, budget-exhausted or over-long covered
 // search can never leave a soldier without a path or send him across the map.
-static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,float time,PathChoice* choice){
+static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,const Config& c,float time,PathChoice* choice){
     auto shortest=FindPath(map,s.position,goal);
     if(shortest.empty())return shortest;
     const float pace=CautionPace(s),shortestLength=PathLength(s.position,shortest);
+    // The revealed stretches are charged at the pace he will actually have (plan 022).
+    const bool sprint=c.stamina&&CanSprint(s);const float sprintPace=sprint?pace*SprintPace(s):pace,budget=sprint?s.stamina:0.f;
     std::vector<KnownThreat> threats;uint64_t known=0;KnownThreats(s,time,threats,known);
     if(choice){choice->known=known;choice->shortestLength=shortestLength;}
     // A walk this short cannot reach the threshold however open it is, and a march with no
@@ -555,7 +634,7 @@ static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,
         if(near)break;}
     if(!near)return shortest;
     std::vector<float> perThreat;
-    const float shortestRevealed=RevealedSeconds(map,s.position,shortest,threats,pace,&perThreat);
+    const float shortestRevealed=RevealedSeconds(map,s.position,shortest,threats,pace,sprintPace,budget,&perThreat);
     if(choice){choice->searched=true;choice->shortestRevealed=shortestRevealed;choice->why="shortest under the threshold";}
     if(shortestRevealed<=Caution().revealedSeconds)return shortest;
     // The cost field carries only the enemies that actually reveal the shortest path: the
@@ -581,7 +660,7 @@ static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,
     const float coveredLength=PathLength(s.position,covered);
     if(choice)choice->alternativeLength=coveredLength;
     if(coveredLength>shortestLength*Caution().detour){if(choice)choice->why="covered detour longer than the limit";return shortest;}
-    const float coveredRevealed=RevealedSeconds(map,s.position,covered,threats,pace);
+    const float coveredRevealed=RevealedSeconds(map,s.position,covered,threats,pace,sprintPace,budget);
     if(choice)choice->alternativeRevealed=coveredRevealed;
     if(coveredRevealed<=Caution().revealedSeconds||coveredRevealed<=shortestRevealed*.5f){
         if(choice){choice->covered=true;choice->why=coveredRevealed<=Caution().revealedSeconds?"covered alternative under the threshold":"covered alternative halves the exposure";}
@@ -593,7 +672,7 @@ static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,
 std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,const Tactics& tactics,const Config& c,float time,PathChoice* choice){
     // Emergency shelter and peek moves are two metres long and must be instant; the covered
     // search is for the legs that cross ground.
-    auto cautious=[&](Vec3 to){return c.threatAwarePaths&&!tactics.emergency?CautiousPath(map,s,to,time,choice):FindPath(map,s.position,to);};
+    auto cautious=[&](Vec3 to){return c.threatAwarePaths&&!tactics.emergency?CautiousPath(map,s,to,c,time,choice):FindPath(map,s.position,to);};
     if(s.assignment.id&&s.assignment.hasSlot&&!tactics.emergency){
         const auto& slot=s.assignment.slot;
         const bool localGoal=Distance(goal,slot.peek)<.05f||Distance(goal,slot.shelter)<.05f;
@@ -617,7 +696,7 @@ std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,co
     }
     return cautious(goal);
 }
-struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999};int burstRounds=0,burstLength=0,bursts=0;
+struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;float nextSprintCheck=0;bool revealedAhead=false;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999};int burstRounds=0,burstLength=0,bursts=0;
     uint64_t pathKnown=0;CoverRule lastCoverRule=CoverRule::None; };
 struct Projectile { Vec3 p,velocity;int owner;size_t shot;float mass=0,dragK=0;std::array<bool,UnitCount> suppressed{},struck{}; bool delivered=false; };
 // Decision code receives only self/remembered contacts and friendly positions.
@@ -1253,6 +1332,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         }
         for(auto& s:f.soldiers) if(s.Active()) {
             auto& a=run[s.id];
+            const Vec3 stood=s.position;s.sprinting=false;
             if(a.cursor>=a.path.size())s.coveredPath=false; // the detour is over once he has walked it
             if(f.time>=a.nextPathCheck) {
                 const bool moving=s.action!=Action::Fire&&s.action!=Action::Hold&&Distance(s.position,s.goal)>0.7f;
@@ -1265,7 +1345,8 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     std::vector<KnownThreat> threats,fresh;uint64_t known=0;KnownThreats(s,f.time,threats,known);
                     for(const auto& threat:threats)if(!((a.pathKnown>>threat.id)&1))fresh.push_back(threat);
                     std::vector<Vec3> remaining(a.path.begin()+long(a.cursor),a.path.end());
-                    if(!fresh.empty()&&RevealedSeconds(r.map,s.position,remaining,fresh,CautionPace(s))>Caution().revealedSeconds){
+                    const float pace=CautionPace(s);const bool sprint=c.stamina&&CanSprint(s);
+                    if(!fresh.empty()&&RevealedSeconds(r.map,s.position,remaining,fresh,pace,sprint?pace*SprintPace(s):pace,sprint?s.stamina:0.f)>Caution().revealedSeconds){
                         a.path=executionPath(s,s.goal,f.time);a.cursor=0;
                         if(s.assignment.id&&!a.tactics.emergency)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);
                         TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_rethreat",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
@@ -1277,10 +1358,15 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(c.recoveryFixture||TypedController(c))while(a.cursor+1<a.path.size()&&Distance(s.position,a.path[a.cursor])<.35f&&
                     std::abs(s.position.z-a.path[a.cursor+1].z)<.05f&&ClearLine(r.map,s.position,a.path[a.cursor+1],.48f))++a.cursor;
                 Vec3 dest=a.path[a.cursor];float dist=Distance(s.position,dest);
+                // The sprint (plan 022). The revealed-stretch trigger is measured on its own
+                // half-second cadence, never once per tick per enemy; every other trigger is
+                // his own order and state. The factor is exactly 1 when he walks.
+                if(c.stamina&&f.time>=a.nextSprintCheck){a.revealedAhead=RevealedAhead(r.map,s,a.path,a.cursor,f.time);a.nextSprintCheck=f.time+Sprint().checkSeconds;}
+                s.sprinting=c.stamina&&CanSprint(s)&&SprintTrigger(s,a.revealedAhead,Distance(s.position,s.goal));
                 // Walking fire costs pace: the flag is what the firing stage measured at the
                 // end of the previous tick, so a man who opens fire slows from the next step.
                 float speed=(s.machineGun?2.55f:3.15f)*(s.health<55?0.72f:1.f)*(1-s.suppression*0.45f)*(s.stance==Stance::Crouched?0.6f:1.f)*
-                    (s.movingFire?s.gun.moving.pace:1.f);
+                    (s.movingFire?s.gun.moving.pace:1.f)*(s.sprinting?SprintPace(s):1.f);
                 Vec3 dir=Normal(dest-s.position);Vec3 next=s.position+dir*std::min(dist,speed*TickSeconds);
                 if(TypedController(c)&&f.time<a.avoidUntil&&!OnStairs(r.map,s.position)){
                     // A short, collision-checked sidestep breaks a friendly crowd deadlock.
@@ -1309,6 +1395,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     s.position=dest;++a.cursor; // reach the corner/floor exactly before turning
                 }
             }
+            if(c.stamina)StepStamina(s,s.sprinting,Distance(stood,s.position)>1e-4f,TickSeconds);
         }
         r.diagnostics->movement+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         // Swept 3D ballistics at 200 Hz. A round born at this tick boundary starts
@@ -1360,7 +1447,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     shot.hit=true;shot.target=shot.victims.front().soldier;
                     event(EventKind::Hit,b.owner,hit,std::string(Name(b.owner))+" hit "+Name(hit));r.events.back().time=endTime;
                     if(!victim.Active()) {
-                        victim.action=rng.Next()<0.55f?Action::Wounded:Action::Killed;victim.reason=Reason::Down;victim.aim=0;victim.aimTarget=-1;victim.movingFire=false;
+                        victim.action=rng.Next()<0.55f?Action::Wounded:Action::Killed;victim.reason=Reason::Down;victim.aim=0;victim.aimTarget=-1;victim.movingFire=false;victim.sprinting=false;
                         run[hit].tactics.assigned=false;
                         for(auto& contact:victim.contacts) contact.visible=false;
                         event(EventKind::Casualty,hit,b.owner,std::string(Name(hit))+(victim.action==Action::Killed?" killed in action":" incapacitated"));

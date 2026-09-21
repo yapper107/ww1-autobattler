@@ -6,12 +6,18 @@ decisions are in [plan 017](../plans/017-stat-system.md). Phases: 1 stats and fi
 
 ## Stats
 
-Seven stats on a base of 100: perception, dexterity, toughness, strength, wisdom, initiative,
-composure (`Sim/Stats.h`). `StatScale(value) = value / 100` is the single hook where a curve can
-replace linearity. Strength is stored and traced but has no consumer yet.
+Eight stats on a base of 100: perception, dexterity, **endurance**, strength, wisdom, initiative,
+composure and **speed** (`Sim/Stats.h`). `StatScale(value) = value / 100` is the single hook where a
+curve can replace linearity. Strength is stored and traced but has no consumer yet. Endurance is the
+stat plan 017 called *toughness*, renamed by the user on 20 September 2026: it keeps max health and
+additionally owns stamina capacity and recovery. Speed is the eighth stat, added by plan 022 for the
+sprint pace.
 
-Each stat of each soldier is rolled independently from a splitmix64 hash of the roster seed, the
-soldier slot and the stat index. The battle RNG is never consumed. `Config::rosterSeed` defaults to 0,
+The first seven stats of each soldier are rolled independently from a splitmix64 hash of the roster
+seed, the soldier slot and the stat index, in the order above. Speed is NOT an eighth step of that
+sequence: it is drawn from its own salted stream (`SoldierHash(roster, slot, 3)`, beside the sway
+phases and the recoil direction) through the same inverse CDF, so every soldier of every earlier
+battle keeps exactly the seven stats, sway phases and recoil direction he had. The battle RNG is never consumed. `Config::rosterSeed` defaults to 0,
 meaning "use the battle seed"; the same roster seed across battle seeds keeps the same soldiers.
 Under `equalTroops` both teams hash on the slot within the team so mirrored soldiers are identical.
 
@@ -32,7 +38,8 @@ battles roll the mixture.
 | Stat | Effect |
 |---|---|
 | Initiative | `reactionBase = 0.425 s / StatScale(initiative)` |
-| Toughness | `maxHealth = 100 * StatScale(toughness)`; the wounded cutoff stays a literal 55 |
+| Endurance | `maxHealth = 100 * StatScale(endurance)`; the wounded cutoff stays a literal 55; stamina capacity and recovery below |
+| Speed | sprint pace below; nothing else |
 | Composure | near miss `+0.23 / StatScale`, hit `+0.30 / StatScale`, decay `0.15 per s * StatScale`; thresholds untouched |
 | Perception | `SightRange = gun.engagementRange * StatScale`; cognition `detectionDelay / StatScale`; aim error below |
 | Wisdom | officer judgment, adaptability and communication are the config profile times `StatScale`, clamped to 1; risk untouched. Every report a soldier sends arrives after `base / StatScale(sender wisdom)`. Judgment attenuates estimate bias for all controllers. Drills assessment pause `3 s / StatScale + reactionBase` |
@@ -325,11 +332,84 @@ manifest carries `threat_aware_paths`, `path_choices`, `covered_paths`, `covered
 `path_revealed_seconds` and `covered_revealed_seconds`, so the rate is readable from a trace-free
 export. `scripts/test-sim.sh --paths` is the mechanism group (also part of the default suite).
 
+## Stamina and the sprint to cover (plan 022)
+
+A soldier has one walking pace (3.15 m/s, the gunner 2.55 m/s, less when wounded, suppressed or
+crouched). Plan 022 adds a second gear he pays for. One table, `SprintTable` in `Sim/BattleSim.h`
+with `Sprint()` as its single accessor; one switch, `Config::stamina` (`--no-stamina`), which
+reproduces the pre-022 battle bit for bit.
+
+| Quantity | Value at stat 100 | Scaling |
+|---|---|---|
+| Sprint pace | 1.6 times his own walking pace (about 5.0 m/s) | `* StatScale(speed)`, never below 1 |
+| Machine gunner's sprint | 1.35 times his own slower pace (about 3.4 m/s) | the same |
+| Capacity | 8 s of sprinting (about 40 m) | `* StatScale(endurance)` |
+| Drain | 1 s of stamina per second sprinting; the gunner 4/3 | the weight of the gun |
+| Recovery | empty to full in 30 s standing still | `capacity * StatScale(endurance) / 30` per second |
+| Recovery while walking | half that rate | |
+| Recovery while sprinting | none | |
+| Wounded | health below 55: no sprint | the existing wounded cutoff |
+| Winded aim time | `AimSeconds` x1.3 at empty | fading linearly to x1 at full |
+| Winded sway | `SwayAmplitude` x1.5 at empty | fading linearly to x1 at full |
+| Look-ahead | 6 m of path, tested every 0.5 s, enemies within 95 m | cost bound, not policy |
+| Shortest run | 4 m: a peek, a duck or a slot adjustment is walked | |
+
+`StaminaCapacity`, `SprintPace`, `StaminaRecovery`, `CanSprint`, `StaminaPenalty` and `StepStamina`
+are in `Sim/BattleSim.cpp`. `StaminaPenalty(soldier, atEmpty) = 1 + (atEmpty-1)*(1 - stamina/capacity)`
+is **exactly 1** at full stamina, so a fresh man's aim and sway keep their pre-022 values and the
+factor changes no float association.
+
+### When he sprints (the user's rule)
+
+He must be moving, able (not winded, stamina left, health at or above 55) and still at least 4 m
+from his goal. Then any one of:
+
+1. the stretch of path just ahead of him is in the sight of an enemy he **knows** (plan 020's
+   `KnownThreats`, sampled every metre over the next 6 m, re-tested every 0.5 s so he is already
+   running when he enters the open);
+2. a squad retreat (`Task::PullBack` or `Action::Retreat`), or the bounded rush of a typed assault
+   (`ExecutionContract::rushSeconds`, which the drills controller sets for an assault bound);
+3. he is under fire (`suppression` above plan 020's under-fire threshold) and is moving to cover;
+4. his move to cover is a reaction: `Reason::EmergencyCover`, `Contact`, `Suppressed`, `Flanked` or
+   `Relocate`, whatever order he holds.
+
+Otherwise he walks and recovers. `SprintTrigger(soldier, revealedAhead, remaining)` is the whole
+rule and is shared by every controller: legacy, cognition and drills soldiers obey it, and a seated
+static defender never sprints, because shelter-to-peek is under the 4 m minimum.
+
+### The latch and the cost
+
+`winded` is set the moment stamina reaches zero and is cleared **only when it is full again** (the
+user's ruling), so a man who burns his stamina crossing the first street walks the second one. He
+cannot fire while sprinting (`WalkingFire` returns false) and may fire again the instant he drops to
+a walk. While his stamina is down his aim time and sway carry the winded factors above.
+
+### The plan 020 coupling
+
+`RevealedSeconds` now charges the revealed stretches of a candidate path at the pace he will
+actually have: samples an enemy can see are covered at his sprint pace while his remaining stamina
+lasts and at his walking pace after that, so a gap he can sprint counts for fewer seconds and one he
+must walk counts for more. With `--no-stamina`, with a winded man or with a wounded one the budget is
+zero and the measure is the pre-022 arithmetic exactly. `PathRevealedSeconds(..., stamina)` exports
+the same measure for tests and tools.
+
+### Evidence
+
+`Soldier::stamina`, `Soldier::winded` and `Soldier::sprinting` are plain public fields: the Unreal
+animation layer reads them, the HUD prints them, `evaluation.jsonl` carries `stamina`, `winded` and
+`sprinting` per soldier, and the trace entry carries all three. They are folded into the gameplay
+digest **only when `Config::stamina` is on**, as is the speed stat itself, so every historical digest
+is unchanged and `--no-stamina` is a provable off switch. The manifest carries `stamina`.
+`scripts/test-sim.sh --stamina` is the mechanism group (also part of the default suite):
+the table, the clock, the latch, the triggers, the speed stat's own stream, the crossing estimate
+and one crossing battle under both controllers.
+
 ## Verification and references
 
 `scripts/test-sim.sh --stats` runs the stat suite, including the walking-fire table, its stat
 scaling and the rule for who may use it; `scripts/test-sim.sh --moving-fire` runs the crossing
-mechanism pair and `--paths` the threat-aware path and cover-rule group (both part of the default suite). Reference digests for the 40 authored battles are
+mechanism pair, `--paths` the threat-aware path and cover-rule group and `--stamina` the sprint group
+(all part of the default suite). Reference digests for the 40 authored battles are
 regenerated after each phase into `.local/baselines/{legacy,candidate90}/{works,trenches}`; the
 pre-017 references are archived under `.local/baselines-pre017/<phase>/`. Weapon values and the
 energy constants are chosen once from the pre-017 abstraction and physical reasoning; they are never

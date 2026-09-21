@@ -54,9 +54,9 @@ static void StatGenerationTests() {
      for(int id=0;id<TeamSize;++id)assert(SameStats(mirrored->soldiers[id].stats,mirrored->soldiers[id+TeamSize].stats));}
     bool asymmetric=false;for(int id=0;id<TeamSize;++id)asymmetric|=!SameStats(plain->soldiers[id].stats,plain->soldiers[id+TeamSize].stats);
     assert(asymmetric);
-    // Toughness owns max health, initiative owns reaction time.
+    // Endurance owns max health, initiative owns reaction time.
     for(const auto& s:plain->soldiers) {
-        assert(std::abs(s.maxHealth-100*StatScale(s.stats.Get(Stat::Toughness)))<1e-3f);
+        assert(std::abs(s.maxHealth-100*StatScale(s.stats.Get(Stat::Endurance)))<1e-3f);
         assert(s.health==s.maxHealth);
         assert(std::abs(s.reactionBase-.425f/StatScale(s.stats.Get(Stat::Initiative)))<1e-4f);
     }
@@ -154,8 +154,7 @@ static void BallisticEnergyTests() {
     std::cout<<"STATS ballistics: muzzle "<<energyAt(0)<<" J, 300 m speed "<<speed<<" m/s, 100 m loss "
              <<HitDamage(close,1.f)<<" health, first body lets "<<through<<" J out PASS\n";
 }
-static void OverPenetrationTests(const Record& r) {
-    size_t withVictims=0,penetrating=0,stopped=0;
+static void OverPenetrationTests(const Record& r,size_t& withVictims,size_t& penetrating,size_t& stopped) {
     for(const auto& shot:r.shots) {
         assert(shot.hit==!shot.victims.empty());
         if(shot.victims.empty())continue;
@@ -176,8 +175,6 @@ static void OverPenetrationTests(const Record& r) {
         if(DepositedEnergy(terminal)==terminal){++stopped;assert(shot.impact==Shot::Impact::Soldier);}
         else assert(shot.impact!=Shot::Impact::Soldier);
     }
-    assert(withVictims>0&&penetrating>0&&stopped>0);
-    std::cout<<"STATS over-penetration: "<<withVictims<<" shots with victims, "<<penetrating<<" through more than one body, "<<stopped<<" stopped in a body PASS\n";
 }
 // Plan 017 phase 3: the sway wander, the recoil kick and its decay.
 static void SwayAndRecoilTests() {
@@ -313,7 +310,16 @@ static void MovingFireRuleTests() {
 static void StatBattleTests() {
     Config c;c.maxSeconds=120;const auto record=std::make_unique<Record>(Simulate(c));const auto& r=*record;
     assert(!r.shots.empty());
-    OverPenetrationTests(r);
+    // The per-shot bookkeeping is checked on every shot of every battle here. A round through
+    // TWO bodies is rare enough that one battle may legitimately produce none, so its
+    // existence is asserted over three seeds rather than over this one battle.
+    size_t withVictims=0,penetrating=0,stopped=0;
+    OverPenetrationTests(r,withVictims,penetrating,stopped);
+    for(uint32_t seed:{108u,109u}){Config other=c;other.seed=seed;
+        const auto extra=std::make_unique<Record>(Simulate(other));OverPenetrationTests(*extra,withVictims,penetrating,stopped);}
+    assert(withVictims>0&&penetrating>0&&stopped>0);
+    std::cout<<"STATS over-penetration: over three battles "<<withVictims<<" shots with victims, "<<penetrating
+             <<" through more than one body, "<<stopped<<" stopped in a body PASS\n";
     // Every recorded frame keeps the weapon invariants.
     for(const auto& f:r.frames)for(const auto& s:f.soldiers) {
         assert(s.machineGun==(s.gun.action==WeaponAction::Automatic));

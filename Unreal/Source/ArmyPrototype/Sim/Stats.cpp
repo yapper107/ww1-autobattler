@@ -23,10 +23,12 @@ float SampleStat(const StatDistribution& d,float u){
 static uint64_t Mix(uint64_t x){x+=0x9e3779b97f4a7c15ull;x=(x^(x>>30))*0xbf58476d1ce4e5b9ull;x=(x^(x>>27))*0x94d049bb133111ebull;return x^(x>>31);}
 Stats GenerateStats(const StatDistribution& d,uint32_t rosterSeed,int slot){
     Stats s;const uint64_t soldier=Mix((uint64_t(rosterSeed)<<32)^uint64_t(uint32_t(slot)));
-    for(size_t k=0;k<StatCount;++k)s.value[k]=SampleStat(d,float(Mix(soldier+(k+1)*0x9e3779b97f4a7c15ull)>>40)/16777216.f);
+    for(size_t k=0;k<SampledStatCount;++k)s.value[k]=SampleStat(d,float(Mix(soldier+(k+1)*0x9e3779b97f4a7c15ull)>>40)/16777216.f);
+    // Speed comes from its own salted stream, never from a step of the sequence above.
+    s.value[size_t(Stat::Speed)]=SampleStat(d,float(SoldierHash(rosterSeed,slot,SpeedStatSalt)>>40)/16777216.f);
     return s;
 }
 uint64_t SoldierHash(uint32_t rosterSeed,int slot,uint32_t salt){
-    return Mix(Mix((uint64_t(rosterSeed)<<32)^uint64_t(uint32_t(slot)))+(uint64_t(salt)+StatCount+1)*0x9e3779b97f4a7c15ull);
+    return Mix(Mix((uint64_t(rosterSeed)<<32)^uint64_t(uint32_t(slot)))+(uint64_t(salt)+SoldierHashBase)*0x9e3779b97f4a7c15ull);
 }
 }

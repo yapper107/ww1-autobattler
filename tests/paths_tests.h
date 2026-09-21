@@ -58,7 +58,9 @@ static void PathChoiceTests(){
         assert(choice.shortestRevealed>Caution().revealedSeconds);
         assert(choice.alternativeLength<=choice.shortestLength*Caution().detour);
         assert(choice.alternativeRevealed<=Caution().revealedSeconds||choice.alternativeRevealed<=choice.shortestRevealed*.5f);
-        assert(PathRevealedSeconds(near,s,start,path,10)==choice.alternativeRevealed);
+        // The recorded figure is measured at the pace he will actually have (plan 022), so the
+        // exported measure is asked for the same thing.
+        assert(PathRevealedSeconds(near,s,start,path,10,on.stamina)==choice.alternativeRevealed);
         float south=0;for(Vec3 p:path)south=std::min(south,p.y);
         assert(south<-4); // He went behind the screen rather than down the street.
         std::cout<<"PATHS: street "<<choice.shortestLength<<"m revealed "<<choice.shortestRevealed
