@@ -719,3 +719,18 @@ the last of the night): the rifle group moves with its corporal; the forward-hol
 position must be forward, on the bound just dropped and bearing on a known enemy (the user's guess that the generation 16
 rule pins men back was right on reading the code: it never tests that the holder is forward); why the third and fourth
 squads engage late; how the flank's side is chosen; the platoon sergeant attached to squad 0 follows in cover.
+
+**Generation 17 results (21 September 2026, the last of the night; all five pass every guard under v7, scored against the
+parent `8835da3260c710b7`, development 0.803):** a held position must be a real one `19ff60129be5c49b` +0.001 (traced: of 9
+cycles in which the generation 16 rule anchored a group on a holder, none had a line of fire, one was behind his corporal,
+one had no enemy known; the rework fires in 7 of 60 battles); the corporal holds 4 s when a bound starts
+`8946560782173e62` -0.010, seen 4.22 to 3.21, friendly hits 6.4 to 5.3, value 0.736, and `behind_corporal_share`
+unchanged at 0.34 although the proposer's own 14 battles showed -0.06; a job at once for the squad without a line
+`05e33312c6b5bf9a` -0.013; flank positions checked against every known enemy `d014d4ca75496fdc` -0.021; platoon staff
+follow in cover `2a96cebbbeec352a` -0.030 (the under-fire cover rule freezes them in transit). Stack of the first two,
+`5b37f519e6320986`: development 0.786 (-0.017 against the parent), seen 3.27, friendly hits 5.35, value 0.733, every guard;
+videos against plan 021 sent to the user. Open and first for the next session: nothing moved `behind_corporal_share`, and
+the late-squads trace found that `PlanPlatoon` re-scores the mover every 8 s and hands the flank to another squad before
+the first arrives (map 34: squad 3 is made mover three times and first fires at 251 s): a sticky mover. With one known
+contact the flank's side is close to a coin flip on unseen ground. Proposers' full suites exceed the harness's 10 minute
+foreground limit when three run beside an evaluation: split the suite in the next brief.
