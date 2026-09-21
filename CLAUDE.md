@@ -214,6 +214,10 @@ the fight fall to 92.0 %, failing `force_at_the_fight`). Videos of the four surv
 bound (16 of 30 GB, load 4 to 6 of 16 cores): the wait is proposer time; next brief: the architect runs the parent's suite
 once for all, six check battles at a time per proposer.
 
+**Queued for after the AI iterations (user, 21 September 2026):** one shared-code change that keeps soldiers away from enemies
+they know about (shelter, flank and bound goals, path cost), re-rooting all three controllers, and the decision on the
+`MGEncounterTests` backstop: see the section of that name at the end of plan 018. Not while generations are running.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two

@@ -858,3 +858,24 @@ It is rare: attackers spend about 18 soldier-seconds a battle within 6 m of a li
 battles with score +0.024 and attackers lost 36.5 % to 34.4 % (noise-level), and did nothing on map 28 itself, where the
 rest is the flank goal's and the path's nearness to OTHER known enemies. Shared code: a repair re-roots all three
 controllers; not landed; proposed to the user for the next shared-code change.
+
+
+## Queued for after the AI iterations (user, 21 September 2026: "once we finish here we can put in that change, make a note of it for later")
+
+**Keep soldiers away from enemies they know about: one shared-code change, landed once, re-rooting all three controllers.**
+Not to be done while generations are running. Three parts, to be designed and measured together:
+1. Shelter: the shared cover search (`ChooseOrder`'s candidate loop in `BattleSim.cpp`) refuses, or heavily charges, cover
+   within about 10 m of any enemy the soldier has known of in the last 30 s, not only cover exposed to VISIBLE contacts
+   (the traced case: a wounded man sheltered against the outside wall of the house a defender was in, 2 m from him).
+   Scratch patch and six-battle measurement: `.local/loop/gen19/shelter/scratch-shelter.patch` (time within 6 m of a living
+   defender 18 to 13 soldier-seconds a battle; score and losses inside the noise).
+2. Goals: a flank or bound destination is qualified against EVERY known enemy, not only the tracked one (the traced flank
+   goal was 17 m from a second defender). A legacy-only version of this lost score in generation 17
+   (`d014d4ca75496fdc`, -0.021, and thrashing at heavier weights): it needs hysteresis and a distance rule, not a score
+   penalty re-evaluated every second.
+3. Paths: the soldier path cost (plan 020's `CautiousPath`) charges for passing close to a known enemy, not only for
+   seconds in his sight.
+Procedure as for the path fix: a `Config` switch with a CLI off flag that reproduces the previous digests, a pin test,
+lean references regenerated (`tools/verify/`), both lineages re-rooted, the best nodes carried over.
+Also open for the same moment: the `MGEncounterTests` backstop (`dislodged==3`, a chaotic three-seed outcome that reads
+2 of 3 on the succession node): relax to at least 2 of 3, replace it, or keep it as a warning: the user's decision.

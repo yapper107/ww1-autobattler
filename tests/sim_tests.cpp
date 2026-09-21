@@ -624,11 +624,13 @@ static void ReassessmentTests() {
     auto orders=PlanSquad(leader,squad,map,config,cmd,30);bool follows=false;
     for(const auto& o:orders)if(o.recipient==7)follows=o.task==Task::Rally&&o.position.x>15;
     assert(follows);
-    // The sergeant becomes the point when the corporal can no longer lead.
+    // Someone takes the point when the corporal can no longer lead: the sergeant (the original design) or, by the
+    // user's ruling of 21 September 2026 ("he should have passed his command to his second in command, and further
+    // down the chain"), the next able rifleman. Never the fallen corporal, never the support, never nobody.
     for(bool dead:{false,true}) {
         squad[1].health=dead?0:35;leader.knownWounded[1]=!dead;
         auto plan=PlanSquad(leader,squad,map,config,cmd,30);bool leads=false;
-        for(const auto& o:plan)if(o.recipient==leader.id)leads=o.task==Task::Advance&&Distance(o.position,cmd.mission)<0.01f;
+        for(const auto& o:plan)if(o.recipient!=1&&o.recipient!=cmd.support&&o.task==Task::Advance&&Distance(o.position,cmd.mission)<0.01f)leads=true;
         assert(leads);
     }
     for(auto& unit:squad){unit.health=unit.understoodHealth=35;leader.knownWounded[unit.id]=true;}
