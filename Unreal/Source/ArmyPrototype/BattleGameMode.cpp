@@ -189,7 +189,7 @@ void ABattleGameMode::BuildScene() {
     for(int I=0;I<army::UnitCount;++I) {
         if(Characters) {
             auto* V=GetWorld()->SpawnActor<ASoldierVisual>();
-            if(V->Initialize(Preparation->soldiers[I].team,(I%4)>=2,FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview"))?I%2==1:Preparation->soldiers[I].machineGun)){SceneActors.Add(V);Units.Add(V);continue;}
+            if(V->Initialize(Preparation->soldiers[I].team,(I%4)>=2,(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview"))||IsArtShowcase())?I%2==1:Preparation->soldiers[I].machineGun)){SceneActors.Add(V);Units.Add(V);continue;}
             V->Destroy();
         }
         auto* Body=Shape(Cylinder,FVector::ZeroVector,FVector(0.65f,0.65f,1.12f),I<army::TeamSize?Azure:Ember);
@@ -375,6 +375,7 @@ void ABattleGameMode::Command(FName Id) {
 }
 void ABattleGameMode::Tick(float Dt) {
     Super::Tick(Dt);RealSeconds+=Dt;
+    if(IsArtShowcase()){ShowArtShowcase();return;}
     if(GeneratorProcess.IsValid()&&FPlatformTime::Seconds()-GeneratorStartedAt>30){
         FPlatformProcess::TerminateProc(GeneratorProcess,true);FPlatformProcess::CloseProc(GeneratorProcess);GeneratorProcess.Reset();Notice=TEXT("Map generation timed out; previous map retained");
     }
@@ -435,6 +436,43 @@ void ABattleGameMode::Tick(float Dt) {
         DrawDebugCircle(GetWorld(),P,95,24,FColor::White,false,-1,0,3,FVector(1,0,0),FVector(0,1,0),false);
     }
     SmokeTest(Dt);
+}
+bool ABattleGameMode::IsArtShowcase() const {return FParse::Param(FCommandLine::Get(),TEXT("ArmyArtShowcase"));}
+bool ABattleGameMode::IsRifleShowcase() const {return FParse::Param(FCommandLine::Get(),TEXT("ArmyArtRifle"));}
+void ABattleGameMode::ShowArtShowcase() {
+    const bool RifleView=IsRifleShowcase(),Capture=FParse::Param(FCommandLine::Get(),TEXT("ArmyArtCapture"));
+    const FVector StageOrigin(0,-Battle.map.halfHeight*100-10000,0);
+    if(!ArtStageReady) {
+        Selected=-1;
+        for(auto A:SceneActors)if(A&&A!=Camera&&!A->IsA<ADirectionalLight>()&&!A->IsA<ASkyLight>())A->SetActorHiddenInGame(true);
+        Shape(TEXT("/Engine/BasicShapes/Cube.Cube"),StageOrigin+FVector(0,0,-8),FVector(100,100,.1),FLinearColor(.075f,.095f,.11f));
+        ArtStageReady=true;
+    }
+    if(Capture&&FScreenshotRequest::IsScreenshotRequested())return;
+    const double Playback=Capture?ArtCaptureFrame/30.:std::fmod(double(RealSeconds),24.);
+    ArtShowcaseSlow=Playback>=8;ArtShowcaseTime=ArtShowcaseSlow?float((Playback-8)*.5):float(Playback);
+    const float T=ArtShowcaseTime;
+    const FRotator View(RifleView?-8:-10,RifleView?110:135,0);
+    const FVector Right=FVector::CrossProduct(FVector::UpVector,FRotator(0,View.Yaw,0).Vector());
+    const FVector Center=StageOrigin+(RifleView?FVector(32,0,126):FVector(0,0,105));
+    Camera->SetActorRotation(View);Camera->SetActorLocation(Center-View.Vector()*22000);
+    Camera->GetCameraComponent()->OrthoWidth=RifleView?260:740;
+    const int Order[]={3,0,1,2};
+    for(int J=0;J<4;++J)if(auto* V=Cast<ASoldierVisual>(Units[Order[J]])) {
+        const bool Visible=!RifleView||J==1;V->SetActorHiddenInGame(!Visible);if(!Visible)continue;
+        V->SetActorLocation(StageOrigin+(RifleView?FVector::ZeroVector:Right*((J-1.5f)*165)));V->SetActorRotation(FRotator::ZeroRotator);
+        armyvisual::State S;S.aim=RifleView?armyvisual::Smooth((T-.5f)/.8f):1;
+        if(RifleView){S.handling.lastShot=2;S.handling.reloadStart=4;S.handling.reloadEnd=6.5;}
+        V->Present(S,RifleView?T:1.5);
+    }
+    if(Capture&&RealSeconds>2) {
+        const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots/ArtShowcase");IFileManager::Get().MakeDirectory(*Dir,true);
+        if(RifleView&&ArtCaptureFrame<720) {
+            FScreenshotRequest::RequestScreenshot(Dir/FString::Printf(TEXT("rifle-%04d.png"),ArtCaptureFrame),false,false);++ArtCaptureFrame;
+        } else if(!RifleView&&ArtCaptureFrame==0) {
+            FScreenshotRequest::RequestScreenshot(Dir/TEXT("lineup.png"),false,false);++ArtCaptureFrame;
+        } else FGenericPlatformMisc::RequestExit(false);
+    }
 }
 void ABattleGameMode::AdjustCamera(float YawDelta,float PitchDelta) {
     CameraYaw=FMath::UnwindDegrees(CameraYaw+YawDelta);
@@ -821,6 +859,25 @@ void ABattleHUD::DrawProjectiles(const ABattleGameMode& Game) {
 void ABattleHUD::DrawHUD() {
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview")))return;
     Super::DrawHUD();auto* G=Cast<ABattleGameMode>(GetWorld()->GetAuthGameMode());if(!G||!Canvas)return;
+    if(G->IsArtShowcase()) {
+        const float W=Canvas->SizeX,H=Canvas->SizeY;
+        auto Text=[&](const FString& S,float X,float Y,float Size,FLinearColor Color=FLinearColor(.88f,.94f,.94f)){DrawText(S,Color,X,Y,GEngine->GetLargeFont(),Size);};
+        DrawRect(FLinearColor(.018f,.025f,.032f,.93f),0,0,W,108);
+        if(G->IsRifleShowcase()) {
+            Text(TEXT("BOLT-ACTION RIFLE / STANDING HANDLING"),42,24,1.8f);
+            const float T=G->ArtShowcaseTime;
+            const TCHAR* Phase=T<.5f?TEXT("READY"):T<1.3f?TEXT("RAISE / AIM"):T<2?TEXT("AIM"):T<2.16f?TEXT("FIRE / RECOIL"):T<3.25f?TEXT("BOLT CYCLE"):T<4?TEXT("RETURN TO AIM"):T<6.5f?TEXT("RELOAD"):TEXT("RETURN TO AIM");
+            Text(FString(Phase)+(G->ArtShowcaseSlow?TEXT("     |     0.5x SLOW MOTION"):TEXT("     |     1x SPEED")),42,65,1.1f,FLinearColor(.3f,.85f,.95f));
+            DrawRect(FLinearColor(.018f,.025f,.032f,.93f),0,H-66,W,66);
+            Text(TEXT("Current in-game prototype  /  Hand and reload polish pending"),42,H-44,1.1f);
+        } else {
+            Text(TEXT("SOLDIER PROTOTYPES / SHARED RIG"),42,24,1.8f);
+            Text(TEXT("Male 183.6 cm   /   Female 170 cm   /   Same weapon dimensions"),42,65,1.1f,FLinearColor(.3f,.85f,.95f));
+            const TCHAR* Names[]={TEXT("MALE / MACHINE GUN"),TEXT("FEMALE / RIFLE"),TEXT("FEMALE / MACHINE GUN"),TEXT("MALE / RIFLE")};
+            for(int J=0;J<4;++J){const float X=W*(.5f+(J-1.5f)*165.f/740.f)-108;Text(Names[J],X,H*.78f,1.05f);}
+        }
+        return;
+    }
     CachedCanvasSize=FVector2D(Canvas->SizeX,Canvas->SizeY);
     UiScale=FMath::Clamp(Canvas->SizeY/900.f,0.72f,1.3f);
     if(bDraggingDuration){

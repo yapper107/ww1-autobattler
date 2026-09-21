@@ -28,6 +28,10 @@ public:
     bool IsFinished() const;
     FString AnimationDebugText() const;
     bool bAnimationDebug=false;
+    bool IsArtShowcase() const;
+    bool IsRifleShowcase() const;
+    float ArtShowcaseTime=0;
+    bool ArtShowcaseSlow=false;
     bool IsAutomatedTest() const { return bSmoke; }
     bool IsWideView() const { return Zoom >= 0.65f; }
     army::Config Settings;
@@ -56,6 +60,9 @@ private:
     std::vector<std::array<armyvisual::State,army::UnitCount>> VisualTimeline;
     void RunBattle();
     void SmokeTest(float DeltaSeconds);
+    void ShowArtShowcase();
+    int ArtCaptureFrame=0;
+    bool ArtStageReady=false;
     void AdjustCamera(float YawDelta, float PitchDelta);
     AActor* Shape(const TCHAR* MeshPath, FVector Location, FVector Scale, FLinearColor Color);
     UPROPERTY() TArray<TObjectPtr<AActor>> SceneActors;

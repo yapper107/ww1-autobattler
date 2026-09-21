@@ -63,6 +63,15 @@ FBXs. `bash scripts/launch.sh` starts the branch build.
 - **V** toggles the selected character's clip names, blend weights, speed, stance
   weight and wrist error. Normal play does not show these implementation details.
 - Pause, step, seek and change replay speed with the existing controls.
+- `-ArmyArtShowcase` displays a labeled, fixed-camera lineup in this order:
+  male MG, female rifle, female MG, male rifle. Add `-ArmyArtRifle` for a close-up
+  of standing aim, fire/recoil, bolt cycle, and reload at 1x then 0.5x speed.
+  These preview modes use the production character presentation without a battle.
+- Add `-ArmyArtCapture` to either showcase to save `lineup.png` or 720 exact-time
+  frames under `Saved/Screenshots/ArtShowcase`, then exit. Run
+  `tools/character/encode_showcase.sh <frame-directory> <output-directory>` for a
+  24-second H.264 video and an animated GIF. Capture waits for screenshot processing;
+  the result's timing does not depend on the speed of the computer.
 - `-ArmyHandlingReview` shows female/male rifle and MG variants, standing handling
   followed by moving handling. It writes a four-variant native validation report
   and three screenshots, then exits.
