@@ -1,8 +1,8 @@
 # Plan 023: the rifle group moves as one
 
 Draft by the architect (Fable), 21 September 2026, at the user's instruction ("Do it, make the plan") after
-generation 19. Status: **rulings 1, 2, 4, 5 and 6 given by the user on 21 September 2026 (section 6); ruling 3 (the leader's pace) is
-open and only stage C depends on it. Stage A is being built by an Opus agent; single-idea legacy generations are paused.**
+generation 19. Status: **all six rulings given by the user on 21 September 2026 (section 6). Stage A is being built by an Opus agent;
+single-idea legacy generations are paused.**
 
 ## 1. Why
 
@@ -97,11 +97,18 @@ relay sends a man an order only when (task, station, serial) differs from what h
 on a movement order for a travel-time window and is behind, or when he comes under effective fire. The per-cycle
 re-derivation and its formation offsets around `sergeant.assignment.position` are removed.
 
-**3.6 The leader is a member.** The sergeant's directive to the group's leader carries the objective; the stations are
-computed when the LEADER understands that order, and he issues them before he steps off; he steps off when at least
-half his able men have an acknowledged station or `stepOffSeconds` have passed (this replaces the 4 s hold of
-`8946560782173e62`). Transport and reaction delays stay as they are: only the double derivation goes. At a bound's end
-plan 021's `boundGrace` and generation 18's uncontested fast chain apply unchanged.
+**3.6 The leader is a member (user ruling 3: the middle option).** The sergeant's directive to the group's leader
+carries the objective; the stations are computed when the LEADER understands that order and he issues them at once. He
+does not stand and wait, and he does not run ahead: he steps off immediately at a SLOW pace (`leadSlowPace`, a fraction
+of the advance pace) and takes the full pace only once his men are with him: at least half of his able riflemen have
+acknowledged their stations AND are within `leadCloseDistance` of him along the group's axis, or `leadSlowSeconds` have
+passed. If his lead over the group's centre along the axis grows beyond `leadMaxLead` during a move, he drops back to
+the slow pace until it closes. This replaces the 4 s hold of `8946560782173e62`. Transport and reaction delays stay as
+they are: only the double derivation goes. At a bound's end plan 021's `boundGrace` and generation 18's uncontested
+fast chain apply unchanged. Pace is a soldier-level quantity: the implementation must find a legacy-side way to ask for
+it (an order attribute the shared movement code already honours, such as the stance or movement mode of the order); if
+none exists without touching shared soldier code, the fallback is short bounds for the leader (his own lead station is
+laid out no farther than `leadMaxLead` ahead of the group) and that is reported to the architect before it is built.
 
 **3.7 A covering pair.** The user: "Some could have stayed but not all of them." When the group leaves a position in
 contact, at most `coverPair` men whose stations bear on a known enemy stay and fire; they are given stations on the NEXT
@@ -120,7 +127,8 @@ separate straggler rule and its gunner copy, the staff's 4 s offset loop, the 4 
 
 ## 4. Constants (one table, `GroupTuning` in the legacy runtime; first values, not tuned)
 
-`behindMargin` 12 m; `aheadMargin` 5 m; `callUpSeconds` 6 s; `stepOffSeconds` 6 s; `coverPair` 2; `coverPairSeconds`
+`behindMargin` 12 m; `aheadMargin` 5 m; `callUpSeconds` 6 s; `leadSlowPace` 0.5 of the advance pace; `leadCloseDistance`
+12 m; `leadSlowSeconds` 10 s; `leadMaxLead` 15 m; `coverPair` 2; `coverPairSeconds`
 10 s (user); progress window: travel time at the advance pace plus 4 s; stations reuse plan 021's `slotRadius` 6 m and
 `slotSpacing` 2.5 m (4.5 m at a halt).
 
@@ -151,9 +159,8 @@ separate straggler rule and its gunner copy, the staff's 4 s offset loop, the 4 
 1. **Forward men.** "The group should go to them, unless it is unsafe to do so and then they should work with their forward
    element to establish a foothold to get them across." Built into 3.4.
 2. **Covering pair.** At most two men with a line of fire stay and cover; they follow "within 10s".
-3. **The leader's pace.** OPEN: the user asked for a fuller explanation (given the same day). Only stage C depends on it.
-   The architect's recommendation: the leader hands out the stations, waits until at least half his able men have
-   acknowledged theirs, at most 6 s, then steps off at the group's pace.
+3. **The leader's pace.** "Lets do the middle option": he steps off at once at a slow pace and takes the full pace only
+   when his men are with him; he slows again if he gets too far ahead. Built into 3.6.
 4. **Platoon staff.** "Yes, the platoon commander stays safe one position behind."
 5. **Who builds it.** "opus agent": Opus implements the stages, Fable reviews and scores each as a loop node.
 6. **Generations meanwhile.** "Yes": single-idea generations on the legacy line are paused until stage B is scored.
