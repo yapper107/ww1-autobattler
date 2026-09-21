@@ -192,6 +192,40 @@ def squad_participation(root, frames, first_shot) -> dict:
                 straggler_share=straggling/living if living else None, behind_corporal_share=behind/riflemen if riflemen else None)
 
 
+MOVEMENT_TASKS = {2, 4, 6, 7, 8, 9}  # Advance, Rally, ClearLane, Flank, PullBack, BoundMove
+ARRIVED = 3.0                        # metres from the goal he was walking to
+
+
+def order_churn(frames) -> dict:
+    """Plan 023 (the user: "squads keep moving around very rapidly", "called back instead of pushing their advantage"):
+    from the lean evaluation rows alone. replaced_before_arrival_share: of the attackers' movement orders that ended (the
+    order id changed while he was alive), those that ended with the man still more than 3 m from the goal he held;
+    regroup_orders_per_soldier_minute: new Rally orders to living attackers per soldier-minute."""
+    held, living_seconds = {}, 0.0
+    ended = replaced = regroups = 0
+    step = frames[1]['time'] - frames[0]['time'] if len(frames) > 1 else 0.2
+    for frame in frames:
+        for m in frame['soldiers']:
+            if m['team'] != 0:
+                continue
+            if not m['alive']:
+                held.pop(m['id'], None)
+                continue
+            living_seconds += step
+            before = held.get(m['id'])
+            if before is not None and before[0] != m['order']:
+                if before[1] in MOVEMENT_TASKS:
+                    ended += 1
+                    replaced += int(math.hypot(m['position'][0] - before[2][0], m['position'][1] - before[2][1]) > ARRIVED)
+                regroups += int(m['task'] == 4)
+            if before is None or before[0] != m['order']:
+                held[m['id']] = (m['order'], m['task'], m['goal'])
+            elif m['task'] in MOVEMENT_TASKS:
+                held[m['id']] = (m['order'], m['task'], m['goal'])  # the goal he is walking to now (a shelter on the way is not the order's end)
+    return dict(replaced_before_arrival_share=replaced/ended if ended else None,
+                regroup_orders_per_soldier_minute=regroups/(living_seconds/60) if living_seconds else None)
+
+
 def evaluate(root) -> dict:
     """All shares are of the ATTACKERS (team 0), from their first shot to the end.
 
@@ -224,6 +258,7 @@ def evaluate(root) -> dict:
     stutter = stutter_share(frames, step)
     none['stutter_share'] = stutter
     none.update(squad_participation(root, frames, first_shot))
+    none.update(order_churn(frames) if frames else dict(replaced_before_arrival_share=None, regroup_orders_per_soldier_minute=None))
     if first_shot is None:
         return none
     living = at_fight = contact_seconds = contact_exposed = idle_exposed = 0.0
@@ -270,7 +305,7 @@ def evaluate(root) -> dict:
                     net = math.hypot(p[0] - state['origin'][0], p[1] - state['origin'][1])
                     dithering += int(state['path'] >= DITHER_RATIO*max(net, 0.5))
                 track[s['id']] = dict(start=t, origin=p, last=p, path=0.0, close=0, frames=0)
-    return dict(**flank, **restless, **squad_participation(root, frames, first_shot), idle_exposed_share=idle_exposed/contact_seconds if contact_seconds else None, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
+    return dict(**flank, **restless, **squad_participation(root, frames, first_shot), **order_churn(frames), idle_exposed_share=idle_exposed/contact_seconds if contact_seconds else None, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
                 engaged_firing_share=engaged_fired/engaged_windows if engaged_windows else None,
                 contact_exposed_share=contact_exposed/contact_seconds if contact_seconds else None,
                 close_dither_share=dithering/dither_windows if dither_windows else None,
