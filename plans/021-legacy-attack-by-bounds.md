@@ -106,3 +106,151 @@ cannot resolve effects under about 0.05; seven such proposals showed that the re
 advances, across four files), so deleting one order class at a time either removes the advance or changes nothing. This
 plan is one coordinated change, written once, then handed back to the loop to measure and to refine with ordinary
 proposals.
+
+## Implementation notes (Opus agent, 20 September 2026)
+
+Built on the loop's legacy survivor `22b8504a0d673627` in three parts, each kept as a patch in
+`.local/p021/` (`A.patch`, `AB.patch`, `ABC.patch`) and measured on a fixed check set of fourteen
+static-defence attacks (maps 22/27/33/36/39 with battle seeds 107 and 108, and 23/24/26/28 with
+seed 107) plus symmetric town battles. Final source of the worktree: part A + B + C.
+Everything is inside the legacy command path: `PlanSquad`/`UpdateCommands` (`CommandSim.cpp`),
+`UpdateManeuver` (`ManeuverSim.cpp`), `UpdateCoordination` (`CoordinationSim.cpp`),
+`UpdateSquadPlan` (`PlanSim.cpp`) and `PlanPlatoon`/`UpdatePlatoon` (`PlatoonSim.cpp`).
+Drills, cognition and the static defenders are digest-identical (three parity battles, unchanged
+after every stage), and the full Linux suite and 125 Python tests pass on the final state.
+
+### Where a squad's bound chain lives
+`SquadCommand::bounds` (`BoundPlan` in `BattleSim.h`): `active`, the `plan` id and `serial` it was
+fixed under, `committedAt`, the mask `known` of the enemies the leader knew at that moment, the
+bound's `target`, and one `slots[slot]`/`hasSlot[slot]` per squad member. The chain itself is the
+route the manoeuvre committed (`cmd.route`): `cmd.routeStage` is the first planner segment of the
+running bound and the new `cmd.boundStage` its last, so the remaining segments are the queue.
+`cmd.boundMajorityAt` times the wait for the last men. `cmd.noLineSince` (part C) is the squad's
+own clock for "no rifleman has a line onto a known enemy".
+
+### Part A: a manoeuvre is a bound
+- `PlanBoundSlots` (`CoordinationSim.cpp`) fixes one slot per rifleman when a bound starts: cover
+  within `slotRadius` of the destination, spaced by `slotSpacing`, preferring a line onto the
+  nearest known enemy within `slotRange` and protection from him, cheapest by distance from the
+  man and by reported fire danger, and reachable. With no cover at the destination the man still
+  gets his own fixed place there (the old formation offset, computed once), so nobody is unplaced.
+- The corporal's relay in `UpdateCommands` sends that slot ONCE: it skips the send entirely while
+  the man already holds exactly that order (or it is still in flight, `reissueSeconds`). The
+  formation-offset branch and the `lagging` Rally chase no longer run during a bound.
+- A slot that stopped being a fighting position (another man standing on it, or an enemy that was
+  NOT known when the bound started overlooking it, `BoundSlotValid`) is given up once and for all
+  for that bound; the man falls back to the ordinary formation order. Latching this was necessary:
+  the first version re-tested every cycle and alternated slot/formation orders, which raised the
+  symmetric order rate and friendly fire.
+- Arrival counts a man who stands within `slotArrival` of his own slot, as well as the old
+  eight-metre test on the raw destination.
+- On arrival the group fights from its slots: the relay's holding branch keeps a man who stands on
+  his slot while it still bears on a known enemy (`BoundSlotBears`) instead of re-seating him with
+  `UsefulFiringPosition`; the slots are dropped when the squad is stopped, withdraws, or commits
+  the next bound.
+- A5, the gun: when the last bound of a chain completes and the gun has no useful line
+  (`cmd.supportUseful` false), `supportNeedsMove` is raised, which makes the next `PlanSquad`
+  anchor search move the gun forward while the rifle group covers from its slots.
+
+### Part B: nobody is left behind
+- A latecomer needs nothing new: the bound gives every living, unwounded rifleman a slot whatever
+  his distance, and the relay sends it to him once.
+- The bound waits for the last men (`boundGrace`): after the arrival majority, the chain only goes
+  on when every mover who is neither there nor pinned has arrived, or the grace has run out. Men
+  under fire and the gun group are exempt, as the user ruled; the manoeuvre deadline is extended
+  by the grace so the wait cannot trip the pause conditions.
+- The 20 s re-slot rule: a man who has held Rally or Hold for `stragglerSeconds` without firing,
+  is more than `stragglerDistance` from his group, is not suppressed and is not under reported
+  fire is sent to a covered place beside the group (`RejoinPosition`) with a line onto the enemy
+  the squad knows. Men with a slot on the running bound already have a job and are left alone.
+
+### Part C: every squad has a job
+- Each legacy squad leader reports `noLineSeconds` in his `SquadSituation`: how long no rifleman of
+  his (the gun aside) has had a line onto an enemy he knows within `jobRangeMax`. The clock is only
+  kept while the squad knows an enemy at all; a squad that knows none is searching, which is a job.
+  The static defenders never compute or receive this (`PlatoonRuntime::fixedDefender`).
+- `PlanPlatoon`: a squad reporting `noJobSeconds` or more is no longer eligible to be the platoon's
+  base of fire, and instead of the old "consolidate ten metres from the mover" it is given a real
+  support-by-fire position: cover with a clear line onto the enemy the engaged squad is fighting,
+  `jobRangeMin` to `jobRangeMax` from him, protected from him, at most `jobTravel` away, at least
+  `jobSpacing` from another squad's job, whose approach does not cross the mover's, and preferring
+  the side of the enemy the mover is not using. It is issued as the existing `Consolidate`
+  directive, so the squad's own candidate comparison walks it there by its own covered route.
+- At most half the squads (`SquadsPerTeam/2`, two of four) hold such a moving job at once: the
+  platoon's mover counts as the first, so one more squad may be committed. The base-of-fire squad
+  is never sent away, so a gun stays on the enemy.
+- A squad crossing the no-job limit changes the commander's situation hash, so he re-plans at once
+  instead of waiting out his 55 s cycle.
+
+### Constants
+All of them are `BoundTuning`/`BoundConstants` in `BattleSim.h`, one struct with comments, for the
+loop's parameter search: `boundLength` 35, `slotRadius` 6, `slotSpacing` 2.5, `slotRange` 70,
+`slotArrival` 3, `reissueSeconds` 4, `boundGrace` 10, `stragglerSeconds` 20, `stragglerDistance`
+40, `stragglerSuppression` 0.35, `rejoinRadius` 10, `noJobSeconds` 30, `jobRangeMin` 25,
+`jobRangeMax` 90, `jobTravel` 150, `jobSpacing` 14.
+
+### Deviations from the plan, and why
+1. **Merged bounds (`boundLength` 35 m).** The plan's chain of "today's leg length" is the tactical
+   route planner's twelve-metre segmentation, and keeping it left a relocation every twelve metres:
+   part A at that granularity moved `relocations_per_soldier_minute` by 2 %. The architect's brief
+   allows merging stages in legacy code after the planner returns, so a bound merges consecutive
+   segments up to `boundLength` (`MergeBoundStage`, with the exposure, the crossing path and the
+   release gates computed over the whole merged bound). This is the single biggest contributor to
+   the relocation fall: -21 % with 35 m bounds, and the same build with 25 m bounds gives -12 %.
+   It is not a longer leg in the plan's sense; the chain and its queue are unchanged.
+2. **Slots are fixed per bound, not for the whole chain at commit.** The plan fixes every bound's
+   slots when the manoeuvre is committed. Slots for a bound that starts two minutes later would be
+   chosen against a picture that no longer holds, which is what the frozen-rally experiments show;
+   the chain (the route and its stages) is still fixed at commit and no fresh assessment happens
+   between bounds.
+3. **The bound waits for the last men (`boundGrace`), which the plan does not have.** The plan keeps
+   the arrival majority and re-slots stragglers who hold Rally or Hold. Measured, that rule almost
+   never fires: with part A the men who are left behind hold a valid Flank order on a slot they are
+   still walking to, not a Rally or a Hold. The majority rule is what splits the squad, so "nobody
+   left behind" needed the wait. The 20 s rule of the plan is implemented as well and kept.
+   10 s, not the user's 20 s, is used for this new wait: at 20 s the check set lost four points of
+   attackers and gained back a fifth of the relocations. The user's 20 s stands where he set it.
+4. **The two-fire-team internal bounding is untouched.** The plan's "each man moves once per leg"
+   is implemented for the committed manoeuvre (the path that carries 46 to 52 % of relocations);
+   where the squad bounds internally in two fire teams, `UpdateCoordination` already gives each
+   moving man one covered slot per bound, and that machinery is pinned by selectors.
+5. **Part C uses the existing `Consolidate` directive** rather than a new platoon task: a new task
+   would change the shared `PlatoonTask` enum that drills and cognition read. The squad's own
+   candidate search (family 4) already walks a squad toward its directive position, so giving it a
+   firing position instead of a place beside the mover is the whole change.
+
+### What it measured (fourteen battles, mean, parent -> A -> A+B -> A+B+C)
+score 0.756 -> 0.773 -> 0.801 -> 0.819; relocations per soldier-minute 1.671 -> 1.312 -> 1.313 ->
+1.312 (-21 %); orders per soldier-minute 10.84 -> 10.07 -> 9.73 -> 9.75; straggler share 0.066 ->
+0.083 -> 0.072 -> 0.074; quiet squads 0.64 -> 0.43 -> 0.36 -> 0.43; least squad shot share 0.113 ->
+0.123 -> 0.124 -> 0.121; men at the fight 0.941 -> 0.950 -> 0.960 -> 0.959; defenders out of action
+0.935 -> 0.946 -> 0.976 -> 0.994; attackers lost 0.357 -> 0.346 -> 0.350 -> 0.350; wounds while
+moving 0.391 -> 0.419 -> 0.471 -> 0.461; seen and shotless 0.0092 -> 0.0083 -> 0.0095 -> 0.0091;
+seen at all 0.113 -> 0.113 -> 0.116 -> 0.116; flank fire share 0.194 -> 0.229 -> 0.445 -> 0.457.
+(The A column is `A.patch`, which carries 25 m bounds; 35 m came with part B, so its relocation
+figure is not the part-A mechanism alone.)
+Eight paired symmetric town battles: friendly hits per 100 soldier-minutes +0.23 [-2.26, +2.72],
+men within 2 m -0.011 [-0.027, +0.005], orders per minute -11.8 (azure) and -19.0 (ember).
+Not reached: the plan's -30 % on relocations (-21 %), the 3 % straggler share (7.4 %, against the
+parent's 6.6 %) and "wounds while moving down" (up 7 points: the men who used to stand still now
+come forward). The relocation floor is what is left after the manoeuvre itself: of the remaining
+moves of six metres or more, the bound accounts for about a third, the soldier's own cover decision
+under an unchanged Hold and the wounded man's rear position for most of the rest.
+
+## Loop result and architect's note, 20 September 2026
+
+Evaluated as loop nodes on the survivor `22b8504a0d673627` (the implementation lives in the loop tree, not on the
+branch: it becomes repository source only if it is promoted). Score v6, fifth epoch, paired against the legacy root on
+60 development and 45 validation attacks:
+
+| Node | Dev vs root | Val vs root | Defenders out | Attackers lost | Flank fire | Guards |
+|---|---|---|---|---|---|---|
+| survivor `22b8…` | +0.150 [+0.087, +0.217] | +0.159 [+0.084, +0.245] | 88.5 % | 37.4 % | 0.15 | pass, value 0.692 |
+| A+B `d8395eef274a1503` | +0.238 [+0.162, +0.322] | +0.234 [+0.149, +0.329] | 96.8 % | 36.5 % | 0.28 | fails the 4-point seen-at-all backstop |
+| **A+B+C `0a562ead03f0fe75`** | **+0.242 [+0.165, +0.326]** | **+0.246 [+0.166, +0.333]** | 97.2 % | 36.5 % | 0.27 | **every guard passes, value 0.774: the best legacy node** |
+
+Friendly fire is below the root's (-1.8), orders per minute on the symmetric battles down 20. Against the plan's own
+acceptance: relocations per soldier-minute about -20 % (target -30 %), wounds taken while displacing 45 % (up from 42 %:
+more men actually close), stragglers 7.3 % (target 3 %; the men left behind now hold a valid order to a slot they are
+still walking to, so the 20 s rule rarely fires), quiet squads 0.45 a battle. Replays on maps 24, 26, 28 and 39 sent to
+the user. What remains for the loop's small proposals is listed at the end of the implementation notes.

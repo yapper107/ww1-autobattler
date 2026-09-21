@@ -648,3 +648,15 @@ Findings.
   way these controllers move, not surplus orders on top of it. Calming it needs a different way of moving (deliberate
   bounds: few, long, covered legs with a base of fire, each man moving once per leg), which is a design change, not a
   one-mechanism proposal.
+
+## Generation 15: plan 021 as a loop node, 20 September 2026
+
+[Plan 021](021-legacy-attack-by-bounds.md) (the legacy attack by queued bounds with one slot per rifleman fixed at commit,
+nobody left behind, a job for every squad; user rulings; Opus implementation) was evaluated as a legacy node on
+`22b8504a0d673627`: **`0a562ead03f0fe75`: +0.242 [+0.165, +0.326] development, +0.246 [+0.166, +0.333] validation, every
+guard passing, value 0.774 against the root's 0.608 and the previous best 0.692**; defenders out of action 97 % (88 %),
+attackers lost 36.5 % (37.4 %), flanking fire 0.27 (0.15), friendly fire below the root. Without part C
+(`d8395eef274a1503`) the score is the same and the seen-at-all backstop fails by a hair. Its acceptance targets on
+relocations (-20 % against -30 %) and stragglers (7 % against 3 %) were not met. Plans 022 (stamina and sprint; endurance
+and a new speed stat; user rulings) is being implemented in parallel. The branch was pushed to GitHub at the user's
+request for the art branch.
