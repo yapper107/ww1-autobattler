@@ -833,3 +833,28 @@ recalling a man closing on a flank goal; regroup orders halve and development is
 the fight fall to 92.0 %, failing `force_at_the_fight`). Videos of the four survivors sent to the user. Machine: not memory
 bound (16 of 30 GB, load 4 to 6 of 16 cores): the wait is proposer time; next brief: the architect runs the parent's suite
 once for all, six check battles at a time per proposer.
+
+
+## The user's review of generation 18's survivors, and generation 19 (21 September 2026)
+
+The user on the four videos: succession (map 36) "did it ... after the second in command took over he seemed to take a more
+cautious approach than the cpl, which was nice to see"; sticky mover (map 34) "the flanks worked well, only issue is ... some
+stragglers who are doing nothing take a little too long to get called up to their squad"; gunner rejoins (map 22) "the light
+blue soldiers who have good positions are called back instead of pushing their advantage"; fast flank (map 28) "works a lot
+better, however I did see a purple soldier run through a house an enemy soldier was in just to get into a flanking position,
+which was extremely dangerous and something he should have found the safer route for".
+Generation 19 (five Sonnet proposers, parents by the policy: `f7d7aa48ecc1e453` twice, `d8c602861821ae02`,
+`03fcf0867579b9f7`, `0f005820dd9052c2`; the parent's suite run once by the architect for all, six check battles at a
+time): a man AHEAD of his leader is not recalled and the group comes up to the advantage; idle men out of the fight are
+called up promptly whatever task label they idle under; the support gun that comes up comes up to a firing position (the
+gunner-rejoin node's quiet squads 0.27 to 0.43); the fast chain closes ranks at the last covered bound before contact;
+one order at a time with a progress test so nobody is left behind.
+The purple soldier (architect's trace of `0f005820dd9052c2`, map 28 seed 107, soldier 21): ordered on a squad FLANK to a
+goal 17 m from a defender other than the tracked one, hit at 289 s (health 97 to 36), and his emergency shelter, chosen by
+the shared soldier cover search, was the outside wall of the house that defender was in, 2 m from him: the search demands
+protection from the threat and from VISIBLE contacts and has no term for an enemy he knows of on the other side of the wall.
+It is rare: attackers spend about 18 soldier-seconds a battle within 6 m of a living defender. A scratch rule (cover within
+10 m of an enemy known in the last 30 s is refused; `.local/loop/gen19/shelter/scratch-shelter.patch`) took that to 13 on six
+battles with score +0.024 and attackers lost 36.5 % to 34.4 % (noise-level), and did nothing on map 28 itself, where the
+rest is the flank goal's and the path's nearness to OTHER known enemies. Shared code: a repair re-roots all three
+controllers; not landed; proposed to the user for the next shared-code change.
