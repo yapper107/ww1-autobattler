@@ -164,7 +164,7 @@ def main():
                 if focus:
                     focus_stamina[r].append(stamina)
                     focus_winded[r] += int(winded)
-                colour = SQUAD_BLUES[squad % 4] if focus else (150, 170, 205)
+                colour = SQUAD_BLUES[squad % 4] if focus else tuple((v + 235)//2 for v in SQUAD_BLUES[squad % 4])  # the other squads keep their colour, paler
                 radius = 5 if focus else 4
                 draw.ellipse([c[0] - radius, c[1] - radius, c[0] + radius, c[1] + radius], fill=colour + (255,), outline=(0, 0, 0, 255) if corporal else None, width=2)
                 if corporal and focus:

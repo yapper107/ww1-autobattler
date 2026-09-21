@@ -137,6 +137,7 @@ def restlessness(frames, step) -> dict:
 
 STRAGGLER_DISTANCE = 40.0  # metres from his squad's centre
 STRAGGLER_SILENCE = 60.0   # and this long without firing: left behind, not a base of fire
+CORPORAL_LEAD = 20.0       # a rifleman this much farther from the nearest defender than his corporal is behind him
 
 
 def squad_participation(root, frames, first_shot) -> dict:
@@ -144,7 +145,10 @@ def squad_participation(root, frames, first_shot) -> dict:
     from their positions and let one squad do all of the work", "a couple of soldiers from the flanking squad were
     hanging back and not doing anything". least_squad_shot_share: the smallest share of the attackers' rounds fired by
     one squad (0.25 is an even split); quiet_squads: squads with under a tenth of the rounds; straggler_share: living
-    attacker-seconds, from the first shot, spent more than 40 m from the squad's centre without having fired for 60 s."""
+    attacker-seconds, from the first shot, spent more than 40 m from the squad's centre without having fired for 60 s.
+    behind_corporal_share (the user, 21 September 2026: "the cpl pushed up first, then his men followed", "his soldiers
+    stayed back"): of living rifleman-seconds (not the gunner, not the sergeant) with a living corporal, those spent 20 m
+    or more farther from the nearest living defender than their corporal is."""
     shots = {}
     for line in open(Path(root)/'shots.jsonl'):
         if '"team":0' in line:
@@ -153,7 +157,7 @@ def squad_participation(root, frames, first_shot) -> dict:
     squads = sorted({m['squad'] for m in frames[0]['soldiers'] if m['team'] == 0}) if frames else []
     total = sum(shots.values())
     shares = [shots.get(q, 0)/total for q in squads] if total else []
-    living = straggling = 0
+    living = straggling = riflemen = behind = 0
     rounds, last_fired = {}, {}
     for frame in frames:
         t = frame['time']
@@ -168,7 +172,16 @@ def squad_participation(root, frames, first_shot) -> dict:
                 members.setdefault(m['squad'], []).append(m)
         if first_shot is None or t < first_shot:
             continue
+        defenders = [(d['position'][0], d['position'][1]) for d in frame['soldiers'] if d['team'] == 1 and d['alive']]
+        near = lambda m: min(math.hypot(m['position'][0] - x, m['position'][1] - y) for x, y in defenders)
         for group in members.values():
+            corporal = next((m for m in group if m['id'] % 8 == 1), None)
+            if corporal and defenders:
+                lead = near(corporal)
+                for m in group:
+                    if m['id'] % 8 > 1 and not m.get('machine_gun') and m['id'] != m.get('support'):
+                        riflemen += 1
+                        behind += int(near(m) > lead + CORPORAL_LEAD)
             cx = sum(m['position'][0] for m in group)/len(group)
             cy = sum(m['position'][1] for m in group)/len(group)
             for m in group:
@@ -176,7 +189,7 @@ def squad_participation(root, frames, first_shot) -> dict:
                 away = math.hypot(m['position'][0] - cx, m['position'][1] - cy) > STRAGGLER_DISTANCE
                 straggling += int(away and t - last_fired.get(m['id'], -1e9) > STRAGGLER_SILENCE)
     return dict(least_squad_shot_share=min(shares) if shares else None, quiet_squads=sum(1 for v in shares if v < 0.10) if shares else None,
-                straggler_share=straggling/living if living else None)
+                straggler_share=straggling/living if living else None, behind_corporal_share=behind/riflemen if riflemen else None)
 
 
 def evaluate(root) -> dict:
