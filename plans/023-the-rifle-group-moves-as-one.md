@@ -1,7 +1,8 @@
 # Plan 023: the rifle group moves as one
 
 Draft by the architect (Fable), 21 September 2026, at the user's instruction ("Do it, make the plan") after
-generation 19. Status: **proposed; needs the user's rulings in section 6 before anything is built.**
+generation 19. Status: **rulings 1, 2, 4, 5 and 6 given by the user on 21 September 2026 (section 6); ruling 3 (the leader's pace) is
+open and only stage C depends on it. Stage A is being built by an Opus agent; single-idea legacy generations are paused.**
 
 ## 1. Why
 
@@ -79,10 +80,17 @@ to the leader is deleted from the relay.
 - Ahead with no line: the nearest station-quality place that bears, from the same allocator, searched around HIM.
 - Known wounded: today's rear-guard rules, unchanged.
 
-**3.4 The group comes up to the advantage.** When forward men hold bearing stations, the next objective (the next bound's
-destination, the halt anchor) is laid out from THEM: the leader's own lead station included. This is the missing half of
-generation 19's attempt: the leader's route and his men's stations come from one plan, so he cannot outrun them and they
-cannot outrun him.
+**3.4 The group comes up to the advantage (user ruling 1).** When forward men hold bearing stations, the next objective
+(the next bound's destination, the halt anchor) is laid out from THEM, the leader's own lead station included: the
+leader's route and his men's stations come from one plan, so he cannot outrun them and they cannot outrun him. The
+user: "The group should go to them, unless it is unsafe to do so and then they should work with their forward element
+to establish a foothold to get them across." So when the way up to the forward men is unsafe (the route planner's own
+exposure estimate for that leg is 0.2 or more, or an enemy the leader knows overlooks it), the forward men ARE the
+foothold: they stay on their stations as the covering element and are told to fire on the enemy that overlooks the
+crossing (the existing covering-fire test for an exposed crossing, `CoveringPath`, is satisfied by THEIR rounds); the
+rest cross by bounds under that fire, a few at a time, to stations beside them; if no forward man can bear on the
+overlooking enemy, the group looks for a covered way round before it crosses, and the forward men hold meanwhile: they are
+never recalled across the unsafe ground.
 
 **3.5 One order at a time.** Each group order gets a serial in the legacy runtime (objective serial plus station). The
 relay sends a man an order only when (task, station, serial) differs from what he holds, when he has made no progress
@@ -97,7 +105,7 @@ plan 021's `boundGrace` and generation 18's uncontested fast chain apply unchang
 
 **3.7 A covering pair.** The user: "Some could have stayed but not all of them." When the group leaves a position in
 contact, at most `coverPair` men whose stations bear on a known enemy stay and fire; they are given stations on the NEXT
-objective and follow when the group has arrived or after `coverPairSeconds`. Nobody stays without a line of fire.
+objective and follow when the group has arrived or after `coverPairSeconds` (user ruling 2: within 10 s). Nobody stays without a line of fire.
 
 **3.8 Never dark.** The relay runs from `RifleGroupLeader` (succession node) whenever any rifleman can lead; when the
 squad leader is the last able man, `PlanSquad` calls the same allocator. One code path, no fallback grid.
@@ -113,7 +121,7 @@ separate straggler rule and its gunner copy, the staff's 4 s offset loop, the 4 
 ## 4. Constants (one table, `GroupTuning` in the legacy runtime; first values, not tuned)
 
 `behindMargin` 12 m; `aheadMargin` 5 m; `callUpSeconds` 6 s; `stepOffSeconds` 6 s; `coverPair` 2; `coverPairSeconds`
-30 s; progress window: travel time at the advance pace plus 4 s; stations reuse plan 021's `slotRadius` 6 m and
+10 s (user); progress window: travel time at the advance pace plus 4 s; stations reuse plan 021's `slotRadius` 6 m and
 `slotSpacing` 2.5 m (4.5 m at a halt).
 
 ## 5. How it is built and judged
@@ -138,22 +146,17 @@ separate straggler rule and its gunner copy, the staff's 4 s offset loop, the 4 
   after the corporal and his first successor fall; a station survives a cycle. `ReassessmentTests` already accepts
   succession (restated 21 September).
 
-## 6. Rulings needed from the user
+## 6. The user's rulings (21 September 2026)
 
-1. **Forward men.** When two or more men are ahead in good firing positions, the group comes up to them (recommended),
-   or they hold there while the group carries on with its own plan?
-2. **Covering pair.** At most two men with a line of fire may stay and cover while the group moves, following within
-   30 s (recommended). More, fewer, or nobody stays?
-3. **The leader's pace.** He waits for at least half his men to have their stations, at most 6 s, before stepping off
-   (recommended): slower starts, no lone corporal. Or keep him as the fast point man?
-4. **Platoon staff.** One objective behind the rifle group, in cover, moving only when the group moves (recommended), or
-   with the gun group?
-5. **Who builds it.** Plan-sized like 020 to 022: an Opus agent implements the stages, Fable reviews and scores each
-   stage as a loop node (recommended, with the user's agreement as the memory rule requires); or Sonnet proposers take one
-   stage each.
-6. **Generations meanwhile.** Pause single-idea generations on the legacy line until stage B is scored (recommended:
-   they are inside the noise now), or keep them turning on other subjects (friendly fire, the root's 42 % attacker
-   loss)?
+1. **Forward men.** "The group should go to them, unless it is unsafe to do so and then they should work with their forward
+   element to establish a foothold to get them across." Built into 3.4.
+2. **Covering pair.** At most two men with a line of fire stay and cover; they follow "within 10s".
+3. **The leader's pace.** OPEN: the user asked for a fuller explanation (given the same day). Only stage C depends on it.
+   The architect's recommendation: the leader hands out the stations, waits until at least half his able men have
+   acknowledged theirs, at most 6 s, then steps off at the group's pace.
+4. **Platoon staff.** "Yes, the platoon commander stays safe one position behind."
+5. **Who builds it.** "opus agent": Opus implements the stages, Fable reviews and scores each as a loop node.
+6. **Generations meanwhile.** "Yes": single-idea generations on the legacy line are paused until stage B is scored.
 
 ## 7. Risks, stated
 
