@@ -1,6 +1,6 @@
 # Plan 021: the legacy attack by deliberate bounds, with a job for every squad and every man
 
-Status: **draft for the user's review, 20 September 2026** ("yes do it"). Nothing is implemented. Author: Fable
+Status: **approved by the user on 20 September 2026 with the rulings at the end; implementation by an Opus agent at the user's instruction, reviewed by the architect and evaluated by the loop.** Nothing is implemented yet. Author: Fable
 (architect). Questions are at the end. Legacy command code only: no shared soldier code, no re-baseline, no re-root; the
 result is evaluated by the improvement loop as one large legacy node on the current survivor `22b8504a0d673627`.
 
@@ -41,8 +41,12 @@ New loop measures for all of this: `relocations_per_soldier_minute`, `relocation
    the moving corporal, no regroup chase, no firing-position re-ranking. He walks there by his covered path (plan 020)
    and takes it up. The only re-orders during a leg: his slot became invalid (occupied, no longer protected from a newly
    known enemy), the leg was cancelled, or a squad retreat.
-3. A leg is LONG: the destination is chosen up to the leg limit (question 1) and the tactical route's 12 m stages are
-   merged in legacy code after the planner returns, so the group does not halt and re-plan every house.
+3. **Bounds stay normal length, and the next one is queued (user ruling).** A manoeuvre toward a destination farther than
+   one bound is planned as a CHAIN of ordinary bounds (today's leg length) along the route, each with its own slots,
+   fixed when the manoeuvre is committed. When a bound completes, the next queued bound starts at once: no fresh
+   assessment, no preparation pause, no re-pick of nearly the same place. The chain is dropped only when it is
+   invalidated: the enemy it was aimed at is dead or stale, a bound fails on the pause conditions, a newly known enemy
+   dominates the next bound, or the platoon orders otherwise.
 4. A leg ENDS when the moving men have arrived (majority of those still moving, as now), FAILS on the existing pause
    conditions (crossing pressure, refusals) or at its deadline. On arrival the group FIGHTS from its slots: the existing
    hold-after-arrival applies (while engaged, or 25 s after the last effective fire). The next leg is committed only when
@@ -56,14 +60,14 @@ New loop measures for all of this: `relocations_per_soldier_minute`, `relocation
 A rifleman who was not with the group when the leg was committed (wounded slow, pinned, arriving late) gets the same
 single order: HIS slot at the leg's destination. He is not sent to chase the corporal. If he is under fire he stays in
 cover (the user's plan 020 rule) and goes when it lifts. A man who has held a Rally or Hold order for more than the
-straggler limit (question 2) without firing and is more than 40 m from his group is re-slotted at the group's present
+straggler limit (20 s) without firing and is more than 40 m from his group is re-slotted at the group's present
 position.
 
 ### C. Every squad has a job
 In `PlatoonSim.cpp`: a squad whose riflemen have had no line of fire onto any known enemy for the no-job limit
-(question 3) while another squad of the platoon is in contact gets a task: a support-by-fire position with a line onto
+(**30 s, user ruling**) while another squad of the platoon is in contact gets a task: a support-by-fire position with a line onto
 the enemy the engaged squad is fighting (within rifle and gun range), or, if the platoon already has a base of fire, a
-manoeuvre of its own on the side the engaged squad is not using. At most two squads manoeuvre at once and their routes
+manoeuvre of its own on the side the engaged squad is not using. **At most half of the squads working together manoeuvre at once (user ruling: two of four)** and their routes
 must not cross; at least one squad's gun stays engaged on the enemy.
 
 ### What is NOT changed
@@ -88,11 +92,17 @@ Then side-by-side replays on the four maps the user has been watching (24, 26, 2
 - It is a larger change than any loop node so far: several functions in `ManeuverSim.cpp`, `CoordinationSim.cpp`,
   `CommandSim.cpp` and `PlatoonSim.cpp`. It may be delivered in the three parts above, each measured on its own.
 
-## Questions for the user
-1. **Leg length:** how far may one bound go? Assumed up to 40 m (about 13 s at a walk), against today's 10 to 20 m.
-2. **Straggler limit:** how long may a man sit out of the fight before he is re-slotted? Assumed 45 s.
-3. **No-job limit for a squad:** how long may a squad have no line of fire onto any known enemy before the platoon gives it
-   a task? Assumed 45 s.
-4. **Squads manoeuvring at once:** assumed at most two of four, with at least one gun engaged.
-5. **Who implements:** parts A, B and C as three Sonnet agents in sequence with the architect reviewing each (assumed,
-   per your rule that loop work is Sonnet), or one Opus agent as for plan 020?
+## The user's rulings, 20 September 2026
+1. Bound length: "a run can just use normal bounds with another bound queued up": no longer legs; a queued chain of normal bounds.
+2. Straggler limit: 20 s (the architect's exemptions for the gun group and men under fire were added with it).
+3. No-job limit for a squad: 30 s.
+4. Squads manoeuvring at once: half of the squads working together.
+5. Implementation: an Opus agent.
+
+The user also asked whether this is something the improvement loop cannot change. It can: all of it is legacy command
+code inside the loop's reach, and the result is scored as a loop node like any other. What the loop's PROPOSAL FORMAT
+cannot do is this kind of change: a proposer makes one small mechanism in one place and is judged on a suite that
+cannot resolve effects under about 0.05; seven such proposals showed that the restlessness is structural (how the squad
+advances, across four files), so deleting one order class at a time either removes the advance or changes nothing. This
+plan is one coordinated change, written once, then handed back to the loop to measure and to refine with ordinary
+proposals.
