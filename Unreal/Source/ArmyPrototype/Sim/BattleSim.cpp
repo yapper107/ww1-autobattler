@@ -692,6 +692,9 @@ std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,co
             auto join=cautious(route->start),rest=FollowCorridor(map,*route,route->start,goal);
             if(!join.empty()&&!rest.empty()){join.insert(join.end(),rest.begin(),rest.end());return join;}
         }
+        // Without a typed task there is no rejoin: he walks his own cautious path to the goal
+        // rather than stand with an order the lane cannot serve.
+        if(path.empty()&&!s.assignment.id&&c.offLanePaths)return cautious(goal);
         return path;
     }
     return cautious(goal);

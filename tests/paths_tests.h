@@ -206,8 +206,39 @@ static void CoverRuleTests(){
         }
     }
 }
+// Plan 018, 21 September 2026: a legacy order carries no typed-task id. With the squad's route
+// attached, a man standing off the ordered lane (or sent to a goal off it) used to get no
+// path at all and stood with his order; he now walks his own path. A typed task keeps the
+// rejoin through the route entry, and the switch off reproduces the old refusal.
+static void OffLaneTests(){
+    using namespace army;
+    Config on,off;off.offLanePaths=false;
+    Map open;open.halfWidth=60;open.halfHeight=60;PrepareGeometry(open);
+    auto route=std::make_shared<TacticalRoute>();route->id=9;route->status=RouteStatus::Complete;
+    route->start={-30,0,0};route->points={{-10,0,0},{10,0,0},{30,0,0}};route->destination={30,0,0};
+    auto man=[&](Vec3 at,uint64_t typed){Soldier s;s.id=2;s.position=at;s.assignment.id=typed;s.assignment.task=Task::Flank;s.assignment.teamPlan.route=route;return s;};
+    const Vec3 offLane{-20,25,0},onLaneGoal{30,0,0},offLaneGoal{0,28,0};
+    { auto s=man(offLane,0);assert(CorridorDistance(*route,s.position)>5);
+      assert(TaskExecutionPath(open,s,onLaneGoal,{},off,10,nullptr).empty());
+      auto path=TaskExecutionPath(open,s,onLaneGoal,{},on,10,nullptr);
+      assert(!path.empty()&&Distance(path.back(),onLaneGoal)<.01f);
+      std::cout<<"PATHS: a legacy man 25 m off the ordered lane walks to his goal ("<<path.size()<<" points); with the switch off he has no path\n"; }
+    { auto s=man({-25,0,0},0);
+      assert(TaskExecutionPath(open,s,offLaneGoal,{},off,10,nullptr).empty());
+      auto path=TaskExecutionPath(open,s,offLaneGoal,{},on,10,nullptr);
+      assert(!path.empty()&&Distance(path.back(),offLaneGoal)<.01f);
+      std::cout<<"PATHS: a legacy regroup whose goal lies off the lane is walked\n"; }
+    { auto s=man(offLane,7);
+      auto a=TaskExecutionPath(open,s,onLaneGoal,{},on,10,nullptr),b=TaskExecutionPath(open,s,onLaneGoal,{},off,10,nullptr);
+      assert(!a.empty()&&a.size()==b.size());for(size_t i=0;i<a.size();++i)assert(Distance(a[i],b[i])==0);
+      std::cout<<"PATHS: a typed task still rejoins through the route entry, unchanged by the switch\n"; }
+    { auto s=man({-25,1,0},0);
+      auto a=TaskExecutionPath(open,s,onLaneGoal,{},on,10,nullptr),b=TaskExecutionPath(open,s,onLaneGoal,{},off,10,nullptr);
+      assert(!a.empty()&&a.size()==b.size());for(size_t i=0;i<a.size();++i)assert(Distance(a[i],b[i])==0);
+      std::cout<<"PATHS: a man on the lane follows the corridor as before\n"; }
+}
 static void PathsTests(){
     std::cout.setf(std::ios::unitbuf);
-    PathChoiceTests();CoverRuleTests();
+    PathChoiceTests();CoverRuleTests();OffLaneTests();
     std::cout<<"PATHS: threat-aware path choice and the cover rule PASS\n";
 }

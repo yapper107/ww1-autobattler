@@ -325,6 +325,11 @@ struct Config {
     // Stamina and the sprint to cover (plan 022). On by default; --no-stamina reproduces the
     // pre-022 battle exactly, and no stamina state is then digested.
     bool stamina=true;
+    // A legacy order carries no typed-task id, so the rejoin through the route entry never ran
+    // for it: a man off the ordered lane, or sent to a goal off it, got no path and stood with
+    // his order (plan 018, 21 September 2026). On by default; --no-off-lane-paths reproduces
+    // the previous battles bit for bit.
+    bool offLanePaths=true;
 
     bool drills=false;
     ScenarioFamily family=ScenarioFamily::None;
@@ -345,7 +350,7 @@ inline bool SameConfig(const Config& a,const Config& b) {
     // is selected: the resolved objective is derived from them and the map.
     if(a.staticDefence.layout!=b.staticDefence.layout)return false;
     if(a.staticDefence.layout!=DefenceLayout::None&&(a.staticDefence.defenders!=b.staticDefence.defenders||a.staticDefence.seed!=b.staticDefence.seed))return false;
-    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.offLanePaths==b.offLanePaths&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
 inline bool TypedController(const Config& c){return c.cognition||c.drills;}
