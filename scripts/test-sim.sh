@@ -34,4 +34,12 @@ mkdir -p "$repo_root/.local/tests"
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/EnvironmentSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp" \
   "$repo_root/tests/sim_tests.cpp"
+# The full suite holds about 10 GB (its whole-battle sweep keeps complete records). Three of them beside two
+# reference battles ran WSL out of its 30 GB on 21 September 2026, so the full suite, like a traced battle, takes the
+# machine-wide heavy-job lock of the main checkout (worktrees share it). A selector run is small and does not.
+if [[ $# -eq 0 ]]; then
+  main_root="$(cd "$(git -C "$repo_root" rev-parse --git-common-dir)/.." && pwd)"
+  mkdir -p "$main_root/.local/loop"
+  exec flock "$main_root/.local/loop/trace.lock" "$repo_root/.local/tests/sim_tests"
+fi
 "$repo_root/.local/tests/sim_tests" "$@"
