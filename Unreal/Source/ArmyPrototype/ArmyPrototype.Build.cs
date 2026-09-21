@@ -19,6 +19,6 @@ public class ArmyPrototype : ModuleRules
             PublicDefinitions.Add("ARMY_BUILD_ID=\"" + Hash.ToString("x16") + "\"");
         }
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RenderCore" });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RenderCore", "AnimationCore", "AnimGraphRuntime" });
     }
 }

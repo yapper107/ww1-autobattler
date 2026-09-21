@@ -1,0 +1,34 @@
+{
+  "seed": 107,
+  "duration": 360,
+  "frames": 1801,
+  "shots": 2434,
+  "failure": "Existing smoke stage 22: no active unit waitingPassage >= 0 with passageWaitSeconds > 0.5",
+  "character_and_greybox_same_assertion": true,
+  "recorded_outputs": {
+    "events.jsonl": {
+      "sha256": "4beae0e6fbc9ceb857f1fc02a4851cb92aa6d9de5bd39658bfbdcacc7c49f0c3",
+      "equal": true
+    },
+    "geometry.jsonl": {
+      "sha256": "791fa0a69ed4e117f7b5b0a39fea8b579bd3c14d8ff793bf11d6ae332167c531",
+      "equal": true
+    },
+    "paths.jsonl": {
+      "sha256": "3f7eaf379b35a9502d903a85db085e2ac4285860f0c58b7d5c4beabe280b3e69",
+      "equal": true
+    },
+    "routes.jsonl": {
+      "sha256": "d5fa9066e4e95190a3105e4d8d2240b0bef2eeab765cfdff2d88f73b0d011b8e",
+      "equal": true
+    },
+    "shots.jsonl": {
+      "sha256": "bba6912be2d131507675abc9dc45de5076d029d8cf0b81b0bbfb384c4bcbdcce",
+      "equal": true
+    },
+    "trace.jsonl": {
+      "sha256": "7bee541bb58e83b71ce2d249aebc2c10e637610907af516e97ea05ca306d5ece",
+      "equal": true
+    }
+  }
+}

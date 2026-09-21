@@ -4,6 +4,7 @@
 #include "GameFramework/HUD.h"
 #include "Sim/BattleSim.h"
 #include "HAL/PlatformProcess.h"
+#include "CharacterBlend.h"
 #include "BattleGameMode.generated.h"
 
 class ACameraActor;
@@ -25,6 +26,8 @@ public:
     const army::Frame& Frame() const;
     FVector UnitPosition(int Id) const;
     bool IsFinished() const;
+    FString AnimationDebugText() const;
+    bool bAnimationDebug=false;
     bool IsAutomatedTest() const { return bSmoke; }
     bool IsWideView() const { return Zoom >= 0.65f; }
     army::Config Settings;
@@ -48,6 +51,8 @@ private:
     void RefreshPreparation();
     void BuildScene();
     void ShowUnits();
+    void BuildVisualTimeline();
+    std::vector<std::array<armyvisual::State,army::UnitCount>> VisualTimeline;
     void RunBattle();
     void SmokeTest(float DeltaSeconds);
     void AdjustCamera(float YawDelta, float PitchDelta);
