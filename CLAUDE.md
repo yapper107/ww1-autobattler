@@ -142,6 +142,20 @@ stopped iterations for the night; open: whether the backstop gets a tolerance, a
 fix before plan 021 can land: two MSVC shadowing errors in its `PlatoonSim.cpp` (Unreal build) and the
 `MGEncounterTests` assertion (2 of 3 dislodged) that fails on `d04e3909a0b3d1f4`. Details at the end of plan 018.
 
+**Score v7 (user decision, 21 September 2026: "thats fair to increase the back stop IF we get more flanking"):** the
+seen-at-all backstop `seen_at_the_fight` allows 5 points above the root instead of 4 when the node's `flank_fire_share`
+is reliably above the root's on the same battles (paired 95 % interval above zero); `relaxed_by` in
+`tools/loop/guards.json`, `guards-v6.json` preserved. Under v7 every generation 16 node passes every guard: both stacks
+(`1e68c68335ed5438` seen 4.02, flanking fire +0.354 over the root; `f3ea7ed4a1d67932` 4.22, +0.332), the 25 s cap
+(`155ffe71dc4a563e`) and the generation 17 parent `8835da3260c710b7` (4.22, +0.262; development 0.803, quiet squads
+0.37 a battle, men within 2 m 13.6 %, stragglers 10.1 %). New measure `behind_corporal_share` (the user: "the cpl pushed
+up first, then his men followed", "his soldiers stayed back"): rifleman-seconds 20 m or more farther from the nearest
+defender than their corporal; 0.34 on the generation 17 parent. Generation 17 (five Sonnet proposers from that parent,
+the last of the night): the rifle group moves with its corporal; the forward-holder rule reworked so that a held
+position must be forward, on the bound just dropped and bearing on a known enemy (the user's guess that the generation 16
+rule pins men back was right on reading the code: it never tests that the holder is forward); why the third and fourth
+squads engage late; how the flank's side is chosen; the platoon sergeant attached to squad 0 follows in cover.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two

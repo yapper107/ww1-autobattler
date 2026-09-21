@@ -113,7 +113,14 @@ def evaluate_guards(spec, rows_by_set, baseline_rows, external):
                 elif g['rule'] == 'mean_le_0':
                     ok = summary['mean'] <= 0
                 elif g['rule'] == 'mean_le':         # a stated tolerance above the baseline, in the metric's own unit
-                    ok = summary['mean'] <= g['value']
+                    limit, relax = g['value'], g.get('relaxed_by')
+                    if relax:                        # v7: a wider tolerance bought by a reliable gain on another metric
+                        gain = _summarize(_paired(cand, base, _metric(relax['metric']))[0])
+                        summary['relaxed_by'] = dict(metric=relax['metric'], mean=gain['mean'], ci95=gain['ci95'], earned=bool(gain['count'] and gain['ci95'][0] > 0))
+                        if summary['relaxed_by']['earned']:
+                            limit = relax['value']
+                    summary['limit'] = limit
+                    ok = summary['mean'] <= limit
                 elif g['rule'] == 'ci_upper_ge_0':   # higher is better: not significantly below the baseline
                     ok = summary['ci95'][1] >= 0
                 else:

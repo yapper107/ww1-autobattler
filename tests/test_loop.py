@@ -60,7 +60,7 @@ class GuardsFile(unittest.TestCase):
 
     def test_current_spec_ranks_the_attack_and_keeps_trenches_for_shooting_only(self):
         spec = score.load_guards()
-        self.assertEqual(spec['version'], 'v6')
+        self.assertEqual(spec['version'], 'v7')
         self.assertEqual(spec['objective']['kind'], 'attack')
         self.assertEqual(spec['objective']['ranking_set'], 'town-attack-val')
         for g in spec['guards']:
@@ -147,6 +147,18 @@ class GuardsFile(unittest.TestCase):
         self.assertTrue(result['guards']['seen_at_the_fight']['passed'])
         for r in cand['town-attack-dev']:
             r['metrics']['contact_exposed_share'] = 0.12
+        self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['seen_at_the_fight']['passed'])
+        base_seen = base['legacy']['town-attack-dev'][0]['metrics']['contact_exposed_share']
+        for r in cand['town-attack-dev']:                # v7 (user): 4.5 points over fails unless the node flanks reliably more
+            r['metrics']['contact_exposed_share'] = base_seen + 0.045
+        self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['seen_at_the_fight']['passed'])
+        for r in base['legacy']['town-attack-dev']:
+            r['metrics']['flank_fire_share'] = 0.15
+        for r in cand['town-attack-dev']:
+            r['metrics']['flank_fire_share'] = 0.30
+        self.assertTrue(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['seen_at_the_fight']['passed'])
+        for r in cand['town-attack-dev']:                # more flanking buys one point, not more
+            r['metrics']['contact_exposed_share'] = base_seen + 0.055
         self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['seen_at_the_fight']['passed'])
 
     def test_silent_trench_battle_fails_the_shooting_guard(self):
