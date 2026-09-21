@@ -660,3 +660,46 @@ attackers lost 36.5 % (37.4 %), flanking fire 0.27 (0.15), friendly fire below t
 relocations (-20 % against -30 %) and stragglers (7 % against 3 %) were not met. Plans 022 (stamina and sprint; endurance
 and a new speed stat; user rulings) is being implemented in parallel. The branch was pushed to GitHub at the user's
 request for the art branch.
+
+
+## The sixth epoch and generation 16, 20 September 2026
+
+[Plan 022](022-stamina-and-sprint.md) landed on source `4703559cea2e248f` and re-roots both lineages. Legacy root: attack
+mean 0.611 (0.614 before), no score, because two battles of 105 have fewer than three attacking squads firing without a
+clearance (map 34 seed 107: two squads put 83 % of the defenders out of action, two never fire). Drills root: 0.295,
+failing squads firing and men at the fight as on every build. Carried nodes: plan 021 as `d04e3909a0b3d1f4` (every guard,
++0.200 [+0.142, +0.261] development, +0.194 [+0.128, +0.267] validation, value 0.738, clears 87 %); the drills mainline
+`537691ba1ba017d7` fails selectors and its conduct guards as before.
+
+The user replayed plan 021 on maps 39, 28, 24 and 26 and on the plan 022 root (map 39) and said: soldiers hang back too
+long ("whatever it was half it"), the green squad retreats instead of flanking or facing the enemy, nobody flanks from the
+bottom sooner, a man who got across a failed flank falls back although he had an advantageous spot, a rifle group
+retreats when its corporal dies, one man stays behind all battle, men called to the corporal bunch up, and a squad stands
+while its corporal is out in the open. The architect's trace of that last one on the root: the corporal is the only man
+firing (60 rounds in 100 s from a corner), the gun never gets a line, hold scores 22 against 7 because one rifle counts
+as the platoon's base of fire delivering.
+
+| node | change | development | against parent | guards |
+|---|---|---|---|---|
+| `b4707cdcb9ca9e86` | the user's halved limits (10 s, 15 s) | 0.786 | 0.000 | pass |
+| `ff93b76eb82e4179` | halt positions from the cover catalogue, 4.5 m apart, chosen once | 0.776 | -0.010 | pass; men within 2 m 15.1 to 13.1 %, friendly hits 6.6 to 5.4, stragglers 7.9 to 10.2 % |
+| `c43b2e4a693895d2` | a rifleman who reached his slot and is clear of fire is not recalled and becomes the rally point | 0.797 | +0.010 | pass |
+| `e116253398d5d6b0` | an exposed crossing waits at most 20 s for rounds on its one overlooking enemy | 0.794 | +0.008 | pass; quiet squads 0.63 to 0.37 |
+| `fbf8df65bb7d7223` | without a corporal the manoeuvre is planned from the senior rifleman, not the sergeant at the rear | 0.794 | +0.008 | pass |
+| `155ffe71dc4a563e` | an engaged squad's bound deadline is capped at 25 s | 0.802 | +0.015 | seen at all 4.19 against 4.0 |
+| `1e68c68335ed5438` | all five and the halved limits | 0.801 | +0.015 | seen at all 4.02; flanking fire 0.249 to 0.379, quiet squads 0.43, stragglers 10.0 % |
+| `f3ea7ed4a1d67932` | the same without the 25 s cap | 0.803 | +0.017 | seen at all 4.22; flanking fire 0.351, quiet squads 0.32 |
+
+Findings: the flank is ordered within 5 s of contact and then freezes at an exposed crossing (8 to 13 pauses a battle);
+the "retreat" after a corporal's death is an ordinary flank planned from the sergeant's position; the lone man behind on
+map 26 is the platoon sergeant attached to squad 0, re-ordered every 4 s to an offset of the squad centre and pinned by
+the stay-in-cover rule (not yet addressed). At 97 % of defenders out of action the attack score has no room left to
+separate these nodes; the conduct measures and the user's eye do. Open for the user: a tolerance on the seen-at-all
+backstop (both stacks miss by 0.02 to 0.22 points), and the straggler rise. Before plan 021 can land on the branch:
+rename two shadowed locals in its `PlatoonSim.cpp` (MSVC C4456, found when building the stack for Unreal; done only in
+the scratch overlay `.local/loop/gen16/unreal-overlay`) and resolve the `MGEncounterTests` assertion (2 of 3 dislodged)
+that three proposers saw fail on `d04e3909a0b3d1f4` and that passes under the crossing and retreat changes. Proposers
+left three self-matching `pgrep` waiters running for over an hour; the next brief forbids background jobs outright and
+evaluations run under a tracked watcher on the log file. `tools/battle_video.py` marks a sprinting man with an amber ring
+and streak and plays below 5x at a lower frame rate; videos stay at the usual speed (user). The user stopped iterations
+for the night after the stack's videos and an Unreal run of `1e68c68335ed5438` on map 39 seed 107.

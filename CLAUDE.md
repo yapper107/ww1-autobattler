@@ -122,6 +122,26 @@ fire stays except for a squad retreat or better cover close by; Opus implemented
 `dd847612977627b1` survives** (+0.150 [+0.079, +0.222], +0.127 [+0.033, +0.223]); drills `ff4aff9f66a5f5a3` still fails
 men at the fight and seen-and-shotless. Generation 13 is on restlessness in both lineages. Details at the end of plan 018.
 
+Plans 021 and 022, the sixth epoch and generation 16 (20 September 2026): [plan 021](plans/021-legacy-attack-by-bounds.md)
+(the legacy attack by queued bounds, one slot per rifleman, nobody left behind, a job for every squad; user rulings; Opus)
+exists only as a loop node and is the best legacy survivor. [Plan 022](plans/022-stamina-and-sprint.md) (stamina and the
+sprint to cover; toughness renamed endurance, a new speed stat; user rulings; Opus) landed on source `4703559cea2e248f`
+(full suite, 40/40, 3/3, Unreal compiles) and re-roots both lineages: legacy root attack mean 0.611 but it now fails the
+squads-firing guard on two battles of 105; drills root 0.295, failing as before. Plan 021 carried onto it is
+`d04e3909a0b3d1f4`: every guard passes, +0.200 [+0.142, +0.261] development, value 0.738. The user's replay notes on it
+(men hang back, a squad retreats instead of flanking, no flank from below, a man who crossed is recalled, men bunch when
+called together, a squad stands while its corporal fires alone) became five Sonnet proposals; the user's "halve it" on
+the waiting limits (10 s and 15 s, `b4707cdcb9ca9e86`) changes nothing measurable. Four pass every guard and none moves
+the attack score: halts in cover and spread out `ff93b76eb82e4179`, a forward man keeps his ground `c43b2e4a693895d2`,
+an exposed crossing goes after 20 s `e116253398d5d6b0` (quiet squads 0.63 to 0.37 a battle), a group without its
+corporal plans from where it stands `fbf8df65bb7d7223`; the 25 s cap on a stalled bound `155ffe71dc4a563e` misses the
+seen-at-all backstop (4.19 against 4.0). Stacked, flanking fire rises from 25 % to 35 to 38 % and men within 2 m fall
+from 15.1 % to 13 %, but both stacks miss the same backstop by a hair (`1e68c68335ed5438` 4.02, `f3ea7ed4a1d67932`
+4.22) and stragglers rise to 9 to 10 %. The user has the side-by-side videos and an Unreal run of the five-fix stack and
+stopped iterations for the night; open: whether the backstop gets a tolerance, and the straggler rise. Known defects to
+fix before plan 021 can land: two MSVC shadowing errors in its `PlatoonSim.cpp` (Unreal build) and the
+`MGEncounterTests` assertion (2 of 3 dislodged) that fails on `d04e3909a0b3d1f4`. Details at the end of plan 018.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
