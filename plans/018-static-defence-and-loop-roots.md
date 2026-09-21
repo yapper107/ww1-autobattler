@@ -734,3 +734,32 @@ the late-squads trace found that `PlanPlatoon` re-scores the mover every 8 s and
 the first arrives (map 34: squad 3 is made mover three times and first fires at 251 s): a sticky mover. With one known
 contact the flank's side is close to a coin flip on unseen ground. Proposers' full suites exceed the harness's 10 minute
 foreground limit when three run beside an evaluation: split the suite in the next brief.
+
+
+## The user's review of the generation 17 stack, 21 September 2026
+
+Videos of `5b37f519e6320986` against plan 021 (maps 39, 28, 24, 26, seed 107). The user: on map 39 "the Blues Corporal moves
+up forward however his men doesn't follow him"; on map 28 the green squad takes a while to flank ("they should have charted
+their path in segmented bounds and pathfinder to their spot faster if they had encountered no enemy resistance") and "one of
+the cpls got wounded and took his entire squad with him to the backlines, he should have passed his command to his second in
+command, and further down the chain"; on map 24 the green corporal "didn't find the flank in the very beginning it's only
+later that his men and other men from the platoon find it"; on map 26 the men did not follow their corporal again: "the ones
+at the firing position are okay not to follow them but the ones who are just in cover and haven't seen enemies they are just
+standing there".
+
+Architect's measurements on those four battles (stack binary): of the rifleman-time spent 20 m or more behind the corporal,
+73 % is standing still and 87 % is by men who have not fired for 60 s. 37 % of it is a man who HOLDS A MOVEMENT ORDER (Flank
+or Rally, action Advance, goal 56 to 70 m away), is not suppressed, not seen, not winded, has a route, and does not displace:
+43 such episodes on maps 39 and 26, median 19 s, the longest 335 s. A trace of one (map 39, soldier 12, 120 to 205 s) shows
+the corporal's relay re-tasking him every 2 to 8 s with contradictory goals: REGROUP (28, 21), FLANK (47, 21), REGROUP
+(24, 3), OVERWATCH (47, 29), FLANK (24, -17), REGROUP (7, 12), OVERWATCH (47, 29), FLANK (47, 48): a flank to the north, then
+to the south, regroups behind him in between; and from 181.7 s ("cover released, following a quieter flank") to 195.5 s he
+stands with a flank order 49 m long and does not move, which is soldier-level (shared code) and not yet explained. On map 28
+the cyan corporal is wounded at 53 s (health 66), keeps command, and between 120 s and 135 s the whole rifle group goes from
+47-65 m back to 80-104 m from the enemy with him; the blue corporal at health 18 goes to the rear alone and his men stay.
+Next generation's subjects: (1) one order at a time for a rifleman: the relay does not replace a movement order with a
+different kind of order while the man is executing it and the squad's plan has not changed; (2) the sticky mover and a flank
+side that is kept once chosen (the generation 17 late-squads finding); (3) succession: a wounded corporal hands his group to
+the senior rifleman and the group is not regrouped on a man going to the rear; (4) an uncontested flank moves fast: no waits
+for covering fire or for latecomers while no enemy is known on the route, bounds chained without halts; (5) architect: why a
+man with a route and a movement order stands still (shared soldier code).
