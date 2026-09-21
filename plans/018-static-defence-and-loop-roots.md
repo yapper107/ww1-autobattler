@@ -786,3 +786,31 @@ mean, five battles better or equal and two much worse (24/108: 0.750 to 0.125, t
 28/108: 0.812 to 0.547), so more men at the front is not yet more defenders out: not tuned, eight battles are noise-level for
 the score. A repair is an architect change in shared code that changes every legacy digest (20 legacy references, a seventh
 epoch for the legacy lineage; cognition and drills set the id and should stay bit-identical): the user's decision.
+
+## The path fix and the seventh epoch, 21 September 2026
+
+**The path fix, the seventh epoch, memory, the exploration policy (21 September 2026).** The user asked why soldiers stand
+with a movement order. Cause, in shared soldier code (`TaskExecutionPath`): an order that carries the squad's route is
+pathed inside a 4 m corridor, the fallback that rejoins through the route entry ran only for typed tasks
+(`assignment.id`, set by cognition and drills, never by legacy), so a legacy man off the lane, or sent to a goal off it,
+got no path and stood until his order was replaced (557 failed path requests against 687 good ones in 200 s of one
+battle). Fixed at the user's instruction on source `a2c3182b1b6177d8` (`offLanePaths`, `--no-off-lane-paths`; pin test;
+cognition references 20/20 untouched and drills bit-identical on all 60 development attacks; legacy references
+regenerated; full suite, 126 Python tests, Unreal compiles). **Legacy root: development 0.586 to 0.705, validation 0.611
+to 0.744, clears 35 % to 63 % and 31 % to 76 %, defenders out 77 % to 91 %, quiet squads 0.9 to 0.4, every guard passes;**
+attackers lost 36 % to 42 %, friendly hits 8.2 to 9.2. The five best legacy nodes carried onto it all still beat the root
+by about +0.10 (plan 021 `8888a49d0a244677` 0.812, flanking fire 31 % against 6 %), but four now fail
+`force_at_the_fight` (92.6 % against the root's 94.6 %; stragglers 6 to 7 % against 2.5 %): only the generation 16
+three-fix stack `6e16adfd8b5c3ae2` passes every guard (value 0.754 against the root's 0.744).
+By user ruling parents are no longer hand-picked: `python3 -m tools.loop select` (`tools/loop/policy.py`) takes, per
+worker, the guard-passing node with the highest value plus an exploration bonus that shrinks with its children. It is a
+hand-written seed, not Dream-RSI's method (there the policy is code an LLM rewrites and tests by replaying recorded
+trees, starting from "parallel refining"; legal parents are the root and leaves): the user was told so.
+A second WSL crash (kernel log: three full suites at about 10 GB each beside full-record reference battles) led to:
+traced battles run lean with an identical trace (0.4 GB against 2.6 GB); the 40 references and trace parity are lean
+(`tools/verify/`, 40/40 in 80 s, ten at a time); the suite releases each whole-battle record once read (11.5 GB to 6 GB,
+output identical); `scripts/test-sim.sh` gives the full suite three machine-wide slots. The user does not want this kept
+as a memory rule: it lives in the scripts. Generation 18 (five Sonnet proposers from `6e16adfd8b5c3ae2`): the men this
+line leaves behind; the platoon keeps its mover and side; succession when a corporal is wounded (the user: "he should
+have passed his command to his second in command, and further down the chain"); an uncontested flank moves fast; one
+order at a time for a rifleman. The user sees only survivors.
