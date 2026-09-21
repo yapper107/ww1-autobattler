@@ -1,5 +1,6 @@
 """Unit tests for the plan 016 improvement loop (tools/loop)."""
 import json, os, random, shutil, sys, tempfile, unittest
+import unittest.mock as mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -160,6 +161,20 @@ class GuardsFile(unittest.TestCase):
         for r in cand['town-attack-dev']:                # more flanking buys one point, not more
             r['metrics']['contact_exposed_share'] = base_seen + 0.055
         self.assertFalse(score.score(score.load_guards(), cand, base, EXTERNAL_OK)['guards']['seen_at_the_fight']['passed'])
+
+    def test_the_exploration_policy_continues_the_best_node_and_prefers_an_untried_one(self):
+        from tools.loop import policy
+        nodes = [dict(id='root', parent=None, scores={'v': dict(guards_pass=False, value=None)}),
+                 dict(id='a', parent='root', scores={'v': dict(guards_pass=True, value=0.74)}),
+                 dict(id='b', parent='root', scores={'v': dict(guards_pass=True, value=0.73)}),
+                 dict(id='c', parent='a', scores={'v': dict(guards_pass=True, value=0.60)}),
+                 dict(id='d', parent='a', scores={'v': dict(guards_pass=False, value=0.90)})]
+        with mock.patch.object(policy.tree, 'list_nodes', return_value=nodes), mock.patch.object(policy.tree, 'lineage_root', return_value='root'):
+            picks = [p['id'] for p in policy.select('root', 'v', 3)]
+        self.assertEqual(picks[0], 'b')                  # as good as a within the bonus, and a already has two children
+        self.assertIn('a', picks)
+        self.assertNotIn('d', picks)                     # a node that fails a guard is never a parent
+        self.assertNotIn('c', picks)
 
     def test_silent_trench_battle_fails_the_shooting_guard(self):
         cand, base = self.town_rows()

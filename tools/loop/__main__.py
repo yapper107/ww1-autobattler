@@ -16,6 +16,12 @@ def cmd_evaluate(a):
     print(json.dumps(dict(id=node['id'], scores=node['scores']), indent=1))
 
 
+def cmd_select(a):
+    from tools.loop import policy
+    for pick in policy.select(a.root, a.version, a.workers):
+        print(f"{pick['id']:32} value {pick['value']:.3f} upper {pick['upper']:.3f} children {pick['children']:2d}  {pick.get('title') or ''}")
+
+
 def cmd_rescore(a):
     rescore.rescore(a.guards, a.nodes or None, run_missing=a.run_missing)
 
@@ -140,6 +146,8 @@ def main(argv=None):
     rp.add_argument('id'); rp.add_argument('--set', default=current_ranking); rp.add_argument('--key', help='battle key as listed in the node rows (default: first)')
     rp.add_argument('--no-build', action='store_true'); rp.add_argument('--no-launch', action='store_true'); rp.set_defaults(fn=cmd_replay)
 
+    se = sub.add_parser('select', help='the exploration policy: the parents of the next proposals (value plus an exploration bonus)')
+    se.add_argument('root', help='lineage root id'); se.add_argument('--workers', type=int, default=5); se.add_argument('--version', default=current); se.set_defaults(fn=cmd_select)
     sub.add_parser('static-check', help='hidden-state read check on policy sources').set_defaults(fn=cmd_static)
     a = p.parse_args(argv)
     a.fn(a)
