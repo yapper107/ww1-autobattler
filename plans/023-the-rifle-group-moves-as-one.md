@@ -207,3 +207,38 @@ re-root (with the queued shared-code change) so that both lineages face one oppo
 To restate before the line lands: `SprintBattleTests` asserts that no defender ever sprints; on this build one does for 7
 frames, back to his own slot after an emergency shelter (shared soldier code in a diverged battle). Proposed: count only
 a sprint that takes a defender away from his slot.
+
+## 9. Stage B as built and scored (21 September 2026)
+
+Opus, nine builds, node **`5ab90b4e236dc5c9`** on stage A (patch `.local/plan023/B.patch`). Before writing code the
+implementer explained stage A's extra losses: not more fire taken (33.6 hits a battle against 33.9) but more follow-up hits
+on men already hurt (1.9 to 2.5 a battle): when `StationValid` gave a station up, `issued` still equalled the objective's
+serial, no new station was allocated, and the man stood on ground the relay had just judged exposed until the objective
+changed (spells of seen, still and not firing for 10 s or more: 0.47 to 1.53 a battle). Fixed in stage B.
+Built: `MakeGroupAxis`/`AxisProgress` (behind and ahead by projection; the rear and lead lines taken over the objective's
+neighbourhood so that a straggler cannot define "behind"); a man behind and idle for `callUpSeconds` is called up once and
+re-stationed with the group; a man ahead in a protected, bearing place with an enemy known keeps it as his station; ahead
+with no line: the nearest bearing place around HIM; `lagging` and the 40 m straggler rule deleted; two forward bearing men
+latch an advantage and `forwardCentre` feeds both `UpdateSearchMission` and `PlanSquad`'s engaged destination, so the
+leader's own destination comes up; an unsafe way up (`CrossingExposure` 0.2 or more) stops the come-up, the forward men
+that bear on the overlooking enemy get him as their sector and are never recalled; the way up is measured from the
+LEADER (from the group's mean position `FindPath` fails inside walls and the rule silently never fired); a gunner more
+than 55 m behind is searched from the group. Nine pins in `--group`.
+Accepted amendments: the rear line excludes stations taken up away from the objective; the way up is measured from the
+leader; under a hold objective the call-up re-stations a man with the group; the advantage is latched until the group
+arrives; "told to fire" is a sector, since legacy code cannot force a fire solution; the order COUNT is a poor churn
+measure here (sector refreshes at the same place), re-targeting is the honest one.
+Full suite, every guard passing, against stage A: development 0.795 against 0.804 (-0.009; 31 better, 24 worse),
+validation 0.850 against 0.838, **value 0.784 against 0.769**; stragglers 6.9 % to 5.3 %, regroup orders 0.75 to 0.33 a
+soldier-minute, behind the corporal 12.2 % to 11.7 %; costs: flanking fire 24.3 % to 19.9 %, quiet squads 0.13 to 0.25,
+friendly hits 5.8 to 6.9, wounds while displacing 46.0 % to 48.8 %. The whole development deficit is two battles of one
+map, `city-24` seeds 107 and 109 (the group closes to a few metres of the defenders and loses 84 %); without them
++0.013. The implementer's 15-battle check had read -0.07: it over-weighted that map.
+**Stage B2 (in hand): the stand-off.** The user's ruling 1 says the group goes to its forward men "unless it is unsafe":
+stage B tests the way up, nothing tests the place of arrival. No station, come-up objective, call-up place or leader's
+destination nearer a known enemy than `standOff` (25 m, the near edge of the flank band) or nearer than the forward men
+already are; forward men inside it keep their ground as the foothold but do not pull the group in.
+To restate before the line lands: `MovementRecoveryAndShelterTests` asserts that men 12 m behind the NCO receive a Rally
+order in one cycle (the rule stage B deletes); proposed: each receives a movement order to a station within `haltRadius`
+of the leader's ordered objective, the `regrouping` assertion kept. The suite aborts there, so the later groups were run
+by selector.
