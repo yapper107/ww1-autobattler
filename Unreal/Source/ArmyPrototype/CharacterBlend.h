@@ -1,12 +1,14 @@
 #pragma once
 // Presentation-only selection and timing: deliberately independent of Unreal and Sim.
 #include "CharacterClips.h"
+#include "WeaponHandling.h"
 #include <algorithm>
 #include <cmath>
 #include <string>
 #include <vector>
 namespace armyvisual {
 struct State {
+    HandlingInput handling;
     float forward=0, right=0, crouch=0, aim=0;
     double phase=0;
     float outAt=-1;
@@ -46,8 +48,8 @@ inline std::vector<Sample> Samples(const State& s,double time) {
         };
         if(stance)direction("A_walk_crouching_",1);
         else {
-            const float run=std::clamp((speed-1.755f)/(4.389f-1.755f),0.f,1.f);
-            const float sprint=std::clamp((speed-4.389f)/(6.583f-4.389f),0.f,1.f);
+            const float run=s.handling.sprinting?1.f:std::clamp((speed-1.755f)/(4.389f-1.755f),0.f,1.f);
+            const float sprint=s.handling.sprinting?1.f:std::clamp((speed-4.389f)/(6.583f-4.389f),0.f,1.f);
             direction("A_walk_",1-run);direction("A_run_",run*(1-sprint));direction("A_sprint_",sprint);
         }
     }

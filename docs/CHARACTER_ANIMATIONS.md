@@ -1,15 +1,17 @@
 # Rifle character prototype
 
 Branch: `codex/unreal-character-animations`. This is an isolated presentation branch,
-based on `f760bd6`; the battle simulation and controller defaults are unchanged.
+rebased onto `plan-018-static-defence` at `c34bf68`; the battle simulation and controller defaults are unchanged.
 
 ## What is connected
 
 The approved female Azure model and original-size bolt-action rifle use grip C.
 The same character has an Ember uniform/material palette. All 49 prepared Mixamo
 Pro Rifle Pack clips are imported at their original durations (60 fps export).
-Rifle-equipped units use these characters. Machine gunners retain the greybox
-until the machine-gun model and its distinct hand placement are fitted.
+Riflemen and machine gunners now use the shared rig, in both faction palettes.
+The male prototype has a broader jacket and jaw and is 8% taller (183.6 vs 170 cm).
+Its skeleton is compatible with the female animations. Weapon dimensions remain
+unchanged between body types; hand target distances compensate for body scale.
 
 `BattleGameMode` constructs a compact visual timeline from recorded positions,
 facing, stance, aim state, and the first out-of-action snapshot. Simulation owns
@@ -33,7 +35,10 @@ testable in `CharacterBlend.h`.
    movement phase using speed, each clip's stride distance and blend weight. The
    left-foot swing peaks are aligned across the source clips. This reduces phase
    cancellation; it is not foot locking or terrain foot IK.
-4. Correct both arms after blending using the independent weapon-relative grip
+4. Blend a standing upper-body aim/handling pose over spine descendants while
+   retaining locomotion hips and legs. Sample procedural weapon/hand keys for recoil,
+   bolt lift/pull/push/lock and reload from explicit battle time. Then correct both
+   arms after blending using the independent weapon-relative grip
    bones. Elbows preserve the authored bend side; limbs never stretch. These
    control bones are explicitly kept in Unreal's required-bone set.
 5. Out-of-action takes priority, blends into standing/crouching fall over 0.15 s,
@@ -58,7 +63,10 @@ FBXs. `bash scripts/launch.sh` starts the branch build.
 - **V** toggles the selected character's clip names, blend weights, speed, stance
   weight and wrist error. Normal play does not show these implementation details.
 - Pause, step, seek and change replay speed with the existing controls.
-- `-ArmyCharacterDemo` opens a 120 s battle paused close to a moving rifle unit.
+- `-ArmyHandlingReview` shows female/male rifle and MG variants, standing handling
+  followed by moving handling. It writes a four-variant native validation report
+  and three screenshots, then exits.
+- `-ArmyCharacterDemo` opens a 120 s battle paused close to a moving male rifle unit.
 - `-ArmyGreybox` selects the previous cylinder presentation for comparison.
 - `-ArmyCharacterReview -unattended -d3d11` runs clip/blend/attachment checks and
   captures a close lineup, then exits.
@@ -77,7 +85,9 @@ files were preserved. No Mixamo account access is needed to reproduce these expo
    and exports only the chosen body/coat, separate rifle and 49 actions.
 2. Run `measure_phases.py -- <output-dir>` against the same approved blend to add
    locomotion phase offsets to `manifest.json`.
-3. Copy outputs into `art/characters/female_rifle`, run `generate_clips.py`, then
+3. Run `export_variants.py -- <output-dir> <approved_machine_gun.blend>` with
+   `approved_grip_C.blend` loaded to export the compatible male and weapon parts.
+   Then copy outputs into `art/characters/female_rifle`, run `generate_clips.py`, then
    build the branch. Its mirror receives `Art/female_rifle` and `Tools/character`.
 4. Run UnrealEditor-Cmd against the mirror project with
    `-run=pythonscript -script=<mirror>/Tools/character/import_unreal.py -unattended -nullrhi`.
@@ -93,9 +103,23 @@ its vertices are already centimetres; the FBX skeleton retains its unit scale.
 
 ## Deliberate first-pass limits
 
-- The pack contains no firing, bolt-cycle or reload clips. Aim/hold poses are used;
-  shots, reload timing, ammunition and hits still come from the simulation. Dedicated
-  actions and upper-body overlays are the next animation work.
+- The pack contains no firing, bolt-cycle or reload clips. These actions are now
+  authored procedural standing hand/weapon curves in `WeaponHandling.h`, layered
+  over locomotion. They are prototype gestures, not finished hand/finger mocap.
+  The rifle uses a separate blockout bolt and eight-round reload prop; the machine
+  gun moves its detachable ammunition box. Belt feeding and individual cartridge
+  ejection are not animated.
+- Shot events use exact `Record.shots` times, including 10 Hz MG bursts between
+  snapshots. Reload intervals use recorded end time and the soldier's dexterity.
+  A small faceted arcane muzzle flash follows the same exact shot clock.
+  Simulation owns shots, ammunition and hits; animation cannot change them.
+- `movingFire` lowers a firing MG to hip height. `coveredPath` raises a ready pose
+  without forcing crouch or changing movement speed. Plan 022 is not implemented
+  on the base commit: a field-detecting adapter and synthetic tests prepare explicit
+  sprint/winded/stamina inputs. They are not live gameplay features on this branch
+  until plan 022 lands. Sprint suppresses handling; winded adds mild breathing.
+- Zoom minimum is .003 (previously .01). A shadowless ambient skylight and shallower
+  fill light expose the face below the helmet while retaining the main sun shadows.
 - Turn and jump clips are imported for inspection, but not auto-triggered: the current
   simulation has no airborne state, and turning clips need turn-in-place thresholds
   and root-yaw handling. Facing currently follows the recorded orientation.
@@ -104,10 +128,23 @@ its vertices are already centimetres; the FBX skeleton retains its unit scale.
 - Weapon drops use the authored flat-floor track, not Unreal rigid-body collisions
   against buildings or corpses. There is no ragdoll, terrain foot placement or
   elevation aim offset yet. Projectile origin visuals retain the current renderer.
-- This is one female prototype body reused across rifle roles. Rank/accessory variants,
-  male bodies and machine-gun grip fitting remain art work.
+- These are two shared-rig prototype bodies. Rank/accessory variants remain art work.
 
 ## Verification
+
+The updated handling branch compiles on UE 5.4 Win64. The four-variant sweep runs
+1,588 poses per variant (6,352 total), including standing/crouched/walking handling.
+Maximum wrist-to-target gap is 0.3294 cm; every variant holds its final death pose,
+follows its drop track and restores an identical pose after seeking. A separate
+check compares hips and both feet with the standing overlay enabled/disabled.
+The 120-second seed-107 battle checks 640 character poses and 24 exact shot events
+(12 rifle, 12 MG); rewind, pause and speed changes restore the same pose.
+Portable handling tests cover bolt vs automatic fire, reload/death/sprint priority,
+2,000 arbitrary seeks, dexterity-scaled reload timing, and both absent/present
+plan-022 fields. `handling-*` evidence files contain the current results.
+
+The following paragraph records the **earlier rifle-only checkpoint**:
+
 
 Run `g++ -std=c++17 -Wall -Wextra -Werror -IUnreal/Source/ArmyPrototype
  tests/presentation/character_blend.cpp -o /tmp/character-blend-test` then the binary.
@@ -129,9 +166,9 @@ Native results and screenshots are in
 The configured Fable helper at `/home/jchan/.local/share/astra-fable/fable_architect.py`
 was unavailable (file absent); no independent Fable review is claimed.
 
-The broader existing `-ArmySmokeTest` reaches stage 22, then fails its passage-traffic
-fixture: this seed has no active soldier with `waitingPassage >= 0` and more than
-0.5 s waiting. The same build with `-ArmyGreybox` fails the identical assertion.
+At the earlier rifle-only checkpoint, the broader `-ArmySmokeTest` reached stage 22, then fails its passage-traffic
+fixture: that seed had no active soldier with `waitingPassage >= 0` and more than
+0.5 s waiting. The same build with `-ArmyGreybox` failed the identical assertion.
 All six recorded outputs (events, geometry, paths, routes, shots, full trace) are
 SHA-256 identical across character and greybox runs: 360 s, 1,801 snapshots,
 2,434 shots, gameplay digest `6400855589235533992`. Earlier smoke stages, including

@@ -52,6 +52,7 @@ private:
     void BuildScene();
     void ShowUnits();
     void BuildVisualTimeline();
+    std::array<std::vector<double>,army::UnitCount> VisualShots;
     std::vector<std::array<armyvisual::State,army::UnitCount>> VisualTimeline;
     void RunBattle();
     void SmokeTest(float DeltaSeconds);
