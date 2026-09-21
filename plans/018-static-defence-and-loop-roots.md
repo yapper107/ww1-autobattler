@@ -879,3 +879,28 @@ Procedure as for the path fix: a `Config` switch with a CLI off flag that reprod
 lean references regenerated (`tools/verify/`), both lineages re-rooted, the best nodes carried over.
 Also open for the same moment: the `MGEncounterTests` backstop (`dislodged==3`, a chaotic three-seed outcome that reads
 2 of 3 on the succession node): relax to at least 2 of 3, replace it, or keep it as a warning: the user's decision.
+
+
+## Generation 19, 21 September 2026: no survivor beats its parent; the corporal's relay needs a design, not patches
+
+Five Sonnet proposals on the user's notes (parents by the policy). All scored on the full suite:
+| node | parent | change | development (vs parent) | value (parent's) | result |
+|---|---|---|---|---|---|
+| `e9d98b7abaf157b0` | `f7d7aa48ecc1e453` | a man 5 m or more nearer the known enemy than his leader is not recalled; he holds if his place bears, else goes to bearing cover; two such men pull the halt anchor up | 0.813 (-0.026, 20/35) | 0.748 (0.799) | guards pass; flanking fire 26 to 33 %, quiet squads 0.33 to 0.22, attackers lost 32 to 36 %: the riflemen come up and the corporal's own route does not, so he pushes alone |
+| `e02115d56cda2594` | `03fcf0867579b9f7` | when the support's own search finds nothing, a bearing, protected position within 60 m of the rifle group, angled off its line | 0.824 (+0.010, 31/27) | 0.741 (0.791) | guards pass; quiet squads 0.43 to 0.35, flanking fire 19 to 22 %; a traced support fired 0 rounds all battle before, 20 after; lower validation draw |
+| `dda79cf26104d800` | `0f005820dd9052c2` | a chained bound's deadline sized from the farthest man's real distance | 0.800 (+0.009, 7/11) | 0.768 (0.789) | guards pass; the reported stall 31 s to 47 s: its laggards chase a moving corporal in the relay's regroup |
+| `7e9144f8f75a9d2c` | `d8c602861821ae02` | left behind = a squadmate stands 25 m nearer the known enemy; called up after 10 quiet seconds whatever task or slot, unless he bears; also in `PlanSquad`'s no-corporal fallback | 0.820 (+0.014, 20/23) | 0.776 (0.794) | guards pass; stragglers and men at the fight unchanged (6.3 %, 93.5 %) |
+| `4d32a8e2baae98fe` | `f7d7aa48ecc1e453` | a rifleman keeps his order while he makes progress on it, travel-time grace, 28 m backstop | 0.821 (-0.017, 20/33) | none | fails `force_at_the_fight` (90.1 %); its proposer's own verdict after five rounds |
+Four independent traces this generation land on the same code, the rifle group's relay in `UpdateCommands`
+(`CommandSim.cpp`): its `lagging` test is raw distance to the leader in any direction (recalls men who are ahead, and
+ping-pongs a man closing on a goal); its regroup sends laggards to the leader's CURRENT position, a moving point they
+never reach; it is skipped for the rest of the battle once the corporal is dead or has become squad leader (the
+succession node repairs the reference, not the rest); the leader's own destination is set elsewhere, so pulling the
+riflemen's anchor forward leaves him to advance alone; legacy orders carry no id, so "is this the order he already
+holds" has to be keyed on task and issuer. Every one-branch fix trades one failure for another. The architect's
+conclusion: the relay needs one design (who is the reference, which direction is behind, fixed slots instead of a moving
+target, the leader's pace tied to his group, platoon staff and the support included), written as a plan with the
+user's rulings, like plan 021: proposed to the user. The policy's next picks would be `d8c602861821ae02`,
+`f7d7aa48ecc1e453`, `7e9144f8f75a9d2c`, `03fcf0867579b9f7`, `0f005820dd9052c2`. Also this generation: the succession
+assertion in `ReassessmentTests` restated so that both designs satisfy it (someone able takes the point, never the fallen
+corporal, the support or nobody); the architect ran each parent's suite once for all proposers; six check battles a proposer.

@@ -218,6 +218,15 @@ once for all, six check battles at a time per proposer.
 they know about (shelter, flank and bound goals, path cost), re-rooting all three controllers, and the decision on the
 `MGEncounterTests` backstop: see the section of that name at the end of plan 018. Not while generations are running.
 
+**Generation 19 (21 September 2026):** five Sonnet proposals on the user's notes, all scored, none beats its parent's value
+(four pass every guard: a man ahead is not recalled `e9d98b7abaf157b0`, the support comes up to a firing position
+`e02115d56cda2594`, a chained bound's deadline from real distances `dda79cf26104d800`, a man left behind is called up
+whatever his task `7e9144f8f75a9d2c`; one order with a progress test `4d32a8e2baae98fe` fails men at the fight). Four
+independent traces land on the rifle group's relay in `UpdateCommands` (`lagging` by raw distance in any direction, regroup
+on a moving leader, skipped when the corporal is gone, the leader's own route set elsewhere): one-branch fixes trade one
+failure for another; the architect proposes a plan-sized redesign of the relay with the user's rulings. Table at the end
+of plan 018.
+
 ## Plan 017 phase 3 landed — 18 September 2026 (plan complete on Linux)
 
 Sway and recoil are on source `4f1deaa79cc1a897`: the aim point wanders on two
