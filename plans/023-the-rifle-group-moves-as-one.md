@@ -175,3 +175,35 @@ separate straggler rule and its gunner copy, the staff's 4 s offset loop, the 4 
 - Drills shares none of this. Its own missing men (support elements that never displace) remain a separate subject.
 - The queued shared-code change (keep soldiers away from known enemies, end of plan 018) is independent and still
   waits for the end of the AI iterations.
+
+## 8. Stage A as built and scored (21 September 2026)
+
+Opus, seven build-and-measure rounds, node **`a5353ef76c03cc80`** on `f7d7aa48ecc1e453` (patch `.local/plan023/A.patch`).
+One record (`GroupStations` in place of `BoundPlan` and `HaltPlan`), one allocator `GroupStation(kind: Halt, Bound,
+Hold)`, `StationValid`/`StationBears` in place of the slot tests, `RejoinPosition` and `UsefulFiringPosition` folded in;
+an order is sent only when its task or station changes (`rt.groupOrder`); a recalled man gets a station fixed beside the
+leader AS HE WAS THEN and keeps it while he closes; the relay runs through the officer when nobody in the rifle group
+can lead; constants in `GroupTuning`. New pins `tests/group_tests.h` (`--group`).
+Accepted amendments to the plan, from the implementer: (1) one allocator but per-kind geometry (bound 6 m / 2.5 m,
+halt 12 m / 4.5 m, a hold searched 2 to 12 m around the man himself): the lineage's measured numbers; (2) the `lagging`
+recall survives stage A as a recall to a FIXED point: deleting it before the axis exists destroyed cohesion (round 1:
+men at the fight 0.95 to 0.71), as generation 18 predicted; (3) a hold station is given up when it stops bearing, for a
+man who is neither firing nor under fire, or a holding squad freezes; (4) the order identity ignores a new objective
+serial whose task and station come out the same.
+Full suite (60 development, 45 validation attacks, 30 others), every guard passing: development 0.804 against the
+parent's 0.839 (-0.035, 19 better, 35 worse), validation 0.838 against 0.818, value 0.769 against 0.799; **quiet squads
+0.33 to 0.13 a battle and friendly hits 7.35 to 5.81 per 100 soldier-minutes, both the best the loop has measured**;
+orders a minute 281 to 252, regroup orders 0.75 a soldier-minute, replaced before arrival 0.66 (lean measure); men at
+the fight 93.2 % to 93.9 %; the cost: attackers lost 31.7 % to 37.0 %, seen 11.8 % to 12.6 %: men now finish the moves
+they are given. The foundation stage scores below its parent, as section 7 expected; stage B is built on it and must
+first explain the extra losses.
+**The static defenders and the relay (found by the implementer, measured by the architect).** Defender squads run the
+legacy relay too (about 1,000 HOLD/OVERWATCH orders a battle from their own corporals), and the loop's parity battle,
+fought by drills, never exercises it, so a legacy node could change its own opponent unseen. Probe on the plain root
+with the relay skipped for the defenders only, same 60 development attacks: 0.705 to 0.703, paired -0.002
+[-0.043, +0.039], 16 battles bit-identical: the defenders are clamped to their slots and the orders change nothing that
+matters; earlier scores stand. Stage A skips the relay for them outright; the same skip goes into the root at the next
+re-root (with the queued shared-code change) so that both lineages face one opponent by construction.
+To restate before the line lands: `SprintBattleTests` asserts that no defender ever sprints; on this build one does for 7
+frames, back to his own slot after an emergency shelter (shared soldier code in a diverged battle). Proposed: count only
+a sprint that takes a defender away from his slot.
