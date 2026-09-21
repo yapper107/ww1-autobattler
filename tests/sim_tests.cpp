@@ -764,6 +764,15 @@ static void CoordinationTests() {
 #include "moving_fire_tests.h"
 #include "paths_tests.h"
 #include "stamina_tests.h"
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
+// A freed whole-battle record is millions of small blocks; glibc keeps them unless asked to give them back.
+static void ReturnFreedMemory(){
+#ifdef __GLIBC__
+    malloc_trim(0);
+#endif
+}
 int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--leaders"){LeaderTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--stats"){StatsTests();return 0;}
@@ -803,7 +812,9 @@ int main(int argc,char** argv) {
     Vec3 p{-8,0};for(Vec3 q:path){assert(Walkable(m,q));assert(ClearLine(m,p,q,0.46f));p=q;}
     assert(Distance(p,{8,0})<0.01f);
     assert(FindPath(m,{-8,0},{0,0}).empty());
-    Config c;auto one=Simulate(c),two=Simulate(c);
+    // Whole-battle records are about 3 GB each: each one is released as soon as it has been read, so the suite
+    // holds one at a time instead of three (it peaked at 11.5 GB; three suites at once ran WSL out of memory).
+    Config c;const auto repeatPrint=[&]{auto two=Simulate(c);return Fingerprint(two);}();ReturnFreedMemory();auto one=Simulate(c);
     // Verify recorded rounds vary above and below the compensated vertical aim,
     // and a gun can deliver a stationary burst at a fixed known position.
     bool above=false,below=false;int longestBurst=0;
@@ -830,8 +841,7 @@ int main(int argc,char** argv) {
     std::cout<<"Recorded vertical dispersion: above and below aim; longest stationary MG burst: "<<longestBurst<<" rounds\n";
     auto initial=InitialFrame(c);
     for(int i=0;i<TeamSize;++i)assert(Distance(initial.soldiers[i].position,initial.soldiers[i+TeamSize].position*-1.f)<0.001f);
-    assert(Fingerprint(one)==Fingerprint(two));
-    c.seed++;auto changed=Simulate(c);assert(Fingerprint(one)!=Fingerprint(changed));
+    const auto onePrint=Fingerprint(one);assert(onePrint==repeatPrint);
     size_t pairedBounds=0,windowTeamRounds=0,passageWaits=0,usefulSupport=0,engagedFire=0;int completedBounds=0;
     auto coordination=[&](const Record& r){
         for(const auto& f:r.frames){for(const auto& cmd:f.command)usefulSupport+=cmd.supportUseful;
@@ -845,11 +855,14 @@ int main(int argc,char** argv) {
             if(at!=r.frames.begin()&&(at-1)->soldiers[shot.owner].assignment.task==Task::Window)++windowTeamRounds;
         }
     };
-    coordination(one);coordination(changed);
+    coordination(one);one.frames.clear();one.frames.shrink_to_fit();ReturnFreedMemory();
+    {c.seed++;auto changed=Simulate(c);assert(onePrint!=Fingerprint(changed));coordination(changed);}
+    ReturnFreedMemory();
     int results[3]={0,0,0};size_t totalShots=0,totalHits=0,memories=0,settled=0,coverFire=0,crouched=0,popUps=0,overwatchRounds=0;
     size_t upperShots=0,groundWindowShots=0,stairSamples=0;
     size_t rearRounds=0,heldFire=0,laneOrders=0,flankFrames=0,pullBackFrames=0,friendlyHits=0,multiVictim=0;
     for(int seed=100;seed<104;++seed) {
+        ReturnFreedMemory();
         c.seed=seed;c.doctrine=Doctrine(seed%3);c.approach=Approach((seed/3)%3);c.supportWeapon=seed%2;
         auto r=Simulate(c);++results[r.winner+1];coordination(r);
         assert(r.frames.front().time==0);assert(r.frames.back().time==r.duration);

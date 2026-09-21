@@ -34,12 +34,18 @@ mkdir -p "$repo_root/.local/tests"
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/EnvironmentSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp" \
   "$repo_root/tests/sim_tests.cpp"
-# The full suite holds about 10 GB (its whole-battle sweep keeps complete records). Three of them beside two
-# reference battles ran WSL out of its 30 GB on 21 September 2026, so the full suite, like a traced battle, takes the
-# machine-wide heavy-job lock of the main checkout (worktrees share it). A selector run is small and does not.
+# The full suite fights whole battles with complete records and traces: 6 GB at its peak (11.5 GB before its
+# records were released one at a time). WSL has 30 GB and the loop's lean battles take about 7 GB, so up to three full
+# suites run side by side, machine-wide (worktrees share the main checkout's slots); a fourth waits for a free slot.
+# A selector run is small and takes no slot.
 if [[ $# -eq 0 ]]; then
   main_root="$(cd "$(git -C "$repo_root" rev-parse --git-common-dir)/.." && pwd)"
   mkdir -p "$main_root/.local/loop"
-  exec flock "$main_root/.local/loop/trace.lock" "$repo_root/.local/tests/sim_tests"
+  for slot in 1 2 3; do
+    exec {fd}>"$main_root/.local/loop/suite-slot.$slot"
+    if flock -n "$fd"; then exec "$repo_root/.local/tests/sim_tests"; fi
+    exec {fd}>&-
+  done
+  exec flock "$main_root/.local/loop/suite-slot.1" "$repo_root/.local/tests/sim_tests"
 fi
 "$repo_root/.local/tests/sim_tests" "$@"
