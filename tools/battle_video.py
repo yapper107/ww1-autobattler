@@ -8,7 +8,7 @@ enemy has a clear line of sight on the man in that frame (observer truth, the sa
 fights_from_cover guard counts). Defenders are orange squares. Walls are dark, low cover is tan.
 A corporal holding a Flank order is joined to its goal by a line. Rounds fired on the move (plan 019)
 are thick green lines; a green ring marks a man walking a covered detour instead of the shortest path;
-a yellow ring marks a sprinting man, and the focus squad's mean stamina is read out in the header (plan 022). Needs Pillow and ffmpeg.
+a bold amber ring with a streak behind him marks a sprinting man, and the focus squad's mean stamina is read out in the header (plan 022). Needs Pillow and ffmpeg.
 """
 from __future__ import annotations
 import argparse, json, subprocess, sys
@@ -60,6 +60,8 @@ def main():
     args = ap.parse_args()
     fps, step = 25, 0.2
     stride = max(1, round(args.speed/fps/step))
+    # Below 5 battle seconds a video second there is no finer frame to show: play the rows at a lower rate instead.
+    rate = fps if args.speed >= fps*step else max(1.0, args.speed/step)
     runs = [(item.split('=', 1)[0], load(item.split('=', 1)[1], args.start, args.end, stride)) for item in args.run]
 
     xs, ys = [], []
@@ -88,13 +90,14 @@ def main():
         backgrounds.append(image)
 
     big, small = font(22), font(15)
-    ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{width}x{height + HEADER}', '-r', str(fps), '-i', '-',
+    ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{width}x{height + HEADER}', '-r', str(rate), '-i', '-',
                                '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', args.out], stdin=subprocess.PIPE)
     count = min(len(run['frames']) for _, run in runs)
     exposed_seconds = [0.0]*len(runs)
     moving_rounds = [0]*len(runs)
     covered_seconds = [0.0]*len(runs)
     sprint_seconds = [0.0]*len(runs)
+    streaks = [{} for _ in runs]
     focus_stamina = [[] for _ in runs]
     focus_winded = [0]*len(runs)
     cursor = [0]*len(runs)
@@ -149,9 +152,15 @@ def main():
                 if covered:
                     covered_seconds[r] += stride*step
                     draw.ellipse([c[0] - 8, c[1] - 8, c[0] + 8, c[1] + 8], outline=(0, 150, 60, 255), width=2)
+                streak = streaks[r].setdefault(sid, [])
                 if sprinting:
                     sprint_seconds[r] += stride*step
-                    draw.ellipse([c[0] - 7, c[1] - 7, c[0] + 7, c[1] + 7], outline=(240, 200, 40, 255), width=2)
+                    streak.append(c); del streak[:-8]
+                    if len(streak) > 1:
+                        draw.line(streak, fill=(245, 170, 0, 230), width=5)
+                    draw.ellipse([c[0] - 9, c[1] - 9, c[0] + 9, c[1] + 9], outline=(245, 170, 0, 255), width=3)
+                else:
+                    streak.clear()
                 if focus:
                     focus_stamina[r].append(stamina)
                     focus_winded[r] += int(winded)
