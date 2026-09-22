@@ -312,13 +312,23 @@ to another squad as either a base of fire if numbers permit or to just support."
 - Attached as SUPPORT otherwise: its men take stations one objective behind the host's rifle group (as the platoon staff
   do in 3.9), move when the host moves, fire on what they can see, carry the host's wounded to the rear-guard positions.
   Its wounded keep today's rear-guard rules.
+- **Two shattered squads are merged into one working squad (user ruling, 21 September 2026).** When the platoon has
+  two shattered squads, the one with the senior able leader (sergeant, else corporal, else senior rifleman) is the host;
+  the other's able men, its gun if it has one, and its wounded join it: they take stations in the host's rifle group by
+  the same allocator, the host's leader relays to them, and the merged squad counts its strength as one. If the merged
+  squad has `shatteredRiflemen` or more able riflemen it manoeuvres on its own like any squad; otherwise it is attached
+  to a healthy squad by the rules above. The merge is decided by the platoon commander at his next plan and kept for the
+  battle (no un-merging); a squad's own identity in the command record stays (reports, succession) but its men obey the
+  host's leader. Not in scope: merging across platoons, or merging a healthy squad with a shattered one (that is the
+  attachment above).
 - Reconstitution: if able riflemen recover to `shatteredRiflemen` or more (a light wound heals; a straggler rejoins) the
   squad is released to its own manoeuvre at the platoon's next plan.
 - Measures: seconds a squad spends with no known enemy after a withdrawal (should fall to near zero), shattered squads'
   rounds fired per battle (should rise from about zero), attackers lost and the attack score not worse. Pins: a squad
   with two able riflemen and its gun is attached as base of fire and fires on the host's objective; one with two able
   men and no gun is attached as support and moves when the host moves; a withdrawal ends at a fixed fall-back point with
-  the contacts kept.
+  the contacts kept; two shattered squads merge under the senior able leader and the merged group takes stations from
+  one allocator.
 - Not in scope: the platoon's own withdrawal, and any change to the withdrawal decision itself (the 70 % rule stands).
 
 ## 12. Stage C as built and scored (21 September 2026)
