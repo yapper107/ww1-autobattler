@@ -1,0 +1,76 @@
+[
+  {
+    "file": "SK_Male_Gunner_v02.fbx",
+    "bones": 68,
+    "meshes": [
+      {
+        "mesh": "Male_Body",
+        "verts": 2058,
+        "unweighted": 0,
+        "weight_sum_error": 4.0279701352119446e-08,
+        "finger_vertex_counts": {
+          "HandThumb": 60,
+          "HandIndex": 64,
+          "HandMiddle": 54,
+          "HandRing": 58,
+          "HandPinky": 56
+        }
+      },
+      {
+        "mesh": "Male_Coat",
+        "verts": 554,
+        "unweighted": 0,
+        "weight_sum_error": 0.0,
+        "finger_vertex_counts": {
+          "HandThumb": 0,
+          "HandIndex": 0,
+          "HandMiddle": 0,
+          "HandRing": 0,
+          "HandPinky": 0
+        }
+      }
+    ],
+    "textures": [
+      {
+        "name": "Male_Azure_BaseColor.png",
+        "size": [
+          4096,
+          4096
+        ]
+      }
+    ]
+  },
+  {
+    "file": "SK_Female_Gunner_v02.fbx",
+    "bones": 56,
+    "meshes": [
+      {
+        "mesh": "Female_Body",
+        "verts": 2159,
+        "unweighted": 0,
+        "weight_sum_error": 1.3504177331924438e-07,
+        "finger_vertex_counts": {
+          "HandThumb": 69,
+          "HandIndex": 63,
+          "HandMiddle": 161,
+          "HandRing": 0,
+          "HandPinky": 0
+        }
+      },
+      {
+        "mesh": "Female_Coat",
+        "verts": 554,
+        "unweighted": 0,
+        "weight_sum_error": 0.0,
+        "finger_vertex_counts": {
+          "HandThumb": 0,
+          "HandIndex": 0,
+          "HandMiddle": 0,
+          "HandRing": 0,
+          "HandPinky": 0
+        }
+      }
+    ],
+    "textures": []
+  }
+]

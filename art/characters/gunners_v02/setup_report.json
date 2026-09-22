@@ -1,0 +1,102 @@
+{
+  "male_bones": 67,
+  "finger_weights": {
+    "mixamorig:RightHandIndex1": 18,
+    "mixamorig:RightHandIndex2": 20,
+    "mixamorig:RightHandMiddle1": 14,
+    "mixamorig:RightHandMiddle2": 16,
+    "mixamorig:RightHandRing1": 16,
+    "mixamorig:RightHandRing2": 18,
+    "mixamorig:RightHandThumb2": 19,
+    "mixamorig:RightHandThumb3": 14,
+    "mixamorig:RightHandMiddle3": 13,
+    "mixamorig:RightHandIndex3": 14,
+    "mixamorig:RightHand": 15,
+    "mixamorig:RightHandRing3": 13,
+    "mixamorig:RightHandThumb1": 16,
+    "mixamorig:RightHandPinky2": 17,
+    "mixamorig:RightHandPinky3": 14,
+    "mixamorig:RightHandPinky1": 14,
+    "mixamorig:LeftHandThumb2": 19,
+    "mixamorig:LeftHandThumb3": 14,
+    "mixamorig:LeftHandMiddle3": 13,
+    "mixamorig:LeftHandThumb1": 16,
+    "mixamorig:LeftHandRing1": 16,
+    "mixamorig:LeftHandIndex3": 14,
+    "mixamorig:LeftHandIndex2": 20,
+    "mixamorig:LeftHandMiddle2": 16,
+    "mixamorig:LeftHandIndex1": 18,
+    "mixamorig:LeftHandMiddle1": 14,
+    "mixamorig:LeftHand": 15,
+    "mixamorig:LeftHandRing3": 13,
+    "mixamorig:LeftHandRing2": 18,
+    "mixamorig:LeftHandPinky3": 14,
+    "mixamorig:LeftHandPinky2": 17,
+    "mixamorig:LeftHandPinky1": 14
+  },
+  "grip_errors": [
+    {
+      "rig": "Male_Azure_Rig",
+      "side": "Right",
+      "wrist_error_m": 2.6734636084524587e-07,
+      "wrist": [
+        0.6502171754837036,
+        0.026259949430823326,
+        1.315383791923523
+      ],
+      "target": [
+        0.6502174139022827,
+        0.026259928941726685,
+        1.3153839111328125
+      ]
+    },
+    {
+      "rig": "Male_Azure_Rig",
+      "side": "Left",
+      "wrist_error_m": 2.6151431761360534e-07,
+      "wrist": [
+        0.6780005097389221,
+        -0.3308694064617157,
+        1.3014453649520874
+      ],
+      "target": [
+        0.6780003309249878,
+        -0.33086955547332764,
+        1.301445484161377
+      ]
+    },
+    {
+      "rig": "Female_Mixamo_Rig",
+      "side": "Right",
+      "wrist_error_m": 1.4868764846527342e-05,
+      "wrist": [
+        -1.0052673816680908,
+        -0.02607152983546257,
+        1.193442940711975
+      ],
+      "target": [
+        -1.0052741765975952,
+        -0.026060812175273895,
+        1.1934351921081543
+      ]
+    },
+    {
+      "rig": "Female_Mixamo_Rig",
+      "side": "Left",
+      "wrist_error_m": 1.3328003749250113e-07,
+      "wrist": [
+        -0.9873898029327393,
+        -0.38239023089408875,
+        1.188882827758789
+      ],
+      "target": [
+        -0.987389862537384,
+        -0.38239023089408875,
+        1.1888829469680786
+      ]
+    }
+  ],
+  "male_cloth_vertices": 554,
+  "male_cloth_faces": 504,
+  "timeline_frames": 360
+}

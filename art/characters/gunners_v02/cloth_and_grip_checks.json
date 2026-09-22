@@ -1,0 +1,126 @@
+{
+  "cloth": [
+    {
+      "object": "Male_Coat_Cloth",
+      "frame": 85,
+      "baked": true,
+      "max_motion_from_skin_m": 0.15637750712940798,
+      "mean_motion_from_skin_m": 0.026269211488881252,
+      "finite": true
+    },
+    {
+      "object": "Female_Coat_Cloth",
+      "frame": 85,
+      "baked": true,
+      "max_motion_from_skin_m": 0.12651011216468044,
+      "mean_motion_from_skin_m": 0.019386680865611572,
+      "finite": true
+    },
+    {
+      "object": "Male_Coat_Cloth",
+      "frame": 175,
+      "baked": true,
+      "max_motion_from_skin_m": 0.17382299490655784,
+      "mean_motion_from_skin_m": 0.013841148067195077,
+      "finite": true
+    },
+    {
+      "object": "Female_Coat_Cloth",
+      "frame": 175,
+      "baked": true,
+      "max_motion_from_skin_m": 0.1531596678541404,
+      "mean_motion_from_skin_m": 0.010656659045788618,
+      "finite": true
+    },
+    {
+      "object": "Male_Coat_Cloth",
+      "frame": 300,
+      "baked": true,
+      "max_motion_from_skin_m": 0.5485083133539992,
+      "mean_motion_from_skin_m": 0.10120461645101261,
+      "finite": true
+    },
+    {
+      "object": "Female_Coat_Cloth",
+      "frame": 300,
+      "baked": true,
+      "max_motion_from_skin_m": 0.5252039907581828,
+      "mean_motion_from_skin_m": 0.08104637568724295,
+      "finite": true
+    }
+  ],
+  "grips": [
+    {
+      "rig": "Male",
+      "side": "Left",
+      "frame": 85,
+      "wrist_error_m": 2.6151431761360534e-07
+    },
+    {
+      "rig": "Male",
+      "side": "Right",
+      "frame": 85,
+      "wrist_error_m": 2.6734636084524587e-07
+    },
+    {
+      "rig": "Female",
+      "side": "Left",
+      "frame": 85,
+      "wrist_error_m": 1.3328003749250113e-07
+    },
+    {
+      "rig": "Female",
+      "side": "Right",
+      "frame": 85,
+      "wrist_error_m": 1.4868764846527342e-05
+    },
+    {
+      "rig": "Male",
+      "side": "Left",
+      "frame": 175,
+      "wrist_error_m": 3.778865143067654e-05
+    },
+    {
+      "rig": "Male",
+      "side": "Right",
+      "frame": 175,
+      "wrist_error_m": 5.908080220699015e-07
+    },
+    {
+      "rig": "Female",
+      "side": "Left",
+      "frame": 175,
+      "wrist_error_m": 3.538829710196828e-07
+    },
+    {
+      "rig": "Female",
+      "side": "Right",
+      "frame": 175,
+      "wrist_error_m": 1.5111864056869231e-05
+    },
+    {
+      "rig": "Male",
+      "side": "Left",
+      "frame": 300,
+      "wrist_error_m": 6.550276566594242e-06
+    },
+    {
+      "rig": "Male",
+      "side": "Right",
+      "frame": 300,
+      "wrist_error_m": 2.772777388383209e-07
+    },
+    {
+      "rig": "Female",
+      "side": "Left",
+      "frame": 300,
+      "wrist_error_m": 1.4901161193847656e-07
+    },
+    {
+      "rig": "Female",
+      "side": "Right",
+      "frame": 300,
+      "wrist_error_m": 1.5074437711683896e-05
+    }
+  ]
+}

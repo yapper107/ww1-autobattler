@@ -1,0 +1,14 @@
+{
+  "source_vertices": 2129,
+  "source_faces": 2196,
+  "new_vertices": 2216,
+  "new_faces": 2242,
+  "triangles": 3972,
+  "coat_faces_processed": 27,
+  "rim_edges": 21,
+  "front_apex": 0.535,
+  "back_apex": 0.49,
+  "coat_rim_thickness": 0.003,
+  "added_inner_trouser_waist_faces": 10,
+  "all_original_vertex_positions_preserved": true
+}

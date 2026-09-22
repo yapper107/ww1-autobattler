@@ -1,5 +1,10 @@
 # Rifle character prototype
 
+**Latest art handoff (21 September):** see [ART_HANDOFF.md](../ART_HANDOFF.md).
+The actual Tripo male with five-finger hands and the new male/female MG cloth
+scene are now packaged, but are not yet connected to the Unreal runtime below.
+The male described in this document is the earlier proxy that the user rejected.
+
 Branch: `codex/unreal-character-animations`. This is an isolated presentation branch,
 rebased onto `plan-018-static-defence` at `c34bf68`; the battle simulation and controller defaults are unchanged.
 

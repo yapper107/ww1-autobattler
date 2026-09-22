@@ -1,0 +1,34 @@
+{
+  "front": {
+    "file": "male_azure_front.png",
+    "size": [
+      1024,
+      1536
+    ],
+    "sha256": "dd70c07bf09bcdfdd29e4cbefbcbcd323cdf869662a5a0fc4aa567712e0f896e"
+  },
+  "back": {
+    "file": "male_azure_back.png",
+    "size": [
+      1024,
+      1536
+    ],
+    "sha256": "36d8afff736568510254951f0203fb80bb03fb53c828f125bfd2b20ac13de971"
+  },
+  "left": {
+    "file": "male_azure_left.png",
+    "size": [
+      1024,
+      1536
+    ],
+    "sha256": "c33f4a47547a84450e4e0fa32c0330b8369564b1ee883441a61ec66c304583e7"
+  },
+  "right": {
+    "file": "male_azure_right.png",
+    "size": [
+      1024,
+      1536
+    ],
+    "sha256": "838d741c8e7ff191400724d6eb644face0f69ecb94ab8e1b427fb4d150d3bb4d"
+  }
+}
