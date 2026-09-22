@@ -242,3 +242,31 @@ To restate before the line lands: `MovementRecoveryAndShelterTests` asserts that
 order in one cycle (the rule stage B deletes); proposed: each receives a movement order to a station within `haltRadius`
 of the leader's ordered objective, the `regrouping` assertion kept. The suite aborts there, so the later groups were run
 by selector.
+
+## 10. Stage B2 as built and scored (21 September 2026)
+
+Opus, five rounds, node **`82c82b7c67d54e01`** on stage B (patch `.local/plan023/B2.patch`). The implementer's trace
+corrected the architect's premise: stage B's come-up (3.4) **never fires in a real battle** (zero events in three traced
+battles: a man is "ahead" only beyond the objective his own station sits on, so two men ahead at once hardly happens; its
+pins pass on a constructed map only), and stage B did not close in more than its parents (attacker-seconds within 15 m of
+a defender on `city-24` seed 107: 1.4 % against stage A's 3.4 %). `city-24`'s losses were a longer, closer-range trade
+(1,650 shots against 1,004; 58 hits against 44, 34 of them while displacing) with lane-clearing orders doubled (246 against
+114): a concentrated squad blocks its own lanes. In a static-defence attack the squad's objective IS the defended place:
+57 % of Advance goals land within 15 m of a defender in every build.
+Built: `GroupStation` takes a stand-off and refuses a place within `standOff` (25 m) of a known enemy WHO CAN SEE IT, with
+a hard floor of half that whatever the ground (cover on his blind flank at 20 m is a firing position; open ground at 20 m
+is an assault); nothing is laid out nearer than the forward men already are (`standOffFloor`); the come-up objective is
+pulled back onto that line; forward men inside the band keep their ground as the foothold and are not an advantage. NOT
+built, by measurement: clamping the leader's own destination (-0.06 and quiet squads 0.41: the leader stops short and the
+squad stops fighting; `UpdateSearchMission` already stands the mission off 32 m); the gun to an angled firing position
+(tried as briefed: flanking fire fell further; the angle needs to be a hard qualifier, not a score term). Twelve pins.
+Full suite, every guard passing, against stage B: development 0.806 against 0.795 (+0.011; 26 better, 31 worse),
+validation 0.845 against 0.850, value 0.785 against 0.784; wounds while displacing 48.8 % to 45.8 %, flanking fire 19.9 %
+to 21.3 %, the rest unchanged.
+**Where the plan stands after A, B and B2, against the node it started from (`f7d7aa48ecc1e453`):** development 0.806
+against 0.839, validation 0.845 against 0.818, value 0.785 against 0.799: level on the score. Better: regroup orders a
+soldier-minute about 1.2 to 0.33, quiet squads 0.33 to 0.25, stragglers 6.1 % to 5.5 %, friendly hits 7.35 to 7.17. Worse:
+attackers lost 31.7 % to 36.5 %, flanking fire 25.5 % to 21.3 %. Videos against the starting node on maps 22, 39, 24 and 26
+sent to the user. Note for the measures: `flank_fire_share` takes its angle against the squad's OWN gun, so moving the gun
+onto the rifles' axis reads as less flanking even when the rifles flank more; it needs an angle against the enemy's facing or
+the platoon's base of fire before it judges stage C or D.
