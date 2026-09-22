@@ -307,3 +307,25 @@ to another squad as either a base of fire if numbers permit or to just support."
   men and no gun is attached as support and moves when the host moves; a withdrawal ends at a fixed fall-back point with
   the contacts kept.
 - Not in scope: the platoon's own withdrawal, and any change to the withdrawal decision itself (the 70 % rule stands).
+
+## 12. Stage C as built and scored (21 September 2026)
+
+Opus started it (the one-derivation of the group's objective in `PlanSquad`, the covering pair's selection) and was cut
+off by four server-side API failures; by the user's ruling Sonnet finished it. Node **`dd6eae013fd640e0`** on stage B2
+(patch `.local/plan023/C.patch`). Built: `Assignment::pace` (shared code, one general mechanism, behind
+`Config::orderPace` / `--no-order-pace`, multiplied into `MovementSpeed`, carried by the order transport, in the digest
+only when it differs from 1; with the switch off the legacy digest equals stage B2's exactly; cognition, drills and the
+defenders bit-identical); the leader's men get their stations as he is given his order; he steps off at `leadSlowPace`
+0.5 and takes 1.0 when half his able riflemen are within `leadCloseDistance` of him along the axis or `leadSlowSeconds`
+have passed, and slows again beyond `leadMaxLead`; his destination is never cut. The covering pair: two men whose held
+stations bear on a known enemy stay when the group leaves a contact, sector on that enemy (`coverSector`), exempt from the
+call-up, released when the group arrives or after 10 s with a station on the next objective already allocated. A bug
+found by measurement: the lead was first measured from the leader's ORDERED destination (every advance points past 15 m,
+so every leg started slow: men at the fight 94.7 % to 80.2 %); measured from his position it recovered to 96.6 %.
+`--no-order-pace` switches off all of stage C's legacy code, not only the multiplier, so that it reproduces B2. Six new
+pins (17 in `--group`). Full suite, every guard passing, against B2: development 0.801 against 0.806 (-0.005; 29 better,
+29 worse), validation 0.866 against 0.845 (the best on this build), **value 0.798 against 0.785**; friendly hits 7.17 to
+6.45; wounds while displacing 45.8 % to 43.5 %; flanking fire 21.3 % to 23.0 %; engaged men firing 31.4 % to 33.3 %;
+behind the corporal 12.3 % to 13.3 % (not moved: the leader's half pace does not show in this measure); quiet squads
+0.25 to 0.30. **Against the node the plan started from (`f7d7aa48ecc1e453`, value 0.799): level on value (0.798),
+development 0.801 against 0.839, validation 0.866 against 0.818.** The user's video review decides.
