@@ -352,3 +352,28 @@ pins (17 in `--group`). Full suite, every guard passing, against B2: development
 behind the corporal 12.3 % to 13.3 % (not moved: the leader's half pace does not show in this measure); quiet squads
 0.25 to 0.30. **Against the node the plan started from (`f7d7aa48ecc1e453`, value 0.799): level on value (0.798),
 development 0.801 against 0.839, validation 0.866 against 0.818.** The user's video review decides.
+
+## 13. Stage D as built and scored (21 September 2026)
+
+Opus, six rounds, node **`15bb3594f8ddddf3`** on stage C (patch `.local/plan023/D.patch`). Built: two station kinds,
+`Support` and `Staff`, in the one allocator, with a `minRange` ("no nearer the tracked enemy than the group's lead
+station"). The gun's station: crouch cover within `supportRange` 60 m of the rifle group's centre, protected from every
+known enemy, bearing on the tracked one, outside the stand-off, and at least 30 degrees off the rifle-group-to-enemy line
+whenever any candidate offers it (45 preferred by score, not as a second hard tier: a build that made 45 a tier left the
+gun in transit, +42 s silence); taken when a contact is fresh, kept while it bears. The officer takes a Halt station at
+the leading squad's objective (the platoon's mover, else its main effort, else his host squad), at that group's
+stand-off and never in front of its lead station, one order, moved when the leading squad or its objective changes; the
+platoon sergeant a Staff station `staffBehind` 20 m behind the rear station along the axis, in cover out of the enemy's
+sight; the 4 s offset loop remains only for the typed controllers and the defenders. 21 pins.
+Not built, by measurement: a stand-off for the gun independent of the rifles' (a gun still stands 24 m from a defender
+when the lead station is that close; a hard 25 m floor cost rounds and saved no guns): open.
+Full suite, every guard passing, against stage C: development 0.806 against 0.801 (+0.005; 28 better, 25 worse),
+validation 0.832 against 0.866, value 0.763 against 0.798; flanking fire 23.0 % to 28.0 % (the gun's angle at the
+moment of fire 20 to 29 degrees on the check set); attackers lost 37.0 % to 35.4 %; men at the fight 94.4 % to 93.9 %;
+stragglers 5.5 % to 9.1 % and quiet squads 0.30 to 0.35 (the staff are counted as squad-0 riflemen by both measures:
+with them excluded the implementer's check reads stragglers 5.9 % to 5.0 %, behind the corporal 8.9 % to 7.0 %);
+friendly hits 6.45 to 7.81 (the officer inside the rifle group's firing lines); gun silence 126 to 130 s.
+D2's own measures on the check set: platoon plans made while the commander is in cover 11 % to 20 %, while suppressed
+0.5 % to 1.5 %, re-plan latency unchanged (9.6 to 9.4 s); officer deaths 0.24 a battle unchanged, platoon sergeant
+0.24 to 0.06; staff idle seconds up (officer 50 to 70, sergeant 41 to 99: the sergeant alone in the rear by design).
+The validation drop and the stragglers' rise are the two things the user's video review and stage E should weigh.
