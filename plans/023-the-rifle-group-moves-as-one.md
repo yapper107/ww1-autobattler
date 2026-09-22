@@ -123,8 +123,19 @@ squad leader is the last able man, `PlanSquad` calls the same allocator. One cod
 
 **3.9 The support and the staff.** The support's station is a firing position near the group (generation 19's
 `SupportFirePosition`: within 60 m of the group's centre, no nearer the enemy than the rifles, protected, bearing, angled
-off the rifle group's line), chosen once and kept while it bears. Platoon staff with squad 0 get stations one objective
-BEHIND the rifle group, moved only when the group's objective changes, along the group's own covered route.
+off the rifle group's line), chosen once and kept while it bears. Platoon staff (**user ruling, 21 September 2026, replacing ruling 4: "the platoon officer fights with the leading
+squad"**): the OFFICER takes a station in the rifle group of the platoon's leading squad (the mover, else the squad the
+platoon's main effort is with; when the platoon's main effort changes squads he moves to that squad by a covered path),
+allocated by the same allocator at that group's stand-off, no farther forward than its lead station; he takes the same
+fire as any rifleman there, and if he falls command passes to the platoon sergeant by the existing succession. The
+PLATOON SERGEANT keeps the rear: a station one objective behind the leading squad's rifle group, moved only when that
+group's objective changes, along its covered route; he runs stragglers, the wounded and (stage E) the shattered squad.
+Historical basis, agreed with the user: 1914 to 1918 platoon commanders led with their leading section and died at about
+twice the rate of their men for it; by 1917 doctrine put them "where they could control the platoon", with the leading
+element rather than first through the wire; the platoon sergeant fought from the rear. Measure before and after: the
+platoon commander's re-plan latency and the share of platoon plans made while he is pinned or suppressed (a pinned
+commander is a real cost the planner did not assume); the officer's own casualty rate (expected to rise); platoon staff
+idle time (the "man in the back" on map 26, expected to fall).
 
 **What is deleted:** the `lagging` test, Rally to the leader's live position, the 2.4/2.5 m formation offsets, the
 separate straggler rule and its gunner copy, the staff's 4 s offset loop, the 4 s step-off hold.
@@ -165,7 +176,9 @@ separate straggler rule and its gunner copy, the staff's 4 s offset loop, the 4 
 2. **Covering pair.** At most two men with a line of fire stay and cover; they follow "within 10s".
 3. **The leader's pace.** "Lets do the middle option": he steps off at once at a slow pace and takes the full pace only
    when his men are with him; he slows again if he gets too far ahead. Built into 3.6.
-4. **Platoon staff.** "Yes, the platoon commander stays safe one position behind."
+4. **Platoon staff.** First "Yes, the platoon commander stays safe one position behind"; then, the same day, after the
+   architect's note on the historical practice: "do it, the platoon officer fights with the leading squad". The officer
+   with the leading squad's rifle group at its stand-off; the platoon sergeant one position behind (3.9).
 5. **Who builds it.** "opus agent": Opus implements the stages, Fable reviews and scores each as a loop node.
 6. **Generations meanwhile.** "Yes": single-idea generations on the legacy line are paused until stage B is scored.
 
