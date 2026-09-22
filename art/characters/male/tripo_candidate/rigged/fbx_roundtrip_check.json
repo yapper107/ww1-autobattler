@@ -1,0 +1,19 @@
+{
+  "vertices": 2216,
+  "polygons": 3972,
+  "bones": 55,
+  "unweighted": 0,
+  "max_influences": 4,
+  "max_weight_sum_error": 4.0978193283081055e-08,
+  "textures": [
+    {
+      "name": "Male_Azure_BaseColor.png",
+      "size": [
+        4096,
+        4096
+      ],
+      "has_data": true
+    }
+  ],
+  "armature_modifier": true
+}

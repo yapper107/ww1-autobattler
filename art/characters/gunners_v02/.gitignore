@@ -1,0 +1,4 @@
+blendcache_*/
+*.blend1
+preview_frames/
+__pycache__/

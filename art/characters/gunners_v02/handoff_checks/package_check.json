@@ -1,0 +1,27 @@
+{
+  "scene": "C:\\Users\\Jordan\\AppData\\Local\\Temp\\army-art-handoff-check\\art\\characters\\gunners_v02\\Azure_Gunners_Hands_Cloth_v02.blend",
+  "objects": [
+    "Male_Azure_Rig",
+    "Female_Mixamo_Rig",
+    "Male_Machine_Gun",
+    "Female_Machine_Gun",
+    "Male_Coat_Cloth",
+    "Female_Coat_Cloth"
+  ],
+  "images": [
+    {
+      "name": "Male_Azure_BaseColor.png",
+      "packed": true
+    }
+  ],
+  "cloth": [
+    {
+      "object": "Male_Coat_Cloth",
+      "baked": false
+    },
+    {
+      "object": "Female_Coat_Cloth",
+      "baked": false
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+exact_shot_event_checks=24 rifle=12 mg=12
+pose_advances=1 seek_pause_rate_equal=1
+PASS battle_states=640 worst_wrist_cm=0.000 frames=601 shots=935 duration=120.00

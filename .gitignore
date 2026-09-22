@@ -50,3 +50,8 @@ Desktop.ini
 # Local Python diagnostic tooling
 __pycache__/
 *.py[cod]
+
+# Blender simulation caches and automatic backups
+blendcache_*/
+*.blend1
+*.blend2

@@ -22,6 +22,23 @@ mkdir -p "$build_dir/Tools/mapgen"
 rsync -a --delete --exclude=__pycache__ "$repo_root/tools/mapgen/" "$build_dir/Tools/mapgen/"
 cp "$repo_root/tools/generate_maps.py" "$build_dir/Tools/generate_maps.py"
 cp "$repo_root/Unreal/ArmyPrototype.uproject" "$build_dir/ArmyPrototype.uproject"
+# Keep imported art and its reproducible authoring inputs with this branch mirror.
+mkdir -p "$build_dir/Content/Characters" "$build_dir/Art/female_rifle" "$build_dir/Tools/character"
+rsync -a "$repo_root/Unreal/Content/Characters/" "$build_dir/Content/Characters/"
+if [[ -d "$repo_root/Unreal/Content/Effects" ]]; then
+  mkdir -p "$build_dir/Content/Effects"
+  rsync -a "$repo_root/Unreal/Content/Effects/" "$build_dir/Content/Effects/"
+fi
+if [[ -d "$repo_root/art/characters/male_runtime" ]]; then
+  mkdir -p "$build_dir/Art/male_runtime"
+  rsync -a "$repo_root/art/characters/male_runtime/" "$build_dir/Art/male_runtime/"
+fi
+rsync -a "$repo_root/art/characters/female_rifle/" "$build_dir/Art/female_rifle/"
+rsync -a --exclude=__pycache__ "$repo_root/tools/character/" "$build_dir/Tools/character/"
+if [[ -d "$repo_root/art/characters/gunner_runtime" ]]; then
+  mkdir -p "$build_dir/Art/gunner_runtime"
+  rsync -a "$repo_root/art/characters/gunner_runtime/" "$build_dir/Art/gunner_runtime/"
+fi
 # A loop node replays its own simulation snapshot in place of the checkout's (tools/loop/replay.py).
 if [[ -n "${ARMY_SIM_OVERLAY:-}" ]]; then
   rsync -a --delete --include='*.h' --include='*.cpp' --exclude='*' "$ARMY_SIM_OVERLAY/" "$build_dir/Source/ArmyPrototype/Sim/"

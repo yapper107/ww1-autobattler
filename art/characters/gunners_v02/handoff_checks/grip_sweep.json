@@ -1,0 +1,26 @@
+[
+  {
+    "rig": "Male",
+    "side": "Left",
+    "max_error_m": 5.471414202948248e-05,
+    "worst_frame": 226
+  },
+  {
+    "rig": "Male",
+    "side": "Right",
+    "max_error_m": 5.908080220699015e-07,
+    "worst_frame": 235
+  },
+  {
+    "rig": "Female",
+    "side": "Left",
+    "max_error_m": 4.887944301026084e-07,
+    "worst_frame": 67
+  },
+  {
+    "rig": "Female",
+    "side": "Right",
+    "max_error_m": 1.5295648201042326e-05,
+    "worst_frame": 346
+  }
+]

@@ -4,6 +4,7 @@
 #include "GameFramework/HUD.h"
 #include "Sim/BattleSim.h"
 #include "HAL/PlatformProcess.h"
+#include "CharacterBlend.h"
 #include "BattleGameMode.generated.h"
 
 class ACameraActor;
@@ -25,6 +26,13 @@ public:
     const army::Frame& Frame() const;
     FVector UnitPosition(int Id) const;
     bool IsFinished() const;
+    FString AnimationDebugText() const;
+    bool bAnimationDebug=false;
+    bool IsArtShowcase() const;
+    bool IsRifleShowcase() const;
+    bool IsMagicShowcase() const;
+    float ArtShowcaseTime=0;
+    bool ArtShowcaseSlow=false;
     bool IsAutomatedTest() const { return bSmoke; }
     bool IsWideView() const { return Zoom >= 0.65f; }
     army::Config Settings;
@@ -48,8 +56,17 @@ private:
     void RefreshPreparation();
     void BuildScene();
     void ShowUnits();
+    void BuildVisualTimeline();
+    std::array<std::vector<double>,army::UnitCount> VisualShots;
+    std::vector<std::array<armyvisual::State,army::UnitCount>> VisualTimeline;
     void RunBattle();
     void SmokeTest(float DeltaSeconds);
+    void ShowArtShowcase();
+    void ShowMagicShowcase();
+    FVector ShotMuzzle(const army::Shot& Shot);
+    UPROPERTY() TObjectPtr<class AArcaneProjectileVisual> ProjectileVisual;
+    int ArtCaptureFrame=0;
+    bool ArtStageReady=false;
     void AdjustCamera(float YawDelta, float PitchDelta);
     AActor* Shape(const TCHAR* MeshPath, FVector Location, FVector Scale, FLinearColor Color);
     UPROPERTY() TArray<TObjectPtr<AActor>> SceneActors;
@@ -76,7 +93,6 @@ public:
     virtual void DrawHUD() override;
     virtual void NotifyHitBoxClick(FName BoxName) override;
 private:
-    void DrawProjectiles(const ABattleGameMode& Game);
     void Label(const FString& Text, float X, float Y, FLinearColor Color, float Size = 1);
     void Button(FName Id, const FString& Text, float X, float Y, float W, float H, bool Primary = false);
     float Wrapped(const FString& Text, float X, float Y, int Columns = 33);

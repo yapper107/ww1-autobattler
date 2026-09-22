@@ -1,0 +1,565 @@
+{
+  "fps": 60,
+  "grip": "C_forward",
+  "clips": [
+    {
+      "name": "A_crouching_turn_90_left",
+      "source_action": "Rifle_crouching_turn_90_left",
+      "frames": 77,
+      "duration": 1.2666666666666666,
+      "reference_speed_mps": 0.014716863226523649,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_crouching_turn_90_right",
+      "source_action": "Rifle_crouching_turn_90_right",
+      "frames": 77,
+      "duration": 1.2666666666666666,
+      "reference_speed_mps": 0.014704628193236794,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_death_crouching_headshot_front",
+      "source_action": "Rifle_death_crouching_headshot_front",
+      "frames": 241,
+      "duration": 4.0,
+      "reference_speed_mps": 0.4742206073763776,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_death_from_back_headshot",
+      "source_action": "Rifle_death_from_back_headshot",
+      "frames": 241,
+      "duration": 4.0,
+      "reference_speed_mps": 0.24710435691427807,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_death_from_front_headshot",
+      "source_action": "Rifle_death_from_front_headshot",
+      "frames": 241,
+      "duration": 4.0,
+      "reference_speed_mps": 0.13190919533201367,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_death_from_right",
+      "source_action": "Rifle_death_from_right",
+      "frames": 241,
+      "duration": 4.0,
+      "reference_speed_mps": 0.24551833630928757,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_death_from_the_back",
+      "source_action": "Rifle_death_from_the_back",
+      "frames": 241,
+      "duration": 4.0,
+      "reference_speed_mps": 0.3628065224663358,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_death_from_the_front",
+      "source_action": "Rifle_death_from_the_front",
+      "frames": 241,
+      "duration": 4.0,
+      "reference_speed_mps": 0.2947866859486113,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_idle_aiming",
+      "source_action": "Rifle_idle_aiming",
+      "frames": 127,
+      "duration": 2.1,
+      "reference_speed_mps": 2.0017184798002606e-08,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_idle_crouching_aiming",
+      "source_action": "Rifle_idle_crouching_aiming",
+      "frames": 117,
+      "duration": 1.9333333333333333,
+      "reference_speed_mps": 0.0002618466937136574,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_idle_crouching",
+      "source_action": "Rifle_idle_crouching",
+      "frames": 125,
+      "duration": 2.066666666666667,
+      "reference_speed_mps": 1.1927773244304535e-05,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_idle",
+      "source_action": "Rifle_idle",
+      "frames": 127,
+      "duration": 2.1,
+      "reference_speed_mps": 2.8956844617844833e-08,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_jump_down",
+      "source_action": "Rifle_jump_down",
+      "frames": 41,
+      "duration": 0.6666666666666666,
+      "reference_speed_mps": 0.002093161269139576,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_jump_loop",
+      "source_action": "Rifle_jump_loop",
+      "frames": 57,
+      "duration": 0.9333333333333333,
+      "reference_speed_mps": 9.621785314842509e-05,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_jump_up",
+      "source_action": "Rifle_jump_up",
+      "frames": 33,
+      "duration": 0.5333333333333333,
+      "reference_speed_mps": 0.002613972772485299,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_run_backward_left_InPlace",
+      "source_action": "Rifle_run_backward_left_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.388564034844694,
+      "phase_offset": -0.18333333333333335
+    },
+    {
+      "name": "A_run_backward_right_InPlace",
+      "source_action": "Rifle_run_backward_right_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.388572969976497,
+      "phase_offset": -0.25
+    },
+    {
+      "name": "A_run_backward_InPlace",
+      "source_action": "Rifle_run_backward_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.3885650634765785,
+      "phase_offset": -0.18333333333333335
+    },
+    {
+      "name": "A_run_forward_left_InPlace",
+      "source_action": "Rifle_run_forward_left_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.388572632801761,
+      "phase_offset": 0.6833333333333333
+    },
+    {
+      "name": "A_run_forward_right_InPlace",
+      "source_action": "Rifle_run_forward_right_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.388573981500874,
+      "phase_offset": 0.6833333333333333
+    },
+    {
+      "name": "A_run_forward_InPlace",
+      "source_action": "Rifle_run_forward_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.388579368591317,
+      "phase_offset": 0.65
+    },
+    {
+      "name": "A_run_left_InPlace",
+      "source_action": "Rifle_run_left_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.3885812759399805,
+      "phase_offset": -0.11666666666666667
+    },
+    {
+      "name": "A_run_right_InPlace",
+      "source_action": "Rifle_run_right_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 4.388654232035066,
+      "phase_offset": 0.6166666666666667
+    },
+    {
+      "name": "A_sprint_backward_left_InPlace",
+      "source_action": "Rifle_sprint_backward_left_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.582881877089397,
+      "phase_offset": 0.65
+    },
+    {
+      "name": "A_sprint_backward_right_InPlace",
+      "source_action": "Rifle_sprint_backward_right_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.582929081819919,
+      "phase_offset": -0.18333333333333335
+    },
+    {
+      "name": "A_sprint_backward_InPlace",
+      "source_action": "Rifle_sprint_backward_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.582872390747217,
+      "phase_offset": 0.65
+    },
+    {
+      "name": "A_sprint_forward_left_InPlace",
+      "source_action": "Rifle_sprint_forward_left_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.582992133243936,
+      "phase_offset": 0.6833333333333333
+    },
+    {
+      "name": "A_sprint_forward_right_InPlace",
+      "source_action": "Rifle_sprint_forward_right_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.583201518787399,
+      "phase_offset": 0.7166666666666667
+    },
+    {
+      "name": "A_sprint_forward_InPlace",
+      "source_action": "Rifle_sprint_forward_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.5828728675842285,
+      "phase_offset": 0.65
+    },
+    {
+      "name": "A_sprint_left_InPlace",
+      "source_action": "Rifle_sprint_left_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.582872390747804,
+      "phase_offset": -0.18333333333333335
+    },
+    {
+      "name": "A_sprint_right_InPlace",
+      "source_action": "Rifle_sprint_right_InPlace",
+      "frames": 31,
+      "duration": 0.5,
+      "reference_speed_mps": 6.582869052887841,
+      "phase_offset": 0.6833333333333333
+    },
+    {
+      "name": "A_turn_90_left",
+      "source_action": "Rifle_turn_90_left",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 0.014108439026229025,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_turn_90_right",
+      "source_action": "Rifle_turn_90_right",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 0.01410857928098071,
+      "phase_offset": 0.0
+    },
+    {
+      "name": "A_walk_backward_left_InPlace",
+      "source_action": "Rifle_walk_backward_left_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.7554362180940155,
+      "phase_offset": -0.11666666666666667
+    },
+    {
+      "name": "A_walk_backward_right_InPlace",
+      "source_action": "Rifle_walk_backward_right_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.7554360494975385,
+      "phase_offset": -0.21666666666666667
+    },
+    {
+      "name": "A_walk_backward_InPlace",
+      "source_action": "Rifle_walk_backward_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.755432367324829,
+      "phase_offset": -0.21666666666666667
+    },
+    {
+      "name": "A_walk_crouching_backward_left_InPlace",
+      "source_action": "Rifle_walk_crouching_backward_left_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.8630882043136554,
+      "phase_offset": -0.15
+    },
+    {
+      "name": "A_walk_crouching_backward_right_InPlace",
+      "source_action": "Rifle_walk_crouching_backward_right_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.8630759817410252,
+      "phase_offset": 0.6833333333333333
+    },
+    {
+      "name": "A_walk_crouching_backward_InPlace",
+      "source_action": "Rifle_walk_crouching_backward_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.8630766868591615,
+      "phase_offset": -0.25
+    },
+    {
+      "name": "A_walk_crouching_forward_left_InPlace",
+      "source_action": "Rifle_walk_crouching_forward_left_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.8630801964164563,
+      "phase_offset": -0.21666666666666667
+    },
+    {
+      "name": "A_walk_crouching_forward_right_InPlace",
+      "source_action": "Rifle_walk_crouching_forward_right_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.8630878671390045,
+      "phase_offset": 0.5833333333333334
+    },
+    {
+      "name": "A_walk_crouching_forward_InPlace",
+      "source_action": "Rifle_walk_crouching_forward_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.863075852394104,
+      "phase_offset": -0.25
+    },
+    {
+      "name": "A_walk_crouching_left_InPlace",
+      "source_action": "Rifle_walk_crouching_left_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.8028125836350808,
+      "phase_offset": -0.18333333333333335
+    },
+    {
+      "name": "A_walk_crouching_right_InPlace",
+      "source_action": "Rifle_walk_crouching_right_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.8630769252796737,
+      "phase_offset": 0.6833333333333333
+    },
+    {
+      "name": "A_walk_forward_left_InPlace",
+      "source_action": "Rifle_walk_forward_left_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.7554362180849488,
+      "phase_offset": 0.7166666666666667
+    },
+    {
+      "name": "A_walk_forward_right_InPlace",
+      "source_action": "Rifle_walk_forward_right_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.7554540884371015,
+      "phase_offset": 0.6833333333333333
+    },
+    {
+      "name": "A_walk_forward_InPlace",
+      "source_action": "Rifle_walk_forward_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.7554329633713248,
+      "phase_offset": 0.7166666666666667
+    },
+    {
+      "name": "A_walk_left_InPlace",
+      "source_action": "Rifle_walk_left_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.7554327249758541,
+      "phase_offset": -0.15
+    },
+    {
+      "name": "A_walk_right_InPlace",
+      "source_action": "Rifle_walk_right_InPlace",
+      "frames": 61,
+      "duration": 1.0,
+      "reference_speed_mps": 1.755432486557015,
+      "phase_offset": 0.6166666666666667
+    }
+  ],
+  "palette_linear": {
+    "Female Azure | coat blue.002": [
+      0.009134058840572834,
+      0.04666508734226227,
+      0.15292614698410034,
+      1.0
+    ],
+    "Female Azure | collar and cuffs.002": [
+      0.01599629409611225,
+      0.10461648553609848,
+      0.31854677200317383,
+      1.0
+    ],
+    "Female Azure | navy trousers.002": [
+      0.024157632142305374,
+      0.052860647439956665,
+      0.1119324266910553,
+      1.0
+    ],
+    "Female Azure | charcoal armour.002": [
+      0.04817182570695877,
+      0.05780543014407158,
+      0.07227185368537903,
+      1.0
+    ],
+    "Female Azure | black leather.002": [
+      0.016807375475764275,
+      0.01850022003054619,
+      0.023153366521000862,
+      1.0
+    ],
+    "Female Azure | olive webbing.002": [
+      0.34670406579971313,
+      0.28744083642959595,
+      0.07421357184648514,
+      1.0
+    ],
+    "Female Azure | steel buckles.002": [
+      0.1384316086769104,
+      0.15896083414554596,
+      0.177888423204422,
+      1.0
+    ],
+    "Female Azure | warm skin.002": [
+      0.7230551242828369,
+      0.3762621283531189,
+      0.13563333451747894,
+      1.0
+    ],
+    "Female Azure | brown hair.002": [
+      0.0666259378194809,
+      0.02955683507025242,
+      0.015208514407277107,
+      1.0
+    ],
+    "Female Azure | ivory markings.002": [
+      0.8468732237815857,
+      0.8148465752601624,
+      0.6795424818992615,
+      1.0
+    ],
+    "Female Azure | helmet blue.002": [
+      0.012983032502233982,
+      0.020288562402129173,
+      0.1119324266910553,
+      1.0
+    ],
+    "Female Azure | subtle ochre brow.002": [
+      0.34191441535949707,
+      0.1441284716129303,
+      0.0382043719291687,
+      1.0
+    ],
+    "M_Azure_Coat_Cloth": [
+      0.009134058840572834,
+      0.04666508734226227,
+      0.15292614698410034,
+      1.0
+    ],
+    "Rifle | warm matte wood": [
+      0.25015828013420105,
+      0.10461648553609848,
+      0.0382043719291687,
+      1.0
+    ],
+    "Rifle | charcoal steel": [
+      0.040915198624134064,
+      0.05126945674419403,
+      0.06301001459360123,
+      1.0
+    ],
+    "Rifle | arcane cyan": [
+      0.006048833020031452,
+      0.5711248517036438,
+      0.7230551242828369,
+      1.0
+    ],
+    "Rifle | cyan light face": [
+      0.06847816705703735,
+      0.7454041838645935,
+      0.838798999786377,
+      1.0
+    ],
+    "Rifle | cyan dark face": [
+      0.002428215928375721,
+      0.30054378509521484,
+      0.4677838087081909,
+      1.0
+    ]
+  },
+  "bones": [
+    "mixamorig:Hips",
+    "mixamorig:Spine",
+    "mixamorig:Spine1",
+    "mixamorig:Spine2",
+    "mixamorig:Neck",
+    "mixamorig:Head",
+    "mixamorig:HeadTop_End",
+    "mixamorig:LeftShoulder",
+    "mixamorig:LeftArm",
+    "mixamorig:LeftForeArm",
+    "mixamorig:LeftHand",
+    "mixamorig:LeftHandThumb1",
+    "mixamorig:LeftHandThumb2",
+    "mixamorig:LeftHandThumb3",
+    "mixamorig:LeftHandThumb4",
+    "mixamorig:LeftHandIndex1",
+    "mixamorig:LeftHandIndex2",
+    "mixamorig:LeftHandIndex3",
+    "mixamorig:LeftHandIndex4",
+    "mixamorig:LeftHandMiddle1",
+    "mixamorig:LeftHandMiddle2",
+    "mixamorig:LeftHandMiddle3",
+    "mixamorig:LeftHandMiddle4",
+    "mixamorig:RightShoulder",
+    "mixamorig:RightArm",
+    "mixamorig:RightForeArm",
+    "mixamorig:RightHand",
+    "mixamorig:RightHandThumb1",
+    "mixamorig:RightHandThumb2",
+    "mixamorig:RightHandThumb3",
+    "mixamorig:RightHandThumb4",
+    "mixamorig:RightHandIndex1",
+    "mixamorig:RightHandIndex2",
+    "mixamorig:RightHandIndex3",
+    "mixamorig:RightHandIndex4",
+    "mixamorig:RightHandMiddle1",
+    "mixamorig:RightHandMiddle2",
+    "mixamorig:RightHandMiddle3",
+    "mixamorig:RightHandMiddle4",
+    "mixamorig:LeftUpLeg",
+    "mixamorig:LeftLeg",
+    "mixamorig:LeftFoot",
+    "mixamorig:LeftToeBase",
+    "mixamorig:LeftToe_End",
+    "mixamorig:RightUpLeg",
+    "mixamorig:RightLeg",
+    "mixamorig:RightFoot",
+    "mixamorig:RightToeBase",
+    "mixamorig:RightToe_End",
+    "Weapon_Free",
+    "WeaponMotion_R",
+    "WeaponSocket_R",
+    "WeaponGrip_L",
+    "WeaponMuzzle",
+    "WeaponGrip_R"
+  ]
+}

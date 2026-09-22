@@ -1,0 +1,742 @@
+{
+  "clips": [
+    {
+      "source": "crouching turn 90 left.fbx",
+      "action": "Rifle_crouching_turn_90_left",
+      "frames": 77,
+      "duration_seconds": 1.2666666666666666,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -0.017698828130960464,
+        0.0,
+        0.005852502770721912
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.306584911860416e-05
+    },
+    {
+      "source": "crouching turn 90 right.fbx",
+      "action": "Rifle_crouching_turn_90_right",
+      "frames": 77,
+      "duration_seconds": 1.2666666666666666,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        0.005840819329023361,
+        0.0,
+        0.01768636703491211
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.233116119060273e-05
+    },
+    {
+      "source": "death crouching headshot front.fbx",
+      "action": "Rifle_death_crouching_headshot_front",
+      "frames": 115,
+      "duration_seconds": 1.9,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -0.14003466069698334,
+        0.0,
+        0.8900706768035889
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 9.432101224955667e-05
+    },
+    {
+      "source": "death from back headshot.fbx",
+      "action": "Rifle_death_from_back_headshot",
+      "frames": 223,
+      "duration_seconds": 3.7,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 2.0,
+      "source_horizontal_travel_m": [
+        -0.0700201615691185,
+        0.0,
+        0.9116009473800659
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 9.61877976955852e-05
+    },
+    {
+      "source": "death from front headshot.fbx",
+      "action": "Rifle_death_from_front_headshot",
+      "frames": 171,
+      "duration_seconds": 2.8333333333333335,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -0.2858988642692566,
+        0.0,
+        -0.24071863293647766
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 9.759809925189422e-05
+    },
+    {
+      "source": "death from right.fbx",
+      "action": "Rifle_death_from_right",
+      "frames": 199,
+      "duration_seconds": 3.3,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        0.8028791546821594,
+        0.0,
+        -0.10874802619218826
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.749809591881106e-05
+    },
+    {
+      "source": "death from the back.fbx",
+      "action": "Rifle_death_from_the_back",
+      "frames": 179,
+      "duration_seconds": 2.966666666666667,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        0.25351855158805847,
+        0.0,
+        1.046043038368225
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 9.101761971226215e-05
+    },
+    {
+      "source": "death from the front.fbx",
+      "action": "Rifle_death_from_the_front",
+      "frames": 207,
+      "duration_seconds": 3.433333333333333,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        0.2522312104701996,
+        0.0,
+        0.9801672101020813
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.5670865714051e-05
+    },
+    {
+      "source": "idle aiming.fbx",
+      "action": "Rifle_idle_aiming",
+      "frames": 127,
+      "duration_seconds": 2.1,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 2.0,
+      "source_horizontal_travel_m": [
+        -4.190951585769653e-08,
+        0.0,
+        3.259629011154175e-09
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.456052786303755e-05
+    },
+    {
+      "source": "idle crouching aiming.fbx",
+      "action": "Rifle_idle_crouching_aiming",
+      "frames": 117,
+      "duration_seconds": 1.9333333333333333,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 5.0,
+      "source_horizontal_travel_m": [
+        0.00037714047357439995,
+        0.0,
+        -0.00033769942820072174
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 7.996277442181634e-05
+    },
+    {
+      "source": "idle crouching.fbx",
+      "action": "Rifle_idle_crouching",
+      "frames": 125,
+      "duration_seconds": 2.066666666666667,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 2.0,
+      "source_horizontal_travel_m": [
+        1.961085945367813e-05,
+        0.0,
+        -1.4935620129108429e-05
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.026716535916338e-05
+    },
+    {
+      "source": "idle.fbx",
+      "action": "Rifle_idle",
+      "frames": 127,
+      "duration_seconds": 2.1,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 3.0,
+      "source_horizontal_travel_m": [
+        -5.448237061500549e-08,
+        0.0,
+        2.7008354663848877e-08
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.546063167858964e-05
+    },
+    {
+      "source": "jump down.fbx",
+      "action": "Rifle_jump_down",
+      "frames": 41,
+      "duration_seconds": 0.6666666666666666,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        0.0002586659975349903,
+        0.0,
+        0.001371257472783327
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.513685307187722e-05
+    },
+    {
+      "source": "jump loop.fbx",
+      "action": "Rifle_jump_loop",
+      "frames": 57,
+      "duration_seconds": 0.9333333333333333,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 5.0,
+      "source_horizontal_travel_m": [
+        -4.0743034332990646e-05,
+        0.0,
+        8.002901449799538e-05
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.220793513703311e-05
+    },
+    {
+      "source": "jump up.fbx",
+      "action": "Rifle_jump_up",
+      "frames": 33,
+      "duration_seconds": 0.5333333333333333,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -0.00025783805176615715,
+        0.0,
+        -0.0013700681738555431
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.671796274763199e-05
+    },
+    {
+      "source": "run backward left.fbx",
+      "action": "Rifle_run_backward_left_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.5515919923782349,
+        0.0,
+        -1.551591396331787
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.42882559514554e-05
+    },
+    {
+      "source": "run backward right.fbx",
+      "action": "Rifle_run_backward_right_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.551594853401184,
+        0.0,
+        -1.551594853401184
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.934986984458334e-05
+    },
+    {
+      "source": "run backward.fbx",
+      "action": "Rifle_run_backward_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.8882565200328827e-07,
+        0.0,
+        -2.1942825317382812
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.404895883208502e-05
+    },
+    {
+      "source": "run forward left.fbx",
+      "action": "Rifle_run_forward_left_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.5515949726104736,
+        0.0,
+        1.5515944957733154
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.015433641906225e-05
+    },
+    {
+      "source": "run forward right.fbx",
+      "action": "Rifle_run_forward_right_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.5515953302383423,
+        0.0,
+        1.5515950918197632
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.328957895429077e-05
+    },
+    {
+      "source": "run forward.fbx",
+      "action": "Rifle_run_forward_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.3085082173347473e-07,
+        0.0,
+        2.1942896842956543
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.201540507123429e-05
+    },
+    {
+      "source": "run left.fbx",
+      "action": "Rifle_run_left_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        2.1942906379699707,
+        0.0,
+        2.942979335784912e-07
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.447242618104702e-05
+    },
+    {
+      "source": "run right.fbx",
+      "action": "Rifle_run_right_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -2.1943271160125732,
+        0.0,
+        4.66546043753624e-06
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.413931926386059e-05
+    },
+    {
+      "source": "sprint backward left.fbx",
+      "action": "Rifle_sprint_backward_left_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        2.327401638031006,
+        0.0,
+        -2.3273987770080566
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.595577613518675e-05
+    },
+    {
+      "source": "sprint backward right.fbx",
+      "action": "Rifle_sprint_backward_right_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -2.3273961544036865,
+        0.0,
+        -2.32743763923645
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.93167895286057e-05
+    },
+    {
+      "source": "sprint backward.fbx",
+      "action": "Rifle_sprint_backward_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -6.952323019504547e-07,
+        0.0,
+        -3.291436195373535
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.967467798681911e-05
+    },
+    {
+      "source": "sprint forward left.fbx",
+      "action": "Rifle_sprint_forward_left_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        2.327439546585083,
+        0.0,
+        2.3274388313293457
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.4367932348633e-05
+    },
+    {
+      "source": "sprint forward right.fbx",
+      "action": "Rifle_sprint_forward_right_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -2.327512741088867,
+        0.0,
+        2.3275136947631836
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.561559129203955e-05
+    },
+    {
+      "source": "sprint forward.fbx",
+      "action": "Rifle_sprint_forward_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.1292286217212677e-08,
+        0.0,
+        3.2914364337921143
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.694674202262057e-05
+    },
+    {
+      "source": "sprint left.fbx",
+      "action": "Rifle_sprint_left_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        3.291436195373535,
+        0.0,
+        1.553911715745926e-06
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.87905780504793e-05
+    },
+    {
+      "source": "sprint right.fbx",
+      "action": "Rifle_sprint_right_InPlace",
+      "frames": 31,
+      "duration_seconds": 0.5,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -3.2914345264434814,
+        0.0,
+        -1.700129359960556e-06
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 9.15884390254018e-05
+    },
+    {
+      "source": "turn 90 left.fbx",
+      "action": "Rifle_turn_90_left",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -0.014066942036151886,
+        0.0,
+        -0.0010812925174832344
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.552830901832347e-05
+    },
+    {
+      "source": "turn 90 right.fbx",
+      "action": "Rifle_turn_90_right",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 2.0,
+      "source_horizontal_travel_m": [
+        -0.0010746084153652191,
+        0.0,
+        0.014067594893276691
+      ],
+      "in_place": false,
+      "max_sampled_bone_position_error_m": 8.555153235126625e-05
+    },
+    {
+      "source": "walk backward left.fbx",
+      "action": "Rifle_walk_backward_left_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.2412768602371216,
+        0.0,
+        -1.2412848472595215
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.429087972130239e-05
+    },
+    {
+      "source": "walk backward right.fbx",
+      "action": "Rifle_walk_backward_right_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.2412806749343872,
+        0.0,
+        -1.2412807941436768
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.829062150008027e-05
+    },
+    {
+      "source": "walk backward.fbx",
+      "action": "Rifle_walk_backward_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -3.725290298461914e-09,
+        0.0,
+        -1.755432367324829
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.182173743571731e-05
+    },
+    {
+      "source": "walk crouching backward left.fbx",
+      "action": "Rifle_walk_crouching_backward_left_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.3174024820327759,
+        0.0,
+        -1.3174021244049072
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.067673625383071e-05
+    },
+    {
+      "source": "walk crouching backward right.fbx",
+      "action": "Rifle_walk_crouching_backward_right_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.3173986673355103,
+        0.0,
+        -1.317388653755188
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.390399260720184e-05
+    },
+    {
+      "source": "walk crouching backward.fbx",
+      "action": "Rifle_walk_crouching_backward_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -3.380700945854187e-07,
+        0.0,
+        -1.8630766868591309
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.374858253299115e-05
+    },
+    {
+      "source": "walk crouching forward left.fbx",
+      "action": "Rifle_walk_crouching_forward_left_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.3173993825912476,
+        0.0,
+        1.3173938989639282
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.628639103931038e-05
+    },
+    {
+      "source": "walk crouching forward right.fbx",
+      "action": "Rifle_walk_crouching_forward_right_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.3174026012420654,
+        0.0,
+        1.3174015283584595
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.91371982032376e-05
+    },
+    {
+      "source": "walk crouching forward.fbx",
+      "action": "Rifle_walk_crouching_forward_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        8.381903171539307e-09,
+        0.0,
+        1.863075852394104
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.911593846757231e-05
+    },
+    {
+      "source": "walk crouching left.fbx",
+      "action": "Rifle_walk_crouching_left_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.8028125762939453,
+        0.0,
+        -0.00016269413754343987
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.977486218983211e-05
+    },
+    {
+      "source": "walk crouching right.fbx",
+      "action": "Rifle_walk_crouching_right_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.86307692527771,
+        0.0,
+        2.7050264179706573e-06
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.987759083785817e-05
+    },
+    {
+      "source": "walk forward left.fbx",
+      "action": "Rifle_walk_forward_left_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.2412806749343872,
+        0.0,
+        1.2412810325622559
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.82392166243164e-05
+    },
+    {
+      "source": "walk forward right.fbx",
+      "action": "Rifle_walk_forward_right_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.241305947303772,
+        0.0,
+        1.2412810325622559
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.052572756881881e-05
+    },
+    {
+      "source": "walk forward.fbx",
+      "action": "Rifle_walk_forward_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -4.10713255405426e-07,
+        0.0,
+        1.7554329633712769
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.212933931213897e-05
+    },
+    {
+      "source": "walk left.fbx",
+      "action": "Rifle_walk_left_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        1.7554327249526978,
+        0.0,
+        -9.016599506139755e-06
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 8.079342334929727e-05
+    },
+    {
+      "source": "walk right.fbx",
+      "action": "Rifle_walk_right_InPlace",
+      "frames": 61,
+      "duration_seconds": 1.0,
+      "source_fps": 30.0,
+      "source_key_interval_frames": 1.0,
+      "source_horizontal_travel_m": [
+        -1.7554324865341187,
+        0.0,
+        8.965842425823212e-06
+      ],
+      "in_place": true,
+      "max_sampled_bone_position_error_m": 7.979678116329934e-05
+    }
+  ],
+  "target_fps": 60,
+  "retarget_method": "Bake source armature-space bone poses onto existing A-pose rig; linear horizontal hip travel removed for locomotion only. Original FBXs retained.",
+  "source_skeleton_bones": 49
+}

@@ -1,0 +1,54 @@
+{
+  "fps": 60,
+  "assets": [
+    {
+      "character": "Male",
+      "bones": 68,
+      "mesh_vertices": {
+        "Male_Body": 2058,
+        "Male_Coat": 554
+      },
+      "clips": [
+        {
+          "name": "MG_Standing",
+          "frames": 40
+        },
+        {
+          "name": "MG_Walking",
+          "frames": 60
+        },
+        {
+          "name": "MG_Crouching",
+          "frames": 60
+        }
+      ],
+      "weapon_bone": "MG_Weapon",
+      "cloth_runtime_exported": false
+    },
+    {
+      "character": "Female",
+      "bones": 56,
+      "mesh_vertices": {
+        "Female_Body": 2159,
+        "Female_Coat": 554
+      },
+      "clips": [
+        {
+          "name": "MG_Standing",
+          "frames": 40
+        },
+        {
+          "name": "MG_Walking",
+          "frames": 60
+        },
+        {
+          "name": "MG_Crouching",
+          "frames": 60
+        }
+      ],
+      "weapon_bone": "MG_Weapon",
+      "cloth_runtime_exported": false
+    }
+  ],
+  "scope": "Blender authoring and review exports. Unreal integration/Chaos setup not performed."
+}

@@ -1,0 +1,31 @@
+{
+  "triangles": 3972,
+  "vertices": 2216,
+  "height_m": 1.836,
+  "atlas": [
+    4096,
+    4096
+  ],
+  "palette_srgb": {
+    "coat": "29475f",
+    "collar": "577a94",
+    "trousers": "293b4c",
+    "armour": "373d42",
+    "leather": "27292c",
+    "webbing": "666748",
+    "steel": "767a73",
+    "skin": "b88759",
+    "ivory": "eee7d7",
+    "helmet": "30495f",
+    "brow": "8b613e"
+  },
+  "triangle_regions": {
+    "body": 2508,
+    "leather": 732,
+    "trousers": 210,
+    "webbing": 262,
+    "armour": 162,
+    "steel": 98
+  },
+  "rigged": false
+}

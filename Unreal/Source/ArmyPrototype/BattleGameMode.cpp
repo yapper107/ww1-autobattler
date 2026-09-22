@@ -1,4 +1,8 @@
 #include "BattleGameMode.h"
+#include "SoldierVisual.h"
+#include "ArcaneProjectileVisual.h"
+#include "PresentationState.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Sim/ReactionSim.h"
 #include "Sim/CognitiveSim.h"
 #include "Sim/TaskSim.h"
@@ -16,6 +20,9 @@
 #include "CanvasItem.h"
 #include "RenderUtils.h"
 #include "Engine/DirectionalLight.h"
+#include "Engine/SkyLight.h"
+#include "Engine/TextureCube.h"
+#include "Components/SkyLightComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -85,7 +92,19 @@ void ABattleGameMode::BeginPlay() {
     FInputModeGameAndUI Input;Input.SetHideCursorDuringCapture(false);
     Input.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);PC->SetInputMode(Input);
     ShowUnits();
+    ProjectileVisual=GetWorld()->SpawnActor<AArcaneProjectileVisual>();
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyProjectileTest"))) {
+        const FString Report=ProjectileVisual->ValidatePresentation();
+        FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("projectile-validation.txt")));
+        UE_LOG(LogTemp,Display,TEXT("PROJECTILE_VALIDATION: %s"),*Report);
+        PC->ConsoleCommand(TEXT("quit"));return;
+    }
     UE_LOG(LogTemp,Display,TEXT("ARMY_READY: preparation, 64 units, authoritative simulation separate from playback"));
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyCharacterDemo"))) {
+        Settings.maxSeconds=120;RunBattle();Seek(10.25f);bPaused=true;
+        for(int I=0;I<Units.Num();++I)if(auto* V=Cast<ASoldierVisual>(Units[I]))if(V->IsMale&&!V->IsMachineGun&&std::hypot(V->LastState.forward,V->LastState.right)>.2){Selected=I;break;}
+        CameraPan=UnitPosition(Selected);CameraPitch=25;CameraYaw=FMath::RadiansToDegrees(std::atan2(Frame().soldiers[Selected].facing.y,Frame().soldiers[Selected].facing.x))+150;Zoom=.009f;bAnimationDebug=true;
+    }
 }
 AActor* ABattleGameMode::Shape(const TCHAR* MeshPath,FVector Location,FVector Scale,FLinearColor Color) {
     auto* Actor=GetWorld()->SpawnActor<AActor>();SceneActors.Add(Actor);
@@ -173,7 +192,14 @@ void ABattleGameMode::BuildScene() {
         for(const auto& D:Settings.battlefield->decorations)BatchCube(World(D.center),FVector(D.half.x*2,D.half.y*2,D.half.z*2),Colors[D.kind],D.kind==3);
     }
     for(auto& A:UpperStructure)A->SetActorHiddenInGame(!bShowUpperFloor);
+    const bool Characters=!FParse::Param(FCommandLine::Get(),TEXT("ArmyGreybox"))&&ASoldierVisual::AssetsAvailable();
+    UE_LOG(LogTemp,Display,TEXT("ARMY_CHARACTERS: %s; shared rifle and machine gun presentation"),Characters?TEXT("rifle characters enabled"):TEXT("greybox fallback"));
     for(int I=0;I<army::UnitCount;++I) {
+        if(Characters) {
+            auto* V=GetWorld()->SpawnActor<ASoldierVisual>();
+            if(V->Initialize(Preparation->soldiers[I].team,(I%4)>=2,(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview"))||IsArtShowcase())?I%2==1:Preparation->soldiers[I].machineGun)){SceneActors.Add(V);Units.Add(V);continue;}
+            V->Destroy();
+        }
         auto* Body=Shape(Cylinder,FVector::ZeroVector,FVector(0.65f,0.65f,1.12f),I<army::TeamSize?Azure:Ember);
         // Root scaling is kept on the mesh so attached head and weapon remain in metres.
         Body->SetActorScale3D(FVector::OneVector);
@@ -202,8 +228,13 @@ void ABattleGameMode::BuildScene() {
     Sun->GetLightComponent()->SetLightColor(FLinearColor(1.f,0.94f,0.80f));
     auto* Fill=GetWorld()->SpawnActor<ADirectionalLight>();SceneActors.Add(Fill);
     Fill->GetLightComponent()->SetMobility(EComponentMobility::Movable);
-    Fill->SetActorRotation(FRotator(-70,145,0));
+    Fill->SetActorRotation(FRotator(-25,145,0));
     Fill->GetLightComponent()->SetIntensity(0.7f);Fill->GetLightComponent()->SetCastShadows(false);
+    auto* Sky=GetWorld()->SpawnActor<ASkyLight>();SceneActors.Add(Sky);
+    auto* Ambient=Sky->GetLightComponent();Ambient->SetMobility(EComponentMobility::Movable);
+    Ambient->SourceType=SLS_SpecifiedCubemap;
+    Ambient->SetCubemap(LoadObject<UTextureCube>(nullptr,TEXT("/Engine/MapTemplates/Sky/DaylightAmbientCubemap.DaylightAmbientCubemap")));
+    Ambient->bLowerHemisphereIsBlack=false;Ambient->SetIntensity(.65f);Ambient->SetCastShadows(false);
     Camera=GetWorld()->SpawnActor<ACameraActor>();SceneActors.Add(Camera);
     Camera->GetCameraComponent()->ProjectionMode=ECameraProjectionMode::Orthographic;
     Camera->GetCameraComponent()->bConstrainAspectRatio=false;
@@ -229,14 +260,73 @@ FVector ABattleGameMode::UnitPosition(int Id) const {
     return World(P,S.Active()?(S.stance==army::Stance::Crouched?34:70):15);
 }
 bool ABattleGameMode::IsFinished() const {return !bPreparation&&ReplayTime>=Battle.duration;}
+void ABattleGameMode::BuildVisualTimeline() {
+    if(ProjectileVisual)ProjectileVisual->Configure(Battle);
+    VisualTimeline.clear();VisualTimeline.resize(Battle.frames.size());
+    for(auto& Shots:VisualShots)Shots.clear();
+    for(const auto& Shot:Battle.shots)if(Shot.owner>=0&&Shot.owner<army::UnitCount)VisualShots[Shot.owner].push_back(Shot.time);
+    for(size_t K=0;K<Battle.frames.size();++K) {
+        const auto& F=Battle.frames[K];const float Dt=K?F.time-Battle.frames[K-1].time:0;
+        for(int I=0;I<army::UnitCount;++I) {
+            auto& V=VisualTimeline[K][I];const auto& S=F.soldiers[I];
+            if(K)V=VisualTimeline[K-1][I];else V.phase=std::fmod(I*.61803398875,1.);
+            if(!S.Active()) {
+                if(V.outAt<0){V.outAt=F.time;V.outCrouched=K?Battle.frames[K-1].soldiers[I].stance==army::Stance::Crouched:S.stance==army::Stance::Crouched;}
+                continue;
+            }
+            V.outAt=-1;armyvisual::ReadHandling(S,V.handling);
+            army::Vec3 Vel{};
+            if(K+1<Battle.frames.size()) {
+                const auto& N=Battle.frames[K+1];
+                if(N.time>F.time&&N.soldiers[I].Active())Vel=(N.soldiers[I].position-S.position)*(1.f/(N.time-F.time));
+            }
+            const float Yaw=std::atan2(S.facing.y,S.facing.x),C=std::cos(Yaw),Sn=std::sin(Yaw);
+            const float A=K?1-std::exp(-Dt/.12f):1;
+            V.forward+=(Vel.x*C+Vel.y*Sn-V.forward)*A;V.right+=(-Vel.x*Sn+Vel.y*C-V.right)*A;
+            V.crouch+=((S.stance==army::Stance::Crouched?1.f:0.f)-V.crouch)*(K?1-std::exp(-Dt/.18f):1);
+            V.aim+=((S.action==army::Action::Fire||S.movingFire||S.aimTarget>=0?1.f:0.f)-V.aim)*A;
+            V.phase+=armyvisual::CycleRate(V)*Dt;
+        }
+    }
+}
 void ABattleGameMode::ShowUnits() {
     const auto& F=Frame();
+    const size_t K=(!bPreparation&&!Battle.frames.empty())?size_t(&F-Battle.frames.data()):0;
+    const bool Next=!bPreparation&&K+1<VisualTimeline.size();
+    const float Blend=Next?FMath::Clamp((ReplayTime-F.time)/(Battle.frames[K+1].time-F.time),0.f,1.f):0;
     for(int I=0;I<Units.Num();++I) {
         const auto& S=F.soldiers[I];auto* A=Units[I].Get();
         A->SetActorHiddenInGame(!Preparation->soldiers[I].Active());
-        A->SetActorLocation(UnitPosition(I));
-        A->SetActorRotation(FRotator(0,FMath::RadiansToDegrees(FMath::Atan2(S.facing.y,S.facing.x)),0));
-        A->SetActorScale3D(S.Active()?FVector(0.88f,0.88f,S.stance==army::Stance::Crouched?0.58f:1.2f):FVector(1.25f,0.65f,0.18f));
+        FVector Location=UnitPosition(I);float Yaw=FMath::RadiansToDegrees(FMath::Atan2(S.facing.y,S.facing.x));
+        if(auto* V=Cast<ASoldierVisual>(A)) {
+            Location.Z-=S.Active()?(S.stance==army::Stance::Crouched?34:70):15;
+            armyvisual::State State;State.phase=std::fmod(I*.61803398875,1.);
+            State.crouch=S.stance==army::Stance::Crouched?1:0;
+            if(!bPreparation&&K<VisualTimeline.size()) {
+                State=VisualTimeline[K][I];
+                if(Next&&S.Active()&&Battle.frames[K+1].soldiers[I].Active()) {
+                    const auto& N=VisualTimeline[K+1][I];
+                    State.forward=FMath::Lerp(State.forward,N.forward,Blend);State.right=FMath::Lerp(State.right,N.right,Blend);
+                    State.crouch=FMath::Lerp(State.crouch,N.crouch,Blend);State.aim=FMath::Lerp(State.aim,N.aim,Blend);State.phase=FMath::Lerp(State.phase,N.phase,double(Blend));
+                    const auto& NS=Battle.frames[K+1].soldiers[I];const float NYaw=FMath::RadiansToDegrees(FMath::Atan2(NS.facing.y,NS.facing.x));
+                    Yaw+=FMath::FindDeltaAngleDegrees(Yaw,NYaw)*Blend;
+                }
+            }
+            armyvisual::ReadHandling(S,State.handling);
+            if(!bPreparation) {
+                const auto& Shots=VisualShots[I];auto Shot=std::upper_bound(Shots.begin(),Shots.end(),double(ReplayTime));
+                State.handling.lastShot=Shot==Shots.begin()?-1000:*std::prev(Shot);
+                // Reload may begin between snapshots. Its recorded end and duration recover the exact interval.
+                if(Next&&State.handling.reloadEnd<=ReplayTime) {
+                    auto Upcoming=State.handling;armyvisual::ReadHandling(Battle.frames[K+1].soldiers[I],Upcoming);
+                    if(Upcoming.reloadStart<=ReplayTime&&Upcoming.reloadEnd>ReplayTime)State.handling=Upcoming;
+                }
+            }
+            V->SetActorLocation(Location);V->SetActorRotation(FRotator(0,Yaw,0));V->Present(State,bPreparation?RealSeconds:ReplayTime);
+        } else {
+            A->SetActorLocation(Location);A->SetActorRotation(FRotator(0,Yaw,0));
+            A->SetActorScale3D(S.Active()?FVector(.88f,.88f,S.stance==army::Stance::Crouched?.58f:1.2f):FVector(1.25f,.65f,.18f));
+        }
     }
 }
 void ABattleGameMode::RefreshPreparation() {
@@ -248,6 +338,7 @@ void ABattleGameMode::RunBattle() {
     const double Start=FPlatformTime::Seconds();
     const bool Reused=!Battle.frames.empty()&&army::SameConfig(Battle.config,Settings);
     if(!Reused)Battle=army::Simulate(Settings,{}, {},army::TypedController(Settings)?CognitiveScenario:0);
+    BuildVisualTimeline();
     ReplayTime=0;bPaused=false;bPreparation=false;
     ReplaySpeed=1;Selected=0;Notice=TEXT("");
     if(Reused){UE_LOG(LogTemp,Display,TEXT("ARMY_REPLAY_REUSED: identical seed and settings, no simulation needed"));return;}
@@ -277,13 +368,14 @@ void ABattleGameMode::Command(FName Id) {
     else if(Id==TEXT("ember_doctrine")&&bPreparation) Settings.emberDoctrine=army::Doctrine((int(Settings.emberDoctrine)+1)%3);
     else if(Id==TEXT("doctrine")&&bPreparation) Settings.doctrine=army::Doctrine((int(Settings.doctrine)+1)%3);
     else if(Id==TEXT("approach")&&bPreparation) Settings.approach=army::Approach((int(Settings.approach)+1)%3);
-    else if(Id==TEXT("support")&&bPreparation) {Settings.supportWeapon=!Settings.supportWeapon;RefreshPreparation();}
+    else if(Id==TEXT("support")&&bPreparation) {Settings.supportWeapon=!Settings.supportWeapon;RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}
+    else if(Id==TEXT("animdebug")) bAnimationDebug=!bAnimationDebug;
     else if(Id==TEXT("routes")) bRoutes=!bRoutes;
     else if(Id==TEXT("generatemap")&&bPreparation){GenerateMap();}
     else if(Id==TEXT("terrain")&&bPreparation){if(SelectMap((MapSelection+1)%4)){Battle={};Battle.map=army::MakeBattleMap(Settings);RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}}
     else if(Id==TEXT("reloadmap")&&bPreparation&&Settings.battlefield){if(SelectMap(MapSelection)){Battle={};Battle.map=army::MakeBattleMap(Settings);RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}}
     else if(Id==TEXT("seed")&&bPreparation) {++Settings.seed;RefreshPreparation();}
-    else if(Id==TEXT("zoomin")) Zoom=FMath::Max(0.055f,Zoom/1.18f);
+    else if(Id==TEXT("zoomin")) Zoom=FMath::Max(0.003f,Zoom/1.18f);
     else if(Id==TEXT("zoomout")) Zoom=FMath::Min(1.65f,Zoom*1.18f);
     else if(Id==TEXT("focus")) CameraPan=UnitPosition(Selected);
     else if(Id==TEXT("center")) {CameraPan=FVector::ZeroVector;Zoom=Settings.battlefield?.70f:1.f;CameraYaw=-90;CameraPitch=60;}
@@ -292,6 +384,8 @@ void ABattleGameMode::Command(FName Id) {
 }
 void ABattleGameMode::Tick(float Dt) {
     Super::Tick(Dt);RealSeconds+=Dt;
+    if(IsMagicShowcase()){ShowMagicShowcase();return;}
+    if(IsArtShowcase()){ShowArtShowcase();return;}
     if(GeneratorProcess.IsValid()&&FPlatformTime::Seconds()-GeneratorStartedAt>30){
         FPlatformProcess::TerminateProc(GeneratorProcess,true);FPlatformProcess::CloseProc(GeneratorProcess);GeneratorProcess.Reset();Notice=TEXT("Map generation timed out; previous map retained");
     }
@@ -322,6 +416,7 @@ void ABattleGameMode::Tick(float Dt) {
         if(PC->IsInputKeyDown(EKeys::E))AdjustCamera(60*Dt,0);
         if(PC->IsInputKeyDown(EKeys::PageUp))AdjustCamera(0,35*Dt);
         if(PC->IsInputKeyDown(EKeys::PageDown))AdjustCamera(0,-35*Dt);
+        if(PC->WasInputKeyJustPressed(EKeys::V)) Command(TEXT("animdebug"));
         if(PC->WasInputKeyJustPressed(EKeys::C)) Command(TEXT("focus"));
         const float PanSpeed=4000*Dt*Zoom;
         const FVector Forward=FRotator(0,CameraYaw,0).Vector();
@@ -341,6 +436,10 @@ void ABattleGameMode::Tick(float Dt) {
     Camera->SetActorLocation(CameraPan-ViewRight*(Width*Frac*0.5f)-ViewRotation.Vector()*22000);
     Camera->GetCameraComponent()->OrthoWidth=Width;
     ShowUnits();
+    if(ProjectileVisual) {
+        if(bPreparation)ProjectileVisual->Clear();
+        else ProjectileVisual->Present(Battle,ReplayTime,[this](const army::Shot& Shot){return ShotMuzzle(Shot);});
+    }
     const auto& F=Frame();
     if(Selected>=0&&Selected<army::UnitCount) {
         if(bRoutes){const auto& Cmd=F.command[F.soldiers[Selected].squad];if(Cmd.route){army::Vec3 Prev=Cmd.route->start;
@@ -352,11 +451,198 @@ void ABattleGameMode::Tick(float Dt) {
     }
     SmokeTest(Dt);
 }
+bool ABattleGameMode::IsArtShowcase() const {return FParse::Param(FCommandLine::Get(),TEXT("ArmyArtShowcase"));}
+bool ABattleGameMode::IsRifleShowcase() const {return FParse::Param(FCommandLine::Get(),TEXT("ArmyArtRifle"));}
+bool ABattleGameMode::IsMagicShowcase() const {return FParse::Param(FCommandLine::Get(),TEXT("ArmyMagicShowcase"));}
+FVector ABattleGameMode::ShotMuzzle(const army::Shot& Shot) {
+    auto* Visual=Units.IsValidIndex(Shot.owner)?Cast<ASoldierVisual>(Units[Shot.owner]):nullptr;
+    if(!Visual||Battle.frames.empty()||VisualTimeline.empty())return World(Shot.start);
+    auto It=std::upper_bound(Battle.frames.begin(),Battle.frames.end(),Shot.time,[](float T,const army::Frame& F){return T<F.time;});
+    const size_t K=It==Battle.frames.begin()?0:size_t(It-Battle.frames.begin()-1);
+    const auto& FrameAt=Battle.frames[K];const auto& S=FrameAt.soldiers[Shot.owner];
+    armyvisual::State State=VisualTimeline[K][Shot.owner];
+    FVector Position=World(S.position);float Yaw=FMath::RadiansToDegrees(std::atan2(S.facing.y,S.facing.x));
+    if(K+1<Battle.frames.size()) {
+        const auto& Next=Battle.frames[K+1];const auto& N=Next.soldiers[Shot.owner];
+        const float A=FMath::Clamp((Shot.time-FrameAt.time)/(Next.time-FrameAt.time),0.f,1.f);
+        Position=FMath::Lerp(Position,World(N.position),A);
+        Yaw+=FMath::FindDeltaAngleDegrees(Yaw,FMath::RadiansToDegrees(std::atan2(N.facing.y,N.facing.x)))*A;
+        const auto& P=VisualTimeline[K+1][Shot.owner];
+        State.forward=FMath::Lerp(State.forward,P.forward,A);State.right=FMath::Lerp(State.right,P.right,A);
+        State.crouch=FMath::Lerp(State.crouch,P.crouch,A);State.aim=FMath::Lerp(State.aim,P.aim,A);State.phase=FMath::Lerp(State.phase,P.phase,double(A));
+    }
+    const auto SavedTransform=Visual->GetActorTransform();const auto SavedState=Visual->LastState;const double SavedTime=Visual->LastTime;
+    armyvisual::ReadHandling(S,State.handling);State.handling.lastShot=Shot.time;State.aim=1;
+    Visual->SetActorLocation(Position);Visual->SetActorRotation(FRotator(0,Yaw,0));Visual->Present(State,Shot.time);
+    const FVector Muzzle=Visual->MuzzlePosition();
+    Visual->SetActorTransform(SavedTransform);Visual->Present(SavedState,SavedTime);return Muzzle;
+}
+void ABattleGameMode::ShowMagicShowcase() {
+    const FVector Origin(0,-Battle.map.halfHeight*100-10000,0);
+    const bool Capture=FParse::Param(FCommandLine::Get(),TEXT("ArmyArtCapture"));
+    if(!ArtStageReady) {
+        Selected=-1;
+        for(auto A:SceneActors)if(A&&A!=Camera&&!A->IsA<ADirectionalLight>()&&!A->IsA<ASkyLight>())A->SetActorHiddenInGame(true);
+        Shape(TEXT("/Engine/BasicShapes/Cube.Cube"),Origin+FVector(300,0,-8),FVector(12,12,.1),FLinearColor(.035,.045,.060));
+        Battle.shots.clear();
+        for(int Team=0;Team<2;++Team) {
+            const int Id=Team*army::TeamSize;
+            auto* V=Cast<ASoldierVisual>(Units[Id]);if(!V)continue;
+            V->SetActorHiddenInGame(false);V->SetActorLocation(Origin+FVector(0,Team?150:-150,0));V->SetActorRotation(FRotator::ZeroRotator);
+            armyvisual::State S;S.aim=1;V->Present(S,0);
+            const FVector Start=V->MuzzlePosition(),End=Origin+FVector(600,Team?150:-150,Start.Z-Origin.Z);
+            Shape(TEXT("/Engine/BasicShapes/Cube.Cube"),End+FVector(8,0,0),FVector(.16,1.2,1.8),FLinearColor(.08,.10,.13));
+            army::Shot Shot;Shot.owner=Id;Shot.time=.15f+Team*.22f;Shot.impactTime=Shot.time+.08f;Shot.impact=army::Shot::Impact::Cover;
+            Shot.start={float(Start.X/100),float(Start.Y/100),float(Start.Z/100)};Shot.end={float(End.X/100),float(End.Y/100),float(End.Z/100)};
+            for(int I=0;I<=16;++I)Shot.flight.push_back({FMath::Lerp(Shot.time,Shot.impactTime,I/16.f),Shot.start+(Shot.end-Shot.start)*(I/16.f)});
+            Battle.shots.push_back(Shot);
+        }
+        ProjectileVisual->Configure(Battle);ArtStageReady=true;
+    }
+    if(Capture&&FScreenshotRequest::IsScreenshotRequested())return;
+    const float Clock=Capture?ArtCaptureFrame/30.f:RealSeconds;
+    ArtShowcaseTime=FMath::Fmod(Clock,9.f)*.1f;
+    for(int Team=0;Team<2;++Team)if(auto* V=Cast<ASoldierVisual>(Units[Team*army::TeamSize])) {
+        armyvisual::State S;S.aim=1;S.handling.lastShot=ArtShowcaseTime>=.15f+Team*.22f?.15f+Team*.22f:-1000;V->Present(S,ArtShowcaseTime);
+    }
+    ProjectileVisual->Present(Battle,ArtShowcaseTime,[](const army::Shot& S){return World(S.start);});
+    const FVector Center=Origin+FVector(300,0,105);
+    Camera->SetActorLocation(Center+FVector(-900,-1600,650));Camera->SetActorRotation((Center-Camera->GetActorLocation()).Rotation());Camera->GetCameraComponent()->OrthoWidth=850;
+    if(Capture) {
+        const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots/MagicShowcase");IFileManager::Get().MakeDirectory(*Dir,true);
+        FScreenshotRequest::RequestScreenshot(Dir/FString::Printf(TEXT("magic-%04d.png"),ArtCaptureFrame),false,false);++ArtCaptureFrame;
+        if(ArtCaptureFrame>=270)GetWorld()->GetFirstPlayerController()->ConsoleCommand(TEXT("quit"));
+    }
+}
+void ABattleGameMode::ShowArtShowcase() {
+    const bool RifleView=IsRifleShowcase(),Capture=FParse::Param(FCommandLine::Get(),TEXT("ArmyArtCapture"));
+    const FVector StageOrigin(0,-Battle.map.halfHeight*100-10000,0);
+    if(!ArtStageReady) {
+        Selected=-1;
+        for(auto A:SceneActors)if(A&&A!=Camera&&!A->IsA<ADirectionalLight>()&&!A->IsA<ASkyLight>())A->SetActorHiddenInGame(true);
+        Shape(TEXT("/Engine/BasicShapes/Cube.Cube"),StageOrigin+FVector(0,0,-8),FVector(100,100,.1),FLinearColor(.075f,.095f,.11f));
+        ArtStageReady=true;
+    }
+    if(Capture&&FScreenshotRequest::IsScreenshotRequested())return;
+    const double Playback=Capture?ArtCaptureFrame/30.:std::fmod(double(RealSeconds),24.);
+    ArtShowcaseSlow=Playback>=8;ArtShowcaseTime=ArtShowcaseSlow?float((Playback-8)*.5):float(Playback);
+    const float T=ArtShowcaseTime;
+    const FRotator View(RifleView?-8:-10,RifleView?110:135,0);
+    const FVector Right=FVector::CrossProduct(FVector::UpVector,FRotator(0,View.Yaw,0).Vector());
+    const FVector Center=StageOrigin+(RifleView?FVector(32,0,126):FVector(0,0,105));
+    Camera->SetActorRotation(View);Camera->SetActorLocation(Center-View.Vector()*22000);
+    Camera->GetCameraComponent()->OrthoWidth=RifleView?260:740;
+    const int Order[]={3,0,1,2};
+    for(int J=0;J<4;++J)if(auto* V=Cast<ASoldierVisual>(Units[Order[J]])) {
+        const bool Visible=!RifleView||J==1;V->SetActorHiddenInGame(!Visible);if(!Visible)continue;
+        V->SetActorLocation(StageOrigin+(RifleView?FVector::ZeroVector:Right*((J-1.5f)*165)));V->SetActorRotation(FRotator::ZeroRotator);
+        armyvisual::State S;S.aim=RifleView?armyvisual::Smooth((T-.5f)/.8f):1;
+        if(RifleView){S.handling.lastShot=2;S.handling.reloadStart=4;S.handling.reloadEnd=6.5;}
+        V->Present(S,RifleView?T:1.5);
+    }
+    if(Capture&&RealSeconds>2) {
+        const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots/ArtShowcase");IFileManager::Get().MakeDirectory(*Dir,true);
+        if(RifleView&&ArtCaptureFrame<720) {
+            FScreenshotRequest::RequestScreenshot(Dir/FString::Printf(TEXT("rifle-%04d.png"),ArtCaptureFrame),false,false);++ArtCaptureFrame;
+        } else if(!RifleView&&ArtCaptureFrame==0) {
+            FScreenshotRequest::RequestScreenshot(Dir/TEXT("lineup.png"),false,false);++ArtCaptureFrame;
+        } else FGenericPlatformMisc::RequestExit(false);
+    }
+}
 void ABattleGameMode::AdjustCamera(float YawDelta,float PitchDelta) {
     CameraYaw=FMath::UnwindDegrees(CameraYaw+YawDelta);
     CameraPitch=FMath::Clamp(CameraPitch+PitchDelta,25.f,80.f);
 }
+FString ABattleGameMode::AnimationDebugText() const {
+    if(!Units.IsValidIndex(Selected))return TEXT("No selected unit");
+    const auto* V=Cast<ASoldierVisual>(Units[Selected]);if(!V)return TEXT("Greybox presentation");
+    return FString::Printf(TEXT("%.2f m/s | crouch %.0f%% | wrist gap %.2f cm | %s"),std::hypot(V->LastState.forward,V->LastState.right),V->LastState.crouch*100,V->GripError(),*V->PoseDescription());
+}
 void ABattleGameMode::SmokeTest(float Dt) {
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyCharacterBattleTest"))) {
+        const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
+        if(SmokeStage==0&&RealSeconds>2){Settings.maxSeconds=120;RunBattle();bPaused=true;++SmokeStage;}
+        else if(SmokeStage==1&&RealSeconds>4) {
+            FString Report;bool Passed=true;int Count=0;float Worst=0;
+            for(float Time:{0.f,.15f,1.f,5.f,10.f,20.f,40.f,60.f,90.f,119.f}) {
+                Seek(FMath::Min(Time,Battle.duration));
+                for(auto Actor:Units)if(auto* V=Cast<ASoldierVisual>(Actor)) {
+                    ++Count;for(const auto& T:V->Body->GetComponentSpaceTransforms())Passed=Passed&&!T.ContainsNaN();
+                    if(V->LastState.outAt<0)Worst=FMath::Max(Worst,V->GripError());
+                }
+            }
+            int ExactShots=0;int ShotKinds[2]={0,0};
+            for(const auto& Shot:Battle.shots) {
+                if(Shot.owner<0||Shot.owner>=Units.Num())continue;
+                auto* V=Cast<ASoldierVisual>(Units[Shot.owner]);if(!V||ShotKinds[V->IsMachineGun]>=12)continue;
+                Seek(Shot.time+.025f);
+                Passed=Passed&&FMath::Abs(V->LastState.handling.lastShot-Shot.time)<.00001;
+                ProjectileVisual->Present(Battle,ReplayTime,[this](const army::Shot& S){return ShotMuzzle(S);});
+                if(V->LastState.outAt<0)Passed=Passed&&ProjectileVisual->MuzzleOwners.Contains(Shot.owner);
+                Worst=FMath::Max(Worst,V->GripError());++ShotKinds[V->IsMachineGun];++ExactShots;
+            }
+            Passed=Passed&&ExactShots>0;
+            Report+=FString::Printf(TEXT("exact_shot_event_checks=%d rifle=%d mg=%d\n"),ExactShots,ShotKinds[0],ShotKinds[1]);
+            Seek(10.25f);ASoldierVisual* Probe=nullptr;
+            for(int I=0;I<Units.Num();++I)if(auto* V=Cast<ASoldierVisual>(Units[I]))if(Frame().soldiers[I].Active()&&std::hypot(V->LastState.forward,V->LastState.right)>.2){Probe=V;Selected=I;break;}
+            if(!Probe){Report+=TEXT("FAIL no moving character for pose check\n");Passed=false;}
+            else {
+                const auto Before=Probe->Body->GetComponentSpaceTransforms();
+                Seek(10.4f);bool Changed=false;
+                for(int I=0;I<Before.Num();++I)Changed=Changed||!Before[I].Equals(Probe->Body->GetComponentSpaceTransforms()[I],.0001f);
+                Seek(60);Seek(10.25f);bool Same=true;
+                for(int I=0;I<Before.Num();++I)Same=Same&&Before[I].Equals(Probe->Body->GetComponentSpaceTransforms()[I],.00001f);
+                ReplaySpeed=.1f;ShowUnits();ReplaySpeed=4;ShowUnits();
+                for(int I=0;I<Before.Num();++I)Same=Same&&Before[I].Equals(Probe->Body->GetComponentSpaceTransforms()[I],.00001f);
+                Passed=Passed&&Changed&&Same;Report+=FString::Printf(TEXT("pose_advances=%d seek_pause_rate_equal=%d\n"),Changed,Same);
+                CameraPan=UnitPosition(Selected);CameraPitch=25;CameraYaw=-35;Zoom=.02f;bAnimationDebug=true;
+            }
+            Report+=FString::Printf(TEXT("%s battle_states=%d worst_wrist_cm=%.3f frames=%d shots=%d duration=%.2f\n"),Passed&&Worst<2?TEXT("PASS"):TEXT("FAIL"),Count,Worst,int(Battle.frames.size()),int(Battle.shots.size()),Battle.duration);
+            FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("character-battle-validation.txt")));UE_LOG(LogTemp,Display,TEXT("ARMY_CHARACTER_BATTLE %s"),*Report);++SmokeStage;
+        }
+        else if(SmokeStage==2&&RealSeconds>7){FScreenshotRequest::RequestScreenshot(Dir/TEXT("character-battle.png"),true,false);++SmokeStage;}
+        else if(SmokeStage==3&&RealSeconds>10){FGenericPlatformMisc::RequestExit(false);++SmokeStage;}
+        return;
+    }
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview"))) {
+        const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
+        for(auto A:SceneActors)if(A&&A!=Camera&&A->IsA<ASoldierVisual>())A->SetActorHiddenInGame(true);
+        CameraYaw=160;CameraPitch=12;Zoom=.022f;CameraPan=FVector(0,-Battle.map.halfHeight*100+500,95);
+        const double T=std::fmod(RealSeconds,10.);
+        FString Report;
+        for(int I=0;I<4;++I)if(auto* V=Cast<ASoldierVisual>(Units[I])) {
+            V->SetActorHiddenInGame(false);V->SetActorLocation(CameraPan+FVector(0,(I-1.5f)*185,-95));V->SetActorRotation(FRotator(0,0,0));
+            armyvisual::State S;S.aim=1;S.handling.machineGun=V->IsMachineGun;S.handling.lastShot=2;S.handling.reloadStart=4;S.handling.reloadEnd=V->IsMachineGun?8:6.5;
+            if(RealSeconds>10){S.forward=1.755;S.phase=T;S.handling.movingFire=true;}
+            V->Present(S,T);
+            if(SmokeStage==0&&RealSeconds>2)Report+=FString::Printf(TEXT("variant=%d male=%d mg=%d "),I,V->IsMale,V->IsMachineGun)+V->ValidatePresentation();
+        }
+        if(SmokeStage==0&&RealSeconds>2){FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("handling-validation.txt")));UE_LOG(LogTemp,Display,TEXT("ARMY_HANDLING %s"),*Report);++SmokeStage;}
+        else if(SmokeStage==1&&RealSeconds>3.5){FScreenshotRequest::RequestScreenshot(Dir/TEXT("handling-standing.png"),false,false);++SmokeStage;}
+        else if(SmokeStage==2&&RealSeconds>5.5){FScreenshotRequest::RequestScreenshot(Dir/TEXT("handling-reload.png"),false,false);++SmokeStage;}
+        else if(SmokeStage==3&&RealSeconds>12.4){FScreenshotRequest::RequestScreenshot(Dir/TEXT("handling-moving.png"),false,false);++SmokeStage;}
+        else if(SmokeStage==4&&RealSeconds>16){FGenericPlatformMisc::RequestExit(false);++SmokeStage;}
+        return;
+    }
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyCharacterReview"))) {
+        const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
+        TArray<ASoldierVisual*> Review;
+        for(int I=0;I<Units.Num();++I){auto* V=Cast<ASoldierVisual>(Units[I]);Units[I]->SetActorHiddenInGame(true);if(V&&((I<army::TeamSize&&Review.Num()<2)||(I>=army::TeamSize&&Review.Num()<4)))Review.Add(V);}
+        if(Review.Num()!=4){UE_LOG(LogTemp,Error,TEXT("ARMY_CHARACTER_REVIEW missing assets"));FGenericPlatformMisc::RequestExit(false);return;}
+        CameraYaw=-90;CameraPitch=10;Zoom=.027f;CameraPan=FVector(0,-Battle.map.halfHeight*100+500,100);
+        for(int I=0;I<Review.Num();++I){
+            auto* V=Review[I];V->SetActorHiddenInGame(false);V->SetActorLocation(CameraPan+FVector((I-1.5f)*190,0,-100));V->SetActorRotation(FRotator(0,90,0));
+            armyvisual::State State;State.aim=1;State.phase=std::fmod(RealSeconds,1.);
+            if(I==1){State.forward=1.755f;State.phase*=1;}
+            if(I==2){State.right=4.389f;State.phase=std::fmod(RealSeconds*2,1.);}
+            if(I==3){State.crouch=1;State.forward=1.86f;}
+            V->Present(State,RealSeconds);
+        }
+        if(SmokeStage==0&&RealSeconds>3){const FString Report=Review[0]->ValidatePresentation();FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("character-validation.txt")));UE_LOG(LogTemp,Display,TEXT("ARMY_CHARACTER_VALIDATION %s"),*Report);++SmokeStage;}
+        else if(SmokeStage==1&&RealSeconds>6){FScreenshotRequest::RequestScreenshot(Dir/TEXT("character-review.png"),false,false);++SmokeStage;}
+        else if(SmokeStage==2&&RealSeconds>9){FGenericPlatformMisc::RequestExit(false);++SmokeStage;}
+        return;
+    }
     if(!bSmoke&&!bCapture)return;
     if(Settings.battlefield&&FParse::Param(FCommandLine::Get(),TEXT("ArmyMapPreview"))){
         const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
@@ -467,11 +753,14 @@ void ABattleGameMode::SmokeTest(float Dt) {
             if(!DuckFound&&S.reason==army::Reason::Duck&&S.Active()) {
                 Seek(F.time);Selected=S.id;Zoom=0.3f;CameraPan=World(S.position);DuckFound=true;
                 check(Frame().soldiers[Selected].stance==army::Stance::Crouched);
-                check(FMath::Abs(Units[Selected]->GetActorScale3D().Z-0.58f)<0.001f);
+                if(const auto* V=Cast<ASoldierVisual>(Units[Selected])) {
+                    check(V->GetActorScale3D().Equals(FVector::OneVector,.001f));
+                    check(V->LastState.crouch>.1f&&V->GripError()<2.f);
+                } else check(FMath::Abs(Units[Selected]->GetActorScale3D().Z-.58f)<.001f);
             }
         }
-        Command(TEXT("focus"));for(int I=0;I<30;++I)Command(TEXT("zoomin"));
-        check(FMath::IsNearlyEqual(Zoom,0.055f)&&CameraPan.Equals(UnitPosition(Selected),0.01f));
+        Command(TEXT("focus"));for(int I=0;I<45;++I)Command(TEXT("zoomin"));
+        check(FMath::IsNearlyEqual(Zoom,0.003f)&&CameraPan.Equals(UnitPosition(Selected),0.01f));
         AdjustCamera(45,-20);check(CameraYaw==-45&&CameraPitch==40);
         check(DuckFound&&PopFound);++SmokeStage;
     }
@@ -586,65 +875,34 @@ float ABattleHUD::Wrapped(const FString& Text,float X,float Y,int Columns) {
     }
     if(!Line.IsEmpty()){Label(Line,X,Y,Muted);Y+=18;}return Y;
 }
-void ABattleHUD::DrawProjectiles(const ABattleGameMode& Game) {
-    if(Game.bPreparation)return;
-    // Observer overlays retain a fixed pixel width at every camera distance.
-    // The fading trail contains only already-travelled trajectory samples.
-    for(const auto& Shot:Game.Battle.shots) {
-        if(Shot.time>Game.ReplayTime)break;
-        if(Shot.flight.size()<2||Game.ReplayTime>Shot.impactTime+0.18f)continue;
-        const float FlightTime=FMath::Min(Game.ReplayTime,Shot.impactTime);
-        const float Fade=1-FMath::Clamp((Game.ReplayTime-Shot.impactTime)/0.18f,0.f,1.f);
-        const FLinearColor Color=Shot.owner<army::TeamSize?FLinearColor(0.25f,1.f,0.90f,Fade):FLinearColor(1.f,0.65f,0.16f,Fade);
-        auto Screen=[&](army::Vec3 P){return Project(FVector(P.x*100,P.y*100,P.z*100));};
-        // Canvas debug lines are opaque; translucent quads allow a real fade.
-        auto Line=[&](FVector A,FVector B,FLinearColor Tint,float Width){
-            const FVector2D From(A.X,A.Y),To(B.X,B.Y);
-            const FVector2D Delta=To-From;
-            if(Delta.SizeSquared()<0.001f)return;
-            const FVector2D Offset=FVector2D(-Delta.Y,Delta.X).GetSafeNormal()*(Width*0.5f);
-            FCanvasTriangleItem First(From-Offset,From+Offset,To+Offset,GWhiteTexture);
-            FCanvasTriangleItem Second(From-Offset,To+Offset,To-Offset,GWhiteTexture);
-            First.BlendMode=Second.BlendMode=SE_BLEND_Translucent;
-            First.SetColor(Tint);Second.SetColor(Tint);
-            Canvas->DrawItem(First);Canvas->DrawItem(Second);
-        };
-        auto Stroke=[&](FVector A,FVector B,FLinearColor Tint,float Width){
-            Line(A,B,FLinearColor(0.015f,0.025f,0.03f,Tint.A),Width+3*UiScale);
-            Line(A,B,Tint,Width);
-        };
-        const float TailTime=FMath::Max(Shot.time,FlightTime-0.022f);
-        army::Vec3 Previous;
-        if(!army::ProjectilePosition(Shot,TailTime,Previous))continue;
-        TArray<FVector> Trail;Trail.Add(Screen(Previous));
-        for(int Segment=1;Segment<=8;++Segment) {
-            army::Vec3 Next;
-            const float Time=FMath::Lerp(TailTime,FlightTime,Segment/8.f);
-            if(!army::ProjectilePosition(Shot,Time,Next))break;
-            Trail.Add(Screen(Next));Previous=Next;
-        }
-        for(int Pass=0;Pass<2;++Pass) for(int Segment=1;Segment<Trail.Num();++Segment) {
-            FLinearColor Tint=Pass==0?FLinearColor(0.015f,0.025f,0.03f,Fade):Color;
-            Tint.A*=0.25f+0.75f*Segment/8.f;
-            Line(Trail[Segment-1],Trail[Segment],Tint,(Pass==0?6.f:3.f)*UiScale);
-        }
-        const FVector Head=Screen(Previous);
-        if(Game.ReplayTime<=Shot.impactTime) {
-            // An exaggerated bright head makes the moving round legible at battle scale.
-            Stroke(Head-FVector(3*UiScale,0,0),Head+FVector(3*UiScale,0,0),FLinearColor(1,1,0.85f,1),4*UiScale);
-        } else if(Shot.impact!=army::Shot::Impact::None&&Shot.impact!=army::Shot::Impact::OutOfBounds) {
-            const float Radius=(4+8*(1-Fade))*UiScale;
-            const FLinearColor Flash=Shot.hit?FLinearColor(1,0.35f,0.12f,Fade):FLinearColor(1,0.94f,0.60f,Fade);
-            for(int Ray=0;Ray<4;++Ray) {
-                float Angle=Ray*PI/2+PI/4;
-                FVector Dir(FMath::Cos(Angle),FMath::Sin(Angle),0);
-                Stroke(Head+Dir*Radius*0.35f,Head+Dir*Radius,Flash,2*UiScale);
-            }
-        }
-    }
-}
 void ABattleHUD::DrawHUD() {
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview")))return;
     Super::DrawHUD();auto* G=Cast<ABattleGameMode>(GetWorld()->GetAuthGameMode());if(!G||!Canvas)return;
+    if(G->IsMagicShowcase()) {
+        DrawRect(FLinearColor(.018f,.025f,.032f,.94f),0,0,Canvas->SizeX,88);
+        DrawText(TEXT("ARCANE ROUNDS  /  AZURE + EMBER"),FLinearColor(.88f,.94f,1),32,18,GEngine->GetLargeFont(),1.4f);
+        DrawText(TEXT("Muzzle sigil  >  magic missile  >  impact sparks     |     0.1x effect preview"),FLinearColor(.6f,.72f,.83f),32,54,GEngine->GetMediumFont(),1.f);
+        return;
+    }
+    if(G->IsArtShowcase()) {
+        const float W=Canvas->SizeX,H=Canvas->SizeY;
+        auto Text=[&](const FString& S,float X,float Y,float Size,FLinearColor Color=FLinearColor(.88f,.94f,.94f)){DrawText(S,Color,X,Y,GEngine->GetLargeFont(),Size);};
+        DrawRect(FLinearColor(.018f,.025f,.032f,.93f),0,0,W,108);
+        if(G->IsRifleShowcase()) {
+            Text(TEXT("BOLT-ACTION RIFLE / STANDING HANDLING"),42,24,1.8f);
+            const float T=G->ArtShowcaseTime;
+            const TCHAR* Phase=T<.5f?TEXT("READY"):T<1.3f?TEXT("RAISE / AIM"):T<2?TEXT("AIM"):T<2.16f?TEXT("FIRE / RECOIL"):T<3.25f?TEXT("BOLT CYCLE"):T<4?TEXT("RETURN TO AIM"):T<6.5f?TEXT("RELOAD"):TEXT("RETURN TO AIM");
+            Text(FString(Phase)+(G->ArtShowcaseSlow?TEXT("     |     0.5x SLOW MOTION"):TEXT("     |     1x SPEED")),42,65,1.1f,FLinearColor(.3f,.85f,.95f));
+            DrawRect(FLinearColor(.018f,.025f,.032f,.93f),0,H-66,W,66);
+            Text(TEXT("Current in-game prototype  /  Hand and reload polish pending"),42,H-44,1.1f);
+        } else {
+            Text(TEXT("AZURE SOLDIERS / RIFLE + MACHINE GUN"),42,24,1.8f);
+            Text(TEXT("Male 183.6 cm   /   Female 170 cm   /   Same weapon dimensions"),42,65,1.1f,FLinearColor(.3f,.85f,.95f));
+            const TCHAR* Names[]={TEXT("MALE / MACHINE GUN"),TEXT("FEMALE / RIFLE"),TEXT("FEMALE / MACHINE GUN"),TEXT("MALE / RIFLE")};
+            for(int J=0;J<4;++J){const float X=W*(.5f+(J-1.5f)*165.f/740.f)-108;Text(Names[J],X,H*.78f,1.05f);}
+        }
+        return;
+    }
     CachedCanvasSize=FVector2D(Canvas->SizeX,Canvas->SizeY);
     UiScale=FMath::Clamp(Canvas->SizeY/900.f,0.72f,1.3f);
     if(bDraggingDuration){
@@ -652,8 +910,12 @@ void ABattleHUD::DrawHUD() {
         if(G->bPreparation&&PlayerOwner&&PlayerOwner->GetMousePosition(MouseX,MouseY))G->SetBattleDuration(60+540*FMath::Clamp((MouseX/UiScale-44)/240.f,0.f,1.f));
         if(!PlayerOwner||!PlayerOwner->IsInputKeyDown(EKeys::LeftMouseButton))bDraggingDuration=false;
     }
-    DrawProjectiles(*G);
     float W=Canvas->SizeX/UiScale,H=Canvas->SizeY/UiScale;
+    if(G->bAnimationDebug){
+        DrawRect(FLinearColor(.01f,.02f,.03f,.9f),330*UiScale,110*UiScale,(W-650)*UiScale,90*UiScale);
+        Wrapped(G->AnimationDebugText(),342,122,FMath::Max(30,int((W-670)/7)));
+    }
+
     auto Rect=[&](FLinearColor C,float X,float Y,float A,float B){DrawRect(C,X*UiScale,Y*UiScale,A*UiScale,B*UiScale);};
     const auto& F=G->Frame();int Active[2]={0,0},Down[2]={0,0},Killed[2]={0,0};
     if(G->Settings.cognition&&!G->bPreparation){

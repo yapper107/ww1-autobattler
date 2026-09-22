@@ -1,0 +1,251 @@
+{
+  "mesh": "/Game/Characters/FemaleRifle/SK_Female_Rifle.SK_Female_Rifle",
+  "animations": [
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_crouching_turn_90_left.A_crouching_turn_90_left",
+      "duration": 1.2666666507720947,
+      "expected": 1.2666666666666666
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_crouching_turn_90_right.A_crouching_turn_90_right",
+      "duration": 1.2666666507720947,
+      "expected": 1.2666666666666666
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_death_crouching_headshot_front.A_death_crouching_headshot_front",
+      "duration": 4.0,
+      "expected": 4.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_death_from_back_headshot.A_death_from_back_headshot",
+      "duration": 4.0,
+      "expected": 4.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_death_from_front_headshot.A_death_from_front_headshot",
+      "duration": 4.0,
+      "expected": 4.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_death_from_right.A_death_from_right",
+      "duration": 4.0,
+      "expected": 4.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_death_from_the_back.A_death_from_the_back",
+      "duration": 4.0,
+      "expected": 4.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_death_from_the_front.A_death_from_the_front",
+      "duration": 4.0,
+      "expected": 4.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_idle_aiming.A_idle_aiming",
+      "duration": 2.0999999046325684,
+      "expected": 2.1
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_idle_crouching_aiming.A_idle_crouching_aiming",
+      "duration": 1.9333332777023315,
+      "expected": 1.9333333333333333
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_idle_crouching.A_idle_crouching",
+      "duration": 2.066666603088379,
+      "expected": 2.066666666666667
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_idle.A_idle",
+      "duration": 2.0999999046325684,
+      "expected": 2.1
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_jump_down.A_jump_down",
+      "duration": 0.6666666865348816,
+      "expected": 0.6666666666666666
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_jump_loop.A_jump_loop",
+      "duration": 0.9333333373069763,
+      "expected": 0.9333333333333333
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_jump_up.A_jump_up",
+      "duration": 0.5333333611488342,
+      "expected": 0.5333333333333333
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_backward_left_InPlace.A_run_backward_left_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_backward_right_InPlace.A_run_backward_right_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_backward_InPlace.A_run_backward_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_forward_left_InPlace.A_run_forward_left_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_forward_right_InPlace.A_run_forward_right_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_forward_InPlace.A_run_forward_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_left_InPlace.A_run_left_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_run_right_InPlace.A_run_right_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_backward_left_InPlace.A_sprint_backward_left_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_backward_right_InPlace.A_sprint_backward_right_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_backward_InPlace.A_sprint_backward_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_forward_left_InPlace.A_sprint_forward_left_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_forward_right_InPlace.A_sprint_forward_right_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_forward_InPlace.A_sprint_forward_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_left_InPlace.A_sprint_left_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_sprint_right_InPlace.A_sprint_right_InPlace",
+      "duration": 0.5,
+      "expected": 0.5
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_turn_90_left.A_turn_90_left",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_turn_90_right.A_turn_90_right",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_backward_left_InPlace.A_walk_backward_left_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_backward_right_InPlace.A_walk_backward_right_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_backward_InPlace.A_walk_backward_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_backward_left_InPlace.A_walk_crouching_backward_left_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_backward_right_InPlace.A_walk_crouching_backward_right_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_backward_InPlace.A_walk_crouching_backward_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_forward_left_InPlace.A_walk_crouching_forward_left_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_forward_right_InPlace.A_walk_crouching_forward_right_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_forward_InPlace.A_walk_crouching_forward_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_left_InPlace.A_walk_crouching_left_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_crouching_right_InPlace.A_walk_crouching_right_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_forward_left_InPlace.A_walk_forward_left_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_forward_right_InPlace.A_walk_forward_right_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_forward_InPlace.A_walk_forward_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_left_InPlace.A_walk_left_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    },
+    {
+      "asset": "/Game/Characters/FemaleRifle/A_walk_right_InPlace.A_walk_right_InPlace",
+      "duration": 1.0,
+      "expected": 1.0
+    }
+  ],
+  "materials": 18
+}

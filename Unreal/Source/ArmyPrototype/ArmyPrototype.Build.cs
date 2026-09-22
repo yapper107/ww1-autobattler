@@ -7,6 +7,9 @@ public class ArmyPrototype : ModuleRules
 {
     public ArmyPrototype(ReadOnlyTargetRules Target) : base(Target)
     {
+        // Sim translation units intentionally reuse private helper names.
+        // Preserve their linkage boundaries in Unreal's builds too.
+        bUseUnity = false;
         using (var Bytes = new MemoryStream())
         {
             foreach (var File in Directory.GetFiles(Path.Combine(ModuleDirectory, "Sim")).Where(P => P.EndsWith(".h") || P.EndsWith(".cpp")).OrderBy(P => Path.GetFileName(P), StringComparer.Ordinal))
@@ -19,6 +22,6 @@ public class ArmyPrototype : ModuleRules
             PublicDefinitions.Add("ARMY_BUILD_ID=\"" + Hash.ToString("x16") + "\"");
         }
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RenderCore" });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RenderCore", "AnimationCore", "AnimGraphRuntime" });
     }
 }

@@ -1,3 +1,14 @@
+## Plan 023 + art integration — 21 September 2026
+
+User-authorized main integration combines AI `16592ff` with art `b53cdbf`.
+Sim remains identical to Plan 023 (`45da1e25dd1aa9e7`). Actual male, matching blue
+palette, refined MG grips and faction-colored rune/missile/impact visuals are
+integrated. Full Linux suite, 126 Python tests, UE 5.8 build, four-variant handling
+and native battle/projectile checks pass. Coats use skinned motion; Blender cloth
+physics has not become Chaos cloth. See [integration and evidence](docs/ART_INTEGRATION_023.md).
+The user explicitly excludes Fable review for visual iteration; no Fable visual
+review was requested or claimed. Architecture collaboration below still applies.
+
 ## Plan 018: static-defence attack scenarios and the first loop roots — 18 September 2026
 
 [Plan 018](plans/018-static-defence-and-loop-roots.md) records the user's decisions of

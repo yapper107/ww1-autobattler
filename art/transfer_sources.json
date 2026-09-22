@@ -1,0 +1,194 @@
+[
+  {
+    "path": "art/characters/gunners_v02/source_inputs/female_grip_C_for_male.blend",
+    "original_name": "female_azure_all_49_grip_C_v01.blend",
+    "bytes": 19721500,
+    "sha256": "e516d6e25ee3b1a2a58b9a3538fb0f24b16c73575d65b4530679ab650e831326"
+  },
+  {
+    "path": "art/characters/female_rifle/source/Pro_Rifle_Pack.zip",
+    "original_name": "Pro Rifle Pack.zip",
+    "bytes": 2618750,
+    "sha256": "e3ba2954ec7157ffe190d302ec9214265b6f537c74eac8977771823eb22c4fac"
+  },
+  {
+    "path": "art/weapons/source_variants/bolt_action_rifle_azure_v01.blend",
+    "original_name": "bolt_action_rifle_azure_v01.blend",
+    "bytes": 135490,
+    "sha256": "c78fb22a2229bcf75042f20429623b0fd908ac5e3ad555b6069dac125d298914"
+  },
+  {
+    "path": "art/weapons/source_variants/bolt_action_rifle_ember_v01.blend",
+    "original_name": "bolt_action_rifle_ember_v01.blend",
+    "bytes": 135586,
+    "sha256": "ba8fdf43dd52e292d99da7d0b46660335e8ef19aa4c6a9267bec1fccd816cb93"
+  },
+  {
+    "path": "art/weapons/source_variants/machine_gun_azure_v01.blend",
+    "original_name": "machine_gun_azure_v01.blend",
+    "bytes": 158213,
+    "sha256": "07c62e3e13cff0b90af204d86e0ab68bf50f2178f40a8b4084e1e2b987beaa0c"
+  },
+  {
+    "path": "art/weapons/source_variants/machine_gun_ember_v01.blend",
+    "original_name": "machine_gun_ember_v01.blend",
+    "bytes": 158148,
+    "sha256": "511ae70f07429779bad6d4845dc7559db4879437ab8b32a01da2dd0f3516d948"
+  },
+  {
+    "path": "art/references/female_machine_gunner_azure_concept_art.png",
+    "original_name": "female_machine_gunner_azure_concept_art.png",
+    "bytes": 744195,
+    "sha256": "66ae09819f45c6e9dec6926eef51fc7a6c0fcd4ff2e0f883bcf1c652a4b90b89"
+  },
+  {
+    "path": "art/references/female_rifleman_azure_concept_art.png",
+    "original_name": "female_rifleman_azure_concept_art.png",
+    "bytes": 666001,
+    "sha256": "e8ad5d61aa102b64a0ec74216cee05e18945c3f7ccc9e6547db55d5eff860f5c"
+  },
+  {
+    "path": "art/references/male_soldier_concept_reference.png",
+    "original_name": "ChatGPT Image Sep 20, 2026, 08_06_39 PM.png",
+    "bytes": 1289798,
+    "sha256": "e4b20945bd7d1ef122f5010af6e70b565c1fb389c3d4ab6cf12cee5ac5cd93c3"
+  },
+  {
+    "path": "art/references/tripo_inputs/bolt_action_rifle/bolt_action_rifle_back.png",
+    "original_name": "bolt_action_rifle_back.png",
+    "bytes": 329652,
+    "sha256": "7aa2639850a91cb67fd8f413a653509e729f70eedfc44213a92fd84918f8793e"
+  },
+  {
+    "path": "art/references/tripo_inputs/bolt_action_rifle/bolt_action_rifle_front.png",
+    "original_name": "bolt_action_rifle_front.png",
+    "bytes": 297351,
+    "sha256": "b635d9a0ca2bc6492f88cf9e0f00938aed86c0feb90f5b8e9c10cb06f856ed88"
+  },
+  {
+    "path": "art/references/tripo_inputs/bolt_action_rifle/bolt_action_rifle_left.png",
+    "original_name": "bolt_action_rifle_left.png",
+    "bytes": 341295,
+    "sha256": "b70284d4e521a6c958e38b03d6a071567f92ee7b874eedcc3c6f8ee5227e0895"
+  },
+  {
+    "path": "art/references/tripo_inputs/bolt_action_rifle/bolt_action_rifle_right.png",
+    "original_name": "bolt_action_rifle_right.png",
+    "bytes": 335025,
+    "sha256": "fad93826bac013239eebedbafdcc9f2b28adac0f7d3e28de77aff90edf78b4b8"
+  },
+  {
+    "path": "art/references/tripo_inputs/bolt_action_rifle/README.md",
+    "original_name": "README.md",
+    "bytes": 1775,
+    "sha256": "8667f77f52b19ed1b82282c8ee8d12b5bd8d02ebe527689a0d41e82e3577a4d0"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/bipod_correction_prompts.json",
+    "original_name": "bipod_correction_prompts.json",
+    "bytes": 2565,
+    "sha256": "049d6318400f0436ae551d1d2bd7d1ddbf9b537ec8f4b4f5d639e4279f36fb31"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/generation_prompts.json",
+    "original_name": "generation_prompts.json",
+    "bytes": 9628,
+    "sha256": "42316e7decfdf88ec59c0071f3b6722dde4b67f7b5f207157403b1b1d468dadc"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/machine_gun_back.png",
+    "original_name": "machine_gun_back.png",
+    "bytes": 423054,
+    "sha256": "c0e0844fadaf1963f97b5bb589bb90ae0a7e6e05d9b902ba60e80647883500df"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/machine_gun_front.png",
+    "original_name": "machine_gun_front.png",
+    "bytes": 396266,
+    "sha256": "ddaee9f470b89eb3b064da16f1ed6aa0196ab6fe6dd147c813f478ea684d3ea7"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/machine_gun_left.png",
+    "original_name": "machine_gun_left.png",
+    "bytes": 515993,
+    "sha256": "0ccd5887f43bf4bf3faa34b857679361d2917b23c3a315dcf14fae83fcfeb6b4"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/machine_gun_right.png",
+    "original_name": "machine_gun_right.png",
+    "bytes": 482217,
+    "sha256": "67cb95618a9129e6c6e49be7d2c229b980419dacdeced1802193653d145bf0b4"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/machine_gun_single_view.png",
+    "original_name": "machine_gun_single_view.png",
+    "bytes": 1194231,
+    "sha256": "20b5f54c80e6bdc8fa7f277ae636b5ef7a92f99a7761f7e31d7f727538f24aa3"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/orientation_correction_prompts.json",
+    "original_name": "orientation_correction_prompts.json",
+    "bytes": 4501,
+    "sha256": "91b19d37c7aae7f95343cf354ea7b6466f5c7b19e723a881db5782adae584c06"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/README.md",
+    "original_name": "README.md",
+    "bytes": 2136,
+    "sha256": "3205aa0d58a3a69602fdbba200af3ba57c5f8a0b119c641c682f2986fe5b896e"
+  },
+  {
+    "path": "art/references/tripo_inputs/machine_gun/single_view_prompts.json",
+    "original_name": "single_view_prompts.json",
+    "bytes": 3576,
+    "sha256": "aedd116963fc22ac655ce089790bf64b8b375124df9b86c5c4ee8301f295c875"
+  },
+  {
+    "path": "art/references/tripo_inputs/female/female_azure_apose_reference_v01.png",
+    "original_name": "female_azure_apose_reference_v01.png",
+    "bytes": 1165779,
+    "sha256": "bcabd83ec66e2070018c95dfd9eda2dcc194d421a4dc7bc3887ec1209fcc8aed"
+  },
+  {
+    "path": "art/references/tripo_inputs/female/multiview_v01/female_azure_back.png",
+    "original_name": "female_azure_back.png",
+    "bytes": 1445214,
+    "sha256": "ce37e8f84569b12499922513bd935443bb5a0a82bb270e7c87ebee470a2ccf68"
+  },
+  {
+    "path": "art/references/tripo_inputs/female/multiview_v01/female_azure_front.png",
+    "original_name": "female_azure_front.png",
+    "bytes": 1457292,
+    "sha256": "60b62fb7d0fecf86652509c6c0e95d125052534cf44305b252ca652d9ec68bec"
+  },
+  {
+    "path": "art/references/tripo_inputs/female/multiview_v01/female_azure_left.png",
+    "original_name": "female_azure_left.png",
+    "bytes": 1471024,
+    "sha256": "f203cb144e77806788532f3f7d3125d5dc4f6b6dc0b5b0d1913c19e74180f066"
+  },
+  {
+    "path": "art/references/tripo_inputs/female/multiview_v01/female_azure_right.png",
+    "original_name": "female_azure_right.png",
+    "bytes": 1475923,
+    "sha256": "f687d784b4e3d84c5b590a7e98cfb64a5f35e41311076204777fae06ff156644"
+  },
+  {
+    "path": "art/references/tripo_inputs/female/multiview_v01/prompts.json",
+    "original_name": "prompts.json",
+    "bytes": 7881,
+    "sha256": "add9eb5abfc91f84febf122796d06b0c3685fa4d1fc8ec200891914821d7f30c"
+  },
+  {
+    "path": "art/references/tripo_inputs/female/multiview_v01/README.txt",
+    "original_name": "README.txt",
+    "bytes": 683,
+    "sha256": "340dcc631cb40fa313c9db3730fb3b567316fc69e0c02c0bac15e9a6422813bc"
+  },
+  {
+    "path": "art/characters/female_rifle/source/female_original_mixamo_rig.fbx",
+    "original_name": "female_azure_upload_v01_rigged.fbx",
+    "bytes": 417664,
+    "sha256": "cb915eb5848eb447168da674f9091c7a5a66814434216b53a22042df51061490"
+  }
+]
