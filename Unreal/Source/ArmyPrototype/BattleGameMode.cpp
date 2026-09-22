@@ -397,6 +397,8 @@ void ABattleGameMode::Tick(float Dt) {
         }else Notice=TEXT("Map generation failed; previous map retained");
     }
     auto* PC=GetWorld()->GetFirstPlayerController();if(!PC||!Camera)return;
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyProjectileCapture"))&&SmokeStage==1&&ArtCaptureFrame>0)
+        Seek(ArtShowcaseTime+(ArtCaptureFrame-1)/60.f);
     if(!bPreparation&&!bPaused) ReplayTime=FMath::Min(Battle.duration,ReplayTime+Dt*ReplaySpeed);
     if(!bSmoke) {
         if(PC->WasInputKeyJustPressed(EKeys::SpaceBar)) Command(TEXT("start"));
@@ -559,6 +561,30 @@ FString ABattleGameMode::AnimationDebugText() const {
     return FString::Printf(TEXT("%.2f m/s | crouch %.0f%% | wrist gap %.2f cm | %s"),std::hypot(V->LastState.forward,V->LastState.right),V->LastState.crouch*100,V->GripError(),*V->PoseDescription());
 }
 void ABattleGameMode::SmokeTest(float Dt) {
+    // Capture actual recorded rounds through the normal battle camera and renderer.
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyProjectileCapture"))) {
+        float StillTime=0;int Team=-1;
+        FParse::Value(FCommandLine::Get(),TEXT("ArmyProjectileTeam="),Team);
+        if(SmokeStage==0&&RealSeconds>2) {
+            Settings.maxSeconds=120;RunBattle();bPaused=true;
+            for(const auto& Shot:Battle.shots)if(Shot.flight.size()>2&&Shot.impactTime-Shot.time>.07f&&(Team<0||Shot.owner/army::TeamSize==Team)) {
+                ArtShowcaseTime=Shot.time-.1f;StillTime=(Shot.time+Shot.impactTime)*.5f;
+                army::Vec3 P;army::ProjectilePosition(Shot,StillTime,P);CameraPan=World(P);
+                CameraPitch=45;CameraYaw=-90;Zoom=.025f;
+                FParse::Value(FCommandLine::Get(),TEXT("ArmyProjectileZoom="),Zoom);
+                Seek(StillTime);++SmokeStage;break;
+            }
+            if(SmokeStage==0){UE_LOG(LogTemp,Error,TEXT("PROJECTILE_CAPTURE no suitable recorded flight"));FGenericPlatformMisc::RequestExit(false);}
+        } else if(SmokeStage==1&&RealSeconds>4&&!FScreenshotRequest::IsScreenshotRequested()) {
+            const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots/ProjectileBattle");IFileManager::Get().MakeDirectory(*Dir,true);
+            FScreenshotRequest::RequestScreenshot(Dir/FString::Printf(TEXT("battle-%04d.png"),ArtCaptureFrame),true,false);
+            UE_LOG(LogTemp,Display,TEXT("PROJECTILE_CAPTURE frame=%d time=%.6f visible=%d"),ArtCaptureFrame,ReplayTime,ProjectileVisual->VisibleShots);
+            ++ArtCaptureFrame;
+            // First frame is a settled, paused flight. Remaining frames play at 1x / 60 fps.
+            if(ArtCaptureFrame>=121){++SmokeStage;}
+        } else if(SmokeStage==2&&!FScreenshotRequest::IsScreenshotRequested())FGenericPlatformMisc::RequestExit(false);
+        return;
+    }
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyCharacterBattleTest"))) {
         const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
         if(SmokeStage==0&&RealSeconds>2){Settings.maxSeconds=120;RunBattle();bPaused=true;++SmokeStage;}

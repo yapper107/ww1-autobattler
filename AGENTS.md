@@ -12,6 +12,12 @@ physics has not become Chaos cloth. See [integration and evidence](docs/ART_INTE
 The user explicitly excludes Fable review for visual iteration; no Fable visual
 review was requested or claimed. Architecture collaboration below still applies.
 
+Runtime projectile follow-up (22 September): real 1x battle captures exposed
+washed-out additive blending and loss of moving trail detail. Premultiplied alpha
+and responsive AA retain faction color without resizing the bullets. The muzzle
+correction now uses the elevated first flight sample; native projectile contracts
+include that real-record convention. See the integration report above.
+
 ## Plan 018: static-defence attack scenarios and the first loop roots — 18 September 2026
 
 [Plan 018](plans/018-static-defence-and-loop-roots.md) records the user's decisions of

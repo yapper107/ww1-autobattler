@@ -1,0 +1,1 @@
+PASS unborn=1 faction_and_flight=1 recorded_position=1 contact=1 expiry=1 rewind=1 through_hit=1 no_false_impact=1 empty_flight=1 elevated_muzzle=1

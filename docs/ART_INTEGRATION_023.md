@@ -34,8 +34,10 @@ weapon drops follow authored tracks, and there is no terrain foot IK or ragdoll.
 Each shot opens a small double-ring sigil with six glyphs at the visible barrel,
 then shows a saturated faction-colored core, a tapered trail and orbiting accents.
 Terminal contact produces a small expanding ring and seven sparks. Azure uses
-blue/cyan; Ember uses orange. Material emission is unlit and depth-tested. The core uses the saturated faction color throughout instead of a white mix;
-the colored halo and trail retain additive glow. Per the user's correction,
+royal blue; Ember uses orange. Material emission is unlit and depth-tested. The core uses the saturated faction color throughout instead of a white mix;
+the core, halo and trail use premultiplied alpha with responsive anti-aliasing.
+This preserves faction color against the terrain instead of adding its color to
+the background, and keeps moving details from being averaged away. Per the user's correction,
 bullet sizes remain at the original values, with no zoom-dependent enlargement.
 
 Flight and impacts sample the recorded simulation path and contact times. The
@@ -109,3 +111,35 @@ Encode `magic-%04d.png` with H.264/yuv420p and faststart. The committed
 [video](../art/effects/arcane_rounds/arcane-rounds.mp4) and
 [evidence](../art/effects/arcane_rounds/evidence/) preserve the result. Initial
 failed import/render diagnostics remain locally in `.local/integration023/`.
+
+## Runtime visibility repair — 22 September 2026
+
+The slowed synthetic preview did not establish visibility during ordinary play.
+A real Legacy seed-107 battle was captured through the ordinary orthographic
+camera, first paused inside a recorded flight, then sampled at 60 fps / 1x.
+The original additive material produced a pale moving core with almost no trail
+against the terrain. Premultiplied alpha plus responsive AA preserves the orange
+and blue flight effects in the real battle captures. Bullet radii, trail length,
+widths, flight speed and hit times are unchanged. These remain tiny at map-wide
+zoom; the evidence is at the specified close zoom, not a claim of pixel visibility
+at every camera scale or that every sub-frame flight is displayed.
+
+The runtime muzzle correction now starts at `flight.front().position` rather than
+`Shot.start` (the soldier's ground position). A native regression case uses the
+actual elevated-muzzle/ground-start record convention. All projectile contracts,
+including this case, pass on UE 5.8; the native build succeeds. Simulation sources
+are still byte-identical to `16592ff`.
+
+Reproduce real flight captures with:
+
+```sh
+scripts/launch.sh -ArmyLegacy -ArmySeed=107 -ArmyProjectileCapture -ArmyProjectileTeam=0 -d3d11
+# Team 1 selects an Ember round. Optional -ArmyProjectileZoom=.025 sets close zoom.
+```
+
+`Saved/Screenshots/ProjectileBattle/battle-0000.png` is the paused flight.
+Frames 0001–0120 are the next two seconds at 60 fps / 1x, including the selected
+shot, through the ordinary game presentation. Encode those at 60 fps, excluding
+frame 0000. Capture logs record replay time and live projectile counts. The
+synthetic 0.1x design preview remains separate evidence of the original design.
+Material options are documented in Epic's [Material API](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/Material?application_version=5.7).

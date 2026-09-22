@@ -85,7 +85,8 @@ void AArcaneProjectileVisual::Present(const army::Record& Record,float Time,TFun
         if(S.flight.size()<2||S.owner<0||S.owner>=army::UnitCount||Time>S.impactTime+ImpactLife)continue;
         const int Index=int(It-Record.shots.begin()),Team=S.owner<army::TeamSize?0:1;
         if(!OriginReady[Index]){Origins[Index]=Muzzle(S);OriginReady[Index]=1;}
-        const FVector Start=World(S.start),Origin=Origins[Index];
+        // Shot.start is the soldier ground position; flight begins at the muzzle.
+        const FVector Start=World(S.flight.front().position),Origin=Origins[Index];
         const FVector Direction=(World(S.flight[1].position)-Start).GetSafeNormal();
         const float Seed=float((Index*73)%97)*.17f;
         if(Age<RuneLife) {
@@ -158,8 +159,14 @@ FString AArcaneProjectileVisual::ValidatePresentation() {
     for(auto Kind:{army::Shot::Impact::None,army::Shot::Impact::OutOfBounds}) {
         Record->shots[0].impact=Kind;Configure(*Record);Present(*Record,1.15f,Muzzle);NoFalseImpact&=Count()==0;
     }
+    // Real records keep the soldier's ground position in Shot.start. The barrel
+    // correction must use the elevated first flight sample, including at birth.
+    Record->shots[0]=Shot;Record->shots[0].start.z=0;Configure(*Record);
+    Present(*Record,1.00005f,[&](const army::Shot& S){return World(S.flight.front().position)+FVector(0,10,0);});
+    bool ElevatedMuzzle=false;
+    for(int I=0;I<ActiveCounts[3];++I){FTransform T;Batches[3]->GetInstanceTransform(I,T);if(T.GetScale3D().Equals(FVector(2.9f/50.f),.00001f))ElevatedMuzzle=T.GetLocation().Z>99.9&&T.GetLocation().Y>9.9;}
     Record->shots[0].flight.clear();Configure(*Record);Present(*Record,1.05f,Muzzle);const bool EmptySafe=Count()==0;
-    const bool Passed=Unborn&&Flight&&AtRecordedPoint&&Contact&&Expired&&Seek&&Through&&NoFalseImpact&&EmptySafe;
+    const bool Passed=Unborn&&Flight&&AtRecordedPoint&&Contact&&Expired&&Seek&&Through&&NoFalseImpact&&EmptySafe&&ElevatedMuzzle;
     Clear();
-    return FString::Printf(TEXT("%s unborn=%d faction_and_flight=%d recorded_position=%d contact=%d expiry=%d rewind=%d through_hit=%d no_false_impact=%d empty_flight=%d\n"),Passed?TEXT("PASS"):TEXT("FAIL"),Unborn,Flight,AtRecordedPoint,Contact,Expired,Seek,Through,NoFalseImpact,EmptySafe);
+    return FString::Printf(TEXT("%s unborn=%d faction_and_flight=%d recorded_position=%d contact=%d expiry=%d rewind=%d through_hit=%d no_false_impact=%d empty_flight=%d elevated_muzzle=%d\n"),Passed?TEXT("PASS"):TEXT("FAIL"),Unborn,Flight,AtRecordedPoint,Contact,Expired,Seek,Through,NoFalseImpact,EmptySafe,ElevatedMuzzle);
 }
