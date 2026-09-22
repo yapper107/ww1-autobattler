@@ -12,7 +12,7 @@ def expression(mat, kind, x, y):
             return node
     return edit.create_material_expression(mat, kind, x, y)
 
-for faction, color in [('Azure', (.025, .32, 1., 1.)), ('Ember', (1., .12, .012, 1.))]:
+for faction, color in [('Azure', (0., .08, 1., 1.)), ('Ember', (1., .045, 0., 1.))]:
     for part in ['Core', 'Glow']:
         name = 'M_' + faction + '_' + part
         mat = unreal.load_asset(dest + '/' + name) or assets.create_asset(name, dest, unreal.Material, unreal.MaterialFactoryNew())
@@ -21,9 +21,9 @@ for faction, color in [('Azure', (.025, .32, 1., 1.)), ('Ember', (1., .12, .012,
         mat.set_editor_property('two_sided', False)
         edit.set_material_usage(mat, unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES)
         tint = expression(mat, unreal.MaterialExpressionConstant3Vector, -600, 0)
-        tint.set_editor_property('constant', unreal.LinearColor(*([.42 + .58 * v for v in color[:3]] + [1.] if part == 'Core' else color)))
+        tint.set_editor_property('constant', unreal.LinearColor(*color))
         strength = expression(mat, unreal.MaterialExpressionConstant, -600, 120)
-        strength.set_editor_property('r', 8 if part == 'Core' else 2.5)
+        strength.set_editor_property('r', 1.8 if part == 'Core' else 1.0)
         fade = expression(mat, unreal.MaterialExpressionPerInstanceCustomData, -600, 240)
         fade.set_editor_property('data_index', 0)
         fade.set_editor_property('const_default_value', 1)

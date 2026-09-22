@@ -3,7 +3,8 @@
 Main combines Plan 023 (`16592ff`, from `plan-018-static-defence`) with the
 art handoff (`b53cdbf`, from `codex/unreal-character-animations`). The simulation
 files remain byte-for-byte identical to Plan 023, fingerprint `45da1e25dd1aa9e7`.
-Existing controller selection and defaults are preserved. The user explicitly
+The latest AI is the Legacy tree's Plan 023 Stage E, node `80dfe8feb994faf2`;
+Drills is the separate older controller. Existing selection/defaults are preserved. The user explicitly
 requested this merge and excluded Fable review for visual work; no visual Fable
 consultation or approval is claimed.
 
@@ -31,9 +32,11 @@ weapon drops follow authored tracks, and there is no terrain foot IK or ragdoll.
 
 `ArcaneProjectileVisual` replaces the HUD streak and old faceted muzzle flash.
 Each shot opens a small double-ring sigil with six glyphs at the visible barrel,
-then shows a pale faction-colored core, a tapered trail and orbiting accents.
+then shows a saturated faction-colored core, a tapered trail and orbiting accents.
 Terminal contact produces a small expanding ring and seven sparks. Azure uses
-blue/cyan; Ember uses orange. Material emission is unlit and depth-tested.
+blue/cyan; Ember uses orange. Material emission is unlit and depth-tested. The core uses the saturated faction color throughout instead of a white mix;
+the colored halo and trail retain additive glow. Per the user's correction,
+bullet sizes remain at the original values, with no zoom-dependent enlargement.
 
 Flight and impacts sample the recorded simulation path and contact times. The
 barrel offset blends into that path over the first metre, leaving the terminal
@@ -93,6 +96,7 @@ To regenerate the integrated assets:
 Commands for the configured mirror:
 
 ```sh
+scripts/launch.sh -ArmyLegacy  # the playable demo with the latest Stage E AI
 scripts/launch.sh -ArmyHandlingReview -unattended -d3d11
 scripts/launch.sh -ArmyCharacterBattleTest -unattended -d3d11
 scripts/launch.sh -ArmyProjectileTest -unattended -nullrhi

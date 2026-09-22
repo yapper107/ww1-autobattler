@@ -1,6 +1,9 @@
 ## Plan 023 + art integration — 21 September 2026
 
 User-authorized main integration combines AI `16592ff` with art `b53cdbf`.
+The latest AI is Legacy Plan 023 Stage E (`80dfe8feb994faf2`), not Drills.
+When Jordan says "pull up the project", open the playable demo (`-game -ArmyLegacy`),
+not Unreal Editor. Projectile visibility should use richer color, not larger bullets.
 Sim remains identical to Plan 023 (`45da1e25dd1aa9e7`). Actual male, matching blue
 palette, refined MG grips and faction-colored rune/missile/impact visuals are
 integrated. Full Linux suite, 126 Python tests, UE 5.8 build, four-variant handling
