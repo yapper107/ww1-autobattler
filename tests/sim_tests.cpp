@@ -507,7 +507,12 @@ static void MovementRecoveryAndShelterTests() {
     auto& nco=f.soldiers[1];nco.position={0,0};nco.assignment.task=Task::Advance;nco.assignment.position={20,0};nco.assignment.serial=1;
     for(int id=2;id<7;++id)f.soldiers[id].position={-12,float(id-4)};
     f.time=1;UpdateCommands(f,empty,config,runtime,events);assert(nco.regrouping);
-    for(int id=2;id<7;++id){bool rally=false;for(const auto& message:runtime.messages)if(message.sender==1&&message.recipient==id&&message.assignment.task==Task::Rally)rally=true;assert(rally!=IsPlatoonStaff(f.soldiers[id]));}
+    // Plan 023: a man behind is no longer rallied to the NCO's live position; he is sent, in the same cycle, to a
+    // station of the NCO's ordered objective (within the halt radius of it). Staff get no such order.
+    // Plan 023: a man behind is no longer rallied to the NCO's live position; the relay gives him, in the same cycle,
+    // a station: a Hold on the ground he has, with a fixed place, or a move to a station of the ordered objective.
+    // The platoon staff are placed by their own rule (stage D) and get nothing from the NCO here.
+    for(int id=2;id<7;++id){bool sent=false;for(const auto& message:runtime.messages)if(message.sender==1&&message.recipient==id&&message.assignment.task!=Task::None)sent=true;assert(sent!=IsPlatoonStaff(f.soldiers[id]));}
     for(int id=2;id<7;++id)f.soldiers[id].position={-5,float(id-4)};
     f.time=3.1f;UpdateCommands(f,empty,config,runtime,events);assert(!nco.regrouping);
     // Protective cover remains useful when a second wall blocks its firing angle.
@@ -766,6 +771,7 @@ static void CoordinationTests() {
 #include "moving_fire_tests.h"
 #include "paths_tests.h"
 #include "stamina_tests.h"
+#include "group_tests.h"
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -782,6 +788,7 @@ int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--moving-fire"){MovingFireTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--paths"){PathsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--stamina"){StaminaTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--group"){GroupTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--platoon"){PlatoonTests(argc>2?argv[2]:"all");return 0;}
     if(argc>1&&std::string(argv[1])=="--drills"){DrillsTests(argc>2?argv[2]:"all");return 0;}
     if(argc>1&&std::string(argv[1])=="--generated"){ScenarioGeneratorTests();return 0;}
@@ -803,7 +810,7 @@ int main(int argc,char** argv) {
         switch(field){case 0:++changed.seed;break;case 1:changed.doctrine=Doctrine::Cautious;break;case 2:changed.approach=Approach::North;break;case 3:changed.supportWeapon=false;break;case 4:changed.maxSeconds=60;break;case 5:changed.terrain=Terrain::Trenches;break;}
         assert(!SameConfig(original,changed));
     }
-    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();StaticDefenceTests();MovingFireTests();PathsTests();StaminaTests();
+    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();StaticDefenceTests();MovingFireTests();PathsTests();StaminaTests();GroupTests();
     if(argc>1){std::cout<<"Focused simulation checks passed\n";return 0;}
     MGEncounterTests();
     Map m; m.obstacles={{{0,0},{2,5},true}};

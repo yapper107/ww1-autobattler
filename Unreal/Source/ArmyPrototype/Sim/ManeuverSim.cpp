@@ -87,6 +87,29 @@ void PauseSquadMovement(const Soldier& leader,const std::vector<Soldier>& squad,
     cmd.planReason=reason==MoveBlock::Fire?"movement paused: reported fire stopped execution":
         reason==MoveBlock::Support?"movement paused: covering element not ready":"movement paused: crossing failed to reach shelter";
 }
+// Plan 021 A3: the route planner cuts a path into twelve-metre segments. A bound is a normal
+// infantry bound, so consecutive segments are merged up to the bound length and the remaining
+// segments stay queued behind it: the next bound starts the moment this one is reached.
+int MergeBoundStage(const TacticalRoute& route,int from,float length) {
+    float travel=0;int last=std::max(0,from);
+    for(int i=std::max(0,from);i<int(route.stages.size());++i){travel+=route.stages[i].seconds*route.speed;last=i;if(travel>=length)break;}
+    return last;
+}
+float BoundSeconds(const TacticalRoute& route,int from,int to,float* exposed) {
+    float seconds=0;if(exposed)*exposed=0;
+    for(int i=std::max(0,from);i<=to&&i<int(route.stages.size());++i){seconds+=route.stages[i].seconds;if(exposed)*exposed+=route.stages[i].exposedSeconds;}
+    return seconds;
+}
+float BoundExposure(const TacticalRoute& route,int from,int to) {
+    float exposed=0,seconds=BoundSeconds(route,from,to,&exposed);
+    return exposed/std::max(.01f,seconds);
+}
+std::vector<Vec3> BoundCrossing(const TacticalRoute& route,int from,int to) {
+    if(from<0||from>=int(route.stages.size()))return {};
+    const size_t begin=route.stages[from].begin,end=route.stages[std::min(to,int(route.stages.size())-1)].end;
+    if(begin>=end||end>route.points.size())return {};
+    return std::vector<Vec3>(route.points.begin()+begin,route.points.begin()+end);
+}
 bool HasMachineGun(const std::vector<Soldier>& squad) {
     return std::any_of(squad.begin(),squad.end(),[](const Soldier& s){return s.Active()&&s.machineGun;});
 }
@@ -161,10 +184,20 @@ void UpdateSquadProgress(const Soldier& leader,const std::vector<Soldier>& squad
 void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,const Map& map,
     const Config& config,const std::vector<Vec3>& friendlyApproaches,SquadCommand& cmd,float time,Diagnostics* diagnostics) {
     if(!cmd.advancing)return;
+    // Plan 021 is legacy command policy only; the foundations/recovery controllers keep the
+    // planner's own twelve-metre stage as their bound.
+    const bool legacyBounds=!config.foundations;
     cmd.candidateScores.clear();
-    const auto knowledge=WithTracks(leader,time);const Soldier* point=&leader;
-    for(const auto& s:squad)if(s.Active()&&s.role==Role::Corporal&&!KnowsWounded(leader,s))point=&s;
+    const auto knowledge=WithTracks(leader,time);
+    // A corporal down or known wounded no longer anchors the rifle group's next candidate
+    // search on the leader kept to the rear: the senior surviving rifleman (plan 018 gen18b:
+    // RifleGroupLeader, the same recursive hand-off used everywhere else) takes over the
+    // reference where he stands, so a group already forward is not recalled to the leader's
+    // position to start a fresh manoeuvre.
+    const Soldier* point=RifleGroupLeader(leader,squad,cmd.support);
+    if(!point)point=&leader;
     const Vec3 origin=point->position;
+    Vec3 gunPos=origin;for(const auto& s:squad)if(s.Active()&&s.machineGun){gunPos=s.position;break;}
     const auto doctrine=leader.team?config.emberDoctrine:config.doctrine;
     const float caution=doctrine==Doctrine::Cautious?1.4f:doctrine==Doctrine::Aggressive?.7f:1.f;
     cmd.friendlyStrength=cmd.enemyStrength=0;cmd.danger=FireDanger(leader,origin,time);
@@ -199,18 +232,36 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
         if(!cmd.hasWaypoint)return;
     }
     if(cmd.hasWaypoint&&cmd.movementBlock.reason==MoveBlock::None) {
-        int arrived=0,participants=0;
-        for(const auto& s:squad)if(s.Active()&&!s.machineGun&&!IsPlatoonStaff(s)&&!KnowsWounded(leader,s)&&s.id!=cmd.leader&&s.id!=cmd.support){++participants;arrived+=Distance(s.position,cmd.waypoint)<8;}
-        bool done=arrived>=std::max(1,(participants+1)/2)&&(cmd.route||Distance(origin,cmd.waypoint)<5);
-        if(done&&time-cmd.planStarted>3&&cmd.route&&size_t(cmd.routeStage+1)<cmd.route->stages.size()){
-            ++cmd.routeStage;const auto& stage=cmd.route->stages[cmd.routeStage];cmd.waypoint=stage.destination;
-            cmd.moveExposure=stage.exposedSeconds/std::max(.01f,stage.seconds);cmd.teamPlan.moving=1-cmd.teamPlan.moving;++cmd.boundsCompleted;cmd.teamPlan.bounding=false;cmd.teamPlan.released=false;
+        int arrived=0,participants=0,coming=0;
+        // A bounding rifleman has arrived when he is on his own station, not only when he is
+        // near the raw destination: the stations are spread around it by construction.
+        for(const auto& s:squad)if(s.Active()&&!s.machineGun&&!IsPlatoonStaff(s)&&!KnowsWounded(leader,s)&&s.id!=cmd.leader&&s.id!=cmd.support){++participants;
+            const bool here=Distance(s.position,cmd.waypoint)<8||(cmd.stations.bound&&cmd.stations.held[s.id%SquadSize]&&Distance(s.position,cmd.stations.station[s.id%SquadSize])<BoundConstants.slotArrival);
+            arrived+=here;
+            // Plan 021 B: a man who is neither here nor pinned is still coming. The bound is
+            // not over while the group can still be whole; a man under fire holds his cover.
+            if(!here&&s.understoodSuppression<BoundConstants.stragglerSuppression&&FireDanger(leader,s.position,time)<.3f)++coming;}
+        const bool majority=arrived>=std::max(1,(participants+1)/2);
+        if(!legacyBounds)cmd.boundMajorityAt=time;
+        else if(majority&&cmd.boundMajorityAt<0){cmd.boundMajorityAt=time;cmd.maneuverUntil=std::max(cmd.maneuverUntil,time+BoundConstants.boundGrace+2);}
+        bool done=majority&&(!legacyBounds||coming==0||time-cmd.boundMajorityAt>=BoundConstants.boundGrace)&&(cmd.route||Distance(origin,cmd.waypoint)<5);
+        const int boundEnd=legacyBounds?std::max(cmd.routeStage,cmd.boundStage):cmd.routeStage;
+        if(done&&time-cmd.planStarted>3&&cmd.route&&size_t(boundEnd+1)<cmd.route->stages.size()){
+            // The next bound of the chain starts at once: no fresh assessment and no re-pick.
+            cmd.routeStage=boundEnd+1;cmd.boundStage=legacyBounds?MergeBoundStage(*cmd.route,cmd.routeStage,BoundConstants.boundLength):cmd.routeStage;cmd.boundMajorityAt=-1;
+            const auto& stage=cmd.route->stages[cmd.boundStage];cmd.waypoint=stage.destination;
+            const float seconds=BoundSeconds(*cmd.route,cmd.routeStage,cmd.boundStage);
+            cmd.moveExposure=BoundExposure(*cmd.route,cmd.routeStage,cmd.boundStage);cmd.teamPlan.moving=1-cmd.teamPlan.moving;++cmd.boundsCompleted;cmd.teamPlan.bounding=false;cmd.teamPlan.released=false;
             cmd.opportunitySince=time;cmd.planReason="route stage reached; retain approach and prepare next segment";
-            cmd.maneuverUntil=time+std::max(30.f,stage.seconds*2+15);return;
+            cmd.maneuverUntil=time+std::max(30.f,seconds*2+15);return;
         }
-        if(done&&time-cmd.planStarted>3){cmd.hasWaypoint=false;cmd.teamPlan.bounding=false;cmd.teamPlan.released=false;cmd.planReason="movement destination reached";cmd.opportunitySince=-1;return;}
+        if(done&&time-cmd.planStarted>3){cmd.hasWaypoint=false;cmd.teamPlan.bounding=false;cmd.teamPlan.released=false;cmd.planReason="movement destination reached";cmd.opportunitySince=-1;
+            // Plan 021 A5: the rifle group fights from its slots; if the gun has lost its line
+            // onto the enemy it makes the next bound while they cover.
+            if(cmd.support>=0&&!cmd.supportUseful&&time>=cmd.nextSupportMove){cmd.supportNeedsMove=true;cmd.supportMoveFrom=leader.reportedSupportPosition;cmd.nextSupportMove=time+16;++cmd.supportRepositions;}
+            return;}
         std::vector<Vec3> crossing;
-        if(cmd.route&&size_t(cmd.routeStage)<cmd.route->stages.size()){const auto& stage=cmd.route->stages[cmd.routeStage];crossing.assign(cmd.route->points.begin()+stage.begin,cmd.route->points.begin()+stage.end);}
+        if(cmd.route)crossing=BoundCrossing(*cmd.route,cmd.routeStage,boundEnd);
         bool support=cmd.moveExposure<.2f||(!crossing.empty()?CoveringPath(leader,map,origin,crossing,time):CoveringCrossing(leader,map,origin,cmd.waypoint,time));
         int refusals=0;
         for(const auto& report:leader.movementReports)if(report.soldier>=0&&time-report.observedAt<8)
@@ -224,6 +275,30 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
         else if(!emergency||cmd.maneuver==Maneuver::PullBack)return;
     }
     if(quiet)return;
+    // Plan 023 E (section 11): a shattered squad no longer fights on its own account, and one
+    // attached to another squad has its host's fight and not one of its own. mobile<2 already
+    // stopped most of them without ever saying so: the traced squad scored a flank at 36 to 65
+    // against a hold of -8 for four minutes and never moved, and nothing in its record said why.
+    // A remnant with nobody to join keeps its own initiative: the rule is that it fights under
+    // another squad, not that it stops. The lab's single-squad encounter proved the difference
+    // (a shattered squad that may not attack leaves the last fixed defender in place, 2 of 3).
+    const bool shattered=legacyBounds&&cmd.ableRiflemen<GroupConstants.shatteredRiflemen&&cmd.attachedTo>=0;
+    if(legacyBounds&&(cmd.attachedTo>=0||cmd.mergedInto>=0)) {
+        cmd.opportunitySince=-1;cmd.candidateScores.clear();
+        cmd.planReason=cmd.mergedInto>=0?"merged into another squad: its leader plans for these men":
+            cmd.attachBaseOfFire?"attached as a base of fire: it holds and fires for its host":
+            "attached as support: it follows its host";
+        return;
+    }
+    // A flank that has arrived and is delivering effective fire holds and keeps shooting;
+    // the sergeant does not plan another leg out from under it while it is working. A
+    // defender who ducks for a few seconds does not cost the position: the squad keeps
+    // holding for a bounded grace period after its last effective fire so riflemen who
+    // are still settling into a firing slot are not uprooted by a fresh candidate search.
+    const bool recentlyEffective=cmd.lastEffectiveAt>0&&time-cmd.lastEffectiveAt<25.f;
+    if((cmd.maneuver==Maneuver::FlankNorth||cmd.maneuver==Maneuver::FlankSouth)&&!cmd.hasWaypoint&&(cmd.engaged||(recentlyEffective&&!emergency))) {
+        cmd.opportunitySince=-1;cmd.planReason=cmd.engaged?"flank position delivering fire; hold and keep firing":"flank position recently effective; hold for the defender to reappear";return;
+    }
     const auto& track=knowledge.contacts[enemy];cmd.trackedEnemy=enemy;cmd.enemyReference=track.position;
     const bool mg=HasMachineGun(squad),supportAssignment=cmd.platoonTask==PlatoonTask::Support&&time<cmd.platoonUntil;
     float idle=std::max(0.f,time-cmd.lastEffectiveAt);
@@ -243,7 +318,7 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
     if(reuse)candidates=cmd.routeAssessment->options;
     // Fixed option families, deterministic ordering and cover-ID tie breaking.
     if(!reuse){
-    for(int family=0;family<5;++family){std::vector<Candidate> shortlist;
+    for(int family=0;family<5;++family){std::vector<Candidate> shortlist;std::vector<bool> flankQualifies;bool anyFlankQualifies=false;
         if(family==4&&(cmd.platoonTask==PlatoonTask::None||cmd.platoonTask==PlatoonTask::Support||time>=cmd.platoonUntil))continue;
         for(const auto& cover:CoverPositions(map)) {
             Vec3 p=cover.shelter;float travel=Distance(p,origin);if(cover.window||travel<6||travel>(family==0||family==1||family==4?100.f:32.f)||std::abs(p.z-origin.z)>.5f)continue;
@@ -253,7 +328,10 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
             if((family==0&&lateral<8)||(family==1&&lateral>-8)||(family==2&&(gain<8||std::abs(lateral)>12))||(family==3&&gain>-8))continue;
             if(family==4&&Distance(p,leader.platoonOrder.position)>Distance(origin,leader.platoonOrder.position)-5)continue;
             if(!ProtectedAt(map,p,track.position,cover.crouch?Stance::Crouched:Stance::Standing))continue;
-            bool failed=false;for(int i=0;i<std::min(4,cmd.failedMoveCount);++i)if(Distance(p,cmd.failedMoves[i])<6)failed=true;
+            // A paused crossing excludes not just its exact spot but the nearby ground: a cover
+            // position a few metres off is the same failed attempt under a new name, and picking
+            // it back up at once is why a paused squad thrashes in and out of the same corner.
+            bool failed=false;for(int i=0;i<std::min(4,cmd.failedMoveCount);++i)if(Distance(p,cmd.failedMoves[i])<15)failed=true;
             if(failed)continue;
             float score=family==3?(-gain*.35f+pressure*12+(emergency?15.f:0.f)-10):gain*.35f+std::abs(lateral)*.3f+std::min(5.f,idle*.15f)+(mg?-4.f:3.f);
             if(family==4)score+=8+(.4f*(Distance(origin,leader.platoonOrder.position)-Distance(p,leader.platoonOrder.position)));
@@ -263,8 +341,21 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
             score-=travel*.12f+FireDanger(leader,p,time)*12*caution;
             if(family!=3)score-=std::max(0.f,1-ratio)*8*caution;
             for(Vec3 other:friendlyApproaches)score-=std::max(0.f,8-Distance(p,other));
+            // A flank goal that is a firing position, not just closer cover: rifle range of the
+            // known enemy, a clear line onto him, and enough angle off the squad's own gun that
+            // the position actually puts fire on him from a different direction.
+            bool qualifies=false;
+            if(family==0||family==1){
+                float range=Distance(p,track.position);
+                Vec3 gunLine=gunPos-track.position,ownLine=p-track.position;
+                float gunCosine=(gunLine.x*ownLine.x+gunLine.y*ownLine.y)/std::max(.01f,Length(gunLine)*Length(ownLine));
+                qualifies=firingAngle&&range>=25&&range<=60&&gunCosine<.707107f;
+                if(qualifies){score+=35;anyFlankQualifies=true;}
+            }
             shortlist.push_back({p,family==0?Maneuver::FlankNorth:family==1?Maneuver::FlankSouth:family==2?Maneuver::Press:family==3?Maneuver::PullBack:Maneuver::Reposition,score,0,false,{}});
+            flankQualifies.push_back(qualifies);
         }
+        if((family==0||family==1)&&anyFlankQualifies)for(size_t i=0;i<shortlist.size();++i)if(!flankQualifies[i])shortlist[i].score-=40;
         std::stable_sort(shortlist.begin(),shortlist.end(),[](const Candidate&a,const Candidate&b){return a.score>b.score;});
         int tested=0;for(auto candidate:shortlist){if(++tested>2)break;
             auto route=std::make_shared<TacticalRoute>(planner.Evaluate(origin,candidate.p));
@@ -276,34 +367,73 @@ void UpdateManeuver(const Soldier& leader,const std::vector<Soldier>& squad,cons
             candidate.score-=route->cost.exposure*.25f+route->cost.fire+route->cost.lanes+route->cost.congestion+route->cost.uncertainty;
             candidate.score-=std::max(0.f,route->cost.travel-Distance(origin,candidate.p)/route->speed)*.35f;
 
-            // Release gates apply to the upcoming stage, not the whole sheltered approach.
-            const auto& stage=route->stages.front();
-            candidate.exposure=stage.exposedSeconds/std::max(.01f,stage.seconds);
+            // Release gates apply to the upcoming bound, not the whole sheltered approach.
+            candidate.exposure=BoundExposure(*route,0,legacyBounds?MergeBoundStage(*route,0,BoundConstants.boundLength):0);
 
             candidates.push_back(std::move(candidate));
         }
     }
     auto assessment=std::make_shared<ManeuverAssessment>();assessment->geometry=map.revision;assessment->knowledge=key;assessment->at=time;assessment->origin=origin;assessment->options=candidates;cmd.routeAssessment=assessment;
     }
-    for(auto& candidate:candidates){const auto& stage=candidate.route->stages.front();std::vector<Vec3> path(candidate.route->points.begin(),candidate.route->points.begin()+stage.end);
-        candidate.support=CoveringPath(leader,map,origin,path,time);
+    for(auto& candidate:candidates){
+        candidate.support=CoveringPath(leader,map,origin,BoundCrossing(*candidate.route,0,legacyBounds?MergeBoundStage(*candidate.route,0,BoundConstants.boundLength):0),time);
         if(candidate.kind!=Maneuver::PullBack&&candidate.support)candidate.score+=10+std::min(5.f,std::max(0.f,ratio-1)*5);
         if(candidate.kind!=Maneuver::PullBack&&candidate.exposure>=.2f&&!candidate.support)candidate.score-=12;
     }
     std::stable_sort(candidates.begin(),candidates.end(),[](const Candidate&a,const Candidate&b){return a.score>b.score;});
     std::ostringstream scores;scores<<"hold="<<hold;for(const auto& c:candidates)scores<<"; "<<ManeuverName(c.kind)<<"="<<c.score<<" exposure="<<c.exposure<<" covering="<<c.support;
     cmd.candidateScores=scores.str();
-    if(candidates.empty()||candidates.front().score<hold+2||mobile<2){cmd.opportunitySince=-1;cmd.planReason="hold wins candidate comparison";return;}
+    if(candidates.empty()||candidates.front().score<hold+2||mobile<2){cmd.opportunitySince=-1;
+        cmd.planReason=shattered?"shattered: too few able riflemen to manoeuvre alone":"hold wins candidate comparison";return;}
     const auto& best=candidates.front();
     bool withdrawal=best.kind==Maneuver::PullBack;
-    if(!withdrawal&&best.exposure>=.2f&&!best.support){cmd.opportunitySince=-1;cmd.planReason="exposed crossing waits for fire on the primary overlooking track";return;}
+    // Score noise (decaying danger, growing idle time) shifts the winning candidate a few
+    // metres tick to tick without it being a materially different plan; restarting the
+    // preparation clock on every such drift means a squad can spend the whole engagement
+    // "preparing" a move it never gets to make. Only a genuinely different target resets it.
+    if(cmd.opportunitySince<0||Distance(best.p,cmd.preparedTarget)>10){cmd.opportunitySince=time;cmd.preparedTarget=best.p;}
+    if(!withdrawal&&best.exposure>=.2f&&!best.support){
+        // Covering fire is only credited here when it lands on the exact dominant threat
+        // over this crossing (CoveringPath). That is a narrower bar than "the platoon has
+        // fire going down range at all", so a mover can sit waiting on the one exact track
+        // long after its own platoon is already trading fire. Once the platoon's own fire
+        // has been running and this same crossing has waited past a bounded grace, go
+        // anyway: the wait was not buying more readiness, only burning the clock.
+        bool platoonFiring=legacyBounds&&std::any_of(leader.deliveries.begin(),leader.deliveries.end(),
+            [&](const FireDelivery& e){return e.shooter>=0&&e.rounds>0&&time-e.observedAt<=6;});
+        if(!(platoonFiring&&time-cmd.opportunitySince>=BoundConstants.exposedWaitSeconds)){
+            cmd.planReason="exposed crossing waits for fire on the primary overlooking track";return;
+        }
+    }
     const float preparation=withdrawal?(emergency?0.f:2.f):best.exposure<.2f?2.f:8.f;
-    if(cmd.opportunitySince<0||Distance(best.p,cmd.preparedTarget)>3){cmd.opportunitySince=time;cmd.preparedTarget=best.p;}
     cmd.preparationSeconds=preparation;
     if(time-cmd.opportunitySince<preparation){cmd.planReason=preparation>=8?"prepare exposed assault: eight seconds of covering fire":"prepare protected stage";return;}
-    cmd.route=best.route;cmd.routeStage=0;cmd.teamPlan.route=cmd.route;
-    cmd.hasWaypoint=true;cmd.waypoint=best.route->stages.front().destination;cmd.moveExposure=best.exposure;cmd.maneuver=best.kind;
-    cmd.maneuverUntil=time+std::max(30.f,best.route->cost.travel*2+20);
+    auto chosen=best.route;float exposure=best.exposure;
+    // Plan 023 E (section 11): a withdrawal ends at a FIXED fall-back position, chosen once when it
+    // is committed and kept while the squad still knows the enemy it left: the nearest covered
+    // ground behind the squad's last objective that no known enemy can look into. The pull-back
+    // candidate is only the nearest cover that faces away, which is how a withdrawal became a walk
+    // (45 m, then 65, 110, 160 and no end, the squad knowing nobody by the time it stopped).
+    if(withdrawal&&legacyBounds) {
+        Vec3 fall=best.p;const bool have=cmd.fallbackAt>=0;
+        // The pull-back's own destination is kept when it is already a place the enemy cannot look
+        // into: what the withdrawal lacked was an END, not a better piece of cover, and a longer
+        // walk to the rear costs more men than the cover saves (round 1: attackers lost +4 points).
+        if(have)fall=cmd.fallback;
+        else if(!OutOfSight(leader,map,best.p,true,time)&&!FallbackPosition(leader,map,cmd.mission,track.position,origin,time,fall))fall=best.p;
+        if(Distance(fall,best.p)>3) {
+            auto planned=std::make_shared<TacticalRoute>(planner.Evaluate(origin,fall));
+            planned->id=uint64_t(leader.squad+1)*1000000000ull+uint64_t(++cmd.routeSerial);planned->plan=cmd.planId+1;
+            if(planned->points.empty())fall=best.p;
+            else{chosen=planned;exposure=BoundExposure(*planned,0,legacyBounds?MergeBoundStage(*planned,0,BoundConstants.boundLength):0);}
+        }
+        if(!have){cmd.fallback=fall;cmd.fallbackSector=track.position;cmd.fallbackAt=time;}
+    }
+    else if(legacyBounds)cmd.fallbackAt=-1;   // a fresh manoeuvre of any other kind releases it
+    cmd.route=chosen;cmd.routeStage=0;cmd.teamPlan.route=cmd.route;
+    cmd.boundStage=legacyBounds?MergeBoundStage(*cmd.route,0,BoundConstants.boundLength):0;cmd.boundMajorityAt=-1;
+    cmd.hasWaypoint=true;cmd.waypoint=cmd.route->stages[cmd.boundStage].destination;cmd.moveExposure=exposure;cmd.maneuver=best.kind;
+    cmd.maneuverUntil=time+std::max(30.f,chosen->cost.travel*2+20);
     cmd.movementBlock={};cmd.teamPlan.bounding=false;cmd.teamPlan.released=false;++cmd.teamPlan.serial;
     cmd.planReason=withdrawal?"withdrawal wins candidate comparison":best.exposure<.2f?"protected maneuver wins candidate comparison":"supported assault wins candidate comparison";
     if(withdrawal)++cmd.withdrawals;else ++cmd.presses;

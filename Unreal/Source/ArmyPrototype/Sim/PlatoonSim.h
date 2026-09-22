@@ -15,6 +15,7 @@ struct PlatoonMessage {
 };
 struct PlatoonRuntime {
     const std::array<Map,UnitCount>* geometryViews=nullptr;
+    int fixedDefender=-1; // the static defenders keep their own orders; plan 021 C never reaches them
     std::vector<PlatoonMessage> messages;
     std::array<float,SquadCount> nextReport{};
     std::array<float,2> nextRelay{}, nextSupportRelay{};
@@ -27,8 +28,11 @@ struct PlatoonRuntime {
 };
 struct PlannedPlatoonOrder { int recipient=-1; PlatoonDirective directive; };
 // Only this commander's received situations and personal knowledge enter policy.
+// Plan 023 E (section 11): attachments belong to the legacy attacking platoon. The typed
+// controllers and the static defenders never make them, and attachments=false is the plan as it
+// was before this stage, decision for decision.
 std::vector<PlannedPlatoonOrder> PlanPlatoon(const Soldier& commander,const Map& map,
-    const Config& config,float time);
+    const Config& config,float time,bool attachments=false);
 bool GoalAlternative(const SquadSituation& report,const PlatoonDirective& previous,float time,PlatoonDirective& next,bool cognition=false);
 void ApplyPlatoonDirective(const Soldier& leader,SquadCommand& command,float time);
 void UpdatePlatoon(Frame& frame,const Map& map,const Config& config,PlatoonRuntime& runtime,

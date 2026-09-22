@@ -113,7 +113,10 @@ static void MGEncounterTests(){
         bool defenders=false;for(const auto& s:r.frames.back().soldiers)if(s.team==1&&s.Active())defenders=true;
         dislodged+=!defenders;assert(r.encounter==4);
     }
-    std::cout<<"Fixed defender: "<<dislodged<<"/3 eliminated within six minutes\n";std::cout.flush();assert(dislodged==3);
+    // Plan 023 stage E: squad 0 of this fixture carries the platoon staff and fields five riflemen, so two wounds make it a
+    // shattered squad that is attached as a base of fire instead of closing; on one seed of three the last defender then
+    // outlives the six minutes. The pin is that the platoon dislodges the fixed defenders as a rule, not on every clock.
+    std::cout<<"Fixed defender: "<<dislodged<<"/3 eliminated within six minutes\n";std::cout.flush();assert(dislodged>=2);
 }
 static void LabTests(){
     TrackTests();PreparationTests();MovementCommitmentTests();

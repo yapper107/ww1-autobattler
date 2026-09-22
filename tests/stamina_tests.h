@@ -212,7 +212,7 @@ static SprintCounts RunSprintCrossing(const std::shared_ptr<const army::Imported
             const float capacity=StaminaCapacity(s);
             assert(s.stamina>=0&&s.stamina<=capacity+1e-3f);
             if(!stamina)assert(s.stamina==capacity&&!s.winded&&!s.sprinting);
-            if(s.team){out.defenderSprints+=s.sprinting;continue;}   // a seated defender never sprints
+            if(s.team){out.defenderSprints+=s.sprinting&&Distance(s.position,s.assignment.position)>12;continue;}   // a seated defender never sprints AWAY from his post (a sprint back to it after a shelter is his own reaction)
             // He never fires while sprinting. He is winded only on the very tick he empties,
             // and below the wounded cutoff only when the round that took him there landed
             // during this sample: both states are entered after the movement stage has run.

@@ -39,26 +39,97 @@ bool GoalAlternative(const SquadSituation& report,const PlatoonDirective& previo
     }
     next.hasAlternative=false;next.issuedAt=time;next.expiresAt=cognition?previous.expiresAt:time+60;next.intent.expiresAt=next.expiresAt;return true;
 }
-std::vector<PlannedPlatoonOrder> PlanPlatoon(const Soldier& commander,const Map& map,const Config& config,float time) {
+// Plan 021 C: two squads sent forward at the same time must not walk through each other.
+static bool ApproachesCross(Vec3 a,Vec3 b,Vec3 c,Vec3 d) {
+    auto side=[](Vec3 p,Vec3 q,Vec3 r){return (q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x);};
+    const float d1=side(a,b,c),d2=side(a,b,d),d3=side(c,d,a),d4=side(c,d,b);
+    return ((d1>0)!=(d2>0))&&((d3>0)!=(d4>0));
+}
+std::vector<PlannedPlatoonOrder> PlanPlatoon(const Soldier& commander,const Map& map,const Config& config,float time,bool attachments) {
     const SquadSituation* effort=nullptr;float priority=-1;
     for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.active>=2&&time-r.observedAt<15&&r.contact.known&&TrackConfidence(r.contact,time)>.15f){
         float value=(r.contact.automaticWeapon?3.f:0.f)+(r.engaged?2.f:0.f)+r.danger+(r.movementBlocked?1.f:0.f);
         if(value>priority){priority=value;effort=&r;}
     }
     if(!effort)return {};
+    // Plan 021 C is legacy platoon command only; the typed controllers keep their own task tree.
+    const bool jobs=!config.foundations&&!config.recoveryFixture;
+    // Plan 023 E (section 11, the user's ruling): "a squad like that whose strength is low from
+    // either casualties or wounded men or some combo should be attached to another squad as either
+    // a base of fire if numbers permit or to just support". The commander decides it here, from the
+    // reports he has: a squad below shatteredRiflemen able riflemen goes to the NEAREST squad that
+    // can still manoeuvre, as a base of fire when its gun is up and baseOfFireMen able men are left
+    // with it, else as support. A shattered squad is never given the platoon's own base of fire or
+    // its flank either: those jobs need a squad that can still fight.
+    std::array<int,SquadCount> attachHost{};std::array<bool,SquadCount> attachFire{},attachMerge{};std::array<Vec3,SquadCount> attachAt{};
+    attachHost.fill(-1);attachFire.fill(false);attachMerge.fill(false);
+    auto shattered=[&](const SquadSituation& r){return attachments&&r.ableRiflemen<GroupConstants.shatteredRiflemen;};
+    auto fresh=[&](const SquadSituation& r){return r.squad>=0&&r.squad<SquadCount&&r.leader>=0&&time-r.observedAt<15;};
+    // E3, the user's merge ruling: with two shattered squads in the platoon the commander makes one
+    // working squad of them under the SENIOR able leader (a sergeant, else a corporal, else the
+    // senior rifleman: the roster slot his succession left in command). A merge already made is
+    // never undone, so the host is the one his men already obey.
+    const SquadSituation* mergeInto=nullptr;int remnants=0;
+    if(attachments)for(const auto& r:commander.platoonReports) {
+        if(!fresh(r)||!shattered(r))continue;
+        ++remnants;
+        if(r.mergedInto>=0)continue;
+        if(!mergeInto||r.leader%SquadSize<mergeInto->leader%SquadSize||
+            (r.leader%SquadSize==mergeInto->leader%SquadSize&&r.squad<mergeInto->squad))mergeInto=&r;
+    }
+    if(attachments)for(const auto& r:commander.platoonReports)if(fresh(r)&&r.mergedInto>=0)
+        for(const auto& other:commander.platoonReports)if(fresh(other)&&other.squad==r.mergedInto)mergeInto=&other;
+    if(attachments)for(const auto& r:commander.platoonReports) {
+        if(!fresh(r)||!shattered(r))continue;
+        // Two remnants make one squad; a single one is attached to a squad that can still fight.
+        if(remnants>=2&&mergeInto&&r.squad!=mergeInto->squad) {
+            attachHost[r.squad]=mergeInto->squad;attachAt[r.squad]=mergeInto->position;attachMerge[r.squad]=true;continue;
+        }
+        const SquadSituation* pick=nullptr;float nearest=1e9f;
+        for(const auto& other:commander.platoonReports)if(fresh(other)&&other.squad!=r.squad&&
+            !shattered(other)&&Distance(other.position,r.position)<nearest){
+            nearest=Distance(other.position,r.position);pick=&other;
+        }
+        if(!pick)continue;
+        attachHost[r.squad]=pick->squad;attachAt[r.squad]=pick->position;
+        attachFire[r.squad]=r.gunUp&&r.ableRiflemen+1>=GroupConstants.baseOfFireMen;
+    }
     const SquadSituation* support=effort;float gunScore=-1e9f;
-    for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.active>=2&&time-r.observedAt<15&&Distance(r.position,effort->contact.position)<110){
-        float score=r.machineGuns*8+(r.supportUseful?4.f:0.f)-Distance(r.position,effort->contact.position)*.03f;
+    for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.active>=2&&time-r.observedAt<15&&!shattered(r)&&Distance(r.position,effort->contact.position)<110){
+        // A squad that has had no line onto the enemy for half a minute is not a base of fire.
+        float score=r.machineGuns*8+(r.supportUseful?4.f:0.f)-Distance(r.position,effort->contact.position)*.03f-
+            (jobs&&r.noLineSeconds>=BoundConstants.noJobSeconds?30.f:0.f);
         if(score>gunScore){gunScore=score;support=&r;}
     }
     const SquadSituation* mover=nullptr;float best=-1e9f;
-    for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.squad!=support->squad&&r.mobile>=2&&time-r.observedAt<15){
+    for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.squad!=support->squad&&r.mobile>=2&&time-r.observedAt<15&&!shattered(r)){
         float score=r.mobile*2-r.suppression*10-r.danger*6-r.machineGuns*8-Distance(r.position,effort->contact.position)*.05f;
         if(score>best){best=score;mover=&r;}
     }
     auto directive=[&](PlatoonTask task,Vec3 p){PlatoonDirective d;d.task=task;d.issuer=commander.id;d.position=p;d.sector=effort->contact.position;d.contact=effort->contact;d.enemy=effort->enemy;d.issuedAt=time;d.expiresAt=config.cognition?config.maxSeconds:time+60;return d;};
+    // The attachment replaces whatever job the squad would otherwise have been given: its place is
+    // its host's and the enemy it watches is the platoon's. A remnant that would have had no
+    // directive at all (no mover, or a squad the loop below never reaches) still gets this one:
+    // being attached is the order.
+    auto attach=[&](std::vector<PlannedPlatoonOrder>& list) {
+        for(auto& o:list) {
+            const int squad=o.recipient/SquadSize;
+            if(squad<0||squad>=SquadCount||attachHost[squad]<0)continue;
+            o.directive.attachTo=attachHost[squad];o.directive.attachBaseOfFire=attachFire[squad];o.directive.attachMerge=attachMerge[squad];
+            o.directive.task=attachMerge[squad]?PlatoonTask::Merge:attachFire[squad]?PlatoonTask::Support:PlatoonTask::Consolidate;
+            o.directive.position=attachAt[squad];
+        }
+        for(const auto& r:commander.platoonReports) {
+            if(!fresh(r)||attachHost[r.squad]<0)continue;
+            bool present=false;for(const auto& o:list)if(o.recipient==r.leader)present=true;
+            if(present)continue;
+            auto d=directive(attachMerge[r.squad]?PlatoonTask::Merge:attachFire[r.squad]?PlatoonTask::Support:PlatoonTask::Consolidate,attachAt[r.squad]);
+            d.attachTo=attachHost[r.squad];d.attachBaseOfFire=attachFire[r.squad];d.attachMerge=attachMerge[r.squad];
+            list.push_back({r.leader,d});
+        }
+    };
     std::vector<PlannedPlatoonOrder> orders{{support->leader,directive(PlatoonTask::Support,support->position)}};
-    if(!mover)return orders;
+    if(!mover){attach(orders);return orders;}
     float sign=commander.team?-1.f:1.f;Vec3 goal=mover->position;float routeScore=1e9f;PlatoonTask task=PlatoonTask::Consolidate;
     struct ApproachCandidate {Vec3 p;float score;float side;};std::vector<ApproachCandidate> approaches;
     TacticalRoutePlanner planner(map,commander,time,commander.team?config.emberDoctrine:config.doctrine);
@@ -111,11 +182,33 @@ std::vector<PlannedPlatoonOrder> PlanPlatoon(const Soldier& commander,const Map&
     orders.push_back({mover->leader,movement});
     const SquadSituation* reserve=nullptr;
     for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.squad!=mover->squad&&r.squad!=support->squad&&time-r.observedAt<15&&(!reserve||r.mobile>reserve->mobile))reserve=&r;
+    // Plan 021 C (user rulings): a squad whose riflemen have had no line onto any known enemy
+    // for half a minute is given a firing position on the enemy the engaged squad is fighting,
+    // on the side that squad is not using. At most half of the squads move at once, their
+    // approaches must not cross, and the base of fire is never sent away.
+    std::vector<Vec3> approachesTaken{goal};int manoeuvring=1;
     for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.squad!=mover->squad&&r.squad!=support->squad&&time-r.observedAt<15){
         bool held=&r==reserve;Vec3 desired=mover->position+Vec3{-sign*(held?20.f:10.f),held?10.f:-10.f};
         Vec3 delta=desired-r.position;float d=Length(delta);if(d>30)desired=r.position+delta*(30/d);
-        orders.push_back({r.leader,directive(held?PlatoonTask::Reserve:PlatoonTask::Consolidate,desired)});
+        PlatoonTask jobTask=held?PlatoonTask::Reserve:PlatoonTask::Consolidate;
+        if(jobs&&r.noLineSeconds>=BoundConstants.noJobSeconds&&manoeuvring<std::max(1,SquadsPerTeam/2)) {
+            float jobBest=1e9f;Vec3 pick{};
+            for(const auto& cover:CoverPositions(map)) {
+                const Vec3 p=cover.shelter;const float travel=Distance(p,r.position),range=Distance(cover.peek,effort->contact.position);
+                if(cover.window||travel<8||travel>BoundConstants.jobTravel||range<BoundConstants.jobRangeMin||range>BoundConstants.jobRangeMax)continue;
+                if(!ProtectedAt(map,p,effort->contact.position,cover.crouch?Stance::Crouched:Stance::Standing))continue;
+                if(!ClearLine3D(map,cover.peek+Vec3{0,0,1.5f},{effort->contact.position.x,effort->contact.position.y,effort->contact.aimHeight}))continue;
+                bool clash=false;for(Vec3 t:approachesTaken)if(Distance(p,t)<BoundConstants.jobSpacing)clash=true;
+                if(clash||ApproachesCross(r.position,p,mover->position,goal))continue;
+                float score=travel*.3f+FireDanger(commander,p,time)*20+std::abs(range-45.f)*.2f;
+                if((p.y-effort->contact.position.y)*(goal.y-effort->contact.position.y)>0)score+=15;
+                if(score<jobBest){jobBest=score;pick=p;}
+            }
+            if(jobBest<1e8f){desired=pick;jobTask=PlatoonTask::Consolidate;approachesTaken.push_back(pick);++manoeuvring;}
+        }
+        orders.push_back({r.leader,directive(jobTask,desired)});
     }
+    attach(orders);
     return orders;
 }
 void ApplyPlatoonDirective(const Soldier& leader,SquadCommand& cmd,float time) {
@@ -202,11 +295,36 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
             report.suppression+=s.understoodSuppression;
             report.mobile+=!KnowsWounded(local,s)&&s.understoodSuppression<.5f;
         }
+        // Plan 023 E (section 11): the squad's able riflemen as its own leader knows them (active,
+        // not known wounded, the gunner not counted), its own and any merged into it (E3), and
+        // whether its gun is still up. The commander's attachment and the squad's own "no manoeuvre
+        // alone" rule read this one count, so both see the same strength.
+        if(!config.foundations&&!config.recoveryFixture){
+            for(const auto& s:f.soldiers)if(s.Active()&&!IsPlatoonStaff(s)&&!KnowsWounded(local,s)&&
+                (s.squad==squad||f.command[s.squad].mergedInto==squad)){
+                if(s.machineGun)report.gunUp=true;else ++report.ableRiflemen;
+            }
+            f.command[squad].ableRiflemen=report.ableRiflemen;report.mergedInto=f.command[squad].mergedInto;
+        }
         if(report.active)report.suppression/=report.active;
         if(report.active)report.position=report.position*(1.f/report.active);
         report.movementBlocked=f.command[squad].movementBlock.reason!=MoveBlock::None;
         report.engaged=f.command[squad].engaged;report.danger=f.command[squad].danger;report.supportUseful=f.command[squad].supportUseful;
         auto knowledge=WithTracks(local,f.time);
+        // Plan 021 C: the commander cannot give a squad a job without knowing that it has none.
+        // The squad leader reports how long no rifleman of his has had a line onto an enemy he
+        // knows. The static defenders are never given jobs and never report this.
+        if(!config.foundations&&!config.recoveryFixture&&squad/SquadsPerTeam!=rt.fixedDefender){
+            const Map& view=rt.geometryViews?(*rt.geometryViews)[leader]:map;
+            bool line=false,enemyKnown=false;
+            for(int id=0;id<UnitCount&&!line;++id){const auto& ct=knowledge.contacts[id];if(!ct.known)continue;enemyKnown=true;
+                for(const auto& s:f.soldiers)if(s.squad==squad&&s.Active()&&!IsPlatoonStaff(s)&&!s.machineGun&&
+                    Distance(s.position,ct.position)<BoundConstants.jobRangeMax&&
+                    ClearLine3D(view,s.position+Vec3{0,0,1.5f},{ct.position.x,ct.position.y,ct.aimHeight})){line=true;break;}}
+            auto& own=f.command[squad];
+            if(line||!enemyKnown)own.noLineSince=-1;else if(own.noLineSince<0)own.noLineSince=f.time;
+            report.noLineSeconds=own.noLineSince<0?0.f:f.time-own.noLineSince;
+        }
         if(config.foundations){
             if(TypedController(config))for(const auto& delivery:local.deliveries)if(delivery.shooter>=0&&f.time-delivery.observedAt<6)report.deliveries.push_back(delivery);
             report.goalId=f.time<local.platoonOrder.expiresAt?local.platoonOrder.intent.id:0;
@@ -321,6 +439,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
         uint64_t situation=0;
         for(const auto& report:f.soldiers[cmd.leader].platoonReports)if(report.squad>=0&&f.time-report.observedAt<15){
             situation=situation*131+uint64_t(report.active+32*report.engaged+64*report.movementBlocked+128*(report.enemy+1));
+            if(report.noLineSeconds>=BoundConstants.noJobSeconds)situation+=2048; // plan 021 C: a squad with no job
             const auto& previous=rt.lastOrders[report.squad];
             if(previous.task!=PlatoonTask::Support&&Distance(report.position,previous.position)<10)situation+=8192;
         }
@@ -329,7 +448,8 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
         if(f.time<cmd.nextPlanAt&&!changed)continue;
         rt.lastSituation[team]=situation;rt.lastPlan[team]=f.time;
         cmd.nextPlanAt=f.time+5;
-        auto orders=PlanPlatoon(f.soldiers[cmd.leader],rt.geometryViews?(*rt.geometryViews)[cmd.leader]:map,config,f.time);
+        auto orders=PlanPlatoon(f.soldiers[cmd.leader],rt.geometryViews?(*rt.geometryViews)[cmd.leader]:map,config,f.time,
+            !config.foundations&&!config.recoveryFixture&&team!=rt.fixedDefender);
         if(orders.empty())continue;
         cmd.nextPlanAt=f.time+55;++cmd.plans;cmd.sector=orders[0].directive.sector;
         for(auto& order:orders) {
@@ -344,7 +464,11 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
                 // return path before replacing this mission again.
                 if(executing||(!acknowledged&&f.time-previous.issuedAt<4*config.reportDelay+5))continue; // An active accepted mission owns its roles until feedback or a material emergency.
             }
-            if(previous.task==order.directive.task&&Distance(previous.position,order.directive.position)<6&&previous.expiresAt-f.time>12)continue;
+            // Plan 023 E: an attachment that has changed is always worth a fresh directive, whatever
+            // the task and the position say: it is the thing the squad is being told.
+            if(previous.task==order.directive.task&&Distance(previous.position,order.directive.position)<6&&previous.expiresAt-f.time>12&&
+                previous.attachTo==order.directive.attachTo&&previous.attachBaseOfFire==order.directive.attachBaseOfFire&&
+                previous.attachMerge==order.directive.attachMerge)continue;
             order.directive.serial=rt.nextSerial++;
             if(config.foundations){order.directive.intent.id=order.directive.serial;order.directive.intent.expiresAt=order.directive.expiresAt;
                 if(order.directive.intent.purpose==GoalPurpose::None){order.directive.intent.purpose=GoalPurpose::Support;order.directive.intent.objective=order.directive.position;}}

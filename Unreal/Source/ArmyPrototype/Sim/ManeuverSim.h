@@ -8,6 +8,12 @@ float CrossingExposure(const Soldier& leader,const Map& map,Vec3 from,Vec3 to,fl
 void RememberFireArea(Soldier& soldier,const FireArea& area);
 float FireDanger(const Soldier& soldier,Vec3 position,float time);
 bool HasMachineGun(const std::vector<Soldier>& squad);
+// Plan 021: a bound merges the planner's twelve-metre segments up to the bound length; the
+// remaining segments are the queued chain. Exposure and the crossing cover the whole bound.
+int MergeBoundStage(const TacticalRoute& route,int from,float length);
+float BoundSeconds(const TacticalRoute& route,int from,int to,float* exposedSeconds=nullptr);
+float BoundExposure(const TacticalRoute& route,int from,int to);
+std::vector<Vec3> BoundCrossing(const TacticalRoute& route,int from,int to);
 float MovementPressure(const Soldier& leader,const std::vector<Soldier>& squad,float time);
 void PauseSquadMovement(const Soldier& leader,const std::vector<Soldier>& squad,SquadCommand& command,MoveBlock reason,float time);
 bool RifleCoverReady(const Soldier& leader,const std::vector<Soldier>& squad,const Map& map,float time);

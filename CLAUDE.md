@@ -227,6 +227,17 @@ on a moving leader, skipped when the corporal is gone, the leader's own route se
 failure for another; the architect proposes a plan-sized redesign of the relay with the user's rulings. Table at the end
 of plan 018.
 
+**Plan 023 landed (21 September 2026):** [plan 023](plans/023-the-rifle-group-moves-as-one.md), the rifle group moves as
+one (stations from one allocator, behind and ahead along the group's axis, the stand-off, a general `pace` on every order
+with the leader at half pace until his men are with him, the covering pair, the gun's angled firing position, the officer
+with the leading squad, the shattered squad attached or merged), five stages each scored as a loop node
+(`a5353ef76c03cc80`, `5ab90b4e236dc5c9`, `82c82b7c67d54e01`, `dd6eae013fd640e0`, `15bb3594f8ddddf3`,
+`80dfe8feb994faf2`), is on the branch with plan 021 inside it: source `45da1e25dd1aa9e7`, 40/40 lean parity, trace
+parity, full suite exit 0 with three assertions restated for the design, 126 Python tests, Unreal compiles. Against the
+node it started from: level on value (0.767 to 0.799 by the validation draw; development 0.810 against 0.839), regroup
+orders a quarter of what they were, friendly fire and quiet squads down, flanking fire up, attackers lost 32 % to 34 %.
+The whole process is written up in [docs/AI_PROCESS.md](docs/AI_PROCESS.md) for whenever AI work resumes.
+
 **[Plan 023](plans/023-the-rifle-group-moves-as-one.md), drafted 21 September 2026 at the user's instruction, awaiting his
 rulings:** one design for the rifle group's relay in place of single-branch fixes: every member, the leader included,
 holds a fixed covered station that belongs to the group's objective; behind and ahead are measured along the group's

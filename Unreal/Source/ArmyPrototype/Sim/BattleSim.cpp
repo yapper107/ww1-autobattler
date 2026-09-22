@@ -300,6 +300,13 @@ bool WalkingFire(const Soldier& s,float time) {return !s.sprinting&&AttackMoveme
 // enemy body or the Config: the movement stage applies config.stamina.
 float StaminaCapacity(const Soldier& s) {return Sprint().capacitySeconds*StatScale(s.stats.Get(Stat::Endurance));}
 float SprintPace(const Soldier& s) {return std::max(1.f,(s.machineGun?Sprint().gunnerPace:Sprint().pace)*StatScale(s.stats.Get(Stat::Speed)));}
+// The movement stage's own formula, exactly as it always ran, with plan 023 stage C's order pace
+// appended at the end behind its switch: off, a battle is bit for bit what it was before the field
+// existed, whatever value PlanSquad happened to compute for it.
+float MovementSpeed(const Soldier& s,const Config& c) {
+    return (s.machineGun?2.55f:3.15f)*(s.health<55?0.72f:1.f)*(1-s.suppression*0.45f)*(s.stance==Stance::Crouched?0.6f:1.f)*
+        (s.movingFire?s.gun.moving.pace:1.f)*(s.sprinting?SprintPace(s):1.f)*(c.orderPace?s.assignment.pace:1.f);
+}
 // Full again in recoverySeconds/endurance at rest: a tougher man holds more and refills sooner.
 float StaminaRecovery(const Soldier& s) {return StaminaCapacity(s)*StatScale(s.stats.Get(Stat::Endurance))/std::max(.01f,Sprint().recoverySeconds);}
 bool CanSprint(const Soldier& s) {return !s.winded&&s.stamina>0&&s.health>=Sprint().woundedHealth;}
@@ -1368,8 +1375,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 s.sprinting=c.stamina&&CanSprint(s)&&SprintTrigger(s,a.revealedAhead,Distance(s.position,s.goal));
                 // Walking fire costs pace: the flag is what the firing stage measured at the
                 // end of the previous tick, so a man who opens fire slows from the next step.
-                float speed=(s.machineGun?2.55f:3.15f)*(s.health<55?0.72f:1.f)*(1-s.suppression*0.45f)*(s.stance==Stance::Crouched?0.6f:1.f)*
-                    (s.movingFire?s.gun.moving.pace:1.f)*(s.sprinting?SprintPace(s):1.f);
+                float speed=MovementSpeed(s,c);
                 Vec3 dir=Normal(dest-s.position);Vec3 next=s.position+dir*std::min(dist,speed*TickSeconds);
                 if(TypedController(c)&&f.time<a.avoidUntil&&!OnStairs(r.map,s.position)){
                     // A short, collision-checked sidestep breaks a friendly crowd deadlock.

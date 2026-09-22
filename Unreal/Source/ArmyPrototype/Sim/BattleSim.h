@@ -119,6 +119,102 @@ struct TeamPlan {
     std::array<int,2> windowTeam{{-1,-1}};
     std::array<Vec3,2> windows{};
 };
+// Plan 021, the legacy attack by deliberate bounds. Every constant the bound machinery
+// introduces lives here, named, so a later parameter search reaches all of them in one place.
+struct BoundTuning {
+    float boundLength=35;            // a bound covers this much of the route (the planner cuts 12 m segments)
+    float slotArrival=3;             // a man standing this close to his own station has arrived
+    float boundGrace=10;             // the group waits this long at the bound's destination for the
+                                     // men who can still come (the user's rule, nobody left behind)
+    float stragglerSeconds=10;       // user ruling: this long on Rally/Hold without firing
+    float stragglerDistance=40;      // ... this far from his group re-stations the man
+    float stragglerSuppression=.35f; // a man under fire is exempt: he stays in his cover
+    float noJobSeconds=15;           // user ruling: this long with no rifle line onto a known enemy
+    float jobRangeMin=25,jobRangeMax=90; // band a platoon support-by-fire position sits in
+    float jobTravel=150;             // how far a squad is sent for such a position
+    float jobSpacing=14;             // two squads' jobs stay this far apart
+    float exposedWaitSeconds=20;     // an exposed crossing waiting on fire at its exact overlooking
+                                      // threat goes anyway once the platoon's own fire has been
+                                      // running this long: the wait was not buying anything more
+};
+inline constexpr BoundTuning BoundConstants{};
+// Plan 023, the rifle group moves as one. One table for the whole design, next to the bound's:
+// the geometry of a station and the margins the later stages need. First values, not tuned.
+struct GroupTuning {
+    float boundRadius=6,boundSpacing=2.5f;  // plan 021's slot geometry at a bound's destination
+    float haltRadius=12,haltSpacing=4.5f;   // generation 16's halt geometry around the anchor
+    float holdRadius=12,holdMinTravel=2;    // a firing station is searched this close to the man himself
+    float stationRange=70,holdRange=65;     // a station bears on an enemy within this
+    float anchorMove=5;                     // the objective is a new one once it has moved this far
+    float reissueSeconds=4;                 // an order not taken up within this is sent once more
+    float seatedSeconds=12,firedSeconds=8;  // a man just seated, or firing, keeps the place he has
+    float holdSuppression=.45f;             // ... and so does a man under fire
+    // Stage B: behind and ahead along the group's axis, and the advantage it comes up to.
+    float behindMargin=12,aheadMargin=5;    // short of the rear-most station / beyond the lead one
+    float callUpSeconds=6;                  // behind and idle this long is a man who needs calling up
+    float axisRange=120;                    // the tracked enemy that turns the axis, within this
+    float unsafeExposure=.2f;               // a leg the enemy can watch for this share of its length
+    float standOff=25;                      // no order puts a man nearer a known enemy than this: the near
+                                            // edge of the band a flank firing position must already satisfy
+    float sectorChange=6;                   // the sector is a direction to watch: this much of a move is a new one
+    int forwardMen=2;                       // this many forward bearing men are an advantage to come up to
+    // Stage C: the leader's own pace (3.6) and the covering pair (3.7). stepOffSeconds is unused:
+    // the user's later ruling that shared code may carry a pace replaced the step-off hold it was
+    // for with leadSlowPace itself, so the leader never has to stand still to begin with.
+    float stepOffSeconds=6,coverPairSeconds=10,leadSlowPace=.5f,leadCloseDistance=12,leadSlowSeconds=10,leadMaxLead=15;
+    int coverPair=2;
+    // Stage D: the support gun's own firing position and the platoon staff's places (3.9).
+    float supportRange=60;                 // the gun's station lies within this of the rifle group's centre
+    float supportAngleCos=.8660254f;       // cosine of 30 degrees: the least angle off the rifles' own line
+    float supportWideCos=.7071068f;        // cosine of 45 degrees: taken instead when the ground offers it
+    float staffBehind=20;                  // the platoon sergeant stands this far behind the group's rear station
+    // Stage E (section 11): the shattered squad, and where a withdrawal ends.
+    int shatteredRiflemen=3;               // fewer able riflemen than this and the squad no longer fights alone
+    int baseOfFireMen=2;                   // ... with its gun up and this many able men it is attached as a base of fire
+    float fallbackTravel=60;               // how far back a withdrawal looks for its fall-back position
+};
+inline constexpr GroupTuning GroupConstants{};
+// Plan 023 A (3.1). What the group's objective is: a bound's destination, a halt on the place the
+// leader was ordered to, or a hold in contact where the group already stands and fights.
+// Stage D adds two kinds of its own: the support gun's firing position, angled off the rifle
+// group's line onto the enemy, and the platoon sergeant's place behind the group (3.9).
+enum class StationKind { Halt, Bound, Hold, Support, Staff };
+// One record of where the rifle group stands. Every member slot has a station — the riflemen's,
+// the leader's own lead station, and the entries kept free for the support and the platoon staff
+// (stages C and D) — with the serial of the objective it was allocated for. One allocator fills
+// it, once per objective; a station is given up only for the reasons in the plan and is never
+// re-picked under the same objective, because re-seating is where the lineage's wounds come from.
+struct GroupStations {
+    StationKind kind=StationKind::Halt;
+    bool bound=false;                // the objective is a running bound (plan 021's chain)
+    int plan=0,serial=1;             // the squad plan the objective was fixed under, and its identity
+    float committedAt=-1;
+    uint64_t known=0;                // enemies already known when a bound's stations were fixed
+    Vec3 objective{};
+    std::array<Vec3,SquadSize> station{};
+    std::array<bool,SquadSize> held{};
+    std::array<int,SquadSize> issued{};    // the objective serial this member's station was allocated for
+    // Stage B (3.3/3.4): who stands forward on a place that bears, and since when a man has been
+    // behind the group with nothing to do. behindSince is 0 or less while he is not.
+    std::array<bool,SquadSize> forward{};
+    std::array<float,SquadSize> behindSince{};
+    Vec3 forwardCentre{};                  // the advantage the group comes up to, and whether it can
+    int forwardCount=0;
+    bool comeUp=false;                     // enough forward men, and the way up to them is not unsafe
+    Vec3 footholdSector{};                 // the enemy overlooking an unsafe way up, for the covering element
+    bool foothold=false;
+    float objectiveAt=-1;                  // when the leader was given it: his men's stations date from then (3.6)
+    std::array<bool,SquadSize> covering{}; // the pair that stays and fires as the group leaves (3.7)
+    std::array<Vec3,SquadSize> coverSector{}; // the enemy each covering man was set against, for his sector
+    float coverUntil=-1;int coverSerial=0;
+    float standOffFloor=0;                 // ... and no nearer than the forward men already are (3.4/B2)
+    // Stage D (3.9): the gun's and the platoon staff's own stations live in this record too, in the
+    // slots the rifle group never uses; they belong to a man and not to the group's objective, so
+    // they carry no objective serial (issued stays 0) and a new bound does not wipe them. Index 0
+    // is the officer with the leading squad, index 1 the platoon sergeant behind it.
+    int supportStationFor=-1;
+    std::array<int,2> staffLead{{-1,-1}},staffSerial{{0,0}};
+};
 enum class TaskStatus { Issued, Received, Executing, Interrupted, Blocked, Done, Failed, Superseded };
 enum class GoalPurpose { None, Seize, Support, Observe, Withdraw };
 struct GoalIntent {
@@ -172,6 +268,10 @@ struct Assignment {
     std::shared_ptr<const TacticalRoute> areaRoute;float areaRouteRadius=0;
     int drillInstance=0,element=-1;bool baseOfFire=false;Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaDiscRadius=0;
     float drillRushPausedAt=0,drillRushPausedSeconds=0;
+    // Plan 023 stage C: a fraction of the walking speed (1 = full, down to 0), multiplied into
+    // the shared movement step behind Config::orderPace. Soldier-level, carried by the plain
+    // struct copy on delivery like every other order field. Never above 1 here.
+    float pace=1.f;
 };
 enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector, Coverage, SupportProgress, SquadRadio };
 enum class Action { Advance, Cover, Fire, Retreat, Hold, Wounded, Killed };
@@ -330,6 +430,13 @@ struct Config {
     // his order (plan 018, 21 September 2026). On by default; --no-off-lane-paths reproduces
     // the previous battles bit for bit.
     bool offLanePaths=true;
+    // Plan 023 stage C, user ruling: an order can carry a pace (Assignment::pace), multiplied
+    // into the shared movement step. On by default. --no-order-pace is the kill switch for all
+    // of stage C's legacy-only additions (3.6's leader pace and 3.7's covering pair), so that a
+    // legacy battle fought with it reproduces stage B2 exactly; the pace factor itself is folded
+    // into the digest only when it differs from 1, so cognition, drills and the static defenders
+    // (which never set it) are bit-identical whether the switch is on or off.
+    bool orderPace=true;
 
     bool drills=false;
     ScenarioFamily family=ScenarioFamily::None;
@@ -350,7 +457,7 @@ inline bool SameConfig(const Config& a,const Config& b) {
     // is selected: the resolved objective is derived from them and the map.
     if(a.staticDefence.layout!=b.staticDefence.layout)return false;
     if(a.staticDefence.layout!=DefenceLayout::None&&(a.staticDefence.defenders!=b.staticDefence.defenders||a.staticDefence.seed!=b.staticDefence.seed))return false;
-    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.offLanePaths==b.offLanePaths&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.offLanePaths==b.offLanePaths&&a.orderPace==b.orderPace&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
 }
 inline bool TypedController(const Config& c){return c.cognition||c.drills;}
@@ -404,6 +511,11 @@ struct SquadSituation {
     int machineGuns=0, mobile=0;
     float suppression=0;
     float danger=0, observedAt=-100;
+    float noLineSeconds=0; // plan 021 C: how long no rifleman of the squad has had a line onto a known enemy
+    // Plan 023 E (section 11): what the commander needs to see that a squad is shattered: its able
+    // riflemen (its own and any merged into it), and whether its gun is still in action.
+    int ableRiflemen=0;bool gunUp=false;
+    int mergedInto=-1;     // E3: the squad this one's men already obey, so a merge is never undone
     Contact contact;
     int drillInstance=0,drillKind=0;
     TaskCause drillCause=TaskCause::None;
@@ -420,6 +532,9 @@ struct SquadBroadcast {
 struct PlatoonDirective {
     bool initiativeAllowed=true; // Command climate carried by own intent; never read another actor's hidden knowledge.
     int taskNode=0,mergeInto=-1,helpSquad=-1;bool hasArea=false,liftFire=false,fireMovement=false;
+    // Plan 023 E (section 11): the squad this one is attached to, and how. attachMerge is the
+    // user's merge ruling (E3): the two shattered squads become one under the host's leader.
+    int attachTo=-1;bool attachBaseOfFire=false,attachMerge=false;
     Vec3 areaMin{},areaMax{},areaDiscCenter{};float areaRouteRadius=0,areaDiscRadius=0;FireLane assaultLane;
     std::shared_ptr<const TacticalRoute> corridor;
     int supportSoldier=-1,supportSquad=-1,committedStrength=0;
@@ -660,7 +775,7 @@ struct SquadCommand {
     DrillState drill;
 
     std::shared_ptr<const TacticalRoute> route;
-    int routeSerial=0,routeStage=0;
+    int routeSerial=0,routeStage=0,boundStage=0; // boundStage: last route segment merged into the running bound
     std::shared_ptr<const ManeuverAssessment> routeAssessment;
     SquadPhase phase=SquadPhase::Search;
     int planId=0;float planStarted=0,commitUntil=0,opportunitySince=-1;
@@ -696,6 +811,17 @@ struct SquadCommand {
     float supportProblemSince=-1, nextSupportMove=0;
     int supportRepositions=0;
     TeamPlan teamPlan;
+    GroupStations stations;
+    // Plan 023 E (section 11): a withdrawal's fixed end point and the enemy it was made against
+    // (the squad's own tracks age out behind cover, so the sector it watches is remembered here);
+    // the host it is attached to or merged into, what that host was doing, and how many able
+    // riflemen it has (its own and any merged into it), counted where every squad is visible.
+    Vec3 fallback{},fallbackSector{};
+    float fallbackAt=-1;
+    int attachedTo=-1,mergedInto=-1,ableRiflemen=SquadSize;
+    bool attachBaseOfFire=false;
+    Vec3 attachPosition{},attachSector{};
+    float noLineSince=-1,boundMajorityAt=-1;
     int boundsCompleted=0, building=-1;
     float boundStarted=-1, boundReleasedAt=-1, boundRetryAt=0, buildingUntil=0, buildingRetryAt=0;
     Vec3 mission{}, boundOrigin{};
@@ -724,6 +850,10 @@ float MovePenalty(float factor,float statScale);
 // enemy he knows", which the movement stage measures for him.
 float StaminaCapacity(const Soldier& soldier);
 float SprintPace(const Soldier& soldier);
+// The movement stage's own speed formula (health, suppression, stance, walking fire, sprint and,
+// plan 023 stage C, an order's own pace), pulled out so it has one place and can be tested
+// directly instead of only through a whole battle.
+float MovementSpeed(const Soldier& soldier,const Config& config);
 float StaminaRecovery(const Soldier& soldier);
 bool CanSprint(const Soldier& soldier);
 float StaminaPenalty(const Soldier& soldier,float factorAtEmpty);

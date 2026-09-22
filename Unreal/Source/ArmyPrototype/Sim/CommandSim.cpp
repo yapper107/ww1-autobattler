@@ -73,6 +73,14 @@ Vec3 ClearReportedFireLane(const Soldier& commander,const Soldier& soldier,Vec3 
 bool KnowsWounded(const Soldier& commander,const Soldier& soldier) {
     return soldier.Active()&&(commander.id==soldier.id?commander.understoodHealth<55:commander.knownWounded[soldier.id]);
 }
+// Plan 018 gen18b: the user's rule ("he should have passed his command to his second in
+// command... and so on and so forth"). A wounded former leader gets no followers of his own;
+// he is treated like any other wounded man by whatever assigns him a task.
+const Soldier* RifleGroupLeader(const Soldier& officer,const std::vector<Soldier>& squad,int support) {
+    for(const auto& s:squad)if(s.Active()&&s.role==Role::Corporal&&s.id!=officer.id&&!KnowsWounded(officer,s))return &s;
+    for(const auto& s:squad)if(s.Active()&&s.id!=officer.id&&s.id!=support&&!IsPlatoonStaff(s)&&!KnowsWounded(officer,s))return &s;
+    return nullptr;
+}
 Vec3 RearPosition(const Soldier& commander,const Soldier& soldier,const std::vector<Soldier>& squad,
     const Map& map,float time,const std::vector<Vec3>& reserved) {
     const float sign=commander.team?-1.f:1.f;
@@ -162,16 +170,47 @@ Soldier WithReports(const Soldier& s,float time) {
 }
 void UpdateSearchMission(const Soldier& officer,const std::vector<Soldier>& squad,const Map& map,
     const Config& config,SquadCommand& cmd,float time) {
-    const Soldier* point=&officer;
-    for(const auto& s:squad)if(s.Active()&&s.role==Role::Corporal&&!KnowsWounded(officer,s)){point=&s;break;}
+    const Soldier* point=RifleGroupLeader(officer,squad,cmd.support);
+    if(!point)point=&officer;
+    // Plan 023 B (3.4, user ruling 1): "the group should go to them". When enough of his men hold
+    // real forward positions and the way up is not one a known enemy watches, the group's next
+    // objective is laid out from THEM and not from the leader, so that his own destination comes
+    // up with theirs instead of his lead compounding.
+    const Vec3 head=cmd.stations.comeUp?cmd.stations.forwardCentre:point->position;
     auto setMission=[&](Vec3 target) {
         if(cmd.teamPlan.bounding&&Distance(target,cmd.mission)>5){cmd.teamPlan.bounding=false;++cmd.teamPlan.serial;}
         cmd.mission=target;
     };
     if(cmd.hasWaypoint){setMission(cmd.waypoint);return;}
+    // Plan 023 E (section 11, the user's ruling): an attached squad's objective is its HOST's, not
+    // one of its own. As a base of fire it takes the ground the host is fighting from, outside the
+    // stand-off of the enemy the commander named; as support (and merged, E3) it follows one
+    // objective behind the host's rifle group, staffBehind back along the line to that enemy, which
+    // is where the platoon sergeant stands (3.9).
+    if(!config.foundations&&(cmd.attachedTo>=0||cmd.mergedInto>=0)) {
+        Vec3 anchor=cmd.attachPosition;
+        Vec3 back=anchor-cmd.attachSector;back.z=0;const float length=Length(back);
+        if(!cmd.attachBaseOfFire&&cmd.mergedInto<0&&length>.5f)anchor=anchor+back*(GroupConstants.staffBehind/length);
+        // A base of fire is a FIRING position covering the host's objective, from the one allocator
+        // (the gun's own kind: crouch cover, protected from every enemy the leader knows, bearing on
+        // the one the commander named, outside the stand-off). Holding the host's ground without a
+        // line is not a base of fire: it is a squad standing behind a wall.
+        Vec3 firing{};
+        if(cmd.attachBaseOfFire&&GroupStation(officer,*point,StationKind::Support,anchor,cmd.attachSector,{},map,time,firing,GroupConstants.standOff))anchor=firing;
+        anchor=StandOffPoint(officer,anchor,GroupConstants.standOff,time);
+        Vec3 resolved=point->position;ResolveOrderPosition(map,point->position,anchor,resolved);setMission(resolved);return;
+    }
+    // Plan 023 E (section 11): a squad that has withdrawn holds the fall-back it was given for as
+    // long as it still knows the enemy it left, instead of resuming an open sweep from wherever the
+    // pull-back happened to stop. Going quiet releases it: there is nothing left to hold against.
+    if(!config.foundations&&cmd.fallbackAt>=0) {
+        if(cmd.searching)cmd.fallbackAt=-1;
+        else if(cmd.ableRiflemen<GroupConstants.shatteredRiflemen)
+            {Vec3 resolved=point->position;ResolveOrderPosition(map,point->position,cmd.fallback,resolved);setMission(resolved);return;}
+    }
     if(cmd.engaged){
         // Finish a released short crossing before settling into the firefight.
-        if(!(cmd.teamPlan.bounding&&cmd.teamPlan.released))setMission(point->position);
+        if(!(cmd.teamPlan.bounding&&cmd.teamPlan.released))setMission(head);
         return;
     }
     const auto knowledge=WithTracks(officer,time);
@@ -186,8 +225,8 @@ void UpdateSearchMission(const Soldier& officer,const std::vector<Soldier>& squa
         Distance(point->position,defended)>8;
     if(contact) {
         // Approach a reported contact to rifle range, never order an assault through it.
-        requested=point->position+(contact->position-point->position)*(std::max(0.f,nearest-32.f)/std::max(0.01f,nearest));
-        requested.z=point->position.z;
+        requested=head+(contact->position-head)*(std::max(0.f,Distance(head,contact->position)-32.f)/std::max(0.01f,Distance(head,contact->position)));
+        requested.z=head.z;
     } else if(staticObjective) {
         // A static-defence attack has a pre-battle objective of its own; take it
         // instead of sweeping map sectors. Arrival resumes the ordinary sweep.
@@ -215,22 +254,8 @@ void UpdateSearchMission(const Soldier& officer,const std::vector<Soldier>& squa
     Vec3 resolved=point->position;
     ResolveOrderPosition(map,point->position,requested,resolved);setMission(resolved);
 }
-static Vec3 UsefulFiringPosition(const Soldier& leader,const Soldier& s,const Map& map,float time) {
-    if(s.machineGun||s.role!=Role::Rifleman||s.understoodSuppression>.45f||time-s.lastShotAt<8)return s.position;
-    if(s.assignment.task==Task::Overwatch&&time-s.assignment.activatedAt<12)return s.assignment.position;
-    const auto knowledge=WithTracks(leader,time);const Contact* target=nullptr;float nearest=1e9f;
-    for(const auto& ct:knowledge.contacts)if(ct.known&&Distance(ct.position,s.position)<nearest){nearest=Distance(ct.position,s.position);target=&ct;}
-    if(!target)return s.position;
-    float best=1e9f;Vec3 result=s.position;
-    for(const auto& c:CoverPositions(map)){float travel=Distance(s.position,c.shelter);
-        if(travel<2||travel>12||std::abs(c.shelter.z-s.position.z)>.5f||Distance(c.peek,target->position)>65||!ProtectedAt(map,c.shelter,target->position,c.crouch?Stance::Crouched:Stance::Standing)||!ClearLine3D(map,c.peek+Vec3{0,0,1.5f},{target->position.x,target->position.y,target->aimHeight}))continue;
-        float score=travel+FireDanger(leader,c.shelter,time)*20;
-        if(score<best&&!FindPath(map,s.position,c.shelter).empty()){best=score;result=c.shelter;}
-    }
-    return result;
-}
 std::vector<PlannedOrder> PlanSquad(const Soldier& officer,const std::vector<Soldier>& friends,
-    const Map& map,const Config& config,const SquadCommand& command,float time) {
+    const Map& map,const Config& config,SquadCommand& command,float time) {
     if(config.drills)return DrillOrders(officer,friends,command,time);
     if(config.cognition)return CognitiveOrders(officer,friends,command,time);
     std::vector<PlannedOrder> orders;
@@ -279,24 +304,64 @@ std::vector<PlannedOrder> PlanSquad(const Soldier& officer,const std::vector<Sol
     // Before any contact report, cover the next approach rather than demanding
     // an impossible firing line all the way through the screened battlefield.
     if(recent<time-10)sector={std::clamp(officer.position.x+sign*40,-map.halfWidth+2,map.halfWidth-2),officer.position.y,0};
-    const Soldier* support=nullptr;const Soldier* nco=nullptr;
-    for(const auto& s:friends)if(s.Active()&&s.id!=officer.id) {
-        if(s.id==command.support)support=&s;
-        if(s.role==Role::Corporal&&!KnowsWounded(officer,s))nco=&s;
-    }
+    // Plan 023 E (section 11): a squad holding its fall-back keeps watching the enemy it withdrew
+    // from. Nothing clears its contacts: they age out (the shared confidence rule) because the
+    // cover it withdrew behind is exactly what stops anyone refreshing them, and a squad with a
+    // blind sector faces the way it happens to be standing.
+    if(recent<time-10&&(command.attachedTo>=0||command.mergedInto>=0))sector=command.attachSector;
+    else if(recent<time-10&&command.fallbackAt>=0)sector=command.fallbackSector;
+    const Soldier* support=nullptr;
+    for(const auto& s:friends)if(s.Active()&&s.id==command.support)support=&s;
+    const Soldier* nco=RifleGroupLeader(officer,friends,command.support);
+    // Plan 018 gen18b: the corporal himself, whether or not he still leads. A superseded one
+    // (known wounded, still alive) is not dropped from the plan; assign() below folds him into
+    // RearGuard the same way any other wounded man is handled, instead of the successor's own
+    // order silently covering for two men.
+    const Soldier* corporal=nullptr;
+    for(const auto& s:friends)if(s.Active()&&s.role==Role::Corporal&&s.id!=officer.id)corporal=&s;
     Vec3 anchor=officer.position;
     if(support) {
         Vec3 assaultCentre{};int assaultCount=0;
         for(const auto& s:friends)if(s.Active()&&s.id!=officer.id&&s.id!=support->id&&!KnowsWounded(officer,s)){assaultCentre=assaultCentre+s.position;++assaultCount;}
         if(assaultCount)assaultCentre=assaultCentre*(1.f/assaultCount);else assaultCentre=officer.position;
         float score=1e9f;bool found=false;
-        const bool keepGun=!command.supportNeedsMove&&recent>=time-10&&command.supportUseful&&!leader.supportBlocked&&
+        // Plan 023 D1 (3.9): the gun's own station. With an enemy known he is given a FIRING
+        // position by the one allocator: within supportRange of the rifle group, protected from
+        // every enemy the leader knows, bearing on the one he tracks, no nearer him than the
+        // group's own lead station, and at an angle off the group's line onto him whenever the
+        // ground offers one. It is chosen once and kept while it still bears and the group is still
+        // within reach of it: a gun that is moving is a gun that is silent. The old search stays
+        // behind it for what it does not cover (no fresh contact: he comes up with the group).
+        auto& st=command.stations;const int gunSlot=support->id%SquadSize;
+        if(recent>=time-10&&!KnowsWounded(officer,*support)) {
+            float leadRange=Distance(sector,nco?nco->position:assaultCentre);
+            std::vector<Vec3> stationsTaken;
+            for(int j=2;j<SquadSize;++j)if(st.held[j]&&st.issued[j]==st.serial) {
+                leadRange=std::min(leadRange,Distance(sector,st.station[j]));stationsTaken.push_back(st.station[j]);
+            }
+            const bool keep=st.held[gunSlot]&&st.supportStationFor==support->id&&!command.supportNeedsMove&&
+                Distance(st.station[gunSlot],assaultCentre)<=GroupConstants.supportRange&&
+                StationBears(officer,map,st.station[gunSlot],time)&&StationCovered(officer,map,st.station[gunSlot],time);
+            Vec3 place=st.station[gunSlot];
+            if((keep||GroupStation(officer,*support,StationKind::Support,assaultCentre,sector,stationsTaken,map,time,place,GroupConstants.standOff,leadRange))&&
+                (!command.supportNeedsMove||Distance(place,command.supportMoveFrom)>6)) {
+                st.station[gunSlot]=place;st.held[gunSlot]=true;st.issued[gunSlot]=0;st.supportStationFor=support->id;
+                anchor=place;found=true;
+            }
+        }
+        const bool stationed=found;
+        const bool keepGun=!stationed&&!command.supportNeedsMove&&recent>=time-10&&command.supportUseful&&!leader.supportBlocked&&
             time-leader.supportReadyAt<5&&support->assignment.task==Task::Overwatch&&
             Distance(support->position,support->assignment.position)<2;
         if(keepGun){anchor=support->assignment.position;score=-1e9f;found=true;}
-        for(const auto& cover:CoverPositions(map))if(!keepGun&&cover.crouch) {
+        for(const auto& cover:CoverPositions(map))if(!stationed&&!keepGun&&cover.crouch) {
                 Vec3 p=cover.shelter;
-                if((recent<time-10&&Distance(p,assaultCentre)>18)||Distance(p,support->position)>55||std::abs(p.y-assaultCentre.y)>28||sign*p.x>sign*assaultCentre.x+(command.engaged?8.f:24.f)||!Walkable(map,p)||!ProtectedAt(map,p,sector,Stance::Crouched)||
+                // Plan 023 B: a gun that has been left behind is searched from his GROUP instead of
+                // from himself. With a 55 m leash on his own position only, a group that really
+                // moves loses him for good (at the fight 69 % to 47 % once stage B pushed deeper);
+                // widening it only once he is that far back leaves his ordinary placing alone.
+                const bool leftBehind=Distance(support->position,assaultCentre)>55;
+                if((recent<time-10&&Distance(p,assaultCentre)>18)||(Distance(p,support->position)>55&&!(leftBehind&&Distance(p,assaultCentre)<=55))||std::abs(p.y-assaultCentre.y)>28||sign*p.x>sign*assaultCentre.x+(command.engaged?8.f:24.f)||!Walkable(map,p)||!ProtectedAt(map,p,sector,Stance::Crouched)||
                     !ClearLine3D(map,{p.x,p.y,p.z+1.5f},{sector.x,sector.y,sector.z+1.65f}))continue;
                 bool safe=true;
                 for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<=120&&!ProtectedAt(map,p,ct.position,Stance::Crouched))safe=false;
@@ -319,7 +384,19 @@ std::vector<PlannedOrder> PlanSquad(const Soldier& officer,const std::vector<Sol
     const bool supporting=command.platoonTask==PlatoonTask::Support&&time<command.platoonUntil&&recent>=time-10;
     Task task=command.advancing&&!command.engaged&&!supporting?Task::Advance:Task::Hold;
     Vec3 destination=command.advancing?command.mission:assembly;
-    if(command.engaged||supporting)destination=nco?nco->position:officer.position;
+    // Plan 023 B (3.4): in contact the group goes to the advantage its forward men hold, the
+    // leader with it; generation 19 moved only the riflemen's anchor and the corporal pushed
+    // on into a machine gun alone.
+    if(command.engaged||supporting)destination=command.stations.comeUp?command.stations.forwardCentre:nco?nco->position:officer.position;
+    // Plan 023 E: the fall-back is a place to hold, not a march objective the squad has already
+    // reached: kind Hold, so the allocator gives each man a firing position where the ground bears
+    // and leaves him where he stands where it does not.
+    if(command.fallbackAt>=0&&command.ableRiflemen<GroupConstants.shatteredRiflemen&&
+        !command.hasWaypoint&&!command.engaged&&!supporting){task=Task::Hold;destination=command.mission;}
+    // Plan 023 E: attached, the squad's place is its host's and it goes there. The platoon Support
+    // task it is given would otherwise hold it exactly where it was left standing.
+    if((command.attachedTo>=0||command.mergedInto>=0)&&command.advancing&&!command.hasWaypoint&&!command.engaged)
+        {task=Task::Advance;destination=command.mission;}
     if(command.hasWaypoint&&command.movementBlock.reason==MoveBlock::None) {
         destination=command.waypoint;
         task=command.maneuver==Maneuver::PullBack?Task::PullBack:command.maneuver==Maneuver::Press?Task::Flank:Task::Flank;
@@ -328,15 +405,73 @@ std::vector<PlannedOrder> PlanSquad(const Soldier& officer,const std::vector<Sol
             for(auto& order:orders)if(order.recipient==support->id){order.task=Task::PullBack;order.position=destination+Vec3{-sign*5,3};}
     }
     if(command.movementBlock.reason!=MoveBlock::None){task=Task::Hold;destination=nco?nco->position:officer.position;}
+    // Plan 023 C (3.6, the middle option, behind config.orderPace): one derivation. The objective
+    // his men's stations belong to is fixed HERE, as the leader is given it, instead of being read
+    // back off his order two message hops and a relay cycle later. He does not stand and wait, and
+    // he does not run ahead: he steps off AT ONCE at leadSlowPace and takes the full pace only once
+    // his men are with him (half his able riflemen within leadCloseDistance along the axis, or
+    // leadSlowSeconds passed); if his lead over the group's centre grows past leadMaxLead he drops
+    // back to the slow pace until it closes. The user's later ruling that shared code may carry a
+    // pace replaced the plan's own named fallback here (a short leg that never let him outrun his
+    // group at all): measurement never got the chance to prefer it, since the real pace was
+    // authorised before this stage was built. Off, this whole derivation is skipped and the
+    // objective is read back off his order every cycle exactly as stage B2 did, which is what
+    // --no-order-pace needs to reproduce it bit for bit.
+    float pace=1.f;
+    if(nco&&config.orderPace&&!config.foundations&&!command.stations.bound) {
+        auto& st=command.stations;
+        const StationKind kind=task==Task::Hold?StationKind::Hold:StationKind::Halt;
+        // A group that is holding in contact has not been given anywhere to go: its objective is
+        // the place its leader was ORDERED to, which stands still, and not the ground he happens
+        // to be standing on, which drifts and would re-lay the group's stations as he shuffles.
+        const Vec3 fixed=kind==StationKind::Hold&&nco->assignment.task!=Task::None?nco->assignment.position:destination;
+        if(st.kind!=kind||Distance(st.objective,fixed)>GroupConstants.anchorMove) {
+            st.kind=kind;st.objective=fixed;++st.serial;st.objectiveAt=time;
+        }
+        Vec3 mean{};int count=0;
+        for(const auto& s:friends)if(s.Active()&&!IsPlatoonStaff(s)&&s.id!=officer.id&&s.id!=nco->id&&
+            (!support||s.id!=support->id)&&!KnowsWounded(officer,s)){mean=mean+s.position;++count;}
+        if(count) {
+            const Vec3 centre=mean*(1.f/count);
+            const GroupAxis axis=MakeGroupAxis(officer,centre,destination,sector,time);
+            int closed=0;
+            for(const auto& s:friends)if(s.Active()&&!IsPlatoonStaff(s)&&s.id!=officer.id&&s.id!=nco->id&&
+                (!support||s.id!=support->id)&&!KnowsWounded(officer,s))
+                closed+=std::abs(AxisProgress(axis,s.position)-AxisProgress(axis,nco->position))<=GroupConstants.leadCloseDistance;
+            const bool closedUp=closed*2>=count||(st.objectiveAt>=0&&time-st.objectiveAt>=GroupConstants.leadSlowSeconds);
+            // His OWN lead over the group, not his ordered destination's: an advance order always
+            // points well past leadMaxLead (that is what "advance" means), so measuring the goal
+            // here made every fresh leg start slow and mostly stay slow, tripling close time on
+            // some maps for no behavioural reason the plan asked for. What "grows during a move"
+            // means is where he actually stands now.
+            const float ahead=AxisProgress(axis,nco->position)-AxisProgress(axis,centre);
+            if(!closedUp||ahead>GroupConstants.leadMaxLead)pace=GroupConstants.leadSlowPace;
+        }
+    }
     if(nco) {
         Task ownTask=task;Vec3 ownPosition=destination;
         if(command.teamPlan.bounding){auto order=TeamOrder(*nco,command.teamPlan,sector);ownTask=order.action==Action::Advance?Task::BoundMove:Task::BoundCover;ownPosition=order.goal;}
         assign(*nco,ownTask,ownPosition,sector);
-        orders.back().teamPlan=command.teamPlan;
+        orders.back().teamPlan=command.teamPlan;orders.back().pace=pace;
     }
-    if(!nco||KnowsWounded(officer,*nco))for(const auto& s:friends)if(s.Active()&&s.id!=officer.id&&(!nco||s.id!=nco->id)&&(!support||s.id!=support->id))
-        {if(InWindowTeam(command.teamPlan,s.id)){auto window=TeamOrder(s,command.teamPlan,sector);assign(s,Task::Window,window.goal,sector);}
-        else assign(s,task,task==Task::Hold&&command.engaged?s.position:destination+Vec3{0,float(s.id-base-4)*1.2f},sector);}
+    // Only the "someone else can still lead" case needs this: with no leader at all, the
+    // corporal is folded into the ordinary sergeant-led fallback below like everyone else.
+    if(nco&&corporal&&corporal->id!=nco->id)assign(*corporal,task,destination,sector);
+    // Plan 023 A (3.8): with nobody left in the rifle group to lead it, the squad's own officer
+    // leads it, through the same station record and the same allocator as the relay (which now
+    // runs from him as well); the grid offset is only the last resort when the ground offers
+    // nothing. Without it these men had no call-up rule at all.
+    std::vector<Vec3> haltTaken{destination};
+    if((!nco||KnowsWounded(officer,*nco))&&command.mergedInto<0)for(const auto& s:friends)if(s.Active()&&s.id!=officer.id&&(!nco||s.id!=nco->id)&&(!support||s.id!=support->id))
+        {const int slot=s.id%SquadSize;const auto& st=command.stations;
+        if(InWindowTeam(command.teamPlan,s.id)){auto window=TeamOrder(s,command.teamPlan,sector);assign(s,Task::Window,window.goal,sector);}
+        // A running bound still owns the destination, so each man keeps the station fixed for him there.
+        else if(st.bound&&st.held[slot]&&task!=Task::Hold)assign(s,task,st.station[slot],sector);
+        else {Vec3 place;
+            const bool halted=st.kind==StationKind::Halt&&st.held[slot]&&st.issued[slot]==st.serial&&!(task==Task::Hold&&command.engaged);
+            if(halted){haltTaken.push_back(st.station[slot]);assign(s,task,st.station[slot],sector);}
+            else if(!(task==Task::Hold&&command.engaged)&&GroupStation(officer,s,StationKind::Halt,destination,sector,haltTaken,map,time,place,GroupConstants.standOff)){haltTaken.push_back(place);assign(s,task,place,sector);}
+            else assign(s,task,task==Task::Hold&&command.engaged?s.position:destination+Vec3{0,float(s.id-base-4)*1.2f},sector);}}
     // The officer follows behind the assault group while the NCO executes the advance.
     Vec3 rear=command.hasWaypoint&&command.maneuver==Maneuver::PullBack?destination+Vec3{-sign*7,-3}:
         command.advancing&&nco?nco->position+Vec3{-sign*5,3}:assembly+Vec3{-sign*3,0};
@@ -381,7 +516,24 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         if(!recipient.Active()||(!sender.Active()&&message.kind!=CommandMessage::Kind::TaskStatus)||sender.team!=recipient.team||(sender.squad!=recipient.squad&&message.kind!=CommandMessage::Kind::Lane&&message.kind!=CommandMessage::Kind::Delivery&&message.kind!=CommandMessage::Kind::SupportSector&&message.kind!=CommandMessage::Kind::SupportProgress))continue;
         if(message.kind==CommandMessage::Kind::Order) {
             const auto& cmd=f.command[recipient.squad];
-            bool authorised=(IsPlatoonStaff(recipient)&&IsPlatoonStaff(sender))||sender.id==cmd.leader||(sender.role==Role::Corporal&&cmd.leader>=0&&sender.id!=recipient.id);
+            bool authorised=(IsPlatoonStaff(recipient)&&IsPlatoonStaff(sender))||sender.id==cmd.leader;
+            // Plan 018 gen18b: a relay order is authorised from whoever currently leads the
+            // rifle group (the corporal, or his recursive successor once known wounded), not
+            // from the corporal's role alone, checked live since the message was queued.
+            if(!authorised&&cmd.leader>=0&&sender.squad==recipient.squad&&sender.id!=recipient.id) {
+                std::vector<Soldier> squad;for(const auto& s:f.soldiers)if(s.squad==sender.squad&&!IsPlatoonStaff(s))squad.push_back(s);
+                const Soldier* rifleLeader=RifleGroupLeader(f.soldiers[cmd.leader],squad,cmd.support);
+                authorised=rifleLeader&&rifleLeader->id==sender.id;
+            }
+            // Plan 023 E3 (the user's merge ruling): the host squad's leader, and whoever leads its
+            // rifle group, may place the men of a squad merged into his. That is what a merge is:
+            // the joining squad keeps its identity for reports and succession, its men obey him.
+            if(!authorised&&cmd.mergedInto==sender.squad&&cmd.mergedInto>=0&&f.command[sender.squad].leader>=0) {
+                const auto& host=f.command[sender.squad];
+                std::vector<Soldier> hostSquad;for(const auto& s:f.soldiers)if(s.squad==sender.squad&&!IsPlatoonStaff(s))hostSquad.push_back(s);
+                const Soldier* lead=RifleGroupLeader(f.soldiers[host.leader],hostSquad,host.support);
+                authorised=sender.id==host.leader||(lead&&lead->id==sender.id);
+            }
             if(!authorised||message.assignment.serial<=recipient.assignment.serial)continue;
             PendingReaction reaction;reaction.kind=ReactionKind::Order;reaction.source=sender.id;reaction.order=message.assignment;
             QueueReaction(recipient,reaction,f.time,rt.reactions);
@@ -433,8 +585,8 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         }
     }
     ProcessReactions(f,rt.reactions,events);
-    rt.platoon.geometryViews=rt.geometryViews;UpdatePlatoon(f,map,config,rt.platoon,rt.reactions,events);
-    auto send=[&](int sender,int recipient,Task task,Vec3 position,Vec3 sector,const TeamPlan& plan=TeamPlan{},const CoverPosition* slot=nullptr,ExecutionContract execution=ExecutionContract{}) {
+    rt.platoon.geometryViews=rt.geometryViews;rt.platoon.fixedDefender=rt.fixedDefender;UpdatePlatoon(f,map,config,rt.platoon,rt.reactions,events);
+    auto send=[&](int sender,int recipient,Task task,Vec3 position,Vec3 sector,const TeamPlan& plan=TeamPlan{},const CoverPosition* slot=nullptr,ExecutionContract execution=ExecutionContract{},float pace=1.f) {
         const bool recovery=(config.recoveryFixture||config.foundations)&&f.soldiers[recipient].team!=rt.fixedDefender;
         GoalIntent intent;
         if(config.foundations){
@@ -457,15 +609,18 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         const auto& unit=f.soldiers[recipient];
         // Finish a short movement commitment before refreshing a moving formation
         // anchor. Emergency withdrawals and lane clearance can still interrupt.
-        if(!recovery&&last.issuer==sender&&last.task==task&&last.teamPlan.serial==plan.serial&&
+        // Plan 023 C: a pace change is part of the order's identity too (last.pace==pace), or the
+        // leader's slow start/full pace transition would never reach him once his destination
+        // stopped moving: both dedupe checks below would just keep silently discarding it.
+        if(!recovery&&last.issuer==sender&&last.task==task&&last.teamPlan.serial==plan.serial&&last.pace==pace&&
             task!=Task::PullBack&&task!=Task::ClearLane&&f.time-last.issuedAt<8&&
             unit.understoodSuppression<0.52f&&Distance(unit.position,last.position)>1.5f&&
             Distance(last.position,position)>2&&!FindPath(map,unit.position,last.position).empty())return;
-        if(!recovery&&last.issuer==sender&&last.task==task&&Distance(last.position,position)<2&&Distance(last.sector,sector)<6&&last.teamPlan.serial==plan.serial)return;
+        if(!recovery&&last.issuer==sender&&last.task==task&&Distance(last.position,position)<2&&Distance(last.sector,sector)<6&&last.teamPlan.serial==plan.serial&&last.pace==pace)return;
         Assignment order;
         if(config.drills){const auto& p=f.command[f.soldiers[sender].squad].battleDrill;order.drillInstance=p.instance;order.element=p.elements[recipient%SquadSize];order.baseOfFire=order.element>=0&&!p.movers[recipient%SquadSize];order.areaMin=p.areaMin;order.areaMax=p.areaMax;order.areaRoute=p.platoonArea?p.acceptedDirective.corridor:nullptr;order.areaRouteRadius=p.platoonArea?p.acceptedDirective.areaRouteRadius:0;order.areaDiscCenter=p.action.objective;order.areaDiscRadius=(!p.platoonArea&&(p.kind==BattleDrill::SupportByFire||p.kind==BattleDrill::SquadAttack||p.action.closureFallback))?60.f:0.f;if(p.platoonArea&&p.acceptedDirective.areaRouteRadius>0){order.areaDiscCenter=p.acceptedDirective.areaDiscCenter;order.areaDiscRadius=60;}}
         order.execution=execution;order.intent=intent;order.geometry=orderMap.revision;order.target=plan.targetEnemy;order.task=task;order.issuer=sender;order.serial=rt.nextSerial++;
-        order.position=position;order.sector=sector;if(slot){order.hasSlot=true;order.slot=*slot;}if(recovery){order.id=TypedController(config)&&retainedTask?last.id:uint64_t(order.serial);order.statusAt=f.time;}order.teamPlan=plan;order.issuedAt=f.time;last=order;
+        order.position=position;order.sector=sector;order.pace=pace;if(slot){order.hasSlot=true;order.slot=*slot;}if(recovery){order.id=TypedController(config)&&retainedTask?last.id:uint64_t(order.serial);order.statusAt=f.time;}order.teamPlan=plan;order.issuedAt=f.time;last=order;
         TraceOrder(rt.diagnostics,f.soldiers[recipient],order,f.time,"order_issued");
         log(EventKind::OrderIssued,sender,recipient,std::string(Name(sender))+" orders "+Name(recipient)+": "+TaskName(task));
         if(Distance(requested,position)>0.1f)log(EventKind::Decision,sender,recipient,std::string(Name(sender))+": adjusts blocked waypoint for "+Name(recipient));
@@ -507,11 +662,86 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
     }
     // Attached command staff follow their host squad, fight and seek cover, but
     // are not included in its assault formation or subordinate command chain.
+    // Plan 023 D2 (3.9, the user's ruling of 21 September: "the platoon officer fights with the
+    // leading squad"): a legacy attacking platoon's staff hold stations like anybody else. The
+    // OFFICER takes one in the rifle group of the leading squad (the platoon's mover, else the
+    // squad its main effort is with, else his own host squad), from the same allocator, at that
+    // group's stand-off and never nearer the enemy he knows than the group's own lead station; he
+    // takes the same fire as any rifleman there. The platoon SERGEANT keeps the rear, staffBehind
+    // behind the group's rear station along its axis, in cover the enemy cannot look into. Each is
+    // allocated once and moves only when the group's objective (or the leading squad) changes; the
+    // covered path is the shared movement code's, and an order he holds is never re-sent. The typed
+    // controllers and the static defenders keep the 4 s offset loop exactly as it was.
     for(auto& s:f.soldiers)if(s.Active()&&IsPlatoonStaff(s)&&f.time>=rt.nextNco[s.id]) {
-        rt.nextNco[s.id]=f.time+4;Vec3 anchor{};int count=0;
-        for(const auto& ally:f.soldiers)if(ally.Active()&&ally.squad==s.squad&&!IsPlatoonStaff(ally)){anchor=anchor+ally.position;++count;}
-        if(count){anchor=anchor*(1.f/count);Vec3 pos=anchor+Vec3{s.team?7.f:-7.f,s.role==Role::Lieutenant?-3.f:3.f};
-            send(s.id,s.id,Task::Hold,pos,anchor+Vec3{s.team?-30.f:30.f,0});}
+        const bool ownStation=!TypedController(config)&&!config.foundations&&!config.recoveryFixture&&s.team!=rt.fixedDefender;
+        rt.nextNco[s.id]=f.time+(ownStation?2.f:4.f);
+        if(!ownStation) {
+            Vec3 anchor{};int count=0;
+            for(const auto& ally:f.soldiers)if(ally.Active()&&ally.squad==s.squad&&!IsPlatoonStaff(ally)){anchor=anchor+ally.position;++count;}
+            if(count){anchor=anchor*(1.f/count);Vec3 pos=anchor+Vec3{s.team?7.f:-7.f,s.role==Role::Lieutenant?-3.f:3.f};
+                send(s.id,s.id,Task::Hold,pos,anchor+Vec3{s.team?-30.f:30.f,0});}
+            continue;
+        }
+        const auto& platoon=f.platoon[s.team];
+        auto leads=[&](int squad){return squad>=s.team*SquadsPerTeam&&squad<(s.team+1)*SquadsPerTeam&&f.command[squad].leader>=0;};
+        const int lead=leads(platoon.flankSquad)?platoon.flankSquad:leads(platoon.mainEffortSquad)?platoon.mainEffortSquad:
+            leads(platoon.supportSquad)?platoon.supportSquad:s.squad;
+        const auto& host=f.command[lead];const auto& group=host.stations;
+        Vec3 mean{};int count=0;
+        for(const auto& ally:f.soldiers)if(ally.Active()&&ally.squad==lead&&!IsPlatoonStaff(ally)&&ally.id!=host.leader&&ally.id!=host.support){mean=mean+ally.position;++count;}
+        if(!count)continue;
+        const Vec3 centre=mean*(1.f/count);
+        const Vec3 objective=group.serial&&Distance(group.objective,centre)<GroupConstants.axisRange?group.objective:centre;
+        // His own picture and nothing else: what he has seen himself and the reports he was sent.
+        const auto known=WithTracks(s,f.time);
+        const Contact* near=nullptr;float range=1e9f;
+        for(const auto& ct:known.contacts)if(ct.known&&Distance(ct.position,centre)<range){range=Distance(ct.position,centre);near=&ct;}
+        const Vec3 sector=near?near->position:platoon.plans?platoon.sector:centre+Vec3{s.team?-30.f:30.f,0};
+        const GroupAxis axis=MakeGroupAxis(s,centre,objective,sector,f.time);
+        // The group's own line: its lead station is as far forward as the officer goes, its rear
+        // station is what the platoon sergeant keeps behind.
+        float leadRange=near?Distance(near->position,objective):0;
+        Vec3 rear=objective;float rearProgress=AxisProgress(axis,objective);
+        std::vector<Vec3> taken;
+        for(int slot=2;slot<SquadSize;++slot) {
+            const int id=lead*SquadSize+slot;
+            if(!group.held[slot]||id==host.support||IsPlatoonStaff(f.soldiers[id]))continue;
+            taken.push_back(group.station[slot]);
+            if(near)leadRange=std::min(leadRange,Distance(near->position,group.station[slot]));
+            const float progress=AxisProgress(axis,group.station[slot]);
+            if(progress<rearProgress){rearProgress=progress;rear=group.station[slot];}
+        }
+        auto& record=f.command[s.squad].stations;
+        const int slot=s.id%SquadSize,index=s.role==Role::Lieutenant?0:1;
+        const bool officer=index==0;
+        // A halt station at the group's objective whatever kind the group's own are: a bound's
+        // geometry would seat the officer inside the riflemen's own slots, and a hold's is searched
+        // around the man himself, which is how the staff came to stand in the back in the first place.
+        const Vec3 anchor=officer?objective:rear-axis.direction*GroupConstants.staffBehind;
+        // A new objective whose station comes out the same is the same station (3.5): while the
+        // place he holds still belongs to the group's objective he keeps it and is not re-ordered,
+        // so an advance that creeps forward in five-metre steps does not walk him with it.
+        bool held=record.held[slot]&&record.staffLead[index]==lead&&
+            (record.staffSerial[index]==group.serial||Distance(record.station[slot],anchor)<=GroupConstants.haltRadius);
+        // A place he has reached and that an enemy now overlooks is given up, as a rifleman's is;
+        // one he is still walking to is not re-picked under him (3.1: re-seating is where the
+        // lineage's wounds come from, and a staff order in flight is worth more than a better place).
+        if(held&&officer&&Distance(s.position,record.station[slot])<BoundConstants.slotArrival&&
+            !StationCovered(s,map,record.station[slot],f.time))held=false;
+        if(held)record.staffSerial[index]=group.serial;
+        if(!held) {
+            Vec3 place=anchor;
+            if(!GroupStation(s,s,officer?StationKind::Halt:StationKind::Staff,anchor,sector,taken,map,f.time,place,
+                officer?std::max(GroupConstants.standOff,group.standOffFloor):0.f,officer?leadRange:0.f)&&
+                !ResolveOrderPosition(map,s.position,anchor,place))continue;
+            record.station[slot]=place;record.held[slot]=true;record.issued[slot]=0;
+            record.staffLead[index]=lead;record.staffSerial[index]=group.serial;
+        }
+        const Vec3 place=record.station[slot];
+        const Task task=Distance(s.position,place)>.5f?Task::Advance:Task::Hold;
+        const auto& sent=rt.lastSent[s.id];
+        if(sent.issuer!=s.id||sent.task!=task||Distance(sent.position,place)>1.f||Distance(sent.sector,sector)>GroupConstants.sectorChange)
+            send(s.id,s.id,task,place,sector);
     }
     // Useful-fire dependencies need prompt change reports, independently of the
     // periodic situation summary. Every hop still pays transport and reaction delay.
@@ -656,7 +886,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             UpdateSquadPlan(f.soldiers[cmd.leader],friends,knownMap,config,approaches,claimed,cmd,rt.progress[team],rt.diagnostics,f.time);
             rt.nextPlan[team]=f.time+(TypedController(config)?1.f:cmd.opportunitySince>=0?1.f:cmd.hasWaypoint?2.f:8.f);
             for(const auto& order:PlanSquad(f.soldiers[cmd.leader],friends,knownMap,config,cmd,f.time)){
-                send(cmd.leader,order.recipient,order.task,order.position,order.sector,order.teamPlan,order.hasSlot?&order.slot:nullptr,order.execution);
+                send(cmd.leader,order.recipient,order.task,order.position,order.sector,order.teamPlan,order.hasSlot?&order.slot:nullptr,order.execution,order.pace);
                 if(config.drills)cmd.battleDrill.expected[order.recipient%SquadSize]=rt.lastSent[order.recipient].id;
                 if(config.cognition)cmd.accepted.expected[order.recipient%SquadSize]=rt.lastSent[order.recipient].id;
             }
@@ -681,19 +911,117 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         // Foundations goals are assigned to every member by PlanSquad. The old
         // periodic corporal formation writer must not replace those destinations.
         if(config.foundations)continue;
-        int nco=team*SquadSize+1;auto& sergeant=f.soldiers[nco];
-        if(nco==cmd.leader||!sergeant.Active()||sergeant.assignment.task==Task::None||f.time<rt.nextNco[nco])continue;
-        rt.nextNco[nco]=f.time+2;
-        if(sergeant.assignment.task==Task::RearGuard){sergeant.regrouping=false;continue;}
+        // The static defenders are placed by the fixed-defender branch above and by nothing else:
+        // they hold their authored slot and never manoeuvre. The relay below is the rifle group's,
+        // and its firing-position search used to reach them too (the shared clamp then threw the
+        // order away, but a defender could still be sent shelter-to-peek by it).
+        if(team/SquadsPerTeam==rt.fixedDefender)continue;
         std::vector<Soldier> squad;std::vector<Vec3> rearReservations;
         for(const auto& s:f.soldiers)if(s.squad==team&&!IsPlatoonStaff(s))squad.push_back(s);
+        // Plan 018 gen18b: this relay used to be fixed to the corporal's own slot, so a wounded
+        // corporal who had not yet been ordered to the rear kept steering the rest of the rifle
+        // group toward him (the regroup mean, the lagging test, the halt anchor) all the way
+        // there. It now runs from whoever currently leads the rifle group.
+        // Plan 023 A (3.8): the relay never goes dark. It runs from whoever leads the rifle group
+        // and, when nobody in it can lead any more, from the squad's own officer, through the same
+        // record and the same allocator as PlanSquad's fallback: one code path, no grid with no
+        // call-up rule behind it.
+        const Soldier* ncoPtr=RifleGroupLeader(f.soldiers[cmd.leader],squad,cmd.support);
+        const int own=ncoPtr?ncoPtr->id:cmd.leader;
+        // Plan 023 E3: a merged squad's men are placed by the HOST's rifle group leader, out of
+        // THEIR own station record (one record per squad, so no slot is ever claimed twice) and
+        // with the host's stations already taken. Their own leader does not place them; the cadence
+        // stays this squad's own, so the host's relay cycle is not consumed twice.
+        int nco=own;std::vector<Vec3> hostTaken;
+        const int mergeHost=cmd.mergedInto;
+        if(mergeHost>=0&&mergeHost/SquadsPerTeam==team/SquadsPerTeam&&f.command[mergeHost].leader>=0) {
+            const auto& host=f.command[mergeHost];
+            std::vector<Soldier> hostSquad;for(const auto& s:f.soldiers)if(s.squad==mergeHost&&!IsPlatoonStaff(s))hostSquad.push_back(s);
+            const Soldier* lead=RifleGroupLeader(f.soldiers[host.leader],hostSquad,host.support);
+            if(lead){nco=lead->id;for(int j=0;j<SquadSize;++j)if(host.stations.held[j])hostTaken.push_back(host.stations.station[j]);}
+        }
+        auto& sergeant=f.soldiers[nco];
+        const Soldier& woundRef=nco==own?sergeant:f.soldiers[cmd.leader];
+        if(sergeant.assignment.task==Task::None||f.time<rt.nextNco[own])continue;
+        rt.nextNco[own]=f.time+2;
+        if(sergeant.assignment.task==Task::RearGuard){sergeant.regrouping=false;continue;}
         Vec3 mean{};int count=0;
-        for(int i=team*SquadSize+2;i<(team+1)*SquadSize;++i)if(i!=cmd.support&&f.soldiers[i].Active()&&!IsPlatoonStaff(f.soldiers[i])&&!KnowsWounded(sergeant,f.soldiers[i])&&!InWindowTeam(sergeant.assignment.teamPlan,i)) {mean=mean+f.soldiers[i].position;++count;}
-        sergeant.regrouping=!sergeant.assignment.teamPlan.bounding&&count>0&&Distance(sergeant.position,mean*(1.f/count))>(sergeant.regrouping?7.f:10.f);
-        for(int i=team*SquadSize+2;i<(team+1)*SquadSize;++i)if(i!=cmd.support&&f.soldiers[i].Active()&&!IsPlatoonStaff(f.soldiers[i])) {
-            if(KnowsWounded(sergeant,f.soldiers[i])) {
-                Vec3 rear=RearPosition(sergeant,f.soldiers[i],squad,rt.geometryViews?(*rt.geometryViews)[nco]:map,f.time,rearReservations);rearReservations.push_back(rear);
-                send(nco,i,Task::RearGuard,rear,sergeant.assignment.sector);continue;
+        for(int i=team*SquadSize+2;i<(team+1)*SquadSize;++i)if(i!=cmd.support&&i!=nco&&f.soldiers[i].Active()&&!IsPlatoonStaff(f.soldiers[i])&&!KnowsWounded(woundRef,f.soldiers[i])&&!InWindowTeam(sergeant.assignment.teamPlan,i)) {mean=mean+f.soldiers[i].position;++count;}
+        // The corporal leading a leader-ordered manoeuvre (Flank/PullBack/BoundMove) is the point of
+        // the advance, not the formation anchor; forcing him to Hold on his own committed order so he
+        // can "regroup" with stragglers he cannot help move just stalls the manoeuvre forever.
+        const bool committedManeuver=sergeant.assignment.task==Task::Flank||sergeant.assignment.task==Task::PullBack||sergeant.assignment.task==Task::BoundMove;
+        const Vec3 centre=count?mean*(1.f/count):sergeant.position;
+        // Plan 023 A (3.1): the group's objective, and its identity. A running bound owns its
+        // destination; a group holding in contact fights where it stands; anything else is a halt
+        // on the place the leader was ORDERED to, never on the leader as he walks. The stations
+        // are laid out once per objective and the objective changes only when it really has.
+        auto& st=cmd.stations;
+        // A running bound owns its destination (plan 021 A) whatever the switch. Otherwise, with
+        // config.orderPace on, the kind and the objective are the plan's own, fixed when the
+        // leader was given his order (3.6): the relay issues them, it does not re-derive them from
+        // the order he happens to be carrying. Off, or before PlanSquad has ever fixed one
+        // (objectiveAt still unset: a squad whose planning is held off, as some mechanism fixtures
+        // do to isolate the relay), this reproduces stage B2's own continuous re-derivation from
+        // the leader's live order exactly, which --no-order-pace needs and a bare relay still works
+        // without one plan cycle ever having run.
+        const bool bootstrap=!config.orderPace||st.objectiveAt<0;
+        StationKind kind;Vec3 objective;
+        if(st.bound){kind=cmd.hasWaypoint||sergeant.assignment.task!=Task::Hold?StationKind::Bound:StationKind::Hold;objective=st.objective;}
+        else if(!bootstrap){kind=st.kind;objective=st.objective;}
+        else {kind=sergeant.assignment.task==Task::Hold?StationKind::Hold:StationKind::Halt;objective=sergeant.assignment.position;}
+        if(st.kind!=kind||(!st.bound&&bootstrap&&Distance(st.objective,objective)>GroupConstants.anchorMove)){st.kind=kind;st.objective=objective;++st.serial;}
+        // Plan 023 B (3.2): the axis, and where the group's line lies along it. The rear-most
+        // station is what a man can be behind; the lead station (the leader's own ordered place
+        // until stage C gives him one of his own) is what he can be ahead of.
+        const GroupAxis axis=MakeGroupAxis(sergeant,centre,objective,sergeant.assignment.sector,f.time);
+        // The line is the objective's own neighbourhood: a station a man has taken up away from it
+        // (a hold where he fights, a place won in front) is not what the rest of the group is
+        // measured against, or the man farthest back would define "behind" as where he stands.
+        float rear=AxisProgress(axis,objective),lead=AxisProgress(axis,sergeant.assignment.position);
+        for(int j=0;j<SquadSize;++j)if(st.held[j]&&st.issued[j]==st.serial&&Distance(st.station[j],objective)<=GroupConstants.haltRadius){
+            const float p=AxisProgress(axis,st.station[j]);rear=std::min(rear,p);lead=std::max(lead,p);}
+        // The leader waits for men who are BEHIND him on the axis, not for men who are merely far
+        // away: a group that has pushed past him is not a group to regroup with (stage A round 1).
+        sergeant.regrouping=!committedManeuver&&!sergeant.assignment.teamPlan.bounding&&count>0&&
+            AxisProgress(axis,centre)<AxisProgress(axis,sergeant.position)-GroupConstants.behindMargin;
+        // Plan 023 C (3.7, user ruling 2, behind config.orderPace): when the group leaves a
+        // position in contact, at most coverPair men whose ground bears on an enemy it knows stay
+        // and fire on him; they follow when the group has arrived or after coverPairSeconds.
+        // Nobody stays without a line of fire, and while they cover the call-up of 3.3 leaves them
+        // alone. The pair is the two nearest the enemy they can see, by roster slot on a tie: no
+        // draw is made. Off, leaving is never true, so nobody is ever picked to cover, which is
+        // what --no-order-pace needs to reproduce stage B2 exactly.
+        if(st.serial!=st.coverSerial) {
+            const bool leaving=config.orderPace&&st.coverSerial&&cmd.engaged&&kind!=StationKind::Hold;
+            st.coverSerial=st.serial;st.covering.fill(false);st.coverUntil=-1;
+            if(leaving) {
+                std::array<float,SquadSize> rank{};rank.fill(1e9f);
+                for(int i=team*SquadSize+2;i<(team+1)*SquadSize;++i) {
+                    const int slot=i%SquadSize;const auto& man=f.soldiers[i];
+                    if(i==cmd.support||i==nco||!man.Active()||IsPlatoonStaff(man)||KnowsWounded(woundRef,man))continue;
+                    if(!st.held[slot]||Distance(man.position,st.station[slot])>BoundConstants.slotArrival)continue;
+                    if(!StationBears(sergeant,(rt.geometryViews?(*rt.geometryViews)[nco]:map),man.position,f.time))continue;
+                    float nearest=1e9f;const auto known=WithTracks(sergeant,f.time);
+                    for(const auto& ct:known.contacts)if(ct.known&&Distance(ct.position,man.position)<nearest){nearest=Distance(ct.position,man.position);st.coverSector[slot]=ct.position;}
+                    rank[slot]=nearest;
+                }
+                for(int taken=0;taken<GroupConstants.coverPair;++taken) {
+                    int best=-1;
+                    for(int slot=0;slot<SquadSize;++slot)if(rank[slot]<1e9f&&(best<0||rank[slot]<rank[best]))best=slot;
+                    if(best<0)break;
+                    st.covering[best]=true;rank[best]=1e9f;st.coverUntil=f.time+GroupConstants.coverPairSeconds;
+                }
+            }
+        }
+        Vec3 forwardSum{};int forwardCount=0;
+        // Plan 023 B2: what the relay may not send a man inside of this cycle. The forward men's
+        // own range is the floor: the group extends the line beside and behind them, never past.
+        const float standOff=std::max(GroupConstants.standOff,st.standOffFloor);
+        for(int i=team*SquadSize+2;i<(team+1)*SquadSize;++i)if(i!=cmd.support&&i!=nco&&f.soldiers[i].Active()&&!IsPlatoonStaff(f.soldiers[i])) {
+            if(KnowsWounded(woundRef,f.soldiers[i])) {
+                Vec3 rearPlace=RearPosition(woundRef,f.soldiers[i],squad,rt.geometryViews?(*rt.geometryViews)[nco]:map,f.time,rearReservations);rearReservations.push_back(rearPlace);
+                send(nco,i,Task::RearGuard,rearPlace,sergeant.assignment.sector);continue;
             }
             const auto& directive=sergeant.assignment.teamPlan;
             if(InWindowTeam(directive,i)||directive.bounding) {
@@ -702,16 +1030,193 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
                 Vec3 clear=ClearReportedFireLane(sergeant,f.soldiers[i],order.goal,rt.geometryViews?(*rt.geometryViews)[nco]:map,f.time);
                 send(nco,i,Distance(clear,order.goal)>0.5f?Task::ClearLane:childTask,clear,sergeant.assignment.sector,directive);continue;
             }
-            if(sergeant.assignment.task==Task::Hold) {
-                Vec3 desired=UsefulFiringPosition(sergeant,f.soldiers[i],map,f.time);
-                Vec3 clear=ClearReportedFireLane(sergeant,f.soldiers[i],desired,map,f.time);
-                send(nco,i,Distance(clear,desired)>.5f?Task::ClearLane:Distance(desired,f.soldiers[i].position)>.5f?Task::Overwatch:Task::Hold,clear,sergeant.assignment.sector);continue;
+            const Map& relayMap=rt.geometryViews?(*rt.geometryViews)[nco]:map;
+            const auto& man=f.soldiers[i];const int slot=i%SquadSize;
+            // Plan 023 B (3.2/3.3): where he stands along the group's axis, and whether he has
+            // anything to do. Idle is the plan's: no shot of his own, no fire solution, not under
+            // effective fire. Raw distance to the leader is gone from the relay.
+            const float progress=AxisProgress(axis,man.position);
+            const bool behind=progress<rear-GroupConstants.behindMargin;
+            const bool ahead=progress>lead+GroupConstants.aheadMargin;
+            const bool idle=f.time-man.lastShotAt>GroupConstants.callUpSeconds&&
+                man.understoodSuppression<BoundConstants.stragglerSuppression&&
+                SelectFireSolution(man,relayMap,f.time).enemy<0;
+            // Plan 023 C (3.7): the covering pair holds what it has and keeps firing until the
+            // group is in or the ten seconds are up; then it takes its place at the new objective.
+            if(st.covering[slot]) {
+                const bool arrived=AxisProgress(axis,centre)>=AxisProgress(axis,objective)-GroupConstants.aheadMargin;
+                if(f.time>=st.coverUntil||arrived||!StationBears(sergeant,relayMap,man.position,f.time)){st.covering[slot]=false;st.issued[slot]=0;}
+                else {st.station[slot]=man.position;st.held[slot]=true;st.issued[slot]=st.serial;st.behindSince[slot]=-1;}
             }
-            const bool lagging=Distance(f.soldiers[i].position,sergeant.position)>(sergeant.regrouping?7.f:14.f);
-            Vec3 offset{(sergeant.team?1.f:-1.f)*float(i%2)*2.5f,float(i%SquadSize-4)*2.4f};
-            Vec3 target=(lagging?sergeant.position:sergeant.assignment.position)+offset;
-            Vec3 clear=ClearReportedFireLane(sergeant,f.soldiers[i],target,rt.geometryViews?(*rt.geometryViews)[nco]:map,f.time);
-            send(nco,i,Distance(clear,target)>0.5f?Task::ClearLane:lagging?Task::Rally:sergeant.assignment.task,clear,sergeant.assignment.sector,directive);
+            // Plan 023 A (3.1): a station is given up only for the plan's reasons. When it goes,
+            // he is given another AT ONCE: stage A left him standing on ground it had just judged
+            // exposed (long exposed spells 0.47 to 1.53 a battle), which is where its extra losses
+            // came from: the same fire, but finishing off men who had nowhere to be.
+            if(st.held[slot]&&st.issued[slot]==st.serial&&!StationValid(sergeant,man,squad,relayMap,st,slot,f.time)){st.held[slot]=false;st.issued[slot]=0;}
+            // Plan 021 A4 / 023 A: a station of a group in contact is a fighting position only
+            // while it bears on an enemy the squad knows. A man who is firing or under fire is
+            // never uprooted for it: he is fighting where he is.
+            const bool fighting=man.machineGun||man.understoodSuppression>GroupConstants.holdSuppression||
+                f.time-man.lastShotAt<GroupConstants.firedSeconds;
+            if(kind==StationKind::Hold&&st.held[slot]&&!fighting&&
+                !StationBears(sergeant,relayMap,st.station[slot],f.time)){st.held[slot]=false;st.issued[slot]=0;}
+            // Plan 023 B (3.3): a man who is AHEAD keeps what he has won, if it is a real position:
+            // forward on the axis, protected from the enemy the group knows, and bearing on him
+            // (generation 17: under a careless rule none of nine "forward holders" had a line).
+            // Ahead with no line, he is given the nearest bearing place around HIM, never sent back.
+            st.forward[slot]=false;
+            // Only ground he is actually standing on becomes his station: a walking man's place
+            // is not a position, and following him with it would issue an order a cycle.
+            if(ahead&&man.action!=Action::Advance) {
+                const bool bears=StationBears(sergeant,relayMap,man.position,f.time);
+                const bool covered=StationCovered(sergeant,relayMap,man.position,f.time);
+                if(bears&&(covered||fighting)) {
+                    st.station[slot]=man.position;st.held[slot]=true;st.issued[slot]=st.serial;
+                    st.forward[slot]=bears&&covered;
+                } else if(!fighting&&st.issued[slot]!=st.serial) {
+                    std::vector<Vec3> taken=hostTaken;
+                    for(int j=0;j<SquadSize;++j)if(j!=slot&&st.held[j]&&st.issued[j]==st.serial)taken.push_back(st.station[j]);
+                    Vec3 place{};
+                    if(GroupStation(sergeant,man,StationKind::Hold,man.position,sergeant.assignment.sector,taken,relayMap,f.time,place,standOff)) {
+                        st.station[slot]=place;st.held[slot]=true;st.issued[slot]=st.serial;
+                    }
+                }
+            }
+            if(st.issued[slot]!=st.serial) {
+                Vec3 place{};bool got=false;
+                // A man who is firing, under fire or just seated keeps the place he has, and so
+                // does one whose own ground bears on the enemy: his place becomes his station.
+                if(kind==StationKind::Hold) {
+                    if(fighting||StationBears(sergeant,relayMap,man.position,f.time)){place=man.position;got=true;}
+                    else if(man.assignment.task==Task::Overwatch&&f.time-man.assignment.activatedAt<GroupConstants.seatedSeconds){place=man.assignment.position;got=true;}
+                }
+                if(!got) {
+                    std::vector<Vec3> taken=hostTaken;
+                    if(kind!=StationKind::Hold)taken.push_back(objective);
+                    for(int j=0;j<SquadSize;++j)if(j!=slot&&st.held[j]&&st.issued[j]==st.serial)taken.push_back(st.station[j]);
+                    got=GroupStation(sergeant,man,kind,objective,sergeant.assignment.sector,taken,relayMap,f.time,place,standOff);
+                }
+                // Holding in contact, the ground he is on is his station when nothing better is
+                // within reach: a station is a fixed point, and "wherever he stands" is not one.
+                if(!got&&kind==StationKind::Hold){place=man.position;got=true;}
+                st.held[slot]=got;if(got)st.station[slot]=place;
+                st.issued[slot]=st.serial;
+            }
+            if(st.forward[slot]){forwardSum=forwardSum+man.position;++forwardCount;}
+            // The grid offset survives only as the last resort, on the objective, which no longer
+            // moves under the man: it is a fixed point like any other station.
+            const Vec3 grid=objective+Vec3{(sergeant.team?1.f:-1.f)*float(i%2)*2.5f,float(slot-4)*2.4f};
+            Vec3 target=st.held[slot]?st.station[slot]:kind==StationKind::Hold?man.position:grid;
+            // Plan 023 B (3.3): behind and idle for callUpSeconds, and not already on his way
+            // there, he is called up to HIS STATION, once. This is the whole call-up rule: the
+            // lagging test, the rally to the leader's live position and the 40 m straggler rule
+            // are gone with it, whatever task label he happens to idle under. "On his way" is
+            // about the place he is walking to, not about holding a station: a man with no
+            // covered station is walking to his place in the group like everybody else.
+            const bool onHisWay=AttackMovementTask(man.assignment.task)&&Distance(man.assignment.position,target)<2.f;
+            // Plan 023 C (3.7): the covering pair is left alone by the call-up while it covers.
+            if(behind&&!ahead&&idle&&!onHisWay&&!st.covering[slot]){if(st.behindSince[slot]<=0)st.behindSince[slot]=std::max(f.time,.001f);}
+            else st.behindSince[slot]=-1;
+            const bool called=st.behindSince[slot]>0&&f.time-st.behindSince[slot]>=GroupConstants.callUpSeconds;
+            // He is called up to a place WITH THE GROUP. Under a hold objective his station is the
+            // patch he is fighting from (3.1), so calling him up to it would be a no-op order.
+            if(called&&Distance(target,objective)>GroupConstants.haltRadius&&kind!=StationKind::Bound) {
+                std::vector<Vec3> taken=hostTaken;taken.push_back(objective);
+                for(int j=0;j<SquadSize;++j)if(j!=slot&&st.held[j]&&st.issued[j]==st.serial)taken.push_back(st.station[j]);
+                Vec3 place=objective;
+                GroupStation(sergeant,man,StationKind::Halt,objective,sergeant.assignment.sector,taken,relayMap,f.time,place,standOff);
+                st.station[slot]=place;st.held[slot]=true;st.issued[slot]=st.serial;target=place;
+            }
+            const Task want=st.covering[slot]?(Distance(target,man.position)>.5f?Task::Overwatch:Task::Hold):
+                called?Task::Rally:kind==StationKind::Hold?
+                (Distance(target,man.position)>.5f?Task::Overwatch:Task::Hold):sergeant.assignment.task;
+            // Plan 023 B (3.4): a forward man who is the group's foothold is told to watch the
+            // enemy overlooking the way up, so that his rounds are the covering fire the crossing
+            // waits on. Nothing else about his order changes: he is never recalled across it.
+            // Plan 023 C (3.7): a covering man is told to watch the enemy he was kept against, not
+            // the group's general sector, so his rounds are aimed fire and not a wide watch.
+            const Vec3 sector=st.covering[slot]?st.coverSector[slot]:st.foothold&&st.forward[slot]?st.footholdSector:sergeant.assignment.sector;
+            Vec3 clear=ClearReportedFireLane(sergeant,man,target,relayMap,f.time);
+            const Task task=Distance(clear,target)>0.5f?Task::ClearLane:want;
+            // Plan 023 A (3.5): one order at a time. The relay sends only when the identity of the
+            // group order (its station and task; rt.groupOrder records the objective it belongs
+            // to) differs from the one he carries; an order he has not taken up is repeated once
+            // the transport window has passed. A new objective whose station and task come out
+            // the same is the same order: re-sending it is the churn this replaces.
+            const auto& sent=rt.lastSent[i];
+            // The sector is part of the order's identity: a man judges his own cover against it.
+            // It follows the leader's latest contact, so it is compared as the direction it is and
+            // not as a point, or an unchanged order is re-sent every time the picture shifts.
+            const bool holds=sent.issuer==nco&&sent.task==task&&Distance(sent.position,clear)<1.f&&
+                Distance(sent.sector,sector)<GroupConstants.sectorChange&&
+                (man.assignment.serial==sent.serial||f.time-sent.issuedAt<GroupConstants.reissueSeconds);
+            if(!holds){send(nco,i,task,clear,sector,kind==StationKind::Hold&&!called?TeamPlan{}:directive);rt.groupOrder[i]=st.serial;}
+        }
+        // Plan 023 B (3.4), the user's ruling: "the group should go to them, unless it is unsafe
+        // to do so and then they should work with their forward element to establish a foothold
+        // to get them across". Two or more men on real forward positions are an advantage: the
+        // group's next objective is laid out from THEM (UpdateSearchMission and PlanSquad read
+        // this, so the leader comes up with his men instead of pushing on alone). When the way up
+        // is one a known enemy can watch, they are the foothold instead: they hold what they have
+        // and put their fire on that enemy, which is what the crossing's covering-fire test asks
+        // for; if none of them can bear on him the group looks for a covered way round first.
+        st.forwardCount=forwardCount;st.foothold=false;
+        // Plan 023 B2: the men who are already closest set the floor for everyone else, and a man
+        // who is himself inside the stand-off is not an advantage to be pulled onto: he keeps his
+        // ground (3.3, ruling 1) and the group's objective is the stand-off line behind him.
+        float floorRange=1e9f;const auto knownNow=WithTracks(sergeant,f.time);
+        for(int j=0;j<SquadSize;++j)if(st.forward[j]){
+            float band=1e9f;for(const auto& ct:knownNow.contacts)if(ct.known)band=std::min(band,Distance(ct.position,st.station[j]));
+            floorRange=std::min(floorRange,band);}
+        st.standOffFloor=forwardCount?std::min(floorRange,GroupConstants.stationRange):0.f;
+        bool insideForward=false;
+        if(forwardCount>=GroupConstants.forwardMen) {
+            Vec3 candidate=forwardSum*(1.f/forwardCount);
+            float band=1e9f;Vec3 nearest{};
+            for(const auto& ct:knownNow.contacts)if(ct.known&&Distance(ct.position,candidate)<band){band=Distance(ct.position,candidate);nearest=ct.position;}
+            // The objective is pulled back onto the stand-off line, away from the enemy the men in
+            // front are fighting: the group comes up BESIDE them, never past them and never inside
+            // the band. Their own range is the floor (a centroid of two flanking men is a metre or
+            // so nearer than either of them). Men who are themselves inside the band are a
+            // foothold, not an advantage: then the group holds the line behind them.
+            const float limit=std::max(GroupConstants.standOff,st.standOffFloor);
+            if(band<limit) {
+                Vec3 back=candidate-nearest;back.z=0;const float length=Length(back);
+                if(length>.5f)candidate=nearest+back*(limit/length);
+            }
+            insideForward=band<GroupConstants.standOff;
+            if(!st.comeUp||AxisProgress(axis,candidate)>AxisProgress(axis,st.forwardCentre))st.forwardCentre=candidate;
+        }
+        // The decision is held until the group has actually come up: the advantage stops being
+        // "ahead" the moment the objective is laid out from it, and a rule that re-read it every
+        // cycle would hand the objective back and forth between the leader and his forward men.
+        if(forwardCount>=GroupConstants.forwardMen||st.comeUp) {
+            // The way up is measured from the leader, who is standing somewhere a man can stand:
+            // the group's mean position is often inside a wall, and both the exposure estimate and
+            // the search for the enemy overlooking it answer "no path" there, which silently
+            // turned this whole rule off (the crossing reads as fully exposed and nobody covers it).
+            const Vec3 from=sergeant.position;
+            const bool wasComeUp=st.comeUp;
+            const bool arrived=AxisProgress(axis,st.forwardCentre)<=AxisProgress(axis,centre)+GroupConstants.aheadMargin;
+            const bool unsafe=insideForward||(!arrived&&CrossingExposure(sergeant,map,from,st.forwardCentre,f.time)>=GroupConstants.unsafeExposure);
+            st.comeUp=!arrived&&!unsafe;
+            if(unsafe) {
+                const int enemy=OverlookingEnemy(sergeant,map,from,st.forwardCentre,f.time);
+                if(enemy>=0) {
+                    const Contact ct=WithTracks(sergeant,f.time).contacts[enemy];
+                    for(int j=0;j<SquadSize&&!st.foothold;++j)if(st.forward[j])
+                        st.foothold=Distance(st.station[j],ct.position)<GroupConstants.stationRange&&
+                            ClearLine3D(map,st.station[j]+Vec3{0,0,1.5f},{ct.position.x,ct.position.y,ct.aimHeight});
+                    if(st.foothold)st.footholdSector=ct.position;
+                }
+            }
+            if(rt.diagnostics&&(st.comeUp!=wasComeUp||st.foothold)) {
+                float band=1e9f;const auto known=WithTracks(sergeant,f.time);
+                for(const auto& ct:known.contacts)if(ct.known)band=std::min(band,Distance(ct.position,st.forwardCentre));
+                TraceProposal(rt.diagnostics,sergeant,cmd,map,f.time,st.comeUp?"group_comes_up":st.foothold?"group_foothold":"group_stays",
+                    std::to_string(forwardCount)+" men forward, centre "+std::to_string(int(AxisProgress(axis,st.forwardCentre)-AxisProgress(axis,centre)))+
+                    " m ahead of the group and "+std::to_string(int(band))+" m from the nearest enemy it knows");
+            }
         }
     }
     for(auto& s:f.soldiers)for(auto& report:s.reports)if(f.time-report.observedAt>10)report.known=false;

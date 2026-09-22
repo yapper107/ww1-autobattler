@@ -16,7 +16,16 @@ void UpdateSquadPlan(const Soldier& leader,const std::vector<Soldier>& squad,con
     // Higher orders describe intent. The same squad candidate comparison decides execution.
     if(leader.platoonOrder.serial>cmd.platoonOrderSerial&&time<leader.platoonOrder.expiresAt){
         cmd.platoonOrderSerial=leader.platoonOrder.serial;cmd.platoonTask=leader.platoonOrder.task;cmd.platoonUntil=leader.platoonOrder.expiresAt;
-        TraceProposal(diagnostics,leader,cmd,map,time,"directive_received","platoon intent enters squad candidate comparison");
+        // Plan 023 E (section 11): the attachment the commander decided travels with the directive
+        // that carries it and is kept until he says otherwise: who the squad fights under, where
+        // that squad was, and the enemy he named. A merge (E3) puts its men under the host's leader.
+        const auto& attach=leader.platoonOrder;
+        cmd.attachedTo=attach.attachMerge?-1:attach.attachTo;cmd.mergedInto=attach.attachMerge?attach.attachTo:-1;
+        cmd.attachBaseOfFire=attach.attachBaseOfFire;
+        if(attach.attachTo>=0){cmd.attachPosition=attach.position;cmd.attachSector=attach.sector;}
+        TraceProposal(diagnostics,leader,cmd,map,time,attach.attachTo>=0?(attach.attachMerge?"squad_merged":"squad_attached"):"directive_received",
+            attach.attachTo>=0?std::string(attach.attachMerge?"merged into squad ":attach.attachBaseOfFire?"attached as base of fire to squad ":"attached as support to squad ")+
+                std::to_string(attach.attachTo):"platoon intent enters squad candidate comparison");
     }
     if(time>=cmd.platoonUntil)cmd.platoonTask=PlatoonTask::None;
     if(config.foundations&&cmd.platoonTask==PlatoonTask::Observe){
@@ -33,6 +42,16 @@ void UpdateSquadPlan(const Soldier& leader,const std::vector<Soldier>& squad,con
     else if(old.hasWaypoint&&!cmd.hasWaypoint)TraceProposal(diagnostics,leader,old,map,time,cmd.planReason=="movement destination reached"?"plan_completed":"plan_cancelled",cmd.planReason);
     UpdateSearchMission(leader,squad,map,config,cmd,time);
     UpdateCoordination(leader,squad,map,claimed,cmd,time);
+    // Plan 021 A: the rifle group crosses by bounds. A bound begins when a manoeuvre is
+    // committed and again at every queued stage of its route, each with its own fixed slots;
+    // it ends with the movement, with a pause, or when the two fire teams bound internally.
+    const bool moving=cmd.hasWaypoint&&cmd.movementBlock.reason==MoveBlock::None&&
+        cmd.maneuver!=Maneuver::PullBack&&!config.foundations;
+    if(moving&&!cmd.teamPlan.bounding&&(!cmd.stations.bound||cmd.stations.plan!=cmd.planId||Distance(cmd.stations.objective,cmd.waypoint)>1))
+        PlanGroupStations(leader,squad,map,cmd,config,time);
+    // On arrival the stations stay: they are the positions the group fights from. They are given
+    // up when the squad is stopped, withdraws, or commits the next bound.
+    else if(cmd.stations.bound&&(cmd.movementBlock.reason!=MoveBlock::None||cmd.maneuver==Maneuver::PullBack||config.foundations))cmd.stations.bound=false;
     if(old.movementBlock.reason==MoveBlock::None&&cmd.movementBlock.reason!=MoveBlock::None)TraceProposal(diagnostics,leader,cmd,map,time,"movement_paused",cmd.movementBlock.reason==MoveBlock::Fire?"execution stopped by recognized pressure or matching soldier refusal":cmd.movementBlock.reason==MoveBlock::Support?"covering fire for crossing became unavailable":"crossing failed to arrive before execution deadline");
     if(old.movementBlock.reason!=MoveBlock::None&&cmd.movementBlock.reason==MoveBlock::None)TraceProposal(diagnostics,leader,cmd,map,time,changed?"movement_revised":cmd.hasWaypoint?"movement_resumed":"movement_abandoned",cmd.planReason);
     auto assessment=cmd;UpdateSquadProgress(leader,squad,map,approaches,assessment,progress,time,false);

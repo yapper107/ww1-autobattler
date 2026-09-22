@@ -377,3 +377,24 @@ D2's own measures on the check set: platoon plans made while the commander is in
 0.5 % to 1.5 %, re-plan latency unchanged (9.6 to 9.4 s); officer deaths 0.24 a battle unchanged, platoon sergeant
 0.24 to 0.06; staff idle seconds up (officer 50 to 70, sergeant 41 to 99: the sergeant alone in the rear by design).
 The validation drop and the stragglers' rise are the two things the user's video review and stage E should weigh.
+
+## 14. Stage E scored; plan 023 landed (21 September 2026)
+
+Stage E, node **`80dfe8feb994faf2`** on stage D: every guard passing; development 0.810 against 0.806 (21 battles changed:
+21 better, 11 worse; the rest bit-identical: no squad shattered), validation 0.836 against 0.832, value 0.767 against
+0.763; attackers lost 35.4 % to 34.1 %, quiet squads 0.35 to 0.27, flanking fire 28.0 % to 29.8 %, friendly hits 7.81 to
+7.12. NOT in the build, by measurement: strict no-un-merging (the user's ruling as written: -0.04 and +1.3 points of
+losses on the check set, remnants clinging to a dying host); what is in: a merge holds while two or more remnants exist,
+and a lone remnant becomes an attachment, never an independent squad again. The user may restore the strict rule (one
+block in `PlanPlatoon`). The squad's men's contacts cannot be kept through a withdrawal without touching shared code
+(`TrackConfidence` ages them); the squad's sector and the enemy the fall-back was chosen against are kept instead.
+
+**Landed on `plan-018-static-defence`**, source `45da1e25dd1aa9e7` (stage E plus one MSVC rename in `CommandSim.cpp`,
+battle-identical: same digest on map 22 seed 107), with plan 021 inside it, at the user's instruction ("commit and push
+everything"). Verification: the 40 lean references regenerated (`.local/baselines-pre023/plan023/` archived), 40/40
+parity, drills trace parity 3/3 plus the repeat, the full C++ suite exit 0 (15 groups) with three assertions restated
+for the design (`MovementRecoveryAndShelterTests`: a man behind receives an order in the same cycle, staff none;
+`SprintBattleTests`: a defender never sprints AWAY from his post; `MGEncounterTests`: at least 2 of 3 fixed defenders
+dislodged, since the fixture's squad 0 fields five riflemen and is shattered by two wounds), 126 Python tests, Unreal
+compiles on UE 5.4. Legacy on this source is the playable default. The process is written up in
+`docs/AI_PROCESS.md`.
