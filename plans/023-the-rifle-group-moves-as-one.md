@@ -105,10 +105,14 @@ acknowledged their stations AND are within `leadCloseDistance` of him along the 
 passed. If his lead over the group's centre along the axis grows beyond `leadMaxLead` during a move, he drops back to
 the slow pace until it closes. This replaces the 4 s hold of `8946560782173e62`. Transport and reaction delays stay as
 they are: only the double derivation goes. At a bound's end plan 021's `boundGrace` and generation 18's uncontested
-fast chain apply unchanged. Pace is a soldier-level quantity: the implementation must find a legacy-side way to ask for
-it (an order attribute the shared movement code already honours, such as the stance or movement mode of the order); if
-none exists without touching shared soldier code, the fallback is short bounds for the leader (his own lead station is
-laid out no farther than `leadMaxLead` ahead of the group) and that is reported to the architect before it is built.
+fast chain apply unchanged. Pace is a soldier-level quantity. **User ruling, 21 September 2026: "If need be, can change legacy shared code so
+that soldiers can modulate their speed. This will also be helpful in the future."** So stage C adds ONE general mechanism
+to shared code: an order carries a `pace` factor (default 1.0; 0 to 1 slows) multiplied into the shared movement step
+beside the health, suppression, stance, walking-fire and sprint factors; sprinting and the cover rule keep precedence.
+Behind a `Config` switch `orderPace` (`--no-order-pace`) that reproduces every previous digest; the pace enters the
+digest only when it differs from 1, so cognition, drills and the defenders stay bit-identical; a pin test. The leader's
+slow pace uses it. Any later use (a wounded man's escort pace, a deliberate creep into a firing position, a base of
+fire that shifts at a walk) rides on the same field.
 
 **3.7 A covering pair.** The user: "Some could have stayed but not all of them." When the group leaves a position in
 contact, at most `coverPair` men whose stations bear on a known enemy stay and fire; they are given stations on the NEXT
