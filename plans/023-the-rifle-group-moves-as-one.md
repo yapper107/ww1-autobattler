@@ -270,3 +270,36 @@ attackers lost 31.7 % to 36.5 %, flanking fire 25.5 % to 21.3 %. Videos against 
 sent to the user. Note for the measures: `flank_fire_share` takes its angle against the squad's OWN gun, so moving the gun
 onto the rifles' axis reads as less flanking even when the rifles flank more; it needs an angle against the enemy's facing or
 the platoon's base of fire before it judges stage C or D.
+
+## 11. Stage E (user ruling, 21 September 2026): a shattered squad is attached to another
+
+Traced by the architect on stage B2, `city-24` seed 107, purple squad 2: at 110 s, with four men killed and two of the
+four survivors badly wounded, the sergeant withdrew (his strength counted below 70 % of the enemy's near his objective for
+six seconds under pressure): a sound decision, and the count already discounts the wounded. What followed was not: the
+withdrawal had no end point (45 m, then 65, 110, 160 m from the enemy by 340 s), cleared the squad's memory of the enemy,
+and left it where it knew nobody; every assessment thereafter scored a flank at 36 to 65 against a hold of -8 and came
+back "hold wins" because `mobile<2` (one able rifleman and the gunner). The squad drifted for four minutes with four men.
+The user: "a squad like that whose strength is low from either casualties or wounded men or some combo should be attached
+to another squad as either a base of fire if numbers permit or to just support."
+**Stage E, to build after stage D:**
+- A withdrawal goes to a fixed fall-back position (the nearest covered ground behind the squad's last objective that is
+  out of the known enemy's sight, chosen once) and keeps the squad's contacts; it is not an open walk.
+- A squad is SHATTERED when its able riflemen (active, not known wounded beyond a light wound, the gunner and staff not
+  counted) are fewer than `shatteredRiflemen` (first value 3), from casualties, wounds or both. A shattered squad no longer
+  manoeuvres on its own: the platoon commander attaches it to the nearest squad still able to manoeuvre (`PlanPlatoon`
+  already re-plans on strength reports; `PlatoonStickyPlan` keeps the attachment until the host squad changes or the
+  shattered squad is reconstituted).
+- Attached as a BASE OF FIRE when its gun is up and it has at least `baseOfFireMen` (first value 2) able men including the
+  gunner: it takes a firing position (the support's own search of stage D, angled off the host's line) covering the host
+  squad's objective and holds it; the host's flank is fought under that fire.
+- Attached as SUPPORT otherwise: its men take stations one objective behind the host's rifle group (as the platoon staff
+  do in 3.9), move when the host moves, fire on what they can see, carry the host's wounded to the rear-guard positions.
+  Its wounded keep today's rear-guard rules.
+- Reconstitution: if able riflemen recover to `shatteredRiflemen` or more (a light wound heals; a straggler rejoins) the
+  squad is released to its own manoeuvre at the platoon's next plan.
+- Measures: seconds a squad spends with no known enemy after a withdrawal (should fall to near zero), shattered squads'
+  rounds fired per battle (should rise from about zero), attackers lost and the attack score not worse. Pins: a squad
+  with two able riflemen and its gun is attached as base of fire and fires on the host's objective; one with two able
+  men and no gun is attached as support and moves when the host moves; a withdrawal ends at a fixed fall-back point with
+  the contacts kept.
+- Not in scope: the platoon's own withdrawal, and any change to the withdrawal decision itself (the 70 % rule stands).
