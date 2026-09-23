@@ -1,3 +1,198 @@
+## MotionBricks animation research — 22 September 2026
+
+Jordan requested viability research on NVIDIA MotionBricks and localai-org's C++
+port. CPU/Vulkan makes a small offline-bake experiment plausible on the RX 9070 XT;
+released weights use G1 robot bones, and human retargeting plus recorded-path/event
+fidelity need a visual proof. No models or game integration were run. See
+[research, measured-source timing limits and next proof](docs/MOTIONBRICKS_VIABILITY.md)
+and [exact Fable review with Astra's corrections](plans/motionbricks-viability-fable-review.md).
+Research only; no change to the paused AI work or gameplay authority.
+
+## Session handoff — saved 22 September 2026
+
+Jordan asked to stop here and pick this up later. Training/evaluation and performance
+experiments are complete; no new run or execution audit is active. Legacy remains
+default. Current optimized source is 6ff5c2010bc64352; the completed experiment keeps
+its frozen d73667841df73faa binary. **Read [the full resume handoff](docs/AI_SESSION_HANDOFF_2026-09-22.md) first** for results, videos, model/evidence paths,
+rejected ideas, current model access, verification limits and proposed next work.
+Work is saved in the working tree, with substantial uncommitted/untracked changes.
+
+## Plan 025 stronger-learning neural run — started 22 September 2026
+
+Jordan asked for neural runs "to see if the Neural AI has promise" at half capacity. A choice-authority
+test on 90 development cases found uniform random choice 51/2/37 against the imitation network's greedy
+40/9/41 (not significant): the network's preferences are not shown to beat chance. Jordan chose the
+stronger-learning run: 3 seeds × 30 updates × 72 battles, actor lr 3e-4, anchor 0.01, otherwise plan 024
+settings, greedy development check every 5 updates on the same 90 cases. Capacity cap
+`.local/neural/max_jobs` (8 at launch; raise it and running jobs grow). [Spec](plans/025-stronger-learning-run.md);
+output `.local/plan025/stronger/`. Legacy remains default; nothing promoted.
+
+## Five-agent exact optimization — 22 September 2026
+
+At Jordan's request five exact claude-opus-5-5 agents optimized the five areas above 10% of battle CPU
+(orders, cover, routes, paths, sight); Astra integrated and verified. Source **f28c195b711323f9**:
+59.5% less battle CPU [57.4, 61.5] than 6ff5c2010bc64352 on 24 quiet 16-wide recorded training pairs,
+all exact; memory 222 → 197 MiB. A training generation now takes 74–76 s (202–220 s in the completed
+experiment); a full 40-generation run is estimated at about 1 hour. Oracle 882,432 exact, 40/40 and
+41/41 parity, full Linux suite, drills traces equal to 6ff, Windows contracts and 6 pairs, UE 5.8 build.
+No Fable review requested or claimed. [Report, changes and cautions](docs/NEURAL_TRAINING_ROUND4.md).
+[Post-round profile and next targets](docs/NEURAL_TRAINING_PROFILE_F28.md): manoeuvre route assessment ~40%, CoverExists linear scan ~7–10% (cheapest next win), reactions/struct copies ~15%.
+
+## Next AI work: execution audit recommendation — 22 September 2026
+
+Jordan asked whether individual soldier AI should precede further squad learning.
+Astra/Fable recommend tracing the squad-to-soldier handoff and schema-3 friendly-fire
+regression, repairing demonstrated faults, then freezing execution before more PPO.
+No learned soldier replacement, changed rules or new run is authorized by this
+question. [Assessment, exact Fable response and evidence corrections](plans/024-soldier-execution-priority-assessment.md).
+
+## Opus 5.5 exact ray-prefetch optimization — 22 September 2026
+
+Source `6ff5c2010bc64352`: same three tactical-ray lookups, with earlier cache-line
+fetch hints. **6.7% less native CPU** versus 69962220d762ea04 on 12 recorded
+training cases, 10/12 faster, interval [3.8%, 9.4%]; all results exact.
+A 24-pair hint-disabled control supports the hint's benefit. Full Linux suite,
+41 historical cases, 882,432 cost and 649,332 query/path comparisons, drills traces,
+Windows contracts/six pairs and UE 5.8 build pass. Exact Opus 5.5 proposal and Fable 5.1
+review; Astra owns verification/integration. Existing experiment stays frozen on
+d73667841df73faa; no policy promotion. [Report, controls and limits](docs/NEURAL_TRAINING_PREFETCH.md).
+
+## Claude client / Opus 5.5 available — 22 September 2026
+
+At Jordan’s request, Claude Code was updated to 2.1.280. The launcher now selects
+`/home/jchan/.local/bin/claude`; the existing subscription login remains active.
+Exact `claude-opus-5-5` responded successfully with verified model metadata.
+The earlier client-version blocker is resolved; Fable 5.1 remains the architect.
+[Update and verification](plans/024-claude-client-update.md).
+
+## Four Opus performance experiments — 22 September 2026
+
+Four exact `claude-opus-5` agents implemented isolated candidates (the authorized
+fallback; Opus 5.5 requires a newer installed client). No survivor retained after
+90 exact recorded-action benchmark battles: grouped visibility and segment front
+caches were slower; obstacle traversal had no demonstrated gain; smoothing averaged
+0.96% less CPU across 24 pairs but its interval includes no gain. All four passed
+882,432 exact field checks, 649,332 query/path comparisons and targeted route tests.
+Main source `69962220d762ea04` and both current/frozen training binaries unchanged.
+[Results, limitations and archived proposals](docs/NEURAL_TRAINING_OPUS_EXPERIMENTS.md),
+[exact Fable review/disposition](plans/024-four-opus-performance-fable-review.md).
+
+## Second exact training-battle optimization — 22 September 2026
+
+Source `69962220d762ea04` stably orders threat bounds and bypasses the second
+segment memo only after tactical-ray misses on prepared maps. Additional
+15.2% less native CPU time versus `cfcd101678649cb2` across 12 recorded-action
+pairs, identical results. 882,432 exact cost comparisons, 41 historical pairs,
+full Linux suite plus final route cases, drills traces, Windows route/neural
+contracts, six Windows battle pairs and UE 5.8 build pass. The live training run
+retains its frozen `d73667841df73faa` binary and settings. Timing variability and
+repeat results are disclosed in [the report](docs/NEURAL_TRAINING_PERFORMANCE_2.md).
+Exact [Fable implementation review and disposition](plans/024-command-performance-implementation-review.md).
+No policy promotion or learning change.
+
+Fresh current-build profile: squad/platoon commands take 68.1% of simulation CPU,
+individual soldier decisions 20.9%; cached line checks and obstacle searches dominate
+the function samples. Six direct pairs against the frozen training binary use 26.7%
+less CPU (1.36× throughput), all outcomes and protocol messages exact. No simulator
+change. [Profile, method and limits](docs/NEURAL_TRAINING_CURRENT_PROFILE.md).
+
+Further optimization review: exact Fable 5.1 recommends measured three-ray result
+reuse, memo-cache experiments and cheaper obstacle queries; Astra prioritizes a
+small exact path-smoothing experiment after targeted counters. No additional speedup
+is claimed. [Review](plans/024-further-performance-fable-review.md) and
+[corrections / experiment order](plans/024-further-performance-next-steps.md).
+
+## Exact training-battle optimization — 22 September 2026
+
+Source `cfcd101678649cb2` reuses exact tactical visibility endpoints and report
+weights per assessment. Same training behavior on 12 recorded-action pairs;
+15.9% less total native CPU time. All 41 historical pairs, 441,216 bit-exact
+field-cost comparisons, full Linux suite and three drills trace checks plus repeat
+pass. The existing 40-update experiment retains its frozen `d73667841df73faa`
+binary; new builds and future training runs receive the optimization. No policy
+promotion or gameplay change. Later combined-build Windows/Unreal verification is recorded above. [Evidence and limits](docs/NEURAL_TRAINING_PERFORMANCE.md),
+[Astra review](plans/024-route-performance-astra-review.md).
+
+Fable 5.1 consultation succeeded after Jordan enabled full access: [verbatim
+review](plans/024-command-performance-fable-review.md), [Astra’s corrections and
+next experiments](plans/024-command-performance-next-steps.md). Re-profile the
+optimized build with call-site/hit-rate attribution, then test descending threat
+bounds and visibility-cache access reductions. Memory-latency dominance and exact
+payoffs remain hypotheses; preserve the frozen training build and all parity gates.
+The reviewed follow-up is implemented in the second optimization recorded above.
+
+## Longer neural training experiment — completed 22 September 2026
+
+Completed 2,880 active-Legacy training battles across three 40-update seeds and 1620 evaluation cases. Legacy remains default; not promoted. Development selected rl25-i040.
+
+This duration experiment does not establish a reliable average outcome improvement over both Legacy and untrained continuation on the reserved maps. Inspect individual seeds and development curves below; more training is not demonstrated to solve the problem.
+
+See [results and videos](docs/NEURAL_LEGACY_RL_DURATION.md) and [experiment plan](plans/024-longer-rl-experiment.md). Fresh-map seeds 1101–1125 are now inspected. New Fable review was unavailable in this sandbox; no new approval claimed.
+
+## Neural reward pilot against active Legacy — 22 September 2026
+
+Jordan authorized the next stage: train against **active Legacy Plan 023**, with
+static-defence attacks retained only as regression cases. The schema-3 actor adds
+KEEP for a pending plan; a separate matched experiment expands two to six routed
+candidates per maneuver family. Persistent lean workers, elapsed-time masked PPO,
+separate actor/critic inputs and comparison against the untrained schema-3 actor
+are implemented. Legacy remains the default; no promotion is implied. Exact Fable
+5.1 design/review and Astra's resolutions, experiment split and results live in
+[the reward pilot report](docs/NEURAL_LEGACY_RL_PILOT.md).
+
+Completed: source `d73667841df73faa`, 384 active-Legacy training battles / 195,777
+decisions (three narrow seeds and one wider run), 780 evaluation battles. The
+selected narrow seed 25 is 17/3/25 W/D/L on 45 reserved-map battles against Legacy
+17/6/22; wide is 17/2/26. No reliable improvement; **not promoted**. All ten
+historical battle/conduct guards pass, but static-validation attack score falls
+0.0329 [-0.0627, -0.0036]. Full Linux suite, 134 Python tests, 41 parity pairs,
+three traces plus repeat, Linux/Windows neural contracts, four models × 2,000
+native/PyTorch decisions on each platform and UE 5.8 build pass. Models are in
+`models/squad/plan024-legacy-rl-v1/`; best/middle/worst short videos and limitations
+are in the report. These inspected development/reserved maps must not be reused
+as an unopened promotion set in the next training iteration.
+
+
+## Neural squad pilot — 22 September 2026
+
+Jordan authorized [Plan 024](plans/024-neural-squad-layer.md), requiring the Plan 023
+benchmarks, lean parallel battles and short side-by-side videos. The first imitation
+ranker is implemented on source `aef3b097c0df4b47` and available by optional
+`--neural-model` / `-ArmyNeuralModel` flags. It controls Azure candidate selection
+through Plan 023 execution. At that milestone PPO and broader squad authority
+were not implemented; the subsequent reward pilot is described above.
+Legacy remains the default. The exact Fable 5.1 architecture and implementation
+reviews, with Astra's resolutions, are linked in the
+[pilot report](docs/NEURAL_SQUAD_PILOT.md).
+
+Twenty separate training maps / 60 lean battles produced 20,612 decisions. The model
+is saved in `models/squad/plan024-imitation-v1/`. Full paired evaluation: 270 lean
+battles, 12 workers, 8.8 minutes, maximum 585 MiB per battle. Attack performance is
+statistically level with Plan 023; **not promoted**, because Azure order rate rises
+18.44/minute [3.01, 32.53] and fails the existing churn guard. All other battle/conduct
+guards pass; loop-specific external gates are not claimed as a promotion bundle.
+Full Linux suite, 126 Python tests, 41 historical/city parity pairs, 3 trace pairs
+plus repeat, Linux/Windows native neural contracts, 2,000 real native/PyTorch
+inference comparisons on each platform and Unreal 5.8 build pass. Video links and
+limits are in the report. Next: replay verdict, diagnose plan churn, then extend
+learning and squad authority without weakening the existing conduct rules.
+
+**Pilot replay verdict (22 September):** Jordan says the imitation model did its job;
+first two clips looked good, regression clip left men behind for a while. This accepts
+the bootstrap, not promotion. [Astra/Fable assessment](plans/024-pilot-assessment.md)
+records new-map evidence, reward proposal and corrections to the attributed review.
+The recommendation at that point was explicit plan continuation, focused straggler
+diagnosis and persistent lean RL infrastructure, then PPO from imitation weights.
+No PPO run had started at that assessment; the completed stage is recorded above.
+No conduct thresholds have changed.
+
+**Next-phase opponent ruling (22 September):** Jordan requires training against
+active Legacy Plan 023 AI, not specialization in stationary defenders. Training and primary evaluation use moving Legacy opponents on varied generated
+cities; static-defence battles are regression diagnostics only. The earlier
+static-attack reward proposal is superseded for these phases. The ordinary
+battle reward is now defined in the reward pilot report above; conduct checks,
+lean parallel workers and short videos are retained. See [Plan 024](plans/024-neural-squad-layer.md).
+
 ## Plan 023 + art integration — 21 September 2026
 
 User-authorized main integration combines AI `16592ff` with art `b53cdbf`.
