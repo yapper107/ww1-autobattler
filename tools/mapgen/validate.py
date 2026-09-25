@@ -78,6 +78,9 @@ def cover_protected(c, source):
 
 
 def validate(m):
+    if m['kind'] in ('village','city2'):
+        from .support import analyse
+        return analyse(m)
     errors=[]
     ids=[s['id'] for s in m['solids']]
     if len(set(ids))!=len(ids):

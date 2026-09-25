@@ -21,7 +21,9 @@ std::vector<Footprint> Footprints(const Config& config,const Map& map){
     std::vector<Footprint> out;
     if(config.battlefield)for(const auto& d:config.battlefield->decorations)
         if(d.kind==2||d.kind==4)out.push_back({{d.center.x,d.center.y,0},{d.half.x,d.half.y,0}}); // intact or ruined floor
-    for(const auto& b:map.buildings)out.push_back({{b.center.x,b.center.y,0},{b.half.x,b.half.y,0}});
+    // Authored houses only: an imported layout's floors come from its decorations (ARMYMAP 2 `B` footprints are
+    // not added here until plan 029 decides their use, so they are never counted twice).
+    for(const auto& b:map.buildings)if(b.authoredStairs)out.push_back({{b.center.x,b.center.y,0},{b.half.x,b.half.y,0}});
     return out;
 }
 bool Inside(const Footprint& f,Vec3 p,float pad){return std::abs(p.x-f.center.x)<f.half.x+pad&&std::abs(p.y-f.center.y)<f.half.y+pad;}
@@ -38,7 +40,7 @@ std::vector<Candidate> Usable(const Map& map,Vec3 objective,Vec3 threat,float ra
         if(!Walkable(map,c.shelter)||!Walkable(map,c.peek))continue;
         if(Distance(c.shelter,c.peek)>.01f&&!ClearLine(map,c.shelter,c.peek,.48f))continue;
         Candidate item;item.cover=c;
-        item.sheltered=ProtectedAt(map,c.shelter,threat,c.crouch?Stance::Crouched:Stance::Standing);
+        item.sheltered=ProtectedAt(map,c.shelter,threat,CoverStance(c));
         out.push_back(item);
     }
     std::stable_sort(out.begin(),out.end(),[](const Candidate& a,const Candidate& b){return a.cover.id<b.cover.id;});
@@ -192,9 +194,10 @@ DefencePlan PlanStaticDefence(const Config& config,const Map& map,const std::arr
         const int base=squad*SquadSize;const bool head=squad==SquadsPerTeam;
         order.push_back(base);order.push_back(base+1);
         if(head&&plan.requested>=6)order.push_back(base+7);
+        else if(!head&&config.squadMachineGuns)order.push_back(base+7); // every squad's gun is seated early too
         for(int slot:{2,3,4})order.push_back(base+slot);
         if(head){order.push_back(base+5);order.push_back(base+6);if(plan.requested<6)order.push_back(base+7);}
-        else {order.push_back(base+5);order.push_back(base+6);order.push_back(base+7);}
+        else {order.push_back(base+5);order.push_back(base+6);if(!config.squadMachineGuns)order.push_back(base+7);}
     }
     for(size_t i=0;i<wanted;++i)plan.occupant[order[i]]=int(i);
 
@@ -214,13 +217,13 @@ void ApplyStaticDefence(const DefencePlan& plan,const Config& config,Frame& fram
             if(plan.Defends(s.id)){
                 const auto& cover=plan.At(s.id).cover;
                 s.position=cover.shelter;s.goal=s.position;
-                s.stance=cover.crouch?Stance::Crouched:Stance::Standing;
+                s.stance=CoverStance(cover);
                 s.facing=Flat(plan.threat-s.position);s.look=s.facing;
             }else{s.health=0;s.action=Action::Killed;}
         }
         // Equipment is unchanged by placement, but the organisation flag and the
         // magazine must agree with the weapon on every maker's frame.
-        EquipWeapon(s,{s.squad%SquadsPerTeam==0&&slot==SquadSize-1&&(s.team==1||config.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
+        EquipWeapon(s,{(config.squadMachineGuns||s.squad%SquadsPerTeam==0)&&slot==SquadSize-1&&(s.team==1||config.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
     }
     for(int squad=0;squad<SquadCount;++squad)
         frame.command[squad].mission=squad<SquadsPerTeam?plan.attackerObjectives[squad]:plan.objective;

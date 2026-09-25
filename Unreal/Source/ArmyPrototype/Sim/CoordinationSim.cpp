@@ -1,4 +1,5 @@
 #include "CoordinationSim.h"
+#include "Diagnostics.h"
 #include "CommandSim.h"
 #include "ManeuverSim.h"
 #include "TacticalRouteSim.h"
@@ -25,7 +26,7 @@ float SupportCoverage(const Map& map,Vec3 gun,Vec3 crossing,const Soldier& leade
 // group is in contact. Each kind keeps the geometry its lineage measured; a hold searches
 // around the man himself, as the firing-position pass it replaces did.
 bool GroupStation(const Soldier& officer,const Soldier& s,StationKind kind,Vec3 objective,Vec3 sector,
-    const std::vector<Vec3>& taken,const Map& map,float time,Vec3& place,float standOff,float minRange) {
+    const std::vector<Vec3>& taken,const Map& map,float time,Vec3& place,float standOff,float minRange,int preferEnemy,const StationFilter* filter) {
     const bool hold=kind==StationKind::Hold;
     // Plan 023 D (3.9): the gun's station is a firing position within supportRange of the rifle
     // group's centre (the objective he is given here) and angled off the group's own line onto the
@@ -37,6 +38,7 @@ bool GroupStation(const Soldier& officer,const Soldier& s,StationKind kind,Vec3 
     const float spacing=kind==StationKind::Halt||gun||staff?GroupConstants.haltSpacing:GroupConstants.boundSpacing;
     const auto leader=WithTracks(officer,time);const Contact* target=nullptr;float nearest=1e9f;
     for(const auto& ct:leader.contacts)if(ct.known&&Distance(ct.position,centre)<nearest){nearest=Distance(ct.position,centre);target=&ct;}
+    if(preferEnemy>=0&&preferEnemy<UnitCount&&leader.contacts[preferEnemy].known)target=&leader.contacts[preferEnemy];
     const Vec3 threat=target?target->position:sector;
     // Plan 023 B2: the stand-off. No station is laid out inside the band a firing position must
     // satisfy anyway (nor inside the forward men, who are already the closest the group gets):
@@ -49,32 +51,42 @@ bool GroupStation(const Soldier& officer,const Soldier& s,StationKind kind,Vec3 
     // and both put the gun back on the rifles' own axis, where its fire adds nothing they have not.
     float best[3]={1e9f,1e9f,1e9f};Vec3 chosen[3]{};
     for(const auto& c:CoverPositions(map)) {
+        // Optimisation (plan 024 round 4): every rejection below is a pure predicate of the
+        // candidate, so they are tested cheapest first; the set of candidates that reach the score,
+        // and their order, is unchanged. Most of the catalogue lies outside the radius.
+        if(Distance(c.shelter,centre)>radius)continue;
+        if(filter&&filter->accept&&!filter->accept(c))continue;
+        const float travel=Distance(c.shelter,s.position);
+        if(hold&&(travel<GroupConstants.holdMinTravel||std::abs(c.shelter.z-s.position.z)>.5f))continue;
+        if(gun&&!c.crouch)continue;                     // the gun deploys behind cover it can fire over
+        if(!hold&&c.window)continue;
+        bool occupied=false;for(Vec3 p:taken)if(Distance(p,c.shelter)<spacing){occupied=true;break;}
+        if(occupied)continue;
+        // Plan 023 D: no nearer the enemy than the rifle group's own lead station: the gun and the
+        // platoon officer take the group's fight, they do not go out in front of it.
+        if(minRange>0&&target&&Distance(c.shelter,target->position)<minRange)continue;
+        if(!hold&&!Walkable(map,c.shelter))continue;
+        const Stance posture=CoverStance(c);
         // Inside the band counts against an enemy who can actually see the place: cover on his
         // flank at twenty metres is a firing position, open ground at twenty metres is the assault
         // this plan does not make. Half the band is too close whatever the ground offers.
         bool inside=false;
         for(Vec3 enemy:known)if(Distance(c.shelter,enemy)<standOff&&
-            (Distance(c.shelter,enemy)<standOff*.5f||!ProtectedAt(map,c.shelter,enemy,c.crouch?Stance::Crouched:Stance::Standing)))inside=true;
+            (Distance(c.shelter,enemy)<standOff*.5f||!ProtectedAt(map,c.shelter,enemy,posture))){inside=true;break;}
         if(inside)continue;
-        const float travel=Distance(c.shelter,s.position);
-        if(Distance(c.shelter,centre)>radius)continue;
-        if(!hold&&(c.window||!Walkable(map,c.shelter)))continue;
-        if(hold&&(travel<GroupConstants.holdMinTravel||std::abs(c.shelter.z-s.position.z)>.5f))continue;
-        if(gun&&!c.crouch)continue;                     // the gun deploys behind cover it can fire over
-        bool occupied=false;for(Vec3 p:taken)if(Distance(p,c.shelter)<spacing)occupied=true;
-        if(occupied)continue;
-        const bool covered=ProtectedAt(map,c.shelter,threat,c.crouch?Stance::Crouched:Stance::Standing);
-        const bool bears=target&&Distance(c.peek,target->position)<=(hold?GroupConstants.holdRange:GroupConstants.stationRange)&&
+        // A halt and a hold demand real cover; a bound only scores it. The line is needed by a hold
+        // and the gun (a firing position or nothing) and by a bound's score, never by a halt or staff.
+        bool covered=true;
+        if(kind!=StationKind::Bound&&!(covered=ProtectedAt(map,c.shelter,threat,posture)))continue;
+        const bool bears=(hold||gun||kind==StationKind::Bound)&&target&&
+            Distance(c.peek,target->position)<=(hold?GroupConstants.holdRange:GroupConstants.stationRange)&&
             ClearLine3D(map,c.peek+Vec3{0,0,1.5f},{target->position.x,target->position.y,target->aimHeight});
-        if(kind!=StationKind::Bound&&!covered)continue; // a halt and a hold demand real cover
         if((hold||gun)&&!bears)continue;                // a hold station and the gun's are firing positions or nothing
-        // Plan 023 D: no nearer the enemy than the rifle group's own lead station: the gun and the
-        // platoon officer take the group's fight, they do not go out in front of it.
-        if(minRange>0&&target&&Distance(c.shelter,target->position)<minRange)continue;
+        if(kind==StationKind::Bound)covered=ProtectedAt(map,c.shelter,threat,posture);
         if(gun||staff) { // protected from every enemy the leader knows, not only the nearest of them
             bool safe=true;
             for(const auto& ct:leader.contacts)if(ct.known&&Distance(ct.position,c.shelter)<80&&
-                !ProtectedAt(map,c.shelter,ct.position,c.crouch?Stance::Crouched:Stance::Standing))safe=false;
+                !ProtectedAt(map,c.shelter,ct.position,posture)){safe=false;break;}
             if(!safe)continue;
         }
         float score=(hold?0.f:Distance(c.shelter,centre))+travel*(hold?1.f:.1f)+FireDanger(leader,c.shelter,time)*(hold?20.f:10.f);
@@ -94,7 +106,7 @@ bool GroupStation(const Soldier& officer,const Soldier& s,StationKind kind,Vec3 
             tier=cosine<GroupConstants.supportAngleCos?0:1;
             if(cosine<GroupConstants.supportWideCos)score-=6;
         }
-        if(score<best[tier]&&!FindPath(map,s.position,c.shelter).empty()){best[tier]=score;chosen[tier]=c.shelter;}
+        if(score<best[tier]&&(filter&&filter->reach?filter->reach(c.shelter):!FindPath(map,s.position,c.shelter).empty())){best[tier]=score;chosen[tier]=c.shelter;}
     }
     for(int tier=0;tier<3;++tier)if(best[tier]<1e9f){place=chosen[tier];return true;}
     return false;
@@ -185,9 +197,12 @@ int OverlookingEnemy(const Soldier& officer,const Map& map,Vec3 from,Vec3 to,flo
 // leader knows can look into, reachable and not far to walk. A pull-back candidate is only the
 // first cover to hand, which is how a withdrawal became an open walk with no end point.
 bool OutOfSight(const Soldier& officer,const Map& map,Vec3 place,bool crouch,float time) {
+    return OutOfSight(officer,map,place,crouch?Stance::Crouched:Stance::Standing,time);
+}
+bool OutOfSight(const Soldier& officer,const Map& map,Vec3 place,Stance posture,float time) {
     const auto leader=WithTracks(officer,time);
     for(const auto& ct:leader.contacts)if(ct.known&&Distance(ct.position,place)<GroupConstants.stationRange&&
-        (!ProtectedAt(map,place,ct.position,crouch?Stance::Crouched:Stance::Standing)||
+        (!ProtectedAt(map,place,ct.position,posture)||
          ClearLine3D(map,{ct.position.x,ct.position.y,ct.aimHeight},place+Vec3{0,0,1.3f})))return false;
     return true;
 }
@@ -199,7 +214,7 @@ bool FallbackPosition(const Soldier& officer,const Map& map,Vec3 objective,Vec3 
         const Vec3 p=c.shelter;const float travel=Distance(p,from);
         if(c.window||travel>GroupConstants.fallbackTravel||!Walkable(map,p))continue;
         if(Distance(p,enemy)<range+GroupConstants.behindMargin)continue;
-        if(!OutOfSight(officer,map,p,c.crouch,time))continue;
+        if(!OutOfSight(officer,map,p,CoverStance(c),time))continue;
         const float score=travel+Distance(p,objective)*.2f+FireDanger(leader,p,time)*20;
         if(score<best&&!FindPath(map,from,p).empty()){best=score;place=p;found=true;}
     }
@@ -217,7 +232,14 @@ void PlanGroupStations(const Soldier& officer,const std::vector<Soldier>& squad,
     // two nearest the enemy they can see, by roster slot on a tie, so no draw is made. Off, this
     // never selects anyone, which is what --no-order-pace needs to reproduce stage B2 exactly.
     std::array<bool,SquadSize> cover{};std::array<Vec3,SquadSize> coverEnemy{};
-    if(config.orderPace&&cmd.engaged&&st.serial) {
+    // Plan 028 Stage 1 (Config::coverRequests): while the leader's covering request is live, the men it
+    // tasked (stationary, already bearing on its threat) are the pair, set against that threat.
+    const auto& request=cmd.coverRequest;int requested=0;
+    if(config.orderPace&&st.serial&&config.coverRequests&&!config.foundations&&CoverRequestLive(request,time))
+        for(const auto& s:squad){const int slot=s.id%SquadSize;
+            if(!request.tasked[slot]||requested>=GroupConstants.coverPair||!s.Active()||KnowsWounded(leader,s)||s.id==cmd.leader||s.id==cmd.support||s.machineGun)continue;
+            cover[slot]=true;coverEnemy[slot]=RequestTrack(request,slot).position;++requested;}
+    if(!requested&&config.orderPace&&cmd.engaged&&st.serial) {
         std::array<float,SquadSize> rank{};rank.fill(1e9f);
         for(const auto& s:squad) {
             const int slot=s.id%SquadSize;
@@ -267,8 +289,12 @@ Order TeamOrder(const Soldier& s,const TeamPlan& p,Vec3) {
     return {p.holds[s.id%SquadSize],Action::Hold,Reason::BoundSupport};
 }
 void UpdateCoordination(const Soldier& officer,const std::vector<Soldier>& squad,const Map& map,
-    const std::vector<int>& claimed,SquadCommand& cmd,float time) {
+    const std::vector<int>& claimed,SquadCommand& cmd,float time,Diagnostics* diagnostics,bool graduated,bool requests,bool shift,bool quietRelease,bool rifleBase,const Soldier* fallen,bool noCovering,bool sector,
+    bool drill,float drillDeadline) {
+    // Plan 028 Stage 1: the ready BoundCover men answer a covering request only while this bound is set up.
+    if(requests)cmd.coverRequest.boundCover.fill(false);
     if(cmd.movementBlock.reason!=MoveBlock::None)return;
+    const bool coverTrace=diagnostics&&diagnostics->options.enabled;
     const auto leader=WithReports(officer,time);const Soldier* gun=nullptr;
     Vec3 centre{};int healthy=0;bool contact=false;
     for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<8)contact=true;
@@ -297,9 +323,11 @@ void UpdateCoordination(const Soldier& officer,const std::vector<Soldier>& squad
     if(cmd.building<0&&time>=cmd.buildingRetryAt&&contact&&healthy>=4&&cmd.advancing&&cmd.maneuver!=Maneuver::PullBack) {
         float best=1e9f;int building=-1;std::array<Vec3,2> windows{};std::array<int,2> members{{-1,-1}};
         for(size_t b=0;b<map.buildings.size();++b) {
+            // Authored houses (half {5,4}) and imported ARMYMAP 2 footprints alike, by the footprint's own half.
             if(std::find(claimed.begin(),claimed.end(),int(b))!=claimed.end()||Distance(map.buildings[b].center,centre)>24)continue;
+            const Building& house=map.buildings[b];
             std::vector<CoverPosition> options;
-            for(const auto& w:map.windows)if(std::abs(w.shelter.x-map.buildings[b].center.x)<5&&std::abs(w.shelter.y-map.buildings[b].center.y)<4&&SupportCoverage(map,w.peek,cmd.mission,leader,time)>0.5f)options.push_back(w);
+            for(const auto& w:map.windows)if(std::abs(w.shelter.x-house.center.x)<house.half.x&&std::abs(w.shelter.y-house.center.y)<house.half.y&&SupportCoverage(map,w.peek,cmd.mission,leader,time)>0.5f)options.push_back(w);
             if(options.size()<2)continue;
             std::array<int,2> ids{{-1,-1}};std::array<Vec3,2> places{};float score=0;
             for(int slot=0;slot<2;++slot){float nearest=1e9f;
@@ -345,7 +373,11 @@ void UpdateCoordination(const Soldier& officer,const std::vector<Soldier>& squad
         }
         if(arrived&&time-cmd.boundReleasedAt>3){++cmd.boundsCompleted;cmd.teamPlan.moving=1-cmd.teamPlan.moving;cmd.teamPlan.bounding=false;
             if(cmd.engaged&&!cmd.route){cmd.teamPlan.released=false;++cmd.teamPlan.serial;return;}}
-        else if(time-cmd.boundReleasedAt>18){PauseSquadMovement(officer,squad,cmd,MoveBlock::Execution,time);return;}
+        else if(time-cmd.boundReleasedAt>18+(drill?drillDeadline:0.f)){ // plan 031 D: the drill's gate may hold the movers
+            const float clockBefore=cmd.opportunitySince;const bool hadWaypoint=cmd.hasWaypoint,gunMoveBefore=cmd.supportNeedsMove;
+            PauseSquadMovement(officer,squad,cmd,MoveBlock::Execution,time);
+            if(coverTrace){NoteCoveringPause(diagnostics,officer.squad,"coordination_internal_timeout",hadWaypoint,!gunMoveBefore&&cmd.supportNeedsMove);TraceCoveringClock(diagnostics,officer,cmd,clockBefore,time,"pause");}
+            return;}
     }
     if(!cmd.teamPlan.bounding) {
         cmd.boundOrigin=centre;Vec3 from=nco->position;auto path=cmd.route?FollowCorridor(map,*cmd.route,from,cmd.mission):FindPath(map,from,cmd.mission);if(path.empty())return;
@@ -372,7 +404,7 @@ void UpdateCoordination(const Soldier& officer,const std::vector<Soldier>& squad
                     if((cmd.route&&CorridorDistance(*cmd.route,c.shelter)>4)||c.window||Distance(c.shelter,resolved)>7||Distance(c.shelter,s.position)>38)continue;
                     bool safe=true;
                     for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<10&&
-                        (!ProtectedAt(map,c.shelter,ct.position,c.crouch?Stance::Crouched:Stance::Standing)||Distance(c.shelter,ct.position)<3))safe=false;
+                        (!ProtectedAt(map,c.shelter,ct.position,CoverStance(c))||Distance(c.shelter,ct.position)<3))safe=false;
                     for(Vec3 p:moveReservations)if(Distance(p,c.shelter)<2)safe=false;
                     float cost=Distance(c.shelter,resolved)+Distance(c.shelter,s.position)*0.2f;
                     if(safe&&cost<bestMove&&!(cmd.route?FollowCorridor(map,*cmd.route,s.position,c.shelter):FindPath(map,s.position,c.shelter)).empty()){bestMove=cost;covered=c.shelter;}
@@ -384,7 +416,7 @@ void UpdateCoordination(const Soldier& officer,const std::vector<Soldier>& squad
             if(s.Active()&&s.id!=cmd.leader&&s.id!=cmd.support&&!InWindowTeam(cmd.teamPlan,s.id))for(const auto& c:cover) {
                 if(c.window||Distance(s.position,c.shelter)>10||!Walkable(map,c.shelter))continue;
                 bool protectedPosition=true,occupied=false;
-                for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<8&&!ProtectedAt(map,c.shelter,ct.position,c.crouch?Stance::Crouched:Stance::Standing))protectedPosition=false;
+                for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<8&&!ProtectedAt(map,c.shelter,ct.position,CoverStance(c)))protectedPosition=false;
                 for(Vec3 p:reserved)if(Distance(p,c.shelter)<2)occupied=true;
                 const float cost=Distance(s.position,c.shelter)+(SupportCoverage(map,c.peek,goal,leader,time)>0.5f?0:8);
                 if(protectedPosition&&!occupied&&cost<best&&!FindPath(map,s.position,c.shelter).empty()){best=cost;hold=c.shelter;}
@@ -400,19 +432,68 @@ void UpdateCoordination(const Soldier& officer,const std::vector<Soldier>& squad
             for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,cmd.teamPlan.holds[s.id%SquadSize])<0.6f&&
                 (Distance(s.position,cover.shelter)<1.5f||Distance(s.position,cover.peek)<1.5f)) {
                 bool safe=true;
-                for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<8&&!ProtectedAt(map,cover.shelter,ct.position,cover.crouch?Stance::Crouched:Stance::Standing))safe=false;
+                for(const auto& ct:leader.contacts)if(ct.known&&time-ct.observedAt<8&&!ProtectedAt(map,cover.shelter,ct.position,CoverStance(cover)))safe=false;
                 sheltered|=safe;
             }
-            if(sheltered)++ready;
+            if(sheltered){++ready;if(requests)cmd.coverRequest.boundCover[s.id%SquadSize]=true;}
         }
         std::vector<Vec3> crossingPath;
         if(cmd.route)crossingPath=BoundCrossing(*cmd.route,cmd.routeStage,std::max(cmd.routeStage,cmd.boundStage));
-        bool covering=!crossingPath.empty()?CoveringPath(officer,map,cmd.boundOrigin,crossingPath,time):CoveringCrossing(officer,map,cmd.boundOrigin,cmd.teamPlan.target,time);
-        if(cmd.moveExposure>=.2f&&!covering)cmd.opportunitySince=-1;
-        if(cmd.moveExposure>=.2f&&covering&&cmd.opportunitySince<0)cmd.opportunitySince=time;
-        cmd.coveringReady=cmd.moveExposure<.2f?time-cmd.boundStarted>=2:covering&&cmd.opportunitySince>=0&&time-cmd.opportunitySince>=8;
+        const float primaryAge=graduated?CoverGradeConstants.primaryAge:-1.f;
+        // Plan 028 Stage 1: an exposed internal bound asks for fire on its primary (renewing the squad's
+        // request); the ready BoundCover men marked above answer it with the gun.
+        if(requests&&cmd.moveExposure>=.2f&&cmd.maneuver!=Maneuver::PullBack) {
+            const auto path=!crossingPath.empty()?crossingPath:FindPath(map,cmd.boundOrigin,cmd.teamPlan.target);
+            const int primary=path.empty()?-1:CoveringPrimary(WithTracks(officer,time),map,cmd.boundOrigin,path,time,primaryAge);
+            if(primary>=0){const auto marked=cmd.coverRequest.boundCover;
+                RaiseCoverRequest(officer,squad,map,cmd,primary,cmd.boundOrigin,path.back(),2,"internal",time,diagnostics,&path,shift,rifleBase,sector&&requests,primaryAge);
+                cmd.coverRequest.boundCover=marked;}
+        }
+        bool covering=!crossingPath.empty()?CoveringPath(officer,map,cmd.boundOrigin,crossingPath,time,primaryAge,sector):
+            sector?CoveringPath(officer,map,cmd.boundOrigin,FindPath(map,cmd.boundOrigin,cmd.teamPlan.target),time,primaryAge,true):CoveringCrossing(officer,map,cmd.boundOrigin,cmd.teamPlan.target,time,primaryAge);
+        // Plan 030 M-S5 (S5): an internal bound whose overlooking threats are quiet counts as covered.
+        const char* release=covering&&cmd.moveExposure>=.2f?"credit":"";
+        if(quietRelease&&!covering&&cmd.moveExposure>=.2f&&QuietCrossing(officer,map,cmd.boundOrigin,!crossingPath.empty()?crossingPath:FindPath(map,cmd.boundOrigin,cmd.teamPlan.target),time,primaryAge).pass){covering=true;release="quiet";}
+        // Plan 030 K-1 (Config::retireFallen): an internal bound watched only by men seen to fall is not exposed any more.
+        if(fallen&&!covering&&cmd.moveExposure>=.2f&&OnlyFallenOverlook(officer,*fallen,map,cmd.boundOrigin,!crossingPath.empty()?crossingPath:FindPath(map,cmd.boundOrigin,cmd.teamPlan.target),time)){covering=true;release="fallen";}
+        // Plan 030 M-S6 (noCovering): the gate reads an exposed crossing as released; `covering` keeps the credited value.
+        const bool gateCovering=covering||(noCovering&&cmd.moveExposure>=.2f);
+        if(noCovering&&!covering&&cmd.moveExposure>=.2f)release="off";
+        // Plan 028 Stage 0: what this internal bound saw, captured before it changes anything.
+        const float clockEntry=cmd.opportunitySince;const bool waypointEntry=cmd.hasWaypoint,releasedEntry=cmd.teamPlan.released,policyEntry=PolicyReleased(cmd,time);
+        if(cmd.moveExposure>=.2f&&!gateCovering)cmd.opportunitySince=-1;
+        if(coverTrace)TraceCoveringClock(diagnostics,officer,cmd,clockEntry,time,waypointEntry?"coordination_live_route":"coordination_stale_route");
+        if(cmd.moveExposure>=.2f&&gateCovering&&cmd.opportunitySince<0)cmd.opportunitySince=time;
+        // Plan 026 P4b: a bound released by a go-now commit starts as a protected bound does.
+        cmd.coveringReady=PolicyReleased(cmd,time)?time-cmd.boundStarted>=2:
+            cmd.moveExposure<.2f?time-cmd.boundStarted>=2:(gateCovering&&cmd.opportunitySince>=0&&time-cmd.opportunitySince>=8)||(noCovering&&time-cmd.boundStarted>=8);
+        // Plan 031 D: under the drill the gun's fire on the moving team's leg is the gate, man by man (ApplyFireMovement).
+        if(drill&&!cmd.coveringReady&&!cmd.teamPlan.released)cmd.coveringReady=time-cmd.boundStarted>=2;
+        // Plan 028 Stage 3c: an internal bound nobody covers is graded once it has waited T since it was
+        // set up: a stale or low-danger crossing is released, a high-danger one keeps today's 12 s pause.
+        CoverGrade grade;const char* graduatedOutcome="";
+        if(graduated&&!cmd.teamPlan.released&&!cmd.coveringReady&&!gateCovering&&cmd.moveExposure>=.2f&&!PolicyReleased(cmd,time)&&time-cmd.boundStarted>=CoverGradeConstants.shortWait){
+            grade=GradeCrossing(officer,map,cmd.boundOrigin,!crossingPath.empty()?crossingPath:FindPath(map,cmd.boundOrigin,cmd.teamPlan.target),cmd.moveExposure,time,true);
+            graduatedOutcome=!grade.freshPrimary?"stale_cross":grade.high?"high_pause":"low_cross";
+            if(!grade.freshPrimary||!grade.high)cmd.coveringReady=true;
+        }
+        CoveringGateState gate;
+        if(coverTrace){gate.covering=covering;gate.pass=cmd.coveringReady;gate.exposure=cmd.moveExposure;gate.opportunitySince=clockEntry;
+            gate.waited=cmd.opportunitySince<0?-1:time-cmd.opportunitySince;gate.hasWaypoint=waypointEntry;gate.routePresent=bool(cmd.route);gate.staleRoute=!waypointEntry;
+            gate.policyReleased=policyEntry;gate.ready=ready;
+            gate.graduated=graduated;gate.outcome=graduatedOutcome;gate.danger=!*graduatedOutcome?"":!grade.freshPrimary?"stale":grade.high?"high":"low";
+            if(quietRelease||fallen||noCovering)gate.release=release;} // plan 030 K-1: "fallen" too; M-S6: "off"
         if(!cmd.teamPlan.released&&cmd.coveringReady){cmd.teamPlan.released=true;cmd.boundReleasedAt=time;++cmd.teamPlan.serial;}
-        else if(!cmd.teamPlan.released&&time-cmd.boundStarted>12)PauseSquadMovement(officer,squad,cmd,MoveBlock::Support,time);
+        else if(!cmd.teamPlan.released&&time-cmd.boundStarted>12){
+            const float clockBefore=cmd.opportunitySince;const bool gunMoveBefore=cmd.supportNeedsMove;
+            PauseSquadMovement(officer,squad,cmd,MoveBlock::Support,time);
+            if(coverTrace){gate.paused=true;NoteCoveringPause(diagnostics,officer.squad,"coordination_internal_support",waypointEntry,!gunMoveBefore&&cmd.supportNeedsMove);TraceCoveringClock(diagnostics,officer,cmd,clockBefore,time,"pause");}
+        }
+        if(coverTrace&&gate.exposure>=.2f&&!releasedEntry&&!policyEntry){
+            const auto explanation=CoveringExplain(officer,map,cmd.boundOrigin,!crossingPath.empty()?crossingPath:FindPath(map,cmd.boundOrigin,cmd.teamPlan.target),time,primaryAge,sector);
+            gate.platoonFiring=explanation.fresh;
+            TraceCoveringCheck(diagnostics,officer,cmd,time,"internal",explanation,gate);
+        }
     }
 }
 }

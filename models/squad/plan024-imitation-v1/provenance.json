@@ -1,0 +1,1903 @@
+{
+  "schema": 1,
+  "status": "experimental_not_promoted",
+  "source": "aef3b097c0df4b47",
+  "baseline_source": "45da1e25dd1aa9e7",
+  "base_revision": "c760cae7dd15bf827d23f2cab097920ae14fbb16",
+  "model_sha256": "a16bff3cd0d09bef1f2dc4dfe4f05dfb00e81a80242e99031bbd1c70f45ccd66",
+  "model_bytes": 41378,
+  "architecture": {
+    "schema": 2,
+    "features": 96,
+    "hidden": 32,
+    "outputs_per_candidate": 1,
+    "candidates": 0
+  },
+  "training": {
+    "schema": 1,
+    "method": "behaviour_cloning",
+    "features": 96,
+    "hidden": 32,
+    "candidates": 0,
+    "decisions": 17904,
+    "training_maps": [
+      502,
+      503,
+      504,
+      505,
+      507,
+      508,
+      509,
+      510,
+      512,
+      513,
+      514,
+      515,
+      517,
+      518,
+      519,
+      520
+    ],
+    "validation_maps": [
+      501,
+      506,
+      511,
+      516
+    ],
+    "seed": 24,
+    "torch": "2.14.0+cpu",
+    "wall_seconds": 48.83806121299858,
+    "best_validation_accuracy": 0.8918228279386712,
+    "validation_usage": "Checkpoint selection; these maps are development, not unopened promotion tests",
+    "model_sha256": "a16bff3cd0d09bef1f2dc4dfe4f05dfb00e81a80242e99031bbd1c70f45ccd66"
+  },
+  "dataset": {
+    "episodes": 60,
+    "recorded_decisions": 20612,
+    "learnable_decisions": 17904,
+    "histograms": {
+      "labels": {
+        "candidate": 16912,
+        "retain": 3700
+      },
+      "families": {
+        "1": 7895,
+        "2": 8562,
+        "4": 40,
+        "0": 3700,
+        "5": 397,
+        "3": 18
+      },
+      "outcomes": {
+        "preparing": 2985,
+        "committed": 1761,
+        "support_wait": 12166,
+        "retain": 3700
+      }
+    },
+    "jobs": 14,
+    "wall_seconds": 137.74745022800198,
+    "peak_memory_bytes": 609947648,
+    "provenance": [
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-501-107-building12s501/episode.json",
+        "map": 501,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "2474315094968273234",
+        "sha256": "f268f00049099cfdc7344110251364869fd6d8a7e8e964651e325f0055c2743a",
+        "labels": {
+          "candidate": 126
+        },
+        "families": {
+          "1": 41,
+          "2": 84,
+          "4": 1
+        },
+        "outcomes": {
+          "preparing": 56,
+          "committed": 55,
+          "support_wait": 15
+        },
+        "decisions": 126
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-501-108-building12s501/episode.json",
+        "map": 501,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "6743690659564714489",
+        "sha256": "239632a5de304b62bcd1d2bb21b808a9cc41cd6b78b50a849af08cac1fe2ae7b",
+        "labels": {
+          "candidate": 115,
+          "retain": 1
+        },
+        "families": {
+          "1": 31,
+          "2": 83,
+          "4": 1,
+          "0": 1
+        },
+        "outcomes": {
+          "preparing": 41,
+          "committed": 50,
+          "support_wait": 24,
+          "retain": 1
+        },
+        "decisions": 116
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-501-109-building12s501/episode.json",
+        "map": 501,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "17843407583932573723",
+        "sha256": "28a66e201bf9c14ae4500ddbcd1d066ecb4d81711efd5130361d528e5054607b",
+        "labels": {
+          "candidate": 115,
+          "retain": 21
+        },
+        "families": {
+          "1": 38,
+          "2": 75,
+          "0": 21,
+          "5": 1,
+          "4": 1
+        },
+        "outcomes": {
+          "preparing": 34,
+          "committed": 27,
+          "support_wait": 54,
+          "retain": 21
+        },
+        "decisions": 136
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-502-107-spread12s502/episode.json",
+        "map": 502,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "17433431243448392280",
+        "sha256": "059361ef5f165aa22a1708a5c64e1a820d36e8d2f576284eea969d54d746e6e3",
+        "labels": {
+          "candidate": 592,
+          "retain": 4
+        },
+        "families": {
+          "2": 378,
+          "1": 213,
+          "0": 4,
+          "5": 1
+        },
+        "outcomes": {
+          "support_wait": 535,
+          "preparing": 35,
+          "committed": 22,
+          "retain": 4
+        },
+        "decisions": 596
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-502-108-spread12s502/episode.json",
+        "map": 502,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "18352064954907529068",
+        "sha256": "7ead8d5138133c54bfc6395e3c9a47ae1d8113417ec6d895cc0147cb2e937c12",
+        "labels": {
+          "candidate": 442,
+          "retain": 12
+        },
+        "families": {
+          "2": 340,
+          "1": 99,
+          "0": 12,
+          "5": 3
+        },
+        "outcomes": {
+          "support_wait": 381,
+          "preparing": 39,
+          "committed": 22,
+          "retain": 12
+        },
+        "decisions": 454
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-502-109-spread12s502/episode.json",
+        "map": 502,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "17129782551867891261",
+        "sha256": "7b828bff513eb86b273d5407a8384476465272d5d25eb8402e36331b200e6b96",
+        "labels": {
+          "candidate": 818,
+          "retain": 20
+        },
+        "families": {
+          "1": 474,
+          "2": 291,
+          "0": 20,
+          "5": 53
+        },
+        "outcomes": {
+          "support_wait": 750,
+          "preparing": 41,
+          "committed": 27,
+          "retain": 20
+        },
+        "decisions": 838
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-503-107-clusters12s503/episode.json",
+        "map": 503,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "2563832952526088394",
+        "sha256": "d1ba83c578446103fbea4c8d3d2c1d6156075204f523c30d6990f91fb0295e74",
+        "labels": {
+          "candidate": 140,
+          "retain": 91
+        },
+        "families": {
+          "1": 55,
+          "2": 83,
+          "0": 91,
+          "5": 2
+        },
+        "outcomes": {
+          "preparing": 70,
+          "support_wait": 40,
+          "committed": 30,
+          "retain": 91
+        },
+        "decisions": 231
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-503-108-clusters12s503/episode.json",
+        "map": 503,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "3708567118987270791",
+        "sha256": "1d9abe01cb1048494ea278342cbadc3c23f3a7b131e6ae0c2b9598017442e8c1",
+        "labels": {
+          "candidate": 131,
+          "retain": 1
+        },
+        "families": {
+          "2": 95,
+          "1": 32,
+          "0": 1,
+          "5": 4
+        },
+        "outcomes": {
+          "preparing": 63,
+          "committed": 30,
+          "support_wait": 38,
+          "retain": 1
+        },
+        "decisions": 132
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-503-109-clusters12s503/episode.json",
+        "map": 503,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "10956040188733986586",
+        "sha256": "59f863f71c05578ca04ea1b72006903c5c91cdb499dc4fcb2f8ad60a90466adf",
+        "labels": {
+          "candidate": 101
+        },
+        "families": {
+          "1": 47,
+          "2": 54
+        },
+        "outcomes": {
+          "preparing": 48,
+          "committed": 24,
+          "support_wait": 29
+        },
+        "decisions": 101
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-504-107-building12s504/episode.json",
+        "map": 504,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "18306049463012062337",
+        "sha256": "221c45c28264a8ef33ce84cfd2f8d43d008d742166c91ef3129d182e00758424",
+        "labels": {
+          "candidate": 270,
+          "retain": 10
+        },
+        "families": {
+          "1": 129,
+          "2": 140,
+          "0": 10,
+          "4": 1
+        },
+        "outcomes": {
+          "preparing": 50,
+          "committed": 33,
+          "support_wait": 187,
+          "retain": 10
+        },
+        "decisions": 280
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-504-108-building12s504/episode.json",
+        "map": 504,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "15734823218626417255",
+        "sha256": "56966b63fc7850d72fed63ae46bed082dfcf6b100ce16ddf9136e1a56a13126e",
+        "labels": {
+          "candidate": 244,
+          "retain": 8
+        },
+        "families": {
+          "1": 124,
+          "2": 100,
+          "5": 18,
+          "0": 8,
+          "4": 2
+        },
+        "outcomes": {
+          "preparing": 70,
+          "committed": 42,
+          "retain": 8,
+          "support_wait": 132
+        },
+        "decisions": 252
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-504-109-building12s504/episode.json",
+        "map": 504,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "11610809437440083894",
+        "sha256": "fe680bda2addab78382c4e2a7bb4a923c0b0bce3a53d5bc85a20cfbf20f41065",
+        "labels": {
+          "candidate": 149,
+          "retain": 292
+        },
+        "families": {
+          "1": 95,
+          "2": 50,
+          "5": 3,
+          "0": 292,
+          "4": 1
+        },
+        "outcomes": {
+          "preparing": 53,
+          "committed": 43,
+          "retain": 292,
+          "support_wait": 53
+        },
+        "decisions": 441
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-505-107-spread12s505/episode.json",
+        "map": 505,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "17365616570628418923",
+        "sha256": "d3c3f3c941a1ead7cd81cb9263d6c657af064d9b0388f2febe8696aa502508d8",
+        "labels": {
+          "candidate": 267,
+          "retain": 25
+        },
+        "families": {
+          "2": 239,
+          "1": 28,
+          "0": 25
+        },
+        "outcomes": {
+          "support_wait": 168,
+          "preparing": 64,
+          "committed": 35,
+          "retain": 25
+        },
+        "decisions": 292
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-505-108-spread12s505/episode.json",
+        "map": 505,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "13792294448663713998",
+        "sha256": "bc6b0ef69e51dbbf7cf1ceea981bde9b14961122de0310659c90412cc5adcea8",
+        "labels": {
+          "candidate": 282,
+          "retain": 27
+        },
+        "families": {
+          "1": 139,
+          "2": 129,
+          "0": 27,
+          "5": 14
+        },
+        "outcomes": {
+          "preparing": 53,
+          "committed": 29,
+          "support_wait": 200,
+          "retain": 27
+        },
+        "decisions": 309
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-505-109-spread12s505/episode.json",
+        "map": 505,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "10140432265152980384",
+        "sha256": "d2103c82cbf65508ebb94a151945dd5cb8d4d36983b216de728ed8c22dd67c00",
+        "labels": {
+          "candidate": 295,
+          "retain": 228
+        },
+        "families": {
+          "2": 183,
+          "1": 102,
+          "0": 228,
+          "5": 10
+        },
+        "outcomes": {
+          "support_wait": 204,
+          "preparing": 61,
+          "committed": 30,
+          "retain": 228
+        },
+        "decisions": 523
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-506-107-clusters12s506/episode.json",
+        "map": 506,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "1449033911522832265",
+        "sha256": "52d443379527f0a05094f0a553a9064a2d2d1578a0d3cf7c74f337775956a105",
+        "labels": {
+          "candidate": 320,
+          "retain": 59
+        },
+        "families": {
+          "1": 126,
+          "2": 183,
+          "0": 59,
+          "5": 11
+        },
+        "outcomes": {
+          "preparing": 62,
+          "committed": 27,
+          "retain": 59,
+          "support_wait": 231
+        },
+        "decisions": 379
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-506-108-clusters12s506/episode.json",
+        "map": 506,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "5590789391351841015",
+        "sha256": "6f2722603a000f5e02eb3338cdb8f1a518234570a052eae62460d5649bb9c82c",
+        "labels": {
+          "candidate": 311,
+          "retain": 3
+        },
+        "families": {
+          "1": 54,
+          "2": 254,
+          "0": 3,
+          "5": 3
+        },
+        "outcomes": {
+          "preparing": 38,
+          "support_wait": 251,
+          "committed": 22,
+          "retain": 3
+        },
+        "decisions": 314
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-506-109-clusters12s506/episode.json",
+        "map": 506,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "13950307060653991913",
+        "sha256": "9a03e8c92a64f38d253a42ef88d2e0a9c514207cc194618f17d7b24460c9a788",
+        "labels": {
+          "candidate": 334,
+          "retain": 21
+        },
+        "families": {
+          "1": 136,
+          "2": 195,
+          "0": 21,
+          "5": 3
+        },
+        "outcomes": {
+          "preparing": 52,
+          "committed": 28,
+          "support_wait": 254,
+          "retain": 21
+        },
+        "decisions": 355
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-507-107-building12s507/episode.json",
+        "map": 507,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "9833573315000911197",
+        "sha256": "597972fbb8cad1f86dcbaf4a73e5514e73b20dbc3702eb83b7c5627027a2bc56",
+        "labels": {
+          "candidate": 140,
+          "retain": 516
+        },
+        "families": {
+          "1": 40,
+          "2": 89,
+          "0": 516,
+          "5": 11
+        },
+        "outcomes": {
+          "preparing": 42,
+          "committed": 23,
+          "retain": 516,
+          "support_wait": 75
+        },
+        "decisions": 656
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-507-108-building12s507/episode.json",
+        "map": 507,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "16022458110756232985",
+        "sha256": "f6a5baf92aecf9b06e2c1f908b281b7337cbbf3c166724afd25da559d9853c22",
+        "labels": {
+          "candidate": 148,
+          "retain": 7
+        },
+        "families": {
+          "1": 47,
+          "2": 101,
+          "0": 7
+        },
+        "outcomes": {
+          "preparing": 37,
+          "committed": 19,
+          "support_wait": 92,
+          "retain": 7
+        },
+        "decisions": 155
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-507-109-building12s507/episode.json",
+        "map": 507,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "8475353135730884462",
+        "sha256": "8eec9fb9ca16cd47e0d4f983839b05f2b5a1d1c18ccffdd7da0070650eefd204",
+        "labels": {
+          "candidate": 274,
+          "retain": 23
+        },
+        "families": {
+          "1": 87,
+          "2": 185,
+          "0": 23,
+          "5": 2
+        },
+        "outcomes": {
+          "preparing": 45,
+          "committed": 22,
+          "support_wait": 207,
+          "retain": 23
+        },
+        "decisions": 297
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-508-107-spread12s508/episode.json",
+        "map": 508,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "12295360450149878397",
+        "sha256": "800b3103fcdbff4118d8e671a5f1f0df1d5b9387bf6d3058324e3c4cedebe346",
+        "labels": {
+          "candidate": 668,
+          "retain": 20
+        },
+        "families": {
+          "2": 412,
+          "1": 244,
+          "0": 20,
+          "5": 12
+        },
+        "outcomes": {
+          "preparing": 57,
+          "support_wait": 576,
+          "committed": 35,
+          "retain": 20
+        },
+        "decisions": 688
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-508-108-spread12s508/episode.json",
+        "map": 508,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "6408761455053533073",
+        "sha256": "5dc488652af3b0661d62b4b2c5b671a074fe7a672ec35de9c68c1b96dcd39a60",
+        "labels": {
+          "candidate": 559,
+          "retain": 1441
+        },
+        "families": {
+          "2": 462,
+          "1": 85,
+          "5": 7,
+          "3": 5,
+          "0": 1441
+        },
+        "outcomes": {
+          "preparing": 77,
+          "committed": 40,
+          "support_wait": 442,
+          "retain": 1441
+        },
+        "decisions": 2000
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-508-109-spread12s508/episode.json",
+        "map": 508,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "10141589062848302866",
+        "sha256": "4a3e55f65080a05990a9086ed761492b54ed897b00774a84e3bc5cb868209e1b",
+        "labels": {
+          "candidate": 445,
+          "retain": 34
+        },
+        "families": {
+          "2": 318,
+          "1": 113,
+          "0": 34,
+          "5": 14
+        },
+        "outcomes": {
+          "preparing": 63,
+          "committed": 36,
+          "support_wait": 346,
+          "retain": 34
+        },
+        "decisions": 479
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-509-107-clusters12s509/episode.json",
+        "map": 509,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "6330705536304131003",
+        "sha256": "d0d2a14acb1b683251ddb0ba46cc1ff087ce3692aca2637eb669826feea78736",
+        "labels": {
+          "candidate": 145,
+          "retain": 45
+        },
+        "families": {
+          "1": 95,
+          "2": 47,
+          "0": 45,
+          "5": 3
+        },
+        "outcomes": {
+          "preparing": 39,
+          "committed": 19,
+          "support_wait": 87,
+          "retain": 45
+        },
+        "decisions": 190
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-509-108-clusters12s509/episode.json",
+        "map": 509,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "707851005063184860",
+        "sha256": "119a79bb21ba25d3a121275ff9d8419d77b9622ab736be013be38bfdf420e61f",
+        "labels": {
+          "candidate": 249
+        },
+        "families": {
+          "2": 52,
+          "1": 197
+        },
+        "outcomes": {
+          "preparing": 42,
+          "support_wait": 191,
+          "committed": 16
+        },
+        "decisions": 249
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-509-109-clusters12s509/episode.json",
+        "map": 509,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "1032532547546706197",
+        "sha256": "f1698b12d595c283e11f05d05ee56a4eed1b545b34a5f2f0ab49013255203ff2",
+        "labels": {
+          "candidate": 349,
+          "retain": 3
+        },
+        "families": {
+          "1": 209,
+          "2": 135,
+          "0": 3,
+          "5": 5
+        },
+        "outcomes": {
+          "preparing": 57,
+          "committed": 19,
+          "support_wait": 273,
+          "retain": 3
+        },
+        "decisions": 352
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-510-107-building12s510/episode.json",
+        "map": 510,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "3100691598539497911",
+        "sha256": "8cf645d36ebda181232cc47ce0a61b07bd460de16299cf3f70a9af5a5ff8b4c2",
+        "labels": {
+          "candidate": 220,
+          "retain": 8
+        },
+        "families": {
+          "1": 62,
+          "2": 148,
+          "0": 8,
+          "4": 3,
+          "5": 7
+        },
+        "outcomes": {
+          "preparing": 43,
+          "committed": 27,
+          "support_wait": 150,
+          "retain": 8
+        },
+        "decisions": 228
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-510-108-building12s510/episode.json",
+        "map": 510,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "6507942089383533157",
+        "sha256": "a7a81cff16da2574a67c33f158c5934a9fbd4314ff31f8374734c85d7bec9e16",
+        "labels": {
+          "candidate": 148,
+          "retain": 7
+        },
+        "families": {
+          "1": 38,
+          "2": 105,
+          "0": 7,
+          "5": 3,
+          "4": 2
+        },
+        "outcomes": {
+          "preparing": 33,
+          "committed": 33,
+          "support_wait": 82,
+          "retain": 7
+        },
+        "decisions": 155
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-510-109-building12s510/episode.json",
+        "map": 510,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "16568007199069278060",
+        "sha256": "e883ecb4cdd7482ed640cd2dc2b2647f9924052a3c93fcbc71f53e4b12743c7d",
+        "labels": {
+          "candidate": 143,
+          "retain": 2
+        },
+        "families": {
+          "1": 45,
+          "2": 94,
+          "0": 2,
+          "4": 3,
+          "5": 1
+        },
+        "outcomes": {
+          "preparing": 50,
+          "committed": 52,
+          "support_wait": 41,
+          "retain": 2
+        },
+        "decisions": 145
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-511-107-spread12s511/episode.json",
+        "map": 511,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "17204563114537798423",
+        "sha256": "065f5abd71b8509db59b5b2d6a63c5b0c0f7931b45adee47f31b5e02dc793dae",
+        "labels": {
+          "candidate": 382,
+          "retain": 19
+        },
+        "families": {
+          "2": 168,
+          "1": 198,
+          "5": 16,
+          "0": 19
+        },
+        "outcomes": {
+          "preparing": 70,
+          "committed": 34,
+          "support_wait": 278,
+          "retain": 19
+        },
+        "decisions": 401
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-511-108-spread12s511/episode.json",
+        "map": 511,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "15196059024683457293",
+        "sha256": "5c8b7626c00b86227e44ef4f74e7374dfc8e0c37ffd44942f9c4df021da8d377",
+        "labels": {
+          "candidate": 251
+        },
+        "families": {
+          "2": 83,
+          "1": 162,
+          "5": 6
+        },
+        "outcomes": {
+          "preparing": 58,
+          "committed": 32,
+          "support_wait": 161
+        },
+        "decisions": 251
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-511-109-spread12s511/episode.json",
+        "map": 511,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "7084214357373624611",
+        "sha256": "91b474d5a3915d1a711884ffcb336f07631f374c4348808717580dae4c77bcd3",
+        "labels": {
+          "candidate": 227,
+          "retain": 22
+        },
+        "families": {
+          "1": 186,
+          "2": 36,
+          "0": 22,
+          "5": 5
+        },
+        "outcomes": {
+          "preparing": 76,
+          "committed": 31,
+          "support_wait": 120,
+          "retain": 22
+        },
+        "decisions": 249
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-512-107-clusters12s512/episode.json",
+        "map": 512,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "9328202779006907233",
+        "sha256": "fcdd9fefea68d86348d676ef7bfc5d46e5209edd249fc28fce64da69577f928d",
+        "labels": {
+          "candidate": 62
+        },
+        "families": {
+          "1": 26,
+          "2": 33,
+          "5": 3
+        },
+        "outcomes": {
+          "preparing": 44,
+          "committed": 18
+        },
+        "decisions": 62
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-512-108-clusters12s512/episode.json",
+        "map": 512,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "1318464400438606870",
+        "sha256": "5eee8d1a12b94f70236baf6212aebecdb1c7c86733592dfb393be1c54135d14a",
+        "labels": {
+          "candidate": 68,
+          "retain": 4
+        },
+        "families": {
+          "1": 30,
+          "2": 38,
+          "0": 4
+        },
+        "outcomes": {
+          "preparing": 34,
+          "committed": 20,
+          "support_wait": 14,
+          "retain": 4
+        },
+        "decisions": 72
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-512-109-clusters12s512/episode.json",
+        "map": 512,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "3495725665823607580",
+        "sha256": "6d7a39333e4e0627b529bbe380fb9d0d18394828ad16fa4f429c0fcf0d31c357",
+        "labels": {
+          "candidate": 45
+        },
+        "families": {
+          "1": 21,
+          "2": 24
+        },
+        "outcomes": {
+          "preparing": 30,
+          "committed": 15
+        },
+        "decisions": 45
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-513-107-building12s513/episode.json",
+        "map": 513,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "14680179136258679630",
+        "sha256": "486a5eede49782b58fcec50d4a759076e2bdda8f17ee43e056639806a923a1b5",
+        "labels": {
+          "candidate": 202,
+          "retain": 24
+        },
+        "families": {
+          "2": 42,
+          "1": 160,
+          "0": 24
+        },
+        "outcomes": {
+          "preparing": 55,
+          "committed": 37,
+          "support_wait": 110,
+          "retain": 24
+        },
+        "decisions": 226
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-513-108-building12s513/episode.json",
+        "map": 513,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "4286516894799643647",
+        "sha256": "206c2ffe69f8cfea61237f33db92ddd76d5202a37aa374c39edc9ca85a80e737",
+        "labels": {
+          "candidate": 217,
+          "retain": 10
+        },
+        "families": {
+          "2": 42,
+          "1": 159,
+          "5": 9,
+          "3": 6,
+          "0": 10,
+          "4": 1
+        },
+        "outcomes": {
+          "preparing": 53,
+          "committed": 49,
+          "support_wait": 115,
+          "retain": 10
+        },
+        "decisions": 227
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-513-109-building12s513/episode.json",
+        "map": 513,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "4234595211203029484",
+        "sha256": "d0b14294a526f7b0771e4ddbd8fbeb8f5b5034c6145b14a1da575347e674f8bd",
+        "labels": {
+          "candidate": 108,
+          "retain": 48
+        },
+        "families": {
+          "2": 33,
+          "1": 66,
+          "0": 48,
+          "4": 4,
+          "5": 5
+        },
+        "outcomes": {
+          "preparing": 40,
+          "committed": 32,
+          "retain": 48,
+          "support_wait": 36
+        },
+        "decisions": 156
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-514-107-spread12s514/episode.json",
+        "map": 514,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "17154742727191109699",
+        "sha256": "7ef40739a2c6ec5b69f3c0fa35d416951db0a43dc97303de2e7ca24111c6124a",
+        "labels": {
+          "candidate": 133
+        },
+        "families": {
+          "1": 93,
+          "2": 37,
+          "5": 3
+        },
+        "outcomes": {
+          "preparing": 58,
+          "committed": 29,
+          "support_wait": 46
+        },
+        "decisions": 133
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-514-108-spread12s514/episode.json",
+        "map": 514,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "1474563961070288490",
+        "sha256": "54b929ec52ea7c5fbd1b65e5b48e90660f8a68aa3e214f671ab473edf486c848",
+        "labels": {
+          "candidate": 184,
+          "retain": 22
+        },
+        "families": {
+          "1": 111,
+          "2": 66,
+          "0": 22,
+          "5": 4,
+          "3": 3
+        },
+        "outcomes": {
+          "support_wait": 112,
+          "committed": 24,
+          "preparing": 48,
+          "retain": 22
+        },
+        "decisions": 206
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-514-109-spread12s514/episode.json",
+        "map": 514,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "13104538705928941337",
+        "sha256": "cd4d2adf5fd44b15886787759a429d2e80d23b214f98a2766254067e9e0aa780",
+        "labels": {
+          "candidate": 313,
+          "retain": 78
+        },
+        "families": {
+          "1": 165,
+          "2": 148,
+          "0": 78
+        },
+        "outcomes": {
+          "preparing": 67,
+          "support_wait": 215,
+          "committed": 31,
+          "retain": 78
+        },
+        "decisions": 391
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-515-107-clusters12s515/episode.json",
+        "map": 515,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "10768942989693305021",
+        "sha256": "cfcb90f91e26ac8b7a6bdbd5f9ed5fcde93d209307c24abcd529ff498cdd4936",
+        "labels": {
+          "candidate": 226,
+          "retain": 2
+        },
+        "families": {
+          "1": 93,
+          "2": 133,
+          "0": 2
+        },
+        "outcomes": {
+          "preparing": 42,
+          "committed": 28,
+          "support_wait": 156,
+          "retain": 2
+        },
+        "decisions": 228
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-515-108-clusters12s515/episode.json",
+        "map": 515,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "5446938765444854728",
+        "sha256": "bb46bc35ee578226c78e6f1fe35ba87c1676f0003cc7b8acbbbf7740be786510",
+        "labels": {
+          "candidate": 373,
+          "retain": 88
+        },
+        "families": {
+          "1": 171,
+          "2": 202,
+          "0": 88
+        },
+        "outcomes": {
+          "preparing": 57,
+          "committed": 30,
+          "support_wait": 286,
+          "retain": 88
+        },
+        "decisions": 461
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-515-109-clusters12s515/episode.json",
+        "map": 515,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "6592716502285337082",
+        "sha256": "bb08b4f1f4550e747d27966389f797fc3d370ff63b42dd53feea398f095d5f4b",
+        "labels": {
+          "candidate": 175,
+          "retain": 6
+        },
+        "families": {
+          "2": 106,
+          "1": 69,
+          "0": 6
+        },
+        "outcomes": {
+          "preparing": 55,
+          "committed": 29,
+          "support_wait": 91,
+          "retain": 6
+        },
+        "decisions": 181
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-516-107-building12s516/episode.json",
+        "map": 516,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "15928597461483063220",
+        "sha256": "a9dfe7f883fe0ce46eed46043f3bbf103f41f1163bc53461703f33c599b0a862",
+        "labels": {
+          "candidate": 391,
+          "retain": 70
+        },
+        "families": {
+          "1": 202,
+          "2": 179,
+          "0": 70,
+          "5": 6,
+          "4": 4
+        },
+        "outcomes": {
+          "preparing": 59,
+          "committed": 27,
+          "support_wait": 305,
+          "retain": 70
+        },
+        "decisions": 461
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-516-108-building12s516/episode.json",
+        "map": 516,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "269622633631297971",
+        "sha256": "a2cbba618689b6b8e8faaf56b247b545015cc4e76fe0eaaef0e9b4e027396e31",
+        "labels": {
+          "candidate": 298,
+          "retain": 3
+        },
+        "families": {
+          "2": 134,
+          "1": 160,
+          "5": 3,
+          "4": 1,
+          "0": 3
+        },
+        "outcomes": {
+          "preparing": 33,
+          "committed": 33,
+          "support_wait": 232,
+          "retain": 3
+        },
+        "decisions": 301
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-516-109-building12s516/episode.json",
+        "map": 516,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "13034828738547435779",
+        "sha256": "6efbee475baec96d4de77d1edef12780ee98357d60da3c5c211496648bdbd83d",
+        "labels": {
+          "candidate": 416,
+          "retain": 23
+        },
+        "families": {
+          "1": 227,
+          "2": 186,
+          "0": 23,
+          "5": 3
+        },
+        "outcomes": {
+          "preparing": 40,
+          "committed": 19,
+          "support_wait": 357,
+          "retain": 23
+        },
+        "decisions": 439
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-517-107-spread12s517/episode.json",
+        "map": 517,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "4349556119262446870",
+        "sha256": "ce487e874e3b42569cbf65db0b62884e9c357c93868bc9e66b13f7e03fc80c62",
+        "labels": {
+          "candidate": 400,
+          "retain": 25
+        },
+        "families": {
+          "2": 297,
+          "1": 95,
+          "5": 8,
+          "0": 25
+        },
+        "outcomes": {
+          "support_wait": 332,
+          "preparing": 45,
+          "committed": 23,
+          "retain": 25
+        },
+        "decisions": 425
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-517-108-spread12s517/episode.json",
+        "map": 517,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "4269760265027125191",
+        "sha256": "36572fe7a87fd4a31626022d16a369ff358d6147d1d50ecc16c5b887b9048724",
+        "labels": {
+          "candidate": 458,
+          "retain": 8
+        },
+        "families": {
+          "2": 368,
+          "1": 87,
+          "0": 8,
+          "5": 3
+        },
+        "outcomes": {
+          "support_wait": 391,
+          "preparing": 44,
+          "committed": 23,
+          "retain": 8
+        },
+        "decisions": 466
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-517-109-spread12s517/episode.json",
+        "map": 517,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "4280209759419520160",
+        "sha256": "29891206b57a16f3125dc5842db6358e569e7160afd6f73e238302452513d34f",
+        "labels": {
+          "candidate": 494,
+          "retain": 7
+        },
+        "families": {
+          "1": 216,
+          "2": 263,
+          "5": 15,
+          "0": 7
+        },
+        "outcomes": {
+          "preparing": 54,
+          "support_wait": 407,
+          "committed": 33,
+          "retain": 7
+        },
+        "decisions": 501
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-518-107-clusters12s518/episode.json",
+        "map": 518,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "1149279572599162714",
+        "sha256": "8986b57a9ed1d4112746ac6e1b5a8a6559fb351878ad73bcad576e3389b08396",
+        "labels": {
+          "candidate": 168,
+          "retain": 18
+        },
+        "families": {
+          "2": 43,
+          "1": 120,
+          "5": 5,
+          "0": 18
+        },
+        "outcomes": {
+          "preparing": 36,
+          "support_wait": 114,
+          "committed": 18,
+          "retain": 18
+        },
+        "decisions": 186
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-518-108-clusters12s518/episode.json",
+        "map": 518,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "14129726384938807493",
+        "sha256": "6f09abd84aae55e82600a5c5a5505c3bbbccfb52ca4049276d1740b17e9f0925",
+        "labels": {
+          "candidate": 255
+        },
+        "families": {
+          "2": 99,
+          "1": 156
+        },
+        "outcomes": {
+          "preparing": 46,
+          "committed": 21,
+          "support_wait": 188
+        },
+        "decisions": 255
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-518-109-clusters12s518/episode.json",
+        "map": 518,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "12296235281034295812",
+        "sha256": "4174f565f054b8012a790d54505f140730d783f29a499e81111327589fbff11a",
+        "labels": {
+          "candidate": 314,
+          "retain": 38
+        },
+        "families": {
+          "2": 68,
+          "1": 225,
+          "5": 21,
+          "0": 38
+        },
+        "outcomes": {
+          "support_wait": 258,
+          "preparing": 38,
+          "committed": 18,
+          "retain": 38
+        },
+        "decisions": 352
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-519-107-building12s519/episode.json",
+        "map": 519,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "8447079887027394648",
+        "sha256": "eabb81e064afbff90769d7421cf1485b041e39e8f66877da4c51b261dd333719",
+        "labels": {
+          "candidate": 212,
+          "retain": 29
+        },
+        "families": {
+          "2": 38,
+          "1": 155,
+          "0": 29,
+          "4": 3,
+          "5": 16
+        },
+        "outcomes": {
+          "preparing": 34,
+          "committed": 17,
+          "support_wait": 161,
+          "retain": 29
+        },
+        "decisions": 241
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-519-108-building12s519/episode.json",
+        "map": 519,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "10916352247272273122",
+        "sha256": "c2bf6e3995c499246bf65b03713164dca0b619b54e9ac804d5a5a1f4bbdf4a32",
+        "labels": {
+          "candidate": 216,
+          "retain": 20
+        },
+        "families": {
+          "2": 55,
+          "1": 148,
+          "4": 4,
+          "0": 20,
+          "5": 9
+        },
+        "outcomes": {
+          "preparing": 47,
+          "support_wait": 142,
+          "committed": 27,
+          "retain": 20
+        },
+        "decisions": 236
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-519-109-building12s519/episode.json",
+        "map": 519,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "17870909039949464232",
+        "sha256": "932396499b4a3251e19c27c3d4ff4bfd0143caf1368824123ca7fae7ac782302",
+        "labels": {
+          "candidate": 205,
+          "retain": 11
+        },
+        "families": {
+          "2": 73,
+          "1": 121,
+          "4": 8,
+          "0": 11,
+          "5": 3
+        },
+        "outcomes": {
+          "support_wait": 88,
+          "preparing": 60,
+          "committed": 57,
+          "retain": 11
+        },
+        "decisions": 216
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-520-107-spread12s520/episode.json",
+        "map": 520,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "16464942811053983520",
+        "sha256": "23169ad667bd8d0980f34048903e8fd80cac467cac63de18332ac73950bcd500",
+        "labels": {
+          "candidate": 425,
+          "retain": 16
+        },
+        "families": {
+          "1": 192,
+          "2": 222,
+          "0": 16,
+          "5": 11
+        },
+        "outcomes": {
+          "preparing": 63,
+          "committed": 29,
+          "retain": 16,
+          "support_wait": 333
+        },
+        "decisions": 441
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-520-108-spread12s520/episode.json",
+        "map": 520,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "10651684813308652724",
+        "sha256": "cd3bdf5979a8a0f82de143e64c782f1f07430121b02d4ca798973129099413d8",
+        "labels": {
+          "candidate": 639,
+          "retain": 29
+        },
+        "families": {
+          "1": 508,
+          "2": 92,
+          "0": 29,
+          "5": 39
+        },
+        "outcomes": {
+          "preparing": 53,
+          "committed": 35,
+          "retain": 29,
+          "support_wait": 551
+        },
+        "decisions": 668
+      },
+      {
+        "episode": ".local/plan024/data-v2/candidate/train/city-520-109-spread12s520/episode.json",
+        "map": 520,
+        "build": "aef3b097c0df4b47-linux",
+        "digest": "7539522690599219311",
+        "sha256": "2386b46393ea27e511ad588a8bac83d1caad100dc3507c1ed15f7c7905db9f42",
+        "labels": {
+          "candidate": 515,
+          "retain": 151
+        },
+        "families": {
+          "1": 348,
+          "2": 150,
+          "5": 13,
+          "0": 151,
+          "3": 4
+        },
+        "outcomes": {
+          "preparing": 31,
+          "committed": 25,
+          "support_wait": 459,
+          "retain": 151
+        },
+        "decisions": 666
+      }
+    ]
+  },
+  "benchmark": {
+    "paired_cases": 135,
+    "battles": 270,
+    "complete": true,
+    "jobs": 12,
+    "wall_seconds": 528.5356483680007,
+    "peak_memory_bytes": 613777408,
+    "summaries": {
+      "town-attack-dev": {
+        "legacy": {
+          "battles": 60,
+          "means": {
+            "attack_score": 0.8102430555555555,
+            "attack_cleared": 0.9333333333333333,
+            "casualty_azure": 0.340625,
+            "casualty_ember": 0.9805555555555555,
+            "at_fight_share": 0.9354672254871399,
+            "flank_fire_share": 0.29750462060935806,
+            "idle_exposed_share": 0.01122593225917483,
+            "orders_azure_per_minute": 295.75066509509156
+          }
+        },
+        "neural": {
+          "battles": 60,
+          "means": {
+            "attack_score": 0.8118923611111111,
+            "attack_cleared": 0.9166666666666666,
+            "casualty_azure": 0.3484375,
+            "casualty_ember": 0.9861111111111112,
+            "at_fight_share": 0.9354467055034017,
+            "flank_fire_share": 0.31932840961440795,
+            "idle_exposed_share": 0.010331109165518939,
+            "orders_azure_per_minute": 295.4565325765959
+          }
+        }
+      },
+      "town-attack-val": {
+        "legacy": {
+          "battles": 45,
+          "means": {
+            "attack_score": 0.8155092592592592,
+            "attack_cleared": 0.9555555555555556,
+            "casualty_azure": 0.3541666666666667,
+            "casualty_ember": 0.9925925925925926,
+            "at_fight_share": 0.9318004162280796,
+            "flank_fire_share": 0.29357190868474375,
+            "idle_exposed_share": 0.008872424606947905,
+            "orders_azure_per_minute": 288.99599060478505
+          }
+        },
+        "neural": {
+          "battles": 45,
+          "means": {
+            "attack_score": 0.8283564814814814,
+            "attack_cleared": 0.9777777777777777,
+            "casualty_azure": 0.33958333333333335,
+            "casualty_ember": 0.9981481481481481,
+            "at_fight_share": 0.9291662503883263,
+            "flank_fire_share": 0.32745251909057854,
+            "idle_exposed_share": 0.009571358783557,
+            "orders_azure_per_minute": 284.88986713890773
+          }
+        }
+      },
+      "town-dev": {
+        "legacy": {
+          "battles": 20,
+          "means": {
+            "casualty_azure": 0.5859375,
+            "casualty_ember": 0.5609375,
+            "orders_azure_per_minute": 284.35
+          }
+        },
+        "neural": {
+          "battles": 20,
+          "means": {
+            "casualty_azure": 0.521875,
+            "casualty_ember": 0.5578125,
+            "orders_azure_per_minute": 302.7916666666667
+          }
+        }
+      },
+      "trench-dev": {
+        "legacy": {
+          "battles": 10,
+          "means": {
+            "casualty_azure": 0.728125,
+            "casualty_ember": 0.51875,
+            "orders_azure_per_minute": 221.61666666666667
+          }
+        },
+        "neural": {
+          "battles": 10,
+          "means": {
+            "casualty_azure": 0.753125,
+            "casualty_ember": 0.509375,
+            "orders_azure_per_minute": 196.13333333333333
+          }
+        }
+      }
+    },
+    "paired_attack": {
+      "town-attack-dev": {
+        "count": 60,
+        "clusters": 20,
+        "mean": 0.0016493055555555562,
+        "median": -0.015625,
+        "ci95": [
+          -0.03420355902777778,
+          0.048893229166666545
+        ]
+      },
+      "town-attack-val": {
+        "count": 45,
+        "clusters": 15,
+        "mean": 0.012847222222222222,
+        "median": 0.0,
+        "ci95": [
+          -0.005902777777777778,
+          0.03194444444444444
+        ]
+      }
+    },
+    "guards": {
+      "build": {
+        "passed": false,
+        "detail": {
+          "ok": false,
+          "reason": "not run"
+        }
+      },
+      "selectors": {
+        "passed": false,
+        "detail": {
+          "ok": false,
+          "reason": "not run"
+        }
+      },
+      "python_tests": {
+        "passed": false,
+        "detail": {
+          "ok": false,
+          "reason": "not run"
+        }
+      },
+      "protected_files": {
+        "passed": false,
+        "detail": {
+          "ok": false,
+          "reason": "not run"
+        }
+      },
+      "static_check": {
+        "passed": false,
+        "detail": {
+          "ok": false,
+          "reason": "not run"
+        }
+      },
+      "parity": {
+        "passed": false,
+        "detail": {
+          "ok": false,
+          "reason": "not run"
+        }
+      },
+      "zero_shot": {
+        "passed": true,
+        "detail": {
+          "failures": []
+        }
+      },
+      "firing_squads": {
+        "passed": true,
+        "detail": {
+          "failures": []
+        }
+      },
+      "attacker_firing_squads": {
+        "passed": true,
+        "detail": {
+          "failures": []
+        }
+      },
+      "under_2m": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 20,
+            "clusters": 20,
+            "mean": 0.0009162438410884897,
+            "median": -0.0021871914598523834,
+            "ci95": [
+              -0.006470293002646655,
+              0.008016154471160514
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "orders_azure_per_minute": {
+        "passed": false,
+        "detail": {
+          "town-dev": {
+            "count": 20,
+            "clusters": 20,
+            "mean": 18.44166666666666,
+            "median": 27.83333333333333,
+            "ci95": [
+              3.0068749999999898,
+              32.534583333333316
+            ],
+            "unpaired": 0,
+            "passed": false
+          }
+        }
+      },
+      "orders_ember_per_minute": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 20,
+            "clusters": 20,
+            "mean": 4.04166666666667,
+            "median": -2.8333333333333144,
+            "ci95": [
+              -12.918125000000002,
+              22.37541666666667
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "friendly_fire": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 20,
+            "clusters": 20,
+            "mean": 0.3272796766946637,
+            "median": 0.9878108769678966,
+            "ci95": [
+              -1.0591273797826377,
+              1.6392212076372052
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "force_at_the_fight": {
+        "passed": true,
+        "detail": {
+          "town-attack-dev": {
+            "count": 60,
+            "clusters": 20,
+            "mean": -2.051998373824119e-05,
+            "median": -0.0029460925601803023,
+            "ci95": [
+              -0.005442808875463455,
+              0.006185570155172277
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "fights_from_cover": {
+        "passed": true,
+        "detail": {
+          "town-attack-dev": {
+            "count": 60,
+            "clusters": 20,
+            "mean": -0.0008948230936558914,
+            "median": -0.00035229125610176416,
+            "ci95": [
+              -0.0025673445223064846,
+              0.0005578908962857752
+            ],
+            "unpaired": 0,
+            "limit": 0.005,
+            "passed": true
+          }
+        }
+      },
+      "seen_at_the_fight": {
+        "passed": true,
+        "detail": {
+          "town-attack-dev": {
+            "count": 60,
+            "clusters": 20,
+            "mean": -0.0012580680031960513,
+            "median": -0.0008964579662947489,
+            "ci95": [
+              -0.006525777213420677,
+              0.0043502633586814995
+            ],
+            "unpaired": 0,
+            "relaxed_by": {
+              "metric": "flank_fire_share",
+              "mean": 0.021823789005049884,
+              "ci95": [
+                -0.04144029577653157,
+                0.09548098238999989
+              ],
+              "earned": false
+            },
+            "limit": 0.04,
+            "passed": true
+          }
+        }
+      }
+    }
+  },
+  "checks": {
+    "historical_and_city_parity": {
+      "passed": true,
+      "pairs": 41
+    },
+    "trace_parity_and_repeat": {
+      "passed": true,
+      "checks": 4
+    },
+    "linux_export": {
+      "decisions": 2000,
+      "feature_rows": 18207,
+      "max_abs_error": 2.1457672119140625e-06,
+      "action_disagreements": 0,
+      "passed": true,
+      "platform": "Linux native probe versus PyTorch"
+    },
+    "windows_export": {
+      "decisions": 2000,
+      "feature_rows": 18207,
+      "max_abs_error": 2.1457672119140625e-06,
+      "action_disagreements": 0,
+      "passed": true,
+      "platform": "Windows MSVC probe versus Linux PyTorch"
+    },
+    "static_check": {
+      "ok": true,
+      "hits": [],
+      "files": [
+        "DrillSim.cpp",
+        "SquadDrillSim.cpp",
+        "PlatoonTaskSim.cpp",
+        "PositionSim.cpp",
+        "LeaderSim.cpp",
+        "SquadPolicy.cpp"
+      ],
+      "tokens": [
+        "Frame&",
+        "const Frame",
+        ".soldiers[",
+        "f.soldiers",
+        "frame.soldiers",
+        "observer_",
+        "observer",
+        "Record&",
+        ".shots",
+        "fullVision",
+        "full_vision"
+      ]
+    },
+    "linux_full_suite": {
+      "passed": true,
+      "elapsed_seconds": 461.994,
+      "log": ".local/plan024/full-suite-v2.log"
+    },
+    "python_suite": {
+      "passed": true,
+      "tests": 126,
+      "log": ".local/plan024/python-tests-v2.log"
+    },
+    "linux_neural_contracts": {
+      "passed": true,
+      "recorded_decisions": 159,
+      "log": ".local/plan024/neural-tests-v2.log"
+    },
+    "windows_neural_contracts": {
+      "passed": true,
+      "recorded_decisions": 159,
+      "log": ".local/plan024/windows-neural-tests.log"
+    },
+    "unreal_build": {
+      "passed": true,
+      "engine": "5.8",
+      "elapsed_seconds": 48.83,
+      "log": ".local/plan024/unreal-build.log"
+    },
+    "neural_rerun": {
+      "expected": "2372919768571971356",
+      "actual": "2372919768571971356",
+      "match": true,
+      "digest_kind": "lean",
+      "model_digest": "10975752050326810330"
+    }
+  }
+}

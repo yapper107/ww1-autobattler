@@ -16,7 +16,7 @@ GUARD_WORDS = {
     'build': 'did not build', 'selectors': 'broke a mechanism test', 'python_tests': 'tool tests failed',
     'protected_files': 'touched a protected file', 'static_check': 'reads hidden enemy state',
     'parity': 'changed another controller or the defenders', 'zero_shot': 'a battle with no shots',
-    'firing_squads': 'a squad never fired (town battle)', 'attacker_firing_squads': 'an attacking squad never fired',
+    'firing_squads': 'a squad never fired (open battle)', 'attacker_firing_squads': 'an attacking squad never fired',
     'under_2m': 'bunches more than the root', 'orders_azure_per_minute': 'more order churn than the root',
     'orders_ember_per_minute': 'more order churn than the root', 'friendly_fire': 'more friendly fire than the root',
     'force_at_the_fight': 'too much of the force hangs back (your verdict)', 'fights_from_cover': 'stands in the enemy\'s sight with no shot more than legacy (your verdict)', 'seen_at_the_fight': 'seen by the enemy far more than legacy',
@@ -48,7 +48,8 @@ def _interval_plot(sets: dict) -> str:
         return ''
     body, y = [], 16
     for name, paired in rows:
-        label = ('development' if name.endswith('dev') else 'validation') + f" · {paired['count']} battles"
+        family = name.split('-')[0]   # score v8 reports two families; older scores one (town)
+        label = f"{family} " + ('development' if name.endswith('dev') else 'validation') + f" · {paired['count']} battles"
         body.append(_interval_row(y, label, paired))
         y += 26
     axis_y = y - 8
@@ -81,13 +82,13 @@ def _outcome_bars(stats: dict) -> str:
     for cls, label, value in (('ember', 'defenders out of action', stats['defender_loss']), ('azure', 'attackers lost', stats['attacker_loss'])):
         out.append(f'<div class="bar"><span class="barlabel">{label}</span><span class="track"><span class="fill {cls}" style="width:{value*100:.1f}%"></span></span>'
                    f'<span class="barvalue">{value:.0%}</span></div>')
-    return f'<div class="bars" title="Mean over the validation attacks">{"".join(out)}<div class="cleared">position cleared in {stats["cleared_share"]:.0%} of battles</div></div>'
+    return f'<div class="bars" title="Mean over the ranked validation attacks">{"".join(out)}<div class="cleared">position cleared in {stats["cleared_share"]:.0%} of battles</div></div>'
 
 
 def _node_card(node: dict, result: dict | None, is_root: bool) -> str:
     objective = (result or {}).get('objective', {})
     sets = objective.get('sets') or {}
-    ranking = sets.get(objective.get('ranking_set'), {})
+    ranking = scoring.ranking_stats(objective)
     failed = [name for name, g in ((result or {}).get('guards') or {}).items() if not g['passed']]
     value = (result or {}).get('value')
     if not result:
@@ -155,7 +156,7 @@ def render() -> str:
             children.setdefault(n['parent'], []).append(n['id'])
     roots = [n for n in nodes.values() if not n.get('parent')]
     current = [n for n in roots if (tree.read_score(n['id'], version) or {}).get('objective', {}).get('kind') == 'attack'
-               and ((tree.read_score(n['id'], version) or {}).get('objective', {}).get('sets') or {}).get('town-attack-val', {}).get('mean') is not None]
+               and scoring.ranking_stats((tree.read_score(n['id'], version) or {}).get('objective', {})).get('mean') is not None]
     # One epoch at a time: a human change to shared code (static defenders, lean recording) starts new
     # roots on a new fingerprint. They are the same controllers measured on a fresh validation draw, so
     # showing two epochs side by side reads as two lineages with different scores. Only the newest epoch
@@ -294,14 +295,14 @@ figcaption{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-s
 </style>
 <div class="page">
 <header><h1>Army AI discovery tree</h1>
-<p class="lede">Every version of the squad AI the improvement loop has tried, scored by attacking twelve defenders who hold cover on a generated town map for ten minutes. A candidate only counts if it passes every guard and beats its root on the very same battles.</p></header>
+<p class="lede">Every version of the squad AI the improvement loop has tried, scored by attacking twelve defenders who hold cover on generated village and city2 maps for ten minutes, with prone, vaulting and hedges on (score v8; towns are out of the runs since 24 September 2026). A candidate only counts if it passes every guard and beats its root on the very same battles.</p></header>
 <div class="tally"><div><b>@@GENERATIONS@@</b><span>generations</span></div><div><b>@@CANDIDATES@@</b><span>candidates tried</span></div><div><b>@@SURVIVORS@@</b><span>survivors for your review</span></div>@@RUNNING@@<div><span>score @@VERSION@@ · updated @@STAMP@@</span></div></div>
 <div class="controls"><button type="button" id="expand-all">Open every node</button><button type="button" id="collapse-all">Close all</button><span>Click a row for its detail.</span></div>
 <div class="forest">@@LINEAGES@@</div>
 <section class="key">
 <div><h3>Reading a row</h3><p>Status, then the change in plain words. The small interval is the node's difference from its root on its validation battles (the line through the middle is zero); the large figure is its value, or what it would be if its guards passed. Dashed rows are proposals being written now.</p></div>
-<div><h3>The number</h3><p>Attack score per battle: share of defenders put out of action minus half the share of attackers lost, from −0.5 to +1. A root shows its own mean. A child shows its root's mean plus the cautious end of its measured difference, so luck with the maps cannot lift it.</p></div>
-<div><h3>The bars</h3><p><span class="swatch" style="background:var(--ember)"></span>defenders (Ember) out of action and <span class="swatch" style="background:var(--azure)"></span>attackers (Azure) lost, averaged over that node's fifteen validation attacks.</p></div>
+<div><h3>The number</h3><p>Attack score per battle: share of defenders put out of action minus half the share of attackers lost, from −0.5 to +1. The village and city2 validation attacks weigh one half each. A root shows its own mean. A child shows its root's mean plus the cautious end of its measured difference, so luck with the maps cannot lift it.</p></div>
+<div><h3>The bars</h3><p><span class="swatch" style="background:var(--ember)"></span>defenders (Ember) out of action and <span class="swatch" style="background:var(--azure)"></span>attackers (Azure) lost, averaged over that node's village and city2 validation attacks (fifteen maps each).</p></div>
 <div><h3>The interval</h3><p>The dot is the child's average difference from its root over the same battles; the line is the 95% range. ▲ entirely above zero is a real gain, ◆ across zero is not proven, ▼ below is a loss.</p></div>
 <div><h3>Guards</h3><p>Hard rules learned from your playtests: squads must fire, no extra bunching, order churn or friendly fire, mechanism tests keep passing, and nothing else in the game changes. One failure means no score.</p></div>
 </section>

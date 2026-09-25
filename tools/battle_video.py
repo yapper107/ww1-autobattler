@@ -11,7 +11,7 @@ are thick green lines; a green ring marks a man walking a covered detour instead
 a bold amber ring with a streak behind him marks a sprinting man, and the focus squad's mean stamina is read out in the header (plan 022). Needs Pillow and ffmpeg.
 """
 from __future__ import annotations
-import argparse, json, subprocess, sys
+import argparse, json, subprocess, sys, shutil
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -20,7 +20,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 FLANK = 7
 SQUAD_BLUES = [(30, 90, 200), (0, 150, 190), (90, 70, 200), (20, 130, 120)]
-HEADER = 64
+HEADER = 96
 
 
 def font(size):
@@ -57,6 +57,8 @@ def main():
     ap.add_argument('--speed', type=float, default=10, help='battle seconds per video second')
     ap.add_argument('--focus-squad', type=int, default=None, help='crop to this attacking squad and the defenders')
     ap.add_argument('--panel', type=int, default=900)
+    ap.add_argument('--ffmpeg', help='Optional explicit encoder executable')
+    ap.add_argument('--opponent-label',default='defenders',help='Use Legacy for ordinary moving-opponent battles')
     args = ap.parse_args()
     fps, step = 25, 0.2
     stride = max(1, round(args.speed/fps/step))
@@ -90,7 +92,11 @@ def main():
         backgrounds.append(image)
 
     big, small = font(22), font(15)
-    ffmpeg = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{width}x{height + HEADER}', '-r', str(rate), '-i', '-',
+    encoder=args.ffmpeg or shutil.which('ffmpeg')
+    if not encoder:
+        import imageio_ffmpeg
+        encoder=imageio_ffmpeg.get_ffmpeg_exe()
+    ffmpeg = subprocess.Popen([encoder, '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{width}x{height + HEADER}', '-r', str(rate), '-i', '-',
                                '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', args.out], stdin=subprocess.PIPE)
     count = min(len(run['frames']) for _, run in runs)
     exposed_seconds = [0.0]*len(runs)
@@ -175,13 +181,18 @@ def main():
             draw.rectangle([off, 0, off + args.panel, HEADER], fill=(250, 250, 247, 255))
             draw.text((off + 12, 6), label, font=big, fill=(0, 0, 0, 255))
             who = f'squad {args.focus_squad}' if args.focus_squad is not None else 'attackers'
-            wide = args.panel >= 800
-            draw.text((off + 12, 36), f't = {t:5.0f} s    defenders left {defenders}    attackers left {attackers}    ' + (f'{who} seen by an enemy: {exposed_seconds[r]:.0f} soldier-seconds' if wide and not moving_rounds[r] else f'{who} seen: {exposed_seconds[r]:.0f} s') + (f'    fired on the move: {moving_rounds[r]}' if moving_rounds[r] else '') + (f'    on covered detours: {covered_seconds[r]:.0f} s' if covered_seconds[r] else '') + (f'    sprinting: {sprint_seconds[r]:.0f} s' if sprint_seconds[r] else '') + stamina_note, font=small, fill=(40, 40, 40, 255))
+            # Keep the established diagnostics visible inside each comparison panel.
+            lines = [f't = {t:5.0f} s    {args.opponent_label} left {defenders}    Azure left {attackers}',
+                     f'{who} seen: {exposed_seconds[r]:.0f} soldier-seconds    fired on the move: {moving_rounds[r]}',
+                     f'covered detours: {covered_seconds[r]:.0f} s    sprinting: {sprint_seconds[r]:.0f} s' + stamina_note]
+            for line_number, line in enumerate(lines):
+                draw.text((off + 12, 34 + 19*line_number), line, font=small, fill=(40, 40, 40, 255))
             if r:
                 draw.line([off, 0, off, height + HEADER], fill=(0, 0, 0, 255), width=2)
         ffmpeg.stdin.write(canvas.tobytes())
     ffmpeg.stdin.close()
-    ffmpeg.wait()
+    if ffmpeg.wait()!=0:
+        raise RuntimeError('Video encoder failed')
     print(args.out, count, 'frames', f'{width}x{height + HEADER}')
 
 

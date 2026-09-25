@@ -52,7 +52,7 @@ std::vector<MemberPositions> QueryPositions(const Soldier& leader,const std::vec
         for(const auto& c:points){
             std::string reason;float angle=Angle(c.peek,q.support,q.target);
             if(q.minAngle>0)for(Vec3 delta:{Vec3{q.angleProbe,0},Vec3{-q.angleProbe,0},Vec3{0,q.angleProbe},Vec3{0,-q.angleProbe}})angle=std::min(angle,Angle(c.peek,q.support,q.target+delta));
-            bool protectedHere=ProtectedAt(map,c.shelter,q.target,c.crouch?Stance::Crouched:Stance::Standing);
+            bool protectedHere=ProtectedAt(map,c.shelter,q.target,CoverStance(c));
             bool firing=Distance(c.peek,q.target)<SightRange(member)&&ClearLine3D(map,c.peek+Vec3{0,0,1.5f},q.target+Vec3{0,0,1.3f});
             if(!InArea(c.shelter,q)||Distance(c.shelter,q.center)>q.coherenceRadius)reason="outside assigned area or coherence radius";
             else if(q.boundRadius>0&&(Distance(c.shelter,q.boundCenter)>q.boundRadius||Distance(c.peek,q.boundCenter)>q.boundRadius))reason="outside overwatch bound radius";

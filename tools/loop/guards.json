@@ -1,6 +1,6 @@
 {
- "version": "v7",
- "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. v4 adds two conduct guards from the user's replay verdict of 19 Sep 2026 (the drills survivor hung back and fought from the open). v3, plan 018 (user decisions 18 Sep 2026): the objective is the attack on a static defence on generated town maps; symmetric town battles carry the paired behaviour guards; generated trench maps only prove soldiers still shoot. The selectors guard is relative to the lineage root (no selector the root passes may fail); parity is the lineage rule (controllers the node does not own stay digest-identical, static-defence battle included). v1 and v2 are preserved beside this file. v7: the seen-at-all backstop allows 5 points when flanking fire is reliably above the baseline (user decision 21 Sep 2026).",
+ "version": "v8",
+ "note": "Guards are hard: a candidate failing any of them has no score. Positive paired deltas are candidate minus baseline. v4 adds two conduct guards from the user's replay verdict of 19 Sep 2026 (the drills survivor hung back and fought from the open). v3, plan 018 (user decisions 18 Sep 2026): the objective is the attack on a static defence on generated town maps; symmetric town battles carry the paired behaviour guards; generated trench maps only prove soldiers still shoot. The selectors guard is relative to the lineage root (no selector the root passes may fail); parity is the lineage rule (controllers the node does not own stay digest-identical, static-defence battle included). v1 and v2 are preserved beside this file. v7: the seen-at-all backstop allows 5 points when flanking fire is reliably above the baseline (user decision 21 Sep 2026). v8, Jordan's ruling of 24 Sep 2026 (\"Towns should no longer be included in our runs\"): the objective and every battle and paired guard move from the town and trench sets to the village and city2 families, fought in each family's natural state (--concealment --prone --vaulting, tools/loop/config.py FAMILY_FLAGS); thresholds, rules and tolerances unchanged (guards are not weakened). A paired guard listing two sets must pass on each set. v7 is preserved as guards-v7.json.",
  "guards": [
   {
    "name": "build",
@@ -36,120 +36,131 @@
    "name": "zero_shot",
    "kind": "battle",
    "sets": [
-    "town-dev",
-    "trench-dev",
-    "town-attack-dev",
-    "town-attack-val"
+    "village-dev",
+    "city2-dev",
+    "village-attack-dev",
+    "city2-attack-dev",
+    "village-attack-val",
+    "city2-attack-val"
    ],
    "metric": "shots",
    "rule": "gt",
    "value": 0,
-   "provenance": "user replay 16 Sep 2026: hotfix rejected for passivity; Phase 4d zero-shot battles"
+   "provenance": "user replay 16 Sep 2026: hotfix rejected for passivity; Phase 4d zero-shot battles; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-dev, trench-dev, town-attack-dev, town-attack-val -> village-dev, city2-dev, village-attack-dev, city2-attack-dev, village-attack-val, city2-attack-val, threshold unchanged"
   },
   {
    "name": "firing_squads",
    "kind": "battle",
    "sets": [
-    "town-dev",
-    "trench-dev"
+    "village-dev",
+    "city2-dev"
    ],
    "field": "firing_squads",
    "rule": "min_ge",
    "value": 3,
-   "provenance": "user replay 16 Sep 2026: only one or two soldiers shooting"
+   "provenance": "user replay 16 Sep 2026: only one or two soldiers shooting; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-dev, trench-dev -> village-dev, city2-dev, threshold unchanged"
   },
   {
    "name": "attacker_firing_squads",
    "kind": "battle",
    "sets": [
-    "town-attack-dev",
-    "town-attack-val"
+    "village-attack-dev",
+    "city2-attack-dev",
+    "village-attack-val",
+    "city2-attack-val"
    ],
    "field": "firing_squads",
    "rule": "index_ge",
    "index": 0,
    "value": 3,
-   "provenance": "user replay 16 Sep 2026 (only one or two soldiers shooting); drills root 18 Sep 2026: 4 of 30 town battles had two silent squads on a side; v5, 19 Sep 2026: a battle the attackers won by clearing the position is exempt (the stutter-fixed legacy root cleared one in 422 s with two squads having fired, score +0.83)",
+   "provenance": "user replay 16 Sep 2026 (only one or two soldiers shooting); drills root 18 Sep 2026: 4 of 30 town battles had two silent squads on a side; v5, 19 Sep 2026: a battle the attackers won by clearing the position is exempt (the stutter-fixed legacy root cleared one in 422 s with two squads having fired, score +0.83); v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-attack-dev, town-attack-val -> village-attack-dev, city2-attack-dev, village-attack-val, city2-attack-val, threshold unchanged",
    "unless_metric": "attack_cleared"
   },
   {
    "name": "under_2m",
    "kind": "paired",
    "sets": [
-    "town-dev"
+    "village-dev",
+    "city2-dev"
    ],
    "metric": "under_2m",
    "baseline": "legacy",
    "rule": "ci_lower_le_0",
-   "provenance": "user report 16 Sep 2026: squads bunching; plan 015 step C4/C5 interval rule"
+   "provenance": "user report 16 Sep 2026: squads bunching; plan 015 step C4/C5 interval rule; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-dev -> village-dev, city2-dev, threshold unchanged"
   },
   {
    "name": "orders_azure_per_minute",
    "kind": "paired",
    "sets": [
-    "town-dev"
+    "village-dev",
+    "city2-dev"
    ],
    "metric": "orders_azure_per_minute",
    "baseline": "legacy",
    "rule": "ci_lower_le_0",
-   "provenance": "plan 015 step C review: churn paired against legacy"
+   "provenance": "plan 015 step C review: churn paired against legacy; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-dev -> village-dev, city2-dev, threshold unchanged"
   },
   {
    "name": "orders_ember_per_minute",
    "kind": "paired",
    "sets": [
-    "town-dev"
+    "village-dev",
+    "city2-dev"
    ],
    "metric": "orders_ember_per_minute",
    "baseline": "legacy",
    "rule": "ci_lower_le_0",
-   "provenance": "plan 015 step C review: churn paired against legacy"
+   "provenance": "plan 015 step C review: churn paired against legacy; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-dev -> village-dev, city2-dev, threshold unchanged"
   },
   {
    "name": "friendly_fire",
    "kind": "paired",
    "sets": [
-    "town-dev"
+    "village-dev",
+    "city2-dev"
    ],
    "metric": "friendly_hits_per_100_soldier_minutes",
    "baseline": "legacy",
    "rule": "ci_lower_le_0",
-   "provenance": "plan 014 metrics: friendly-fire hits bounded"
+   "provenance": "plan 014 metrics: friendly-fire hits bounded; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-dev -> village-dev, city2-dev, threshold unchanged"
   },
   {
    "name": "force_at_the_fight",
    "kind": "paired",
    "sets": [
-    "town-attack-dev"
+    "village-attack-dev",
+    "city2-attack-dev"
    ],
    "metric": "at_fight_share",
    "baseline": "legacy",
    "rule": "ci_upper_ge_0",
-   "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: once some soldiers are in a firefight the rest hang back in cover or stand idle, so only a couple fight. Share of living attackers within 100 m of a living defender after the first shot; legacy 0.90, drills root 0.43, that survivor 0.67 on twelve maps. Must not be significantly below legacy."
+   "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: once some soldiers are in a firefight the rest hang back in cover or stand idle, so only a couple fight. Share of living attackers within 100 m of a living defender after the first shot; legacy 0.90, drills root 0.43, that survivor 0.67 on twelve maps. Must not be significantly below legacy.; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-attack-dev -> village-attack-dev, city2-attack-dev, threshold unchanged"
   },
   {
    "name": "fights_from_cover",
    "kind": "paired",
    "sets": [
-    "town-attack-dev"
+    "village-attack-dev",
+    "city2-attack-dev"
    ],
    "metric": "idle_exposed_share",
    "baseline": "legacy",
    "rule": "mean_le",
-   "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: on seeing an enemy soldiers do not take a covered firing position, they shoot from where they stand, sometimes in the middle of the road; legacy does take cover. Share of attacker-seconds at the fight with an enemy line of sight on the man (a soldier working from cover is exposed only while he peeks); legacy 0.06, that survivor 0.09. Must not be significantly above legacy.; v5, user decision 19 Sep 2026: a tolerance of 2 points above legacy (mean paired delta), because a flank that actually happens is seen a little more than one that never starts (the corporal fix, +0.9 to +1.5 points), while the drills conduct the user rejected measured +2.3 points and more; v6, user decision 20 Sep 2026 (\"do it\"): the guard counts only attacker-seconds at the fight in which the man stands still in an enemy's sight with no shot of his own, not every second he is seen: on the 60 development battles the legacy flank nodes were seen 2.3 points more than legacy while standing seen-and-shotless no more than legacy (+0.16 s a soldier [-0.49, +0.86]) and losing no more men, i.e. seen because they shoot; drills' best node stood seen-and-shotless 3.85 s a soldier more [+2.77, +4.86], which is what the user described. Must not be significantly above legacy.; user decision 20 Sep 2026 (\"add that tolerance\"): a mean of half a point above legacy is allowed (legacy 0.75 % of time at the fight; the flank nodes +0.22 points, about one second a soldier a battle, reliably above legacy only because 60 paired battles resolve it; drills +0.7)",
+   "provenance": "user replay verdict 19 Sep 2026 on drills a5b94b2706ad71c6: on seeing an enemy soldiers do not take a covered firing position, they shoot from where they stand, sometimes in the middle of the road; legacy does take cover. Share of attacker-seconds at the fight with an enemy line of sight on the man (a soldier working from cover is exposed only while he peeks); legacy 0.06, that survivor 0.09. Must not be significantly above legacy.; v5, user decision 19 Sep 2026: a tolerance of 2 points above legacy (mean paired delta), because a flank that actually happens is seen a little more than one that never starts (the corporal fix, +0.9 to +1.5 points), while the drills conduct the user rejected measured +2.3 points and more; v6, user decision 20 Sep 2026 (\"do it\"): the guard counts only attacker-seconds at the fight in which the man stands still in an enemy's sight with no shot of his own, not every second he is seen: on the 60 development battles the legacy flank nodes were seen 2.3 points more than legacy while standing seen-and-shotless no more than legacy (+0.16 s a soldier [-0.49, +0.86]) and losing no more men, i.e. seen because they shoot; drills' best node stood seen-and-shotless 3.85 s a soldier more [+2.77, +4.86], which is what the user described. Must not be significantly above legacy.; user decision 20 Sep 2026 (\"add that tolerance\"): a mean of half a point above legacy is allowed (legacy 0.75 % of time at the fight; the flank nodes +0.22 points, about one second a soldier a battle, reliably above legacy only because 60 paired battles resolve it; drills +0.7); v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-attack-dev -> village-attack-dev, city2-attack-dev, threshold unchanged",
    "value": 0.005
   },
   {
    "name": "seen_at_the_fight",
    "kind": "paired",
    "sets": [
-    "town-attack-dev"
+    "village-attack-dev",
+    "city2-attack-dev"
    ],
    "metric": "contact_exposed_share",
    "baseline": "legacy",
    "rule": "mean_le",
    "value": 0.04,
-   "provenance": "v6 backstop offered to the user with the change above: the former fights_from_cover measure (share of attacker-seconds at the fight with any enemy line of sight on the man) kept with a loose tolerance of 4 points above legacy, against a change that makes men shoot recklessly from bad positions; v7, user decision 21 Sep 2026 (\"thats fair to increase the back stop IF we get more flanking\"): when the node's flanking fire share is reliably above the baseline's on the same battles (paired 95 % interval above zero) the limit is 5 points instead of 4: three generation 16 stacks that raised flanking fire from 25 % to 29-38 % and halved the quiet squads read 4.02 to 4.22 points (each of their parts 3.6 to 3.8, interval about +-1.1), while the drills conduct the user rejected read 6 to 8",
+   "provenance": "v6 backstop offered to the user with the change above: the former fights_from_cover measure (share of attacker-seconds at the fight with any enemy line of sight on the man) kept with a loose tolerance of 4 points above legacy, against a change that makes men shoot recklessly from bad positions; v7, user decision 21 Sep 2026 (\"thats fair to increase the back stop IF we get more flanking\"): when the node's flanking fire share is reliably above the baseline's on the same battles (paired 95 % interval above zero) the limit is 5 points instead of 4: three generation 16 stacks that raised flanking fire from 25 % to 29-38 % and halved the quiet squads read 4.02 to 4.22 points (each of their parts 3.6 to 3.8, interval about +-1.1), while the drills conduct the user rejected read 6 to 8; v8 (Jordan, 24 Sep 2026, towns out of the runs): sets town-attack-dev -> village-attack-dev, city2-attack-dev, threshold unchanged",
    "relaxed_by": {
     "metric": "flank_fire_share",
     "rule": "ci_lower_gt_0",
@@ -159,13 +170,18 @@
  ],
  "objective": {
   "kind": "attack",
-  "ranking_set": "town-attack-val",
+  "ranking_sets": [
+   "village-attack-val",
+   "city2-attack-val"
+  ],
   "reported_sets": [
-   "town-attack-dev",
-   "town-attack-val"
+   "village-attack-dev",
+   "city2-attack-dev",
+   "village-attack-val",
+   "city2-attack-val"
   ],
   "attacker_loss_weight": 0.5,
-  "note": "Per battle: defenders put out of action (fraction of the 12) minus half the attacker's own loss fraction, against Ember soldiers who hold cover and never relocate. Mean per set with a cluster bootstrap on the map; ranked by the lower bound on town-attack-val. Cleared share and both loss fractions are reported, not optimised. Attack only: defence and a manoeuvring enemy are not measured (plan 018 limits)."
+  "note": "Per battle: defenders put out of action (fraction of the 12) minus half the attacker's own loss fraction, against Ember soldiers who hold cover and never relocate, on generated village and city2 maps with --concealment --prone --vaulting. Mean per set with a cluster bootstrap on the map. v8: ranked on village-attack-val and city2-attack-val together, each family weighted one half: a root is valued at the mean of the two sets' means; a child at its root's value plus the lower 95 % bound of the equally weighted mean of its two paired deltas against the root, from a bootstrap that resamples maps within each family (stratified). Not the mean of the two lower bounds: that adds the two families' uncertainties linearly instead of in quadrature, so it is up to 1.41 times too wide and hides real gains; the stratified bound keeps the same equal weights and is exact for the mean the value names. The mean of the two lower bounds is still reported beside it. Development sets (village-attack-dev, city2-attack-dev) are reported, not ranked. Cleared share and both loss fractions are reported, not optimised. Attack only: defence and a manoeuvring enemy are not measured (plan 018 limits)."
  },
  "information": []
 }

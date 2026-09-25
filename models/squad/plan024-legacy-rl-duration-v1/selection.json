@@ -1,0 +1,168 @@
+{
+  "arm": "rl25-i040",
+  "model": ".local/plan024/long-rl/seed25/iteration-040/squad.policy",
+  "model_sha256": "c680dd14a25112dcd472d200d1c45130cec569c782ea6814b112fc77395b11d6",
+  "eligible": [
+    "rl24-i004",
+    "rl25-i004",
+    "rl26-i004",
+    "rl24-i005",
+    "rl25-i005",
+    "rl26-i005",
+    "rl25-i010",
+    "rl24-i010",
+    "rl26-i010",
+    "rl24-i015",
+    "rl25-i015",
+    "rl26-i015",
+    "rl24-i020",
+    "rl25-i020",
+    "rl26-i020",
+    "rl24-i025",
+    "rl25-i025",
+    "rl26-i025",
+    "rl24-i030",
+    "rl25-i030",
+    "rl26-i030",
+    "rl24-i035",
+    "rl25-i035",
+    "rl26-i035",
+    "rl24-i040",
+    "rl25-i040",
+    "rl26-i040"
+  ],
+  "diagnostic_only": false,
+  "rule": "Among development checkpoint arms passing ordinary guards: highest win-minus-loss, lower own loss, earlier update, lower seed. If none passes, same rank for diagnosis only.",
+  "selected_before_heldout": true,
+  "selected_utc": "2026-09-23T00:03:47.041891+00:00",
+  "development": {
+    "battles": 30,
+    "wins": 18,
+    "draws": 1,
+    "mean_outcome": 0.23333333333333334,
+    "means": {
+      "casualty_azure": 0.5552083333333333,
+      "casualty_ember": 0.5885416666666666,
+      "orders_azure_per_minute": 307.06666666666666,
+      "friendly_hits_per_100_soldier_minutes": 7.247322788155522,
+      "straggler_share": 0.047682841657746486,
+      "behind_corporal_share": 0.13010906074957276,
+      "replaced_before_arrival_share": 0.7417164342740373
+    },
+    "ordinary_guards": {
+      "zero_shot": {
+        "passed": true,
+        "detail": {
+          "failures": []
+        }
+      },
+      "firing_squads": {
+        "passed": true,
+        "detail": {
+          "failures": []
+        }
+      },
+      "under_2m": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": -0.00022483405863547208,
+            "median": 0.002485941544849095,
+            "ci95": [
+              -0.00797796903298188,
+              0.007646819815208705
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "orders_azure_per_minute": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": -9.288888888888893,
+            "median": 2.583333333333343,
+            "ci95": [
+              -25.783888888888892,
+              8.11763888888888
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "orders_ember_per_minute": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": 10.627777777777787,
+            "median": 5.416666666666686,
+            "ci95": [
+              -6.550416666666661,
+              28.06750000000001
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "friendly_fire": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": 0.41374866122659515,
+            "median": 0.5477758849143997,
+            "ci95": [
+              -0.8697862426949545,
+              1.569068211654597
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      }
+    }
+  },
+  "status": "experimental_not_promoted",
+  "final_seed_average": {
+    "legacy": {
+      "count": 75,
+      "clusters": 25,
+      "mean": 0.2311111111111111,
+      "median": 0.0,
+      "ci95": [
+        0.008888888888888887,
+        0.4666666666666667
+      ]
+    },
+    "imitation": {
+      "count": 75,
+      "clusters": 25,
+      "mean": -0.08888888888888889,
+      "median": 0.0,
+      "ci95": [
+        -0.37777777777777777,
+        0.18677777777777718
+      ]
+    },
+    "continuation": {
+      "count": 75,
+      "clusters": 25,
+      "mean": -0.035555555555555556,
+      "median": 0.0,
+      "ci95": [
+        -0.19555555555555557,
+        0.12
+      ]
+    }
+  }
+}

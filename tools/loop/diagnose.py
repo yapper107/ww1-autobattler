@@ -91,17 +91,31 @@ def summarise_run(run: Path, seconds: float = config.SECONDS) -> dict:
                 attacker_squad_seconds=len(ATTACKER_SQUADS)*seconds, movement_orders_replaced_within_3s=dict(replaced.most_common(8)))
 
 
-def diagnose(node_id: str, set_name: str = 'town-attack-dev', count: int = 3, log=print) -> dict:
+def development_attack_sets() -> list:
+    """The score's reported attack sets that are not ranked: under v8 village-attack-dev and city2-attack-dev."""
+    from tools.loop import score as scoring
+    objective = scoring.load_guards()['objective']
+    ranked = set(scoring.ranking_sets(objective))
+    return [name for name in objective['reported_sets'] if name not in ranked]
+
+
+def diagnose(node_id: str, set_name=None, count: int = 3, log=print) -> dict:
+    """Trace the ``count`` worst battles of each set in ``set_name`` (a name or a list; default: the score's
+    development attack sets, so a v8 node is diagnosed on its village and its city2 attacks alike)."""
     node = tree.load(node_id)
-    rows = [r for r in tree.read_rows(node_id).get(set_name, []) if r.get('status') == 'complete' and r['metrics'].get('attack_score') is not None]
-    if not rows:
-        raise SystemExit(f'{node_id} has no scored battle in {set_name}')
-    worst = sorted(rows, key=lambda r: r['metrics']['attack_score'])[:count]
+    names = [set_name] if isinstance(set_name, str) else list(set_name or development_attack_sets())
+    recorded = tree.read_rows(node_id)
+    worst = []
+    for name in names:
+        rows = [r for r in recorded.get(name, []) if r.get('status') == 'complete' and r['metrics'].get('attack_score') is not None]
+        worst += sorted(rows, key=lambda r: r['metrics']['attack_score'])[:count]
+    if not worst:
+        raise SystemExit(f"{node_id} has no scored battle in {', '.join(names)}")
     out_root = tree.node_dir(node_id)/'diagnosis'
     battles, reasons = [], collections.Counter()
     for row in worst:
         key = config.spec_key(row)
-        log(f'[{node_id}] tracing {key} (attack score {row["metrics"]["attack_score"]:+.3f})')
+        log(f'[{node_id}] tracing {row["set"]} {key} (attack score {row["metrics"]["attack_score"]:+.3f})')
         spec = {k: row[k] for k in config.SPEC_FIELDS if k in row}
         traced = run_battle(node['binary'], node.get('controller', 'drills'), spec, out_root/key, config.SECONDS, True)
         if traced['status'] != 'complete':
@@ -109,12 +123,12 @@ def diagnose(node_id: str, set_name: str = 'town-attack-dev', count: int = 3, lo
             continue
         summary = summarise_run(Path(traced['run']), row.get('seconds', config.SECONDS))
         shutil.rmtree(out_root/key)  # the trace is large; the summary is the evidence kept
-        summary.update(key=key, layout=row['defence']['layout'], attack_score=row['metrics']['attack_score'],
+        summary.update(key=key, set=row['set'], flags=row.get('flags') or [], layout=row['defence']['layout'], attack_score=row['metrics']['attack_score'],
                        defender_loss=row['metrics']['casualty_ember'], attacker_loss=row['metrics']['casualty_azure'])
         for w in summary['static_windows']:
             reasons[w['stated']] += w['end'] - w['start']
         battles.append(summary)
-    result = dict(node=node_id, set=set_name, battles=battles, static_seconds_by_stated_reason=dict(reasons.most_common(12)))
+    result = dict(node=node_id, set=names[0] if len(names) == 1 else names, battles=battles, static_seconds_by_stated_reason=dict(reasons.most_common(12)))
     out_root.mkdir(parents=True, exist_ok=True)
     (out_root/'diagnosis.json').write_text(json.dumps(result, indent=1) + '\n')
     return result

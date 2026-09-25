@@ -8,6 +8,9 @@ struct HandlingInput {
     bool machineGun=false, movingFire=false, coveredPath=false;
     bool sprinting=false, winded=false, staminaAvailable=false;
     float stamina=1;
+    // Plan 029 M-C: going over an obstacle (vaultProgress 0..1, vaultHeight m above his feet).
+    bool vaulting=false;
+    float vaultProgress=0, vaultHeight=0;
 };
 struct Offset {float x=0,y=0,z=0;};
 inline Offset Mix(Offset a,Offset b,float t){return {a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,a.z+(b.z-a.z)*t};}
@@ -21,6 +24,7 @@ inline HandlingPose Handling(const HandlingInput& s,double time,float aim,bool d
     HandlingPose p;if(dead)return p;
     p.upper=std::max(aim,s.coveredPath?.45f:0.f);
     if(s.sprinting){p.name="sprint carry";p.upper=0;return p;}
+    if(s.vaulting){p.name="vault carry";p.upper=0;return p;} // both hands for the wall; he cannot fire
     if(s.winded){p.gun.z=float(std::sin(time*5.5))*.4f;p.name="winded";}
     if(s.machineGun&&s.movingFire){p.gun.z-=14;p.pitch-=8;p.upper=1;p.name="moving hip fire";}
     const float age=float(time-s.lastShot);

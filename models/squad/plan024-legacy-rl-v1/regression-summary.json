@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "mode": "evaluate",
+  "opponent": "mixed-regression",
+  "complete_benchmark": true,
+  "guards": {
+    "build": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "selectors": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "python_tests": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "protected_files": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "static_check": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "parity": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "zero_shot": {
+      "passed": true,
+      "detail": {
+        "failures": []
+      }
+    },
+    "firing_squads": {
+      "passed": true,
+      "detail": {
+        "failures": []
+      }
+    },
+    "attacker_firing_squads": {
+      "passed": true,
+      "detail": {
+        "failures": []
+      }
+    },
+    "under_2m": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 0.007661398441943403,
+          "median": 0.007742625457145803,
+          "ci95": [
+            -0.0004536323328385246,
+            0.01538990881998734
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "orders_azure_per_minute": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 8.641666666666667,
+          "median": 1.25,
+          "ci95": [
+            -10.283541666666666,
+            28.550208333333334
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "orders_ember_per_minute": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 0.025000000000005684,
+          "median": 1.6666666666666572,
+          "ci95": [
+            -16.708333333333325,
+            17.18354166666667
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "friendly_fire": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 1.2062652111246426,
+          "median": 1.3855016277520065,
+          "ci95": [
+            -0.23165008296746686,
+            2.6129834649179253
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "force_at_the_fight": {
+      "passed": true,
+      "detail": {
+        "town-attack-dev": {
+          "count": 60,
+          "clusters": 20,
+          "mean": -0.005132083949352007,
+          "median": -0.0007131496092053768,
+          "ci95": [
+            -0.01688080119098503,
+            0.007634852051150865
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "fights_from_cover": {
+      "passed": true,
+      "detail": {
+        "town-attack-dev": {
+          "count": 60,
+          "clusters": 20,
+          "mean": 0.00022447054179758469,
+          "median": -0.0003836743437917354,
+          "ci95": [
+            -0.001784654906365526,
+            0.0019047617330378741
+          ],
+          "unpaired": 0,
+          "limit": 0.005,
+          "passed": true
+        }
+      }
+    },
+    "seen_at_the_fight": {
+      "passed": true,
+      "detail": {
+        "town-attack-dev": {
+          "count": 60,
+          "clusters": 20,
+          "mean": 0.001957007795760457,
+          "median": 0.004128823323796688,
+          "ci95": [
+            -0.0058898113334914124,
+            0.010100155143125306
+          ],
+          "unpaired": 0,
+          "relaxed_by": {
+            "metric": "flank_fire_share",
+            "mean": 0.00426129621124432,
+            "ci95": [
+              -0.04008276300450151,
+              0.04864427928991249
+            ],
+            "earned": false
+          },
+          "limit": 0.04,
+          "passed": true
+        }
+      }
+    }
+  },
+  "paired_attack": {
+    "town-attack-dev": {
+      "count": 60,
+      "clusters": 20,
+      "mean": -0.0008680555555555543,
+      "median": 0.0,
+      "ci95": [
+        -0.046788194444444445,
+        0.05078559027777775
+      ]
+    },
+    "town-attack-val": {
+      "count": 45,
+      "clusters": 15,
+      "mean": -0.03287037037037037,
+      "median": 0.0,
+      "ci95": [
+        -0.06273148148148147,
+        -0.0035792824074074555
+      ]
+    }
+  },
+  "wall_seconds": 1026.5563159260055,
+  "guards_note": "External loop gate slots are unpopulated; standalone implementation checks are reported separately."
+}

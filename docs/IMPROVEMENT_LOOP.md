@@ -6,7 +6,68 @@ tree. Design and decisions: [plan 016](../plans/016-improvement-loop.md). Code:
 (override with `ARMY_LOOP_ROOT`). Legacy remains the playable default; nothing here
 changes a default.
 
-## Current state: plan 018 (18 September 2026)
+## Current state: score v8, village and city2 (plan 029 G-6, 24 September 2026)
+
+Jordan, 24 September 2026: "Towns should no longer be included in our runs." Score v8
+(`tools/loop/guards.json`; v7 is preserved as `guards-v7.json`) moves the objective and
+every battle and paired guard from the town and trench sets to the village and city2
+families. Thresholds, rules and tolerances are v7's, unchanged (guards are not weakened);
+`tests/test_loop.py` checks that every guard differs from v7 only in its sets and in the
+provenance line that records the move.
+
+| Guard | v7 sets | v8 sets |
+|---|---|---|
+| `zero_shot` | town-dev, trench-dev, town-attack-dev, town-attack-val | village-dev, city2-dev and the four attack sets |
+| `firing_squads` (both sides ≥ 3) | town-dev, trench-dev | village-dev, city2-dev |
+| `attacker_firing_squads` | town-attack-dev, town-attack-val | village-attack-dev/-val, city2-attack-dev/-val |
+| `under_2m`, `orders_*_per_minute`, `friendly_fire` (paired on legacy) | town-dev | village-dev, city2-dev |
+| `force_at_the_fight`, `fights_from_cover`, `seen_at_the_fight` (paired on legacy) | town-attack-dev | village-attack-dev, city2-attack-dev |
+
+- **Each family must pass.** A paired guard that lists two sets is evaluated on each set on
+  its own and passes only when both do, as a guard over two sets always has.
+- **Objective.** The per-battle attack score is unchanged. The node ranks on
+  `village-attack-val` and `city2-attack-val` together, one half each. A root's value is
+  the mean of its two validation means. A child's value is its root's value plus the
+  lower 95% bound of the equally weighted mean of its two paired deltas against the root
+  on the same battles. That bound comes from a bootstrap that resamples maps within each
+  family (stratified); a single set reproduces the old bootstrap exactly.
+- **Why not the mean of the two lower bounds.** That rule adds the two families'
+  uncertainties linearly instead of in quadrature, so its interval is up to 1.41 times
+  too wide and it hides real gains. The stratified bound has the same equal weights and
+  is the bound of the mean the value names. The mean of the two bounds is still recorded
+  beside it (`mean_of_lowers`). The development attack sets are reported, not ranked.
+- **Natural state.** Village and city2 battles run with `--concealment --prone --vaulting`
+  (`config.FAMILY_FLAGS`). The flags ride in each spec (`flags`, one of `SPEC_FIELDS`), so
+  a node, its root, the sparring rows and every rerun (`remeasure`, `diagnose`, `replay`)
+  fight the same battle.
+  - `runner` refuses a battle whose manifest does not record a requested switch.
+  - The flags are part of the pairing key and the sparring-cache file name, so a row
+    fought without them never pairs with, or stands in for, one fought with them.
+  - `spec_key`, the display key, is unchanged.
+  - `replay` passes `-ArmyConcealment -ArmyProne -ArmyVaulting` and now knows the Unreal
+    city2 slot.
+- **What runs.** `evaluate` runs exactly the sets the score reads, now the six village and
+  city2 sets (250 battles a node, plus the legacy sparring rows on the development sets).
+  The town and trench sets stay defined for history and explicit `--sets` runs. The parity
+  spot check is the two authored maps plus, for each family, one symmetric map and the
+  three battles of one static defence, all in the natural state; the town spot battles
+  were dropped.
+- **Commands.**
+  - `diagnose` traces the worst battles of each development attack set (village and city2)
+    by default; `--set` takes a comma list.
+  - `brief` describes the village and city2 battles and gives proposers the flags to
+    pass.
+  - `view` reads the combined ranking.
+  - `replay` defaults to `village-attack-val`.
+  - `select` and `remeasure` work unchanged on v8 scores.
+- **Config digest.** `config_digest` changes from d9306866bf9b2084 to **c1e8c1d041bc6932**,
+  because the family flags are now part of the config.
+- **Roots.** v8 roots on source 2730fe73fadce803 (the main tree when the roots were
+  evaluated: f628c0e25140e6fa plus plan 030 M-S6's switch-off patch):
+  `2730fe73fadce803-legacy-v8` and `2730fe73fadce803-drills-v8`. Their values and guard
+  tables are in the plan 029 log (`.local/plan029/G6/`).
+
+## Plan 018 (18 September 2026; the scenario sets and objective are superseded by v8 above)
 
 [Plan 018](../plans/018-static-defence-and-loop-roots.md) records the user's decisions of
 18 September 2026 and supersedes the scenario and score choices described further down,

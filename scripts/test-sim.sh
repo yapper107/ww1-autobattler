@@ -33,6 +33,9 @@ mkdir -p "$repo_root/.local/tests"
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/TrafficSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/EnvironmentSim.cpp" \
   "$repo_root/Unreal/Source/ArmyPrototype/Sim/ManeuverSim.cpp" \
+  "$repo_root/Unreal/Source/ArmyPrototype/Sim/FireMovementSim.cpp" \
+  "$repo_root/Unreal/Source/ArmyPrototype/Sim/SquadPolicy.cpp" \
+  "$repo_root/Unreal/Source/ArmyPrototype/Sim/SquadRaster.cpp" \
   "$repo_root/tests/sim_tests.cpp"
 # The full suite fights whole battles with complete records and traces: 6 GB at its peak (11.5 GB before its
 # records were released one at a time). WSL has 30 GB and the loop's lean battles take about 7 GB, so up to three full

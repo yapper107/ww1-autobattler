@@ -3,14 +3,27 @@
 #include <cmath>
 namespace army {
 std::vector<Passage> BuildingPassages(const Map& m){std::vector<Passage> p;for(const auto& b:m.buildings){
+    if(!b.authoredStairs)continue; // imported footprints: stair/door passages come from surfaces and `P` below
     for(float side:{-1.f,1.f})p.push_back({b.center+Vec3{side*5,0,0},{1.25f,1.15f,0},false});
     p.push_back({b.center+Vec3{0,-0.8f,UpperFloor*0.5f},{3.65f,0.9f,UpperFloor*0.5f},true});
 }
     for(const auto& surface:m.surfaces){bool horizontal=surface.half.x>surface.half.y;float length=horizontal?surface.half.x:surface.half.y;
         if(std::min(surface.half.x,surface.half.y)>2.1f)continue;
+        // ARMYMAP 2: a stair is one stair passage (below) and an upper storey is no ground corridor.
+        if(surface.kind==2||surface.level>0)continue;
         for(int i=0;i<int(length*2/8);++i){Vec3 center=surface.center+(horizontal?Vec3{-length+4+i*8,0}:Vec3{0,-length+4+i*8});
             p.push_back({center,horizontal?Vec3{2,1.8f}:Vec3{1.8f,2},false,1000000+surface.id*1000+uint64_t(i)});}
     }
+    // ARMYMAP 2 (both lists are empty on every ARMYMAP 1 and authored map). One single-file stair
+    // passage per stair surface, over the whole flight: centred at mid-height, 0.2 m beyond the plane.
+    for(size_t index:m.stairSurfaces){const auto& s=m.surfaces[index];
+        const float rise=std::abs(s.slope.x)*s.half.x+std::abs(s.slope.y)*s.half.y;
+        p.push_back({s.center,{s.half.x+.2f,s.half.y+.2f,rise},true,1000000+s.id*1000+999});}
+    // A `P` record is the door opening itself (half its width along the wall, 0.25 across). The passage
+    // is shaped like an authored house door's: 0.05 m beyond the opening along the wall and 1.25 m
+    // either side of it, so a man waits for the lease before he steps into the doorway.
+    for(const auto& door:m.doorPassages){const bool alongX=door.half.x>=door.half.y;
+        p.push_back({{door.center.x,door.center.y,0},alongX?Vec3{door.half.x+.05f,1.25f,0}:Vec3{1.25f,door.half.y+.05f,0},false});}
     for(size_t i=0;i<p.size();++i)if(!p[i].id)p[i].id=uint64_t(i+1);
     return p;}
 bool InsidePassage(const Passage& p,Vec3 at,float pad){return std::abs(at.x-p.center.x)<p.half.x+pad&&std::abs(at.y-p.center.y)<p.half.y+pad&&(p.stairs?at.z>=-0.1f&&at.z<=UpperFloor+0.1f:at.z<0.3f);}
@@ -37,7 +50,7 @@ static Vec3 HoldingPoint(const Soldier& s,const Map& map,const std::vector<Passa
         return true;};
     Vec3 best=s.position;float score=1e9f;
     for(const auto& cover:CoverPositions(map))if(Distance(s.position,cover.shelter)<7&&valid(cover.shelter)&&reachable(cover.shelter)) {
-        float value=Distance(s.position,cover.shelter)+(ProtectedAt(map,cover.shelter,enemy,cover.crouch?Stance::Crouched:Stance::Standing)?0:12);
+        float value=Distance(s.position,cover.shelter)+(ProtectedAt(map,cover.shelter,enemy,CoverStance(cover))?0:12);
         if(value<score){score=value;best=cover.shelter;}
     }
     if(score<10)return best;
@@ -53,9 +66,15 @@ std::array<TrafficDecision,UnitCount> CoordinatePassages(const Map& map,const st
     auto& leases=rt.leases[friends.front().soldier->team];if(leases.size()!=passages.size())leases.resize(passages.size());
     auto find=[&](int id)->const TrafficInput*{for(const auto& f:friends)if(f.soldier->id==id)return &f;return nullptr;};
     for(const auto& input:friends){const auto& s=*input.soldier;int wanted=-1;float nearest=1e9f;
+        // Plan 029 P-1: whether neither his position nor his next point is on stairs does not depend on the
+        // passage, so it is evaluated once (on first need, as before) instead of once per stair passage.
+        int offStairs=-1;
         if(input.moving)for(size_t i=0;i<passages.size();++i){const auto& p=passages[i];
             if(!p.stairs&&(s.position.z>0.3f||input.next.z>0.3f))continue;
-            if(p.stairs&&std::abs(input.next.z-s.position.z)<0.05f&&!OnStairs(map,input.next)&&!OnStairs(map,s.position))continue;
+            if(p.stairs&&std::abs(input.next.z-s.position.z)<0.05f){
+                if(offStairs<0)offStairs=!OnStairs(map,input.next)&&!OnStairs(map,s.position);
+                if(offStairs)continue;
+            }
             Obstacle box{p.center,p.half,false};
             if(Distance(s.position,p.center)<9&&SegmentBox(s.position,input.next,box,0.6f)>=0){float d=Distance(s.position,p.center);if(d<nearest){nearest=d;wanted=int(i);}}
         }

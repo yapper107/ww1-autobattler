@@ -8,8 +8,11 @@
 #include "CognitiveSim.h"
 #include "PerceptionSim.h"
 #include "TacticalRouteSim.h"
+#include "CoordinationSim.h"
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 namespace army {
 static void TraceGoalFeedback(Diagnostics* d,const Soldier& observer,const SquadSituation& report,float time,const char* kind,const char* reason){
     if(!d||!d->options.enabled)return;
@@ -128,16 +131,17 @@ std::vector<PlannedPlatoonOrder> PlanPlatoon(const Soldier& commander,const Map&
             list.push_back({r.leader,d});
         }
     };
-    std::vector<PlannedPlatoonOrder> orders{{support->leader,directive(PlatoonTask::Support,support->position)}};
-    if(!mover){attach(orders);return orders;}
-    float sign=commander.team?-1.f:1.f;Vec3 goal=mover->position;float routeScore=1e9f;PlatoonTask task=PlatoonTask::Consolidate;
+    float sign=commander.team?-1.f:1.f;
+    // The mover's approach: covered ground on either flank of the enemy the effort squad is fighting.
+    auto approach=[&](const SquadSituation* m,Vec3& goalOut,PlatoonTask& taskOut){
+    Vec3 goal=m->position;float routeScore=1e9f;PlatoonTask task=PlatoonTask::Consolidate;
     struct ApproachCandidate {Vec3 p;float score;float side;};std::vector<ApproachCandidate> approaches;
     TacticalRoutePlanner planner(map,commander,time,commander.team?config.emberDoctrine:config.doctrine);
     for(float side:{-1.f,1.f}){
         std::vector<ApproachCandidate> choices;
         for(const auto& cover:CoverPositions(map)){
-            Vec3 p=config.cognition?cover.peek:cover.shelter,desired=effort->contact.position+Vec3{-sign*12,side*40};float travel=Distance(p,mover->position);
-            if(cover.window||travel<8||travel>140||std::abs(p.z-mover->position.z)>.5f||!ProtectedAt(map,cover.shelter,effort->contact.position,cover.crouch?Stance::Crouched:Stance::Standing))continue;
+            Vec3 p=config.cognition?cover.peek:cover.shelter,desired=effort->contact.position+Vec3{-sign*12,side*40};float travel=Distance(p,m->position);
+            if(cover.window||travel<8||travel>140||std::abs(p.z-m->position.z)>.5f||!ProtectedAt(map,cover.shelter,effort->contact.position,CoverStance(cover)))continue;
             if(config.cognition&&(Distance(cover.peek,effort->contact.position)>68||!ClearLine3D(map,cover.peek+Vec3{0,0,1.5f},Vec3{effort->contact.position.x,effort->contact.position.y,effort->contact.aimHeight})))continue;
             // Arrival must improve an angle or observation relationship, not just change latitude.
             float score=Distance(p,desired)+travel*.12f+FireDanger(commander,p,time)*20;
@@ -146,10 +150,57 @@ std::vector<PlannedPlatoonOrder> PlanPlatoon(const Soldier& commander,const Map&
         std::stable_sort(choices.begin(),choices.end(),[](const auto& a,const auto& b){return a.score<b.score;});
         for(size_t i=0;i<std::min(size_t(2),choices.size());++i)approaches.push_back(choices[i]);
     }
-    for(const auto& candidate:approaches){auto route=planner.Evaluate(mover->position,candidate.p);if(route.points.empty())continue;
+    for(const auto& candidate:approaches){auto route=planner.Evaluate(m->position,candidate.p);if(route.points.empty())continue;
         float score=candidate.score+route.cost.Total()*.5f;
         if(score<routeScore){routeScore=score;goal=candidate.p;task=candidate.side<0?PlatoonTask::FlankNorth:PlatoonTask::FlankSouth;}
     }
+    goalOut=goal;taskOut=task;
+    };
+    // Plan 028 Stage 4 (Config::coverPlatoon, Legacy platoon command only; Jordan's "finish the supply
+    // side"): the mover and its approach are chosen first, then the enemy the commander knows to overlook
+    // that approach, then the support squad by a line onto that enemy from where its men are reported.
+    // The gun weighting of the old choice is kept (a squad with its gun still scores 8 per gun, a line
+    // platoonLineBonus), so at least one gun stays engaged. The Support directive names that enemy and
+    // carries the commander's track of it. Knowledge: the commander's own reports only.
+    const bool aimedSupport=config.coverPlatoon&&jobs;
+    Vec3 aimGoal{};PlatoonTask aimTask=PlatoonTask::Consolidate;bool aimedDone=false,aimLine=false;int aimEnemy=-1;Contact aimContact;Vec3 aimFrom{};
+    const SquadSituation* unaimedSupport=support;
+    if(aimedSupport) {
+        const SquadSituation* first=nullptr;float firstScore=-1e9f;
+        for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.mobile>=2&&time-r.observedAt<15&&!shattered(r)){
+            float score=r.mobile*2-r.suppression*10-r.danger*6-r.machineGuns*8-Distance(r.position,effort->contact.position)*.05f;
+            if(score>firstScore){firstScore=score;first=&r;}
+        }
+        if(first) {
+            approach(first,aimGoal,aimTask);
+            // The mover's start: the reported man nearest its centre (a centre can sit inside a wall).
+            aimFrom=first->position;float nearestStart=1e9f;
+            for(Vec3 at:first->memberPositions)if(Distance(at,first->position)<nearestStart){nearestStart=Distance(at,first->position);aimFrom=at;}
+            aimEnemy=aimTask==PlatoonTask::Consolidate?-1:OverlookingEnemy(commander,map,aimFrom,aimGoal,time);
+            if(aimEnemy>=0)aimContact=WithTracks(commander,time).contacts[aimEnemy];
+            else {aimEnemy=effort->enemy;aimContact=effort->contact;}
+            const Vec3 threat=aimContact.position;
+            const SquadSituation* pick=nullptr;float pickScore=-1e9f;bool pickLine=false;
+            for(const auto& r:commander.platoonReports)if(r.squad>=0&&r.leader>=0&&r.squad!=first->squad&&r.active>=2&&time-r.observedAt<15&&!shattered(r)&&Distance(r.position,threat)<110){
+                bool line=false;
+                auto bears=[&](Vec3 at){return Distance(at,threat)<GroupConstants.stationRange&&ClearLine3D(map,at+Vec3{0,0,1.5f},{threat.x,threat.y,aimContact.aimHeight});};
+                if(r.memberPositions.empty())line=bears(r.position);
+                else for(Vec3 at:r.memberPositions)if(bears(at)){line=true;break;}
+                float score=r.machineGuns*8+(r.supportUseful?4.f:0.f)-Distance(r.position,threat)*.03f-
+                    (r.noLineSeconds>=BoundConstants.noJobSeconds?30.f:0.f)+(line?CoverSupplyConstants.platoonLineBonus:0.f);
+                if(score>pickScore){pickScore=score;pick=&r;pickLine=line;}
+            }
+            if(pick&&aimContact.known){support=pick;mover=first;aimedDone=true;aimLine=pickLine;}
+        }
+    }
+    std::vector<PlannedPlatoonOrder> orders{{support->leader,directive(PlatoonTask::Support,support->position)}};
+    if(aimedDone) {
+        auto& d=orders.front().directive;d.enemy=aimEnemy;d.contact=aimContact;d.contact.visible=false;d.sector=aimContact.position;
+        d.coverMover=mover->leader;d.coverLine=aimLine;d.coverFrom=aimFrom;d.coverTo=aimGoal;d.coverPrevious=unaimedSupport->squad;
+    }
+    if(!mover){attach(orders);return orders;}
+    Vec3 goal;PlatoonTask task;
+    if(aimedDone){goal=aimGoal;task=aimTask;}else approach(mover,goal,task);
     auto movement=directive(task,goal);
     if(config.cognition){movement.supportSoldier=support->supportSoldier;movement.supportSquad=support->squad;}
     if(config.foundations){
@@ -196,7 +247,7 @@ std::vector<PlannedPlatoonOrder> PlanPlatoon(const Soldier& commander,const Map&
             for(const auto& cover:CoverPositions(map)) {
                 const Vec3 p=cover.shelter;const float travel=Distance(p,r.position),range=Distance(cover.peek,effort->contact.position);
                 if(cover.window||travel<8||travel>BoundConstants.jobTravel||range<BoundConstants.jobRangeMin||range>BoundConstants.jobRangeMax)continue;
-                if(!ProtectedAt(map,p,effort->contact.position,cover.crouch?Stance::Crouched:Stance::Standing))continue;
+                if(!ProtectedAt(map,p,effort->contact.position,CoverStance(cover)))continue;
                 if(!ClearLine3D(map,cover.peek+Vec3{0,0,1.5f},{effort->contact.position.x,effort->contact.position.y,effort->contact.aimHeight}))continue;
                 bool clash=false;for(Vec3 t:approachesTaken)if(Distance(p,t)<BoundConstants.jobSpacing)clash=true;
                 if(clash||ApproachesCross(r.position,p,mover->position,goal))continue;
@@ -291,6 +342,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
         for(const auto& s:f.soldiers)if(s.squad==squad&&s.Active()&&!IsPlatoonStaff(s)) {
             report.position=report.position+s.position;++report.active;
             if(config.drills)report.drillMemberPositions.push_back(s.position);
+            if(config.coverPlatoon&&!config.foundations&&!config.recoveryFixture)report.memberPositions.push_back(s.position);
             report.machineGuns+=s.machineGun;
             report.suppression+=s.understoodSuppression;
             report.mobile+=!KnowsWounded(local,s)&&s.understoodSuppression<.5f;
@@ -466,14 +518,25 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
             }
             // Plan 023 E: an attachment that has changed is always worth a fresh directive, whatever
             // the task and the position say: it is the thing the squad is being told.
+            // Plan 028 Stage 4 (Config::coverPlatoon): an aimed Support directive is re-sent when the enemy it
+            // names or the mover it covers changes.
+            const bool aimChanged=config.coverPlatoon&&order.directive.task==PlatoonTask::Support&&order.directive.coverMover>=0&&
+                (previous.enemy!=order.directive.enemy||previous.coverMover!=order.directive.coverMover);
             if(previous.task==order.directive.task&&Distance(previous.position,order.directive.position)<6&&previous.expiresAt-f.time>12&&
                 previous.attachTo==order.directive.attachTo&&previous.attachBaseOfFire==order.directive.attachBaseOfFire&&
-                previous.attachMerge==order.directive.attachMerge)continue;
+                previous.attachMerge==order.directive.attachMerge&&!aimChanged)continue;
             order.directive.serial=rt.nextSerial++;
             if(config.foundations){order.directive.intent.id=order.directive.serial;order.directive.intent.expiresAt=order.directive.expiresAt;
                 if(order.directive.intent.purpose==GoalPurpose::None){order.directive.intent.purpose=GoalPurpose::Support;order.directive.intent.objective=order.directive.position;}}
             previous=order.directive;
             rt.messages.push_back({true,cmd.leader,order.recipient,f.time+ReportDelay(TypedController(config)?config.reportDelay:MessageDelay,f.soldiers[cmd.leader]),{},order.directive});
+            // Plan 028 Stage 4: evidence of the aimed platoon support choice (cover_platoon rows).
+            if(order.directive.coverMover>=0&&reactions.diagnostics&&reactions.diagnostics->options.enabled){const auto& d=order.directive;
+                TraceEntry e;e.id=reactions.diagnostics->nextId++;e.time=f.time;e.soldier=cmd.leader;e.squad=order.recipient/SquadSize;e.kind="cover_platoon";
+                e.reason=d.coverPrevious==order.recipient/SquadSize?"same_squad":"changed_squad";e.goal=d.coverTo;e.position=d.coverFrom;
+                std::ostringstream o;o<<std::setprecision(6)<<",\"support_squad\":"<<order.recipient/SquadSize<<",\"mover_squad\":"<<d.coverMover/SquadSize<<",\"enemy\":"<<d.enemy
+                    <<",\"line\":"<<d.coverLine<<",\"previous_squad\":"<<d.coverPrevious<<",\"contact_age\":"<<(f.time-d.contact.observedAt)<<",\"serial\":"<<d.serial;
+                e.extra=o.str();reactions.diagnostics->entries.push_back(e);}
             if(order.directive.task==PlatoonTask::Support)cmd.supportSquad=order.recipient/SquadSize;
             else if(order.directive.task==PlatoonTask::Reserve)cmd.reserveSquad=order.recipient/SquadSize;
             else if(order.directive.task!=PlatoonTask::Consolidate){cmd.mainEffortSquad=cmd.flankSquad=order.recipient/SquadSize;cmd.maneuver=order.directive.task;}

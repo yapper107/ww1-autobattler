@@ -68,6 +68,40 @@ ATTACK_SECONDS = 600
 # other. Lean battles are cheap, so every attack map is fought with three battle seeds; the bootstrap
 # still clusters on the map.
 ATTACK_BATTLE_SEEDS = (107, 108, 109)
+# Plan 029 village maps (tools/mapgen/village.py), a third family beside town and trenches. Village
+# content lives only in new seeds: development is the reserved range 1201-1220 (twenty maps, as the
+# town sets), and validation seeds hash from the build with their own salt above 1230, so a village
+# draw never repeats the town draw of the same build. The sets mirror the town sets: one battle a
+# map, and attack maps with the plan 018 static defence fought with ATTACK_BATTLE_SEEDS.
+VILLAGE_DEV_SEEDS = list(range(1201, 1221))
+VILLAGE_VALIDATION_COUNT = MAP_VALIDATION_COUNT
+VILLAGE_ATTACK_VALIDATION_COUNT = ATTACK_VALIDATION_COUNT
+VILLAGE_VALIDATION_LOW = 1231
+VILLAGE_SALT = '|village'
+# Plan 029 G-5 city2 maps (tools/mapgen/city2.py), a fourth family (Jordan accepted the look, 23 Sep
+# 2026). It uses the same reserved development range as the village, 1201-1220: a city2 and a village
+# of the same number are different maps in different files and never pair (the family is in the pair
+# key). Validation draws hash with their own salt above 1230, so they repeat neither the town nor the
+# village draw of the same build.
+CITY2_DEV_SEEDS = list(range(1201, 1221))
+CITY2_VALIDATION_COUNT = MAP_VALIDATION_COUNT
+CITY2_ATTACK_VALIDATION_COUNT = ATTACK_VALIDATION_COUNT
+CITY2_VALIDATION_LOW = 1231
+CITY2_SALT = '|city2'
+
+# Plan 029 G-6 (Jordan, 24 Sep 2026: towns are out of the runs): the loop's objective and guards read the
+# village and city2 sets, fought in each family's natural state. The flags ride in the spec (``flags``), so a
+# node's battles, its root's rows, the sparring rows and every rerun (remeasure, diagnose, replay) are alike;
+# a family without an entry runs without flags, as before (towns, trenches, F1, authored maps).
+FAMILY_FLAGS = {'village': ('--concealment', '--prone', '--vaulting'), 'city2': ('--concealment', '--prone', '--vaulting')}
+# What an evaluation fights by default is what the score reads (``evaluate.needed_sets``): under score v8 the six
+# village and city2 sets. The town and trench sets stay defined for history and explicit ``--sets`` runs.
+
+
+def with_family_flags(specs):
+    """The same specs with their family's natural-state flags (FAMILY_FLAGS) recorded on each."""
+    return [dict(s, flags=list(FAMILY_FLAGS[s['family']])) if FAMILY_FLAGS.get(s.get('family')) else s for s in specs]
+
 
 # Spot checks proving legacy and cognition are unchanged on the candidate binary.
 PARITY_SPECS = [dict(set='works', terrain=0, seed=107), dict(set='trenches', terrain=1, seed=107)]
@@ -84,14 +118,16 @@ SELECTOR_GROUPS = ['--leaders', '--stats']
 # Implementation files only: the headers declare fixture builders (DrillFixtures,
 # PlatoonFixtures) that take the frame by design; a policy .cpp that implemented
 # one would carry the token itself.
-POLICY_FILES = ['DrillSim.cpp', 'SquadDrillSim.cpp', 'PlatoonTaskSim.cpp', 'PositionSim.cpp', 'LeaderSim.cpp']
+POLICY_FILES = ['DrillSim.cpp', 'SquadDrillSim.cpp', 'PlatoonTaskSim.cpp', 'PositionSim.cpp', 'LeaderSim.cpp', 'SquadPolicy.cpp', 'SquadRaster.cpp']
 FORBIDDEN_TOKENS = ['Frame&', 'const Frame', '.soldiers[', 'f.soldiers', 'frame.soldiers', 'observer_', 'observer',
                     'Record&', '.shots', 'fullVision', 'full_vision']
 
 
 # The fields of a row that define its scenario; enough to run the battle again.
-SPEC_FIELDS = ('set', 'terrain', 'family', 'gen_seed', 'seed', 'map', 'defence', 'seconds')
-SET_NAMES = ('works', 'trenches', 'f1-dev', 'f1-val', 'town-dev', 'town-val', 'trench-dev', 'trench-val', 'town-attack-dev', 'town-attack-val')
+SPEC_FIELDS = ('set', 'terrain', 'family', 'gen_seed', 'seed', 'map', 'defence', 'seconds', 'flags')
+SET_NAMES = ('works', 'trenches', 'f1-dev', 'f1-val', 'town-dev', 'town-val', 'trench-dev', 'trench-val', 'town-attack-dev', 'town-attack-val',
+             'village-dev', 'village-val', 'village-attack-dev', 'village-attack-val',
+             'city2-dev', 'city2-val', 'city2-attack-dev', 'city2-attack-val')
 
 
 def scenario_sets(build: str, validation_count: int = VALIDATION_COUNT, salt: str = VALIDATION_SALT, wanted=None):
@@ -101,6 +137,12 @@ def scenario_sets(build: str, validation_count: int = VALIDATION_COUNT, salt: st
     from tools.loop import maps
     val_seeds = lambda: maps.validation_seeds(build, salt, MAP_VALIDATION_COUNT)
     attack_val = lambda: maps.validation_seeds(build, salt + '|attack', ATTACK_VALIDATION_COUNT)
+    village_val = lambda: maps.validation_seeds(build, salt + VILLAGE_SALT, VILLAGE_VALIDATION_COUNT, low=VILLAGE_VALIDATION_LOW)
+    village_attack_val = lambda: maps.validation_seeds(build, salt + VILLAGE_SALT + '|attack', VILLAGE_ATTACK_VALIDATION_COUNT,
+                                                       low=VILLAGE_VALIDATION_LOW)
+    city2_val = lambda: maps.validation_seeds(build, salt + CITY2_SALT, CITY2_VALIDATION_COUNT, low=CITY2_VALIDATION_LOW)
+    city2_attack_val = lambda: maps.validation_seeds(build, salt + CITY2_SALT + '|attack', CITY2_ATTACK_VALIDATION_COUNT,
+                                                     low=CITY2_VALIDATION_LOW)
     builders = {
         'works': lambda: [dict(set='works', terrain=0, seed=s) for s in AUTHORED_SEEDS],
         'trenches': lambda: [dict(set='trenches', terrain=1, seed=s) for s in AUTHORED_SEEDS],
@@ -112,17 +154,29 @@ def scenario_sets(build: str, validation_count: int = VALIDATION_COUNT, salt: st
         'trench-val': lambda: maps.specs('trench-val', 'trenches', val_seeds(), MAP_BATTLE_SEED),
         'town-attack-dev': lambda: maps.specs('town-attack-dev', 'city', MAP_DEV_SEEDS, MAP_BATTLE_SEED, attack=True),
         'town-attack-val': lambda: maps.specs('town-attack-val', 'city', attack_val(), MAP_BATTLE_SEED, attack=True),
+        'village-dev': lambda: maps.specs('village-dev', 'village', VILLAGE_DEV_SEEDS, MAP_BATTLE_SEED),
+        'village-val': lambda: maps.specs('village-val', 'village', village_val(), MAP_BATTLE_SEED),
+        'village-attack-dev': lambda: maps.specs('village-attack-dev', 'village', VILLAGE_DEV_SEEDS, MAP_BATTLE_SEED, attack=True),
+        'village-attack-val': lambda: maps.specs('village-attack-val', 'village', village_attack_val(), MAP_BATTLE_SEED, attack=True),
+        'city2-dev': lambda: maps.specs('city2-dev', 'city2', CITY2_DEV_SEEDS, MAP_BATTLE_SEED),
+        'city2-val': lambda: maps.specs('city2-val', 'city2', city2_val(), MAP_BATTLE_SEED),
+        'city2-attack-dev': lambda: maps.specs('city2-attack-dev', 'city2', CITY2_DEV_SEEDS, MAP_BATTLE_SEED, attack=True),
+        'city2-attack-val': lambda: maps.specs('city2-attack-val', 'city2', city2_attack_val(), MAP_BATTLE_SEED, attack=True),
     }
-    return {name: build_set() for name, build_set in builders.items() if wanted is None or name in wanted}
+    return {name: with_family_flags(build_set()) for name, build_set in builders.items() if wanted is None or name in wanted}
 
 
 def parity_specs():
-    """Spot battles for the lineage parity guard: both static maps, one town map and
-    one static-defence battle, so a candidate cannot move the defender either."""
+    """Spot battles for the lineage parity guard: both static maps, then (score v8, towns out of the runs) one
+    village and one city2 map and one static-defence battle on each, in the family's natural state, so a
+    candidate can move neither another controller nor the defender on the ground it is scored on (the three
+    battle seeds of that defence, as the town check had)."""
     from tools.loop import maps
-    town = maps.specs('parity-town', 'city', MAP_DEV_SEEDS[:1], MAP_BATTLE_SEED)
-    attack = maps.specs('parity-attack', 'city', MAP_DEV_SEEDS[:1], MAP_BATTLE_SEED, attack=True)
-    return PARITY_SPECS + town + attack
+    out = list(PARITY_SPECS)
+    for kind, seeds in (('village', VILLAGE_DEV_SEEDS), ('city2', CITY2_DEV_SEEDS)):
+        out += maps.specs(f'parity-{kind}', kind, seeds[:1], MAP_BATTLE_SEED)
+        out += maps.specs(f'parity-{kind}-attack', kind, seeds[:1], MAP_BATTLE_SEED, attack=True)
+    return with_family_flags(out)
 
 
 def defence_key(spec: dict) -> str:
@@ -136,10 +190,17 @@ def spec_key(spec: dict) -> str:
     return f"t{spec['terrain']}-{spec['seed']}"
 
 
+def flags_key(spec: dict) -> str:
+    """The battle's extra switches as text ('' without any): part of a battle's identity for pairing and the
+    sparring cache, never of its display key (spec_key), which stays the map, seeds and defence."""
+    return ''.join('+' + f.lstrip('-') for f in spec.get('flags') or ())
+
+
 def pair_key(spec_or_row: dict):
-    """Pairing key across controllers on the same scenario."""
+    """Pairing key across controllers on the same scenario (and the same switches: a battle with the family flags
+    never pairs with one without)."""
     return (spec_or_row.get('family') or 'authored', spec_or_row.get('terrain', -1), spec_or_row.get('gen_seed', 0), spec_or_row['seed'],
-            defence_key(spec_or_row))
+            defence_key(spec_or_row)) + ((flags_key(spec_or_row),) if spec_or_row.get('flags') else ())
 
 
 def cluster_key(row: dict):
@@ -148,10 +209,17 @@ def cluster_key(row: dict):
 
 
 def config_digest() -> str:
-    payload = json.dumps(dict(seconds=SECONDS, authored=AUTHORED_SEEDS, f1_dev=[F1_DEV_GEN_SEEDS, F1_DEV_SEEDS],
-                              validation=[VALIDATION_COUNT, VALIDATION_SALT], baselines=BASELINES,
-                              maps=[MAP_DEV_SEEDS, MAP_VALIDATION_COUNT, MAP_BATTLE_SEED, TRENCH_DEV_SEEDS],
-                              attack=[ATTACK_LAYOUTS, ATTACK_DEFENDERS, ATTACK_VALIDATION_COUNT, ATTACK_SECONDS, ATTACK_BATTLE_SEEDS], lineages=LINEAGES,
-                              selectors=SELECTORS + SELECTOR_GROUPS, policy=POLICY_FILES, tokens=FORBIDDEN_TOKENS),
-                         sort_keys=True)
+    fields = dict(seconds=SECONDS, authored=AUTHORED_SEEDS, f1_dev=[F1_DEV_GEN_SEEDS, F1_DEV_SEEDS],
+                  validation=[VALIDATION_COUNT, VALIDATION_SALT], baselines=BASELINES,
+                  maps=[MAP_DEV_SEEDS, MAP_VALIDATION_COUNT, MAP_BATTLE_SEED, TRENCH_DEV_SEEDS],
+                  attack=[ATTACK_LAYOUTS, ATTACK_DEFENDERS, ATTACK_VALIDATION_COUNT, ATTACK_SECONDS, ATTACK_BATTLE_SEEDS], lineages=LINEAGES,
+                  selectors=SELECTORS + SELECTOR_GROUPS, policy=POLICY_FILES, tokens=FORBIDDEN_TOKENS)
+    # Plan 029: the village sets change the digest of every node evaluated from now on (the scenario
+    # sets are part of the config). A node's recorded config_digest stays as it was recorded.
+    fields['village'] = [VILLAGE_DEV_SEEDS, VILLAGE_VALIDATION_COUNT, VILLAGE_ATTACK_VALIDATION_COUNT, VILLAGE_VALIDATION_LOW, VILLAGE_SALT]
+    # Plan 029 G-5: the city2 sets change it again (94227add267ac886 -> d9306866bf9b2084).
+    fields['city2'] = [CITY2_DEV_SEEDS, CITY2_VALIDATION_COUNT, CITY2_ATTACK_VALIDATION_COUNT, CITY2_VALIDATION_LOW, CITY2_SALT]
+    # Plan 029 G-6 (score v8): the family flags change it again (d9306866bf9b2084 -> c1e8c1d041bc6932).
+    fields['family_flags'] = FAMILY_FLAGS
+    payload = json.dumps(fields, sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()[:16]

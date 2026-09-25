@@ -1,0 +1,145 @@
+{
+  "arm": "rl25",
+  "model": ".local/plan024/rl/seed25/squad.policy",
+  "eligible": [
+    "rl24",
+    "rl25",
+    "rl26"
+  ],
+  "diagnostic_only": false,
+  "rule": "Final checkpoint only. Among narrow seeds passing ordinary guards choose highest mean win-minus-loss; if none pass choose highest as diagnostic only. Tie: lower Azure loss, then lower training seed. Wide24 always evaluated separately; no heldout tuning.",
+  "development": {
+    "battles": 30,
+    "wins": 17,
+    "draws": 1,
+    "mean_outcome": 0.16666666666666666,
+    "means": {
+      "casualty_azure": 0.5770833333333333,
+      "casualty_ember": 0.5854166666666667,
+      "orders_azure_per_minute": 307.4888888888889,
+      "friendly_hits_per_100_soldier_minutes": 7.169956378501068,
+      "straggler_share": 0.047498417258894275,
+      "behind_corporal_share": 0.12281718365377665,
+      "replaced_before_arrival_share": 0.7507542885610718
+    },
+    "ordinary_guards": {
+      "zero_shot": {
+        "passed": true,
+        "detail": {
+          "failures": []
+        }
+      },
+      "firing_squads": {
+        "passed": true,
+        "detail": {
+          "failures": []
+        }
+      },
+      "under_2m": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": -0.00022741783643712895,
+            "median": 7.97283213057054e-05,
+            "ci95": [
+              -0.006793487508937889,
+              0.006772819627043613
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "orders_azure_per_minute": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": -8.866666666666669,
+            "median": -0.9166666666666572,
+            "ci95": [
+              -21.469166666666663,
+              4.88916666666665
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "orders_ember_per_minute": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": 6.97222222222223,
+            "median": 9.666666666666686,
+            "ci95": [
+              -8.328749999999994,
+              21.92236111111109
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      },
+      "friendly_fire": {
+        "passed": true,
+        "detail": {
+          "town-dev": {
+            "count": 30,
+            "clusters": 10,
+            "mean": 0.33638225157214086,
+            "median": 0.4691559912706127,
+            "ci95": [
+              -0.5399297943481759,
+              1.1154647512099338
+            ],
+            "unpaired": 0,
+            "passed": true
+          }
+        }
+      }
+    }
+  },
+  "published_policy": "squad.policy",
+  "selected_run": "seed25/squad.policy",
+  "model_sha256": "10f7d3f67fcc893a8b23147801e294ece61d1e66944efd4e6013c524ef1c2f15",
+  "status": "experimental_not_promoted",
+  "verdict": "No demonstrated gain on reserved ordinary-city maps; static validation attack-score regression.",
+  "heldout_counts": {
+    "legacy": {
+      "battles": 45,
+      "wins": 17,
+      "draws": 6,
+      "mean_outcome": -0.1111111111111111
+    },
+    "imitation": {
+      "battles": 45,
+      "wins": 22,
+      "draws": 3,
+      "mean_outcome": 0.044444444444444446
+    },
+    "continuation": {
+      "battles": 45,
+      "wins": 19,
+      "draws": 2,
+      "mean_outcome": -0.1111111111111111
+    },
+    "rl25": {
+      "battles": 45,
+      "wins": 17,
+      "draws": 3,
+      "mean_outcome": -0.17777777777777778
+    },
+    "wide24": {
+      "battles": 45,
+      "wins": 17,
+      "draws": 2,
+      "mean_outcome": -0.2
+    }
+  }
+}

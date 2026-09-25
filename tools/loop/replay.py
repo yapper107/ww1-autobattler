@@ -13,6 +13,20 @@ from tools.loop import config, tree
 from tools.loop.config import REPO
 
 CONTROLLER_SWITCH = {'legacy': '-ArmyLegacy', 'candidate90': '-ArmyCognition', 'drills': '-ArmyDrills'}
+# The generated-map slot Unreal loads for a row's family (-ArmyMap=<slot>, Config/GeneratedMaps/<slot>.army).
+# A town row keeps the city slot, as before; the village slot needs the plan 029 F-D renderer build.
+# The city2 slot (plan 029 G-5) is written as city2.army; BattleGameMode selects it for -ArmyMap=city2 since
+# F-D2 (slot 5). UNREAL_SLOTS lists the kinds it selects.
+MAP_SLOTS = ('city', 'trenches', 'village', 'city2')
+UNREAL_SLOTS = ('city', 'trenches', 'village', 'city2')
+# Score v8: a row fought with its family's natural state (config.FAMILY_FLAGS) replays with the same switches
+# (BattleGameMode reads -ArmyProne, -ArmyConcealment and -ArmyVaulting like the lab's --prone, --concealment, --vaulting).
+FLAG_SWITCH = {'--concealment': '-ArmyConcealment', '--prone': '-ArmyProne', '--vaulting': '-ArmyVaulting'}
+
+
+def map_slot(row: dict) -> str:
+    family = row.get('family')
+    return family if family in MAP_SLOTS else 'city'
 
 
 def find_row(node_id: str, set_name: str, key: str | None):
@@ -42,13 +56,16 @@ def mirror_dir() -> Path:
 def launch_arguments(node: dict, row: dict):
     args = [CONTROLLER_SWITCH[node.get('controller', 'drills')], f"-ArmySeed={row['seed']}", f"-ArmyBattleSeconds={row.get('seconds', config.SECONDS)}"]
     if row.get('map'):
-        args.append('-ArmyMap=' + ('trenches' if row.get('family') == 'trenches' else 'city'))
+        args.append('-ArmyMap=' + map_slot(row))
     elif row.get('terrain') == 1:
         args.append('-ArmyTrenches')
     if row.get('defence'):
         d = row['defence']
         args += [f"-ArmyStaticDefence={d['layout']}", f"-ArmyDefenders={d['defenders']}", f"-ArmyDefenceSeed={d['seed']}"]
-    return args
+    unknown = [f for f in row.get('flags') or () if f not in FLAG_SWITCH]
+    if unknown:
+        raise SystemExit(f'Unreal has no switch for {unknown}; the replay would not be the battle the row records')
+    return args + [FLAG_SWITCH[f] for f in row.get('flags') or ()]
 
 
 def replay(node_id: str, set_name: str, key: str | None = None, build: bool = True, launch: bool = True, log=print):
@@ -64,8 +81,10 @@ def replay(node_id: str, set_name: str, key: str | None = None, build: bool = Tr
         # build.sh mirrors Unreal/Config, so the generated map is placed after it.
         target = mirror_dir()/'Config/GeneratedMaps'
         target.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(row['map'], target/('trenches.army' if row.get('family') == 'trenches' else 'city.army'))
+        shutil.copy2(row['map'], target/f'{map_slot(row)}.army')
     args = launch_arguments(node, row)
+    if map_slot(row) not in UNREAL_SLOTS:
+        log(f"[{node_id}] warning: Unreal has no {map_slot(row)} slot yet; -ArmyMap={map_slot(row)} loads the town slot")
     log(f"[{node_id}] {set_name} {config.spec_key(row)}: " + ' '.join(args))
     if launch:
         subprocess.Popen(['./scripts/launch.sh', *args], cwd=REPO, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)

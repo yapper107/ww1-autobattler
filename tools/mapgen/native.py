@@ -12,6 +12,8 @@ def sample_path(points,distance):
 
 
 def export(m):
+    if m['kind'] in ('village','city2'):
+        return export_village(m)
     lines=[]
     def row(*values):
         lines.append(' '.join(format(v,'.7g') if isinstance(v,float) else str(v) for v in values))
@@ -69,5 +71,65 @@ def export(m):
     for b in m['buildings']:
         decor(b['rect'],.03,.04,4 if b['ruined'] else 2)
         if not b['ruined']:decor(b['rect'],3.7,.3,3)
+    row('END')
+    return '\n'.join(lines)+'\n'
+
+
+POSTURE={'standing':0,'crouched':1,'prone':2}
+
+
+def export_village(m):
+    """ARMYMAP 2 village (plan 029 F contract). Solids carry their own treads; the
+    optional 12th O column (flags) is written only when non-zero; every S carries
+    kind, level and owning building record; B and P are the building and door records."""
+    lines=[]
+    def row(*values):
+        lines.append(' '.join(format(v,'.7g') if isinstance(v,float) else str(v) for v in values))
+    row('ARMYMAP',2,m['kind'],m['seed'])
+    row('BOUNDS',m['bounds'][2]/2,m['bounds'][3]/2,m['ground_base'])
+    source_ids={s['id']:s['geometry_id'] for s in m['solids']}
+    next_id=max(source_ids.values())+1
+    for s in m['solids']:
+        a,b=s['min'],s['max']
+        values=['O',s['geometry_id'],(a[0]+b[0])/2,(a[1]+b[1])/2,a[2],(b[0]-a[0])/2,(b[1]-a[1])/2,b[2]-a[2],
+                int(s['building']),int(s['half_cover']),int(s['blocks_movement'])]
+        if s.get('flags',0):
+            values.append(s['flags'])
+        row(*values)
+    surfaces={}
+    for s in sorted(m['surfaces'],key=lambda s:s.get('kind',0)==0):
+        x,y,w,h=s['rect'];sx,sy=s['slope']
+        surfaces[s['id']]=next_id
+        row('S',next_id,x+w/2,y+h/2,s['z'],w/2,h/2,sx,sy,s.get('kind',0),s.get('level',0),s.get('building',0))
+        next_id+=1
+    for link in m['links']:
+        row('L',surfaces[link['surface']],*link['from_position'],*link['to_position'])
+    for b in m['buildings']:
+        x,y,w,h=b.get('native_rect',b['rect'])
+        row('B',b['record'],x+w/2,y+h/2,w/2,h/2,b['floors'])
+    for b in m['buildings']:
+        for door in b['doors']:
+            along_x=door['along'][0]>door['along'][1]
+            half=door['width']/2
+            row('P',door['center'][0],door['center'][1],half if along_x else .25,.25 if along_x else half)
+    for i,c in enumerate(m['cover']):
+        row('C',1000000+i,source_ids[c['source']],*c['shelter'],*c['fire'],*c['facing'],
+            POSTURE[c.get('posture','crouched')],int(bool(c.get('window'))))
+    for sp in sorted(m['spawns'],key=lambda s:s['slot']):
+        row('U',sp['slot'],*sp['position'],*sp['goal'])
+    def decor(rect,z,thickness,kind):
+        x,y,w,h=rect;row('D',kind,x+w/2,y+h/2,z,w/2,h/2,thickness/2)
+    for road in m['roads']:
+        w=road['width']
+        for a,b in zip(road['points'],road['points'][1:]):
+            decor([min(a[0],b[0])-w/2,min(a[1],b[1])-w/2,abs(b[0]-a[0])+w,abs(b[1]-a[1])+w],.015,.025,0)
+    for yard in m['yards']:
+        if yard['use'] in ('square','farmyard'):
+            for rect in yard.get('pieces',[yard['rect']]):decor(rect,.018,.025,1)
+    for b in m['buildings']:
+        decor(b['rect'],.03,.04,4 if b['ruined'] else 2)
+        if not b['ruined']:
+            roof_height=b.get('roof_height',6.5 if b['floors']==2 else (5.1 if b['use']=='church' else (4.6 if b['use']=='barn' else 3.7)))
+            decor(b['rect'],roof_height,.3,3)
     row('END')
     return '\n'.join(lines)+'\n'

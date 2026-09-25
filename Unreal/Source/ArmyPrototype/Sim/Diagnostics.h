@@ -1,6 +1,7 @@
 #pragma once
 #include <sstream>
 #include "BattleSim.h"
+#include "ManeuverSim.h"
 #include <chrono>
 #include <unordered_map>
 #ifndef ARMY_BUILD_ID
@@ -50,6 +51,9 @@ struct TraceEntry {
     std::vector<MoveFailure> movementReports;
     std::vector<FireDelivery> deliveries;
     std::vector<Alternative> alternatives;
+    // Plan 028 Stage 0: extra JSON members (each starting with a comma) of the covering_check,
+    // covering_clock_reset and movement_paused rows. Empty on every other kind.
+    std::string extra;
 };
 struct TracePrevious { bool valid=false; TraceEntry state; float heartbeat=-100; };
 struct PathEvidence {
@@ -70,6 +74,17 @@ struct Diagnostics {
     std::vector<std::shared_ptr<const TacticalRoute>> routes;
     std::unordered_map<int,uint64_t> issuedOrders,receivedOrders;
     std::array<int,SquadCount> activePlanIds{};
+    // Plan 028 Stage 0 scratch, diagnostics only. covering_check rows written during a squad's plan
+    // wait here for their obs_* truth fields, filled by UpdateCommands right after UpdateSquadPlan;
+    // a pause call site leaves its source for the movement_paused row PlanSim writes afterwards.
+    struct CoveringPending { size_t entry=0; int squad=-1,primary=-1; Vec3 track{}; };
+    std::vector<CoveringPending> coveringPending;
+    struct PauseNote { const char* source=nullptr; bool hadWaypoint=false,gunMove=false; };
+    std::array<PauseNote,SquadCount> pauseNotes{};
+    // Plan 028 Stage 1: which covering request of each squad has had its first credited round and its
+    // gate's three (the cover_credit rows), so each is written once per request.
+    struct CoverCreditNote { int serial=0,enemy=-1; bool first=false,credited=false,open=false; float startedAt=-1,until=-1; const char* gate=""; };
+    std::array<CoverCreditNote,SquadCount> coverCredit{};
     double perception=0,commands=0,decisions=0,movement=0,ballistics=0,firing=0,recording=0,trace=0,total=0;
 };
 using DiagnosticClock=std::chrono::steady_clock;
@@ -84,6 +99,42 @@ void TracePath(Diagnostics* data,const Soldier& soldier,const Map& map,float tim
 void TracePathChoice(Diagnostics* data,const Soldier& soldier,const Map& map,float time,const PathChoice& choice,Vec3 goal);
 void TraceCoverRule(Diagnostics* data,const Soldier& soldier,float time,CoverRule rule,Vec3 goal);
 const char* CoverRuleName(CoverRule rule);
+// Plan 028 Stage 0: covering-fire measurement rows. Evidence only: nothing here reads back into
+// the battle, draws a random number or changes an iteration order. All are no-ops unless enabled.
+struct CoveringGateState {
+    bool covering=false,pass=false;          // the gate's own covering value and its overall verdict
+    float exposure=0,opportunitySince=-1,waited=-1;
+    bool hasWaypoint=false,routePresent=false,staleRoute=false,policyReleased=false,platoonFiring=false;
+    float pressure=-1;int refusals=-1,ready=-1;bool paused=false;
+    // Plan 028 Stage 3c (Config::coverGraduated): the grade of an uncovered crossing (stale / pending /
+    // low / high, empty when covered or off), the graduated decision (stale_cross / low_cross /
+    // high_go_round at the commit wait, high_pause on a bound, empty while waiting) and, at the
+    // commit wait, what the leader did this tick (support_wait / go_round / preparing / committed).
+    bool graduated=false;const char* danger="";const char* outcome="";const char* result="";
+    // Plan 030 M-S5 (Config::coverQuietRelease only; empty and unwritten otherwise): what released the gate
+    // this tick, "quiet" (QuietCrossing) or "credit" (the credited-delivery test), "" when neither did. Plan 030 K-1
+    // (Config::retireFallen, once the leader knows a man seen to fall): also written, and "fallen" when the bound's
+    // only watchers were seen to fall (OnlyFallenOverlook).
+    const char* release=nullptr;
+};
+void TraceCoveringCheck(Diagnostics* data,const Soldier& leader,const SquadCommand& command,float time,const char* gate,
+    const CoveringExplanation& explanation,const CoveringGateState& state);
+// A clock reset: opportunitySince was >=0 before and is now -1 or a different start.
+void TraceCoveringClock(Diagnostics* data,const Soldier& leader,const SquadCommand& command,float before,float time,const char* source);
+void NoteCoveringPause(Diagnostics* data,int squad,const char* source,bool hadWaypoint,bool gunMove);
+// Called once the movement_paused row is the last entry: adds pause_source, had_waypoint, gun_move.
+void AnnotatePause(Diagnostics* data,int squad);
+// Truth (obs_*) of the pending covering_check rows of one squad, from the frame; measurement only.
+void TraceCoveringTruth(Diagnostics* data,const Frame& frame,const Map& map,int squad,int support);
+// Plan 028 Stage 1 (Config::coverRequests): a cover_request row when a squad's covering request starts
+// or its tasked riflemen change, and cover_credit rows when the requesting leader's own deliveries first
+// credit a round on its threat and then the gate's three (request_to_credit_seconds), and a
+// cover_request "end" row when a request lapses (its whole live window). Evidence only.
+void TraceCoverRequest(Diagnostics* data,const Soldier& leader,const SquadCommand& command,float time,const char* reason);
+void TraceCoverCredit(Diagnostics* data,const Frame& frame,int squad);
+// Plan 028 Stage 4: evidence rows of the supply mechanisms (kind cover_gun_aim, cover_shift,
+// cover_platoon_payload), with their reason and a JSON fragment of their own fields. Evidence only.
+void TraceCoverSupply(Diagnostics* data,const Soldier& soldier,const SquadCommand& command,float time,const char* kind,const char* reason,const std::string& extra);
 // digest: a GameplayDigest already computed for this record, or 0 to compute it here.
 // The digest walks every recorded frame, so callers that also print it pass it in.
 // Lean recording (plan 018, 19 Sep 2026): a loop battle does not need its 1.6 MB frames once

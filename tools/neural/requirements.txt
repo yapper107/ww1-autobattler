@@ -1,0 +1,6 @@
+# Install torch from the CPU index first for the portable pilot:
+# python -m pip install torch==2.14.0+cpu --index-url https://download.pytorch.org/whl/cpu
+torch==2.14.0+cpu
+numpy==2.5.3
+pillow==12.3.0
+imageio-ffmpeg==0.6.0

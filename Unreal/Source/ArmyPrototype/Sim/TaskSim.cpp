@@ -76,7 +76,7 @@ void PrepareTaskExecution(const Soldier& s,Tactics& memory,float time,bool cauti
     if(s.assignment.hasSlot&&Distance(s.position,s.assignment.position)<1.5f&&(!memory.assigned||memory.emergency||Distance(memory.shelter,s.assignment.slot.shelter)>.04f)){
         // Emergency arrival at the assigned shelter resumes the same task.
         // Completion still requires the existing firing-position predicate.
-        const auto& slot=s.assignment.slot;memory.emergency=memory.emergency&&s.assignment.execution.paused&&Distance(s.position,slot.shelter)>=.2f;memory.assigned=true;memory.coverId=slot.id;memory.geometryRevision=s.assignment.geometry;memory.shelter=slot.shelter;memory.peek=slot.peek;memory.halfCover=slot.crouch;memory.expires=time+180;memory.lastProgress=time;
+        const auto& slot=s.assignment.slot;memory.emergency=memory.emergency&&s.assignment.execution.paused&&Distance(s.position,slot.shelter)>=.2f;memory.assigned=true;memory.coverId=slot.id;memory.geometryRevision=s.assignment.geometry;memory.shelter=slot.shelter;memory.peek=slot.peek;memory.halfCover=slot.crouch;memory.proneCover=slot.prone;memory.expires=time+180;memory.lastProgress=time;
     }
     // Plan 020: a movement order no longer discards cover while rounds are still landing
     // near him. Below the under-fire threshold this is the pre-020 release exactly.
@@ -84,10 +84,10 @@ void PrepareTaskExecution(const Soldier& s,Tactics& memory,float time,bool cauti
         (!memory.emergency||s.suppression<.08f)&&s.suppression<.35f&&s.reloadUntil<=time&&
         !(cautiousCover&&s.suppression>Caution().underFireSuppression))memory={};
 }
-Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std::vector<Vec3>& reservations,Tactics& memory,float time,DecisionAlternatives* alternatives){
+static Order ExecuteTaskBase(const Soldier& s,const Map& map,const Config& config,const std::vector<Vec3>& reservations,Tactics& memory,float time,DecisionAlternatives* alternatives,bool* openGround){
     const bool typed=s.assignment.execution.completion!=Completion::Legacy;
     bool moving=typed||s.assignment.task==Task::BoundMove||s.assignment.task==Task::Flank||s.assignment.task==Task::PullBack||s.assignment.task==Task::Rally;
-    if(!moving)return ChooseOrder(s,map,config,reservations,memory,time,alternatives);
+    if(!moving)return ChooseOrderBase(s,map,config,reservations,memory,time,alternatives,openGround);
     if(typed&&s.assignment.execution.unavailable)return {s.position,Action::Hold,Reason::AwaitOrders,Stance::Crouched};
     Doctrine doctrine=s.team?config.emberDoctrine:config.doctrine;
     float duck=doctrine==Doctrine::Cautious?.4f:doctrine==Doctrine::Aggressive?.65f:.52f;
@@ -97,30 +97,42 @@ Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std
     const bool pressure=s.suppression>duck;
     const float shelterThreshold=s.cognition&&s.assignment.teamPlan.released?.3f:.08f;
     if((exposed&&s.suppression>shelterThreshold)||(memory.emergency&&s.suppression>shelterThreshold)){
-        auto safe=[&](Vec3 p,bool crouch){for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<10&&Distance(p,ct.position)<95&&
-            !ProtectedAt(map,p,ct.position,crouch?Stance::Crouched:Stance::Standing)&&ClearLine3D(map,ct.position+Vec3{0,0,1.5f},p+Vec3{0,0,crouch?.95f:1.7f}))return false;
+        // Plan 029 M-A2: tested at the cover's own stance; a prone man's top is his prone body.
+        auto safe=[&](Vec3 p,Stance posture){for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<10&&Distance(p,ct.position)<95&&
+            !ProtectedAt(map,p,ct.position,posture)&&ClearLine3D(map,ct.position+Vec3{0,0,1.5f},p+Vec3{0,0,posture==Stance::Prone?Posture(Stance::Prone).body:posture==Stance::Crouched?.95f:1.7f}))return false;
             return true;};
-        if(!memory.emergency||!memory.assigned||!safe(memory.shelter,memory.halfCover)){
-            float best=1e9f;const CoverPosition* selected=nullptr;
+        if(!memory.emergency||!memory.assigned||!safe(memory.shelter,ShelterStance(memory))){
+            float best=1e9f;const CoverPosition* selected=nullptr;const VaultClass own=VaultClassOf(s,config); // plan 029 M-C
             for(const auto& cover:CoverPositions(map)){
-                float distance=Distance(s.position,cover.shelter);if(distance>25||!safe(cover.shelter,cover.crouch))continue;
+                float distance=Distance(s.position,cover.shelter);if(distance>25||!safe(cover.shelter,CoverStance(cover)))continue;
                 if(config.drills){bool occupied=false;int close=0;for(int id=0;id<UnitCount;++id)if(id!=s.id&&s.allies[id].known&&time-s.allies[id].observedAt<3){
                     float gap=Distance(s.allies[id].position,cover.shelter);close+=gap<3;occupied|=gap<2||Distance(s.allies[id].position,cover.peek)<1.8f||close>=2;
                 }if(occupied)continue;}
 
-                auto path=FindPath(map,s.position,cover.shelter);if(path.empty())continue;
+                auto path=FindPath(map,s.position,cover.shelter,own);if(path.empty())continue;
+                // Plan 029 M-C2 (Config::vaulting): the 25 m is his path's length, a vault at its seconds (PathTravel).
+                if(config.vaulting&&PathTravel(map,s.position,path,own)>25)continue;
                 float score=0;Vec3 previous=s.position;for(Vec3 end:path){float length=Distance(previous,end);int count=std::max(1,int(std::ceil(length/3)));
                     for(int k=1;k<=count;++k){Vec3 at=previous+(end-previous)*(float(k)/count);bool seen=false;
                         for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<10&&ClearLine3D(map,ct.position+Vec3{0,0,1.5f},at+Vec3{0,0,1.3f}))seen=true;
                         score+=length/count*(seen?5.f:1.f);
-                    }previous=end;
+                    }
+                    // A vault leg also costs its seconds as metres, weighed as the take-off is: he stands there, seen or not.
+                    if(config.vaulting&&own!=VaultClass::None){const float extra=VaultLegMetres(map,previous,end,own);
+                        if(extra>0){bool seen=false;
+                            for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<10&&ClearLine3D(map,ct.position+Vec3{0,0,1.5f},previous+Vec3{0,0,1.3f}))seen=true;
+                            score+=extra*(seen?5.f:1.f);}}
+                    previous=end;
                 }
                 for(const auto& ct:s.contacts)if(ct.known)score+=2*std::max(0.f,Distance(s.position,ct.position)-Distance(cover.shelter,ct.position));
                 if(score<best){best=score;selected=&cover;}
             }
-            if(selected){memory={};memory.assigned=memory.emergency=true;memory.shelter=selected->shelter;memory.peek=selected->peek;memory.halfCover=selected->crouch;memory.coverId=selected->id;memory.geometryRevision=map.revision;memory.lastProgress=time;}
+            if(selected){memory={};memory.assigned=memory.emergency=true;memory.shelter=selected->shelter;memory.peek=selected->peek;memory.halfCover=selected->crouch;memory.proneCover=selected->prone;memory.coverId=selected->id;memory.geometryRevision=map.revision;memory.lastProgress=time;}
         }
-        if(memory.emergency&&memory.assigned)return {memory.shelter,Distance(s.position,memory.shelter)>.12f?Action::Cover:Action::Hold,Reason::EmergencyCover,memory.halfCover?Stance::Crouched:Stance::Standing};
+        // On the way he keeps the crouch a low shelter gives; at a prone shelter he lies down (plan 029).
+        if(memory.emergency&&memory.assigned)return {memory.shelter,Distance(s.position,memory.shelter)>.12f?Action::Cover:Action::Hold,Reason::EmergencyCover,
+            Distance(s.position,memory.shelter)>.12f?(memory.halfCover?Stance::Crouched:Stance::Standing):ShelterStance(memory)};
+        if(openGround)*openGround=true; // plan 029 M-A1: the emergency cover search has just failed him
         return {s.position,Action::Hold,Reason::Suppressed,Stance::Crouched};
     }
     if(s.assignment.drillInstance>0&&s.assignment.execution.paused&&s.assignment.hasSlot){
@@ -144,11 +156,11 @@ Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std
     if(config.threatAwarePaths&&memory.assigned&&!s.assignment.execution.paused&&s.assignment.task!=Task::PullBack&&
         s.suppression>Caution().underFireSuppression&&Distance(s.position,s.assignment.position)>.7f&&
         std::min(Distance(s.position,memory.shelter),Distance(s.position,memory.peek))<=1.5f){
-        if(BetterCoverNearby(map,s,reservations,memory,time))
+        if(BetterCoverNearby(map,s,reservations,memory,time,VaultClassOf(s,config),config.vaulting))
             return {memory.shelter,Action::Cover,Reason::Relocate,memory.halfCover?Stance::Crouched:Stance::Standing};
         memory.coverRule=CoverRule::StayedUnderFire;
         return {memory.shelter,Distance(s.position,memory.shelter)>.12f?Action::Cover:Action::Hold,Reason::Contact,
-            memory.halfCover?Stance::Crouched:Stance::Standing};
+            Distance(s.position,memory.shelter)>.12f?(memory.halfCover?Stance::Crouched:Stance::Standing):ShelterStance(memory)};
     }
     if(s.assignment.drillInstance>0&&s.assignment.execution.rushSeconds>0&&
         !s.assignment.execution.paused&&time-s.assignment.activatedAt-s.assignment.drillRushPausedSeconds>=s.assignment.execution.rushSeconds&&Distance(s.position,s.assignment.position)>.75f)
@@ -161,9 +173,9 @@ Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std
             const auto& slot=s.assignment.slot;const float distance=Distance(s.position,slot.shelter);
             bool safe=distance>.2f&&distance<=6&&CoverExists(map,slot.id)&&ClearLine(map,s.position,slot.shelter,.48f);
             for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<10&&Distance(slot.shelter,ct.position)<95)
-                safe&=ProtectedAt(map,slot.shelter,ct.position,slot.crouch?Stance::Crouched:Stance::Standing);
+                safe&=ProtectedAt(map,slot.shelter,ct.position,CoverStance(slot));
             if(safe){memory={};memory.assigned=memory.emergency=true;memory.shelter=slot.shelter;memory.peek=slot.peek;
-                memory.halfCover=slot.crouch;memory.coverId=slot.id;memory.geometryRevision=map.revision;memory.lastProgress=time;
+                memory.halfCover=slot.crouch;memory.proneCover=slot.prone;memory.coverId=slot.id;memory.geometryRevision=map.revision;memory.lastProgress=time;
                 return {slot.shelter,Action::Cover,Reason::EmergencyCover,slot.crouch?Stance::Crouched:Stance::Standing};}
         }
         // Awaiting movement support does not forbid defending the current
@@ -183,8 +195,8 @@ Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std
         return {s.position,Action::Hold,Reason::AtWaypoint,Stance::Crouched};
     }
     if(s.assignment.hasSlot){
-        if(!memory.assigned||Distance(memory.shelter,s.assignment.slot.shelter)>.04f){const auto& slot=s.assignment.slot;memory={};memory.assigned=true;memory.coverId=slot.id;memory.geometryRevision=s.assignment.geometry;memory.shelter=slot.shelter;memory.peek=slot.peek;memory.halfCover=slot.crouch;memory.expires=time+180;memory.lastProgress=time;}
-        if(!typed)return ChooseOrder(s,map,config,reservations,memory,time,alternatives);
+        if(!memory.assigned||Distance(memory.shelter,s.assignment.slot.shelter)>.04f){const auto& slot=s.assignment.slot;memory={};memory.assigned=true;memory.coverId=slot.id;memory.geometryRevision=s.assignment.geometry;memory.shelter=slot.shelter;memory.peek=slot.peek;memory.halfCover=slot.crouch;memory.proneCover=slot.prone;memory.expires=time+180;memory.lastProgress=time;}
+        if(!typed)return ChooseOrderBase(s,map,config,reservations,memory,time,alternatives,openGround);
     }
     if(typed){
         const Vec3 peek=s.assignment.hasSlot?s.assignment.slot.peek:s.assignment.position;
@@ -208,6 +220,14 @@ Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std
     // Intermediate stages are synchronization points. Safety can crouch here,
     // but cannot invent a replacement maneuver destination.
     return {s.position,Action::Hold,Reason::AtWaypoint,Stance::Crouched};
+}
+Order ExecuteTask(const Soldier& s,const Map& map,const Config& config,const std::vector<Vec3>& reservations,Tactics& memory,float time,DecisionAlternatives* alternatives){
+    if(!config.prone)return ExecuteTaskBase(s,map,config,reservations,memory,time,alternatives,nullptr);
+    // Plan 029 M-A1: the same prone rules as ChooseOrder, applied once on whichever decision was made.
+    const float since=memory.proneSince;bool open=false;
+    const Order decided=ExecuteTaskBase(s,map,config,reservations,memory,time,alternatives,&open);
+    memory.proneSince=since;
+    return ApplyProne(s,map,config,memory,time,decided,open);
 }
 void ReportTaskNavigation(Soldier& s,bool reachable,float time,Diagnostics* d){
     if(!s.assignment.id||TerminalTask(s.assignment.status))return;
@@ -249,7 +269,7 @@ void EvaluateTaskExecution(Soldier& s,const Map& map,const Tactics& memory,float
     else if(s.assignment.execution.unavailable){status=TaskStatus::Failed;cause=TaskCause::Unreachable;}
     else if(s.waitingPassage>=0){status=TaskStatus::Interrupted;cause=TaskCause::Passage;}
     else if(s.reloadUntil>time){status=TaskStatus::Interrupted;cause=TaskCause::Reload;}
-    else if(memory.emergency||s.reason==Reason::Suppressed||s.reason==Reason::Duck){status=TaskStatus::Interrupted;cause=TaskCause::Shelter;}
+    else if(memory.emergency||s.reason==Reason::Suppressed||s.reason==Reason::Duck||s.reason==Reason::Prone){status=TaskStatus::Interrupted;cause=TaskCause::Shelter;}
     else if((!Walkable(map,s.assignment.position)||(s.assignment.hasSlot&&!CoverExists(map,s.assignment.slot.id)))&&Distance(s.position,s.assignment.position)<3){status=TaskStatus::Failed;cause=TaskCause::Geometry;}
     else if(s.assignment.execution.completion!=Completion::Legacy){
         auto& a=s.assignment;const auto kind=a.execution.completion;

@@ -1,0 +1,58 @@
+--- a/Unreal/Source/ArmyPrototype/Sim/SpatialSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/SpatialSim.cpp
+@@ -17,21 +17,41 @@
+             size_t mid=(begin+end)/2;node.left=Build(m,begin,mid);node.right=Build(m,mid,end);}
+         nodes[id]=node;return id;
+     }
+-    bool Overlap(const Node& n,Vec3 a,Vec3 b,float padding)const{
+-        if(padding<0&&((a.z<n.low.z-0.001f&&b.z<n.low.z-0.001f)||(a.z>n.high.z+0.001f&&b.z>n.high.z+0.001f)))return false;
++    // The same slab test as before, but it reports where the segment enters the
++    // padded box (always >=0) instead of a bare flag, so a parent can order its
++    // children along the ray. -1 still means the node cannot be reached.
++    float Reach(const Node& n,Vec3 a,Vec3 b,float padding)const{
++        if(padding<0&&((a.z<n.low.z-0.001f&&b.z<n.low.z-0.001f)||(a.z>n.high.z+0.001f&&b.z>n.high.z+0.001f)))return -1;
+         float pad=std::max(0.f,padding)+0.001f,lo=0,hi=1;
+         for(int k=0;k<2;++k){float p=k?a.y:a.x,d=k?b.y-a.y:b.x-a.x,mn=(k?n.low.y:n.low.x)-pad,mx=(k?n.high.y:n.high.x)+pad;
+-            if(std::abs(d)<1e-7f){if(p<mn||p>mx)return false;}else{float x=(mn-p)/d,y=(mx-p)/d;if(x>y)std::swap(x,y);lo=std::max(lo,x);hi=std::min(hi,y);if(lo>hi)return false;}}
+-        return true;
++            if(std::abs(d)<1e-7f){if(p<mn||p>mx)return -1;}else{float x=(mn-p)/d,y=(mx-p)/d;if(x>y)std::swap(x,y);lo=std::max(lo,x);hi=std::min(hi,y);if(lo>hi)return -1;}}
++        return lo;
+     }
++    // Callers that only ask whether anything blocks the segment stop at the first
++    // hit, so the nearer child is walked first: a blocker usually sits in it and
++    // the far half is never opened. A closest-hit query has no early exit, so it
++    // keeps the original left-then-right order and takes the minimum, which does
++    // not depend on the order the branches are visited in.
+     float Query(const Map& m,int id,Vec3 a,Vec3 b,bool any,float pad)const{
+-        const auto& node=nodes[id];if(!Overlap(node,a,b,pad))return -1;
+-        if(node.left>=0){float left=Query(m,node.left,a,b,any,pad);if(any&&left>=0)return left;float right=Query(m,node.right,a,b,any,pad);return left<0?right:right<0?left:std::min(left,right);}
++        const auto& node=nodes[id];
++        if(node.left>=0){
++            const float entryLeft=Reach(nodes[node.left],a,b,pad),entryRight=Reach(nodes[node.right],a,b,pad);
++            if(entryLeft<0)return entryRight<0?-1:Query(m,node.right,a,b,any,pad);
++            if(entryRight<0)return Query(m,node.left,a,b,any,pad);
++            if(any){const bool leftFirst=entryLeft<=entryRight;
++                float hit=Query(m,leftFirst?node.left:node.right,a,b,true,pad);if(hit>=0)return hit;
++                return Query(m,leftFirst?node.right:node.left,a,b,true,pad);}
++            const float left=Query(m,node.left,a,b,false,pad),right=Query(m,node.right,a,b,false,pad);
++            return left<0?right:right<0?left:std::min(left,right);}
+         float first=-1;for(size_t k=node.begin;k<node.end;++k){const auto& o=m.obstacles[items[k]];float hit=-1;
+             if(pad<0)hit=SegmentObstacle(a,b,o);
+             else if(o.blocksMovement&&o.center.z<std::max(a.z,b.z)+1.85f-0.01f&&o.center.z+ObstacleHeight(o)>std::min(a.z,b.z)+0.02f)hit=SegmentBox(a,b,o,pad);
+             if(hit>=0){if(any)return hit;if(first<0||hit<first)first=hit;}}
+         return first;
++    }
++    float Trace(const Map& m,Vec3 a,Vec3 b,bool any,float pad)const{
++        if(nodes.empty()||Reach(nodes[0],a,b,pad)<0)return -1;
++        return Query(m,0,a,b,any,pad);
+     }
+ };
+ #ifndef SEGMENT_MEMO_BITS
+@@ -59,6 +79,6 @@
+ float IndexedContact(const Map& m,Vec3 a,Vec3 b,bool any,float padding){
+     if(m.obstacles.empty())return -1;
+     if(!m.spatial||m.spatial->revision!=m.revision){auto cache=std::make_shared<SpatialIndex>();cache->revision=m.revision;cache->items.resize(m.obstacles.size());std::iota(cache->items.begin(),cache->items.end(),0);cache->Build(m,0,cache->items.size());m.spatial=cache;}
+-    return m.spatial->Query(m,0,a,b,any,padding);
++    return m.spatial->Trace(m,a,b,any,padding);
+ }
+ }

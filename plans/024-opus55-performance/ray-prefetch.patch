@@ -1,0 +1,73 @@
+--- .local/plan024/performance-round3/baseline/Sim/TacticalRouteSim.cpp	2026-09-22 15:55:29.872605247 -0700
++++ .local/plan024/opus55-performance/prefetch/Sim/TacticalRouteSim.cpp	2026-09-22 17:36:27.362889370 -0700
+@@ -5,12 +5,29 @@
+ #include <limits>
+ #include <queue>
+ #include <chrono>
++#if defined(_MSC_VER)&&!defined(__clang__)&&(defined(_M_X64)||defined(_M_IX86))
++#include <xmmintrin.h>
++#endif
+ namespace army {
+ struct TacticalVisibilityCache {
+     // Coordinates occupy 48 bits. Store the answer in the spare high bit rather
+     // than paying an eight-byte alignment pad per entry.
+     struct Ray {uint64_t from=0,toAndVisible=0;};
+     uint64_t revision=0;std::vector<Ray> rays=std::vector<Ray>(8388608);
++    static size_t Slot(uint64_t a,uint64_t b){
++        uint64_t hash=a*1099511628211ull+b;hash=(hash^(hash>>30))*0xbf58476d1ce4e5b9ull;hash=(hash^(hash>>27))*0x94d049bb133111ebull;hash^=hash>>31;
++        return size_t(hash&8388607);
++    }
++    // A load hint only: no table state or answer depends on it.
++    static void Prefetch(const Ray* ray){
++#if defined(__GNUC__)||defined(__clang__)
++        __builtin_prefetch(ray);
++#elif defined(_MSC_VER)&&(defined(_M_X64)||defined(_M_IX86))
++        _mm_prefetch(reinterpret_cast<const char*>(ray),_MM_HINT_T0);
++#else
++        (void)ray;
++#endif
++    }
+ };
+ TacticalRoutePlanner::SightPoint TacticalRoutePlanner::SnapSightPoint(Vec3 p){
+     // Preserve the original rounding, packing and arithmetic order exactly.
+@@ -21,9 +38,12 @@
+     return {p,packed};
+ }
+ bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPoint& to) const {
++    return EstimatedVisible(from,to,TacticalVisibilityCache::Slot(from.packed,to.packed));
++}
++bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPoint& to,size_t slot) const {
+     if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>();map.tacticalVisibility->revision=map.revision;}
+-    uint64_t a=from.packed,b=to.packed,hash=a*1099511628211ull+b;hash=(hash^(hash>>30))*0xbf58476d1ce4e5b9ull;hash=(hash^(hash>>27))*0x94d049bb133111ebull;hash^=hash>>31;
+-    auto& entry=map.tacticalVisibility->rays[hash&8388607];if(entry.from==a&&(entry.toAndVisible&0xffffffffffffull)==b)return (entry.toAndVisible>>63)!=0;
++    const uint64_t a=from.packed,b=to.packed;
++    auto& entry=map.tacticalVisibility->rays[slot];if(entry.from==a&&(entry.toAndVisible&0xffffffffffffull)==b)return (entry.toAndVisible>>63)!=0;
+     // This ray table already caches the exact snapped query. On prepared maps
+     // query the obstacle index directly instead of probing a second memo table.
+     // Preserve the sight counter and the ordinary unprepared-map fallback.
+@@ -79,8 +99,14 @@
+             ct.eyesReady=true;
+         }
+         if(!bodyReady){body=SnapSightPoint(p+Vec3{0,0,stance==Stance::Crouched?.9f:1.5f});bodyReady=true;}
++        // The three rays are always all looked up. Start their independent
++        // table loads together; lookups still run in the original order.
++        size_t slots[3];
++        for(size_t i=0;i<3;++i)slots[i]=TacticalVisibilityCache::Slot(ct.eyes[i].packed,body.packed);
++        if(map.tacticalVisibility&&map.tacticalVisibility->revision==map.revision)
++            for(size_t slot:slots)TacticalVisibilityCache::Prefetch(map.tacticalVisibility->rays.data()+slot);
+         float visible=0;
+-        for(const auto& eye:ct.eyes)if(EstimatedVisible(eye,body))visible+=1.f/3;
++        for(size_t i=0;i<3;++i)if(EstimatedVisible(ct.eyes[i],body,slots[i]))visible+=1.f/3;
+         seen=std::max(seen,visible*confidence*(ct.automaticWeapon?1.f:.7f));
+     }
+     c.exposure=seen*8*caution/speed;
+--- .local/plan024/performance-round3/baseline/Sim/TacticalRouteSim.h	2026-09-22 15:10:46.233366773 -0700
++++ .local/plan024/opus55-performance/prefetch/Sim/TacticalRouteSim.h	2026-09-22 17:36:14.358892866 -0700
+@@ -34,6 +34,7 @@
+     SightPoint observerEye{};bool observerEyeReady=false;
+     static SightPoint SnapSightPoint(Vec3 position);
+     bool EstimatedVisible(const SightPoint& from,const SightPoint& to) const;
++    bool EstimatedVisible(const SightPoint& from,const SightPoint& to,size_t slot) const;
+     std::vector<Vec3> RegionalPath(Vec3 from,Vec3 to,int budget,int& expanded,RouteStatus& status);
+ public:
+     TacticalRoutePlanner(const Map& geometry,const Soldier& knowledge,float at,Doctrine doctrine=Doctrine::Balanced,Stance posture=Stance::Standing);

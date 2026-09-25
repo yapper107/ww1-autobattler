@@ -52,14 +52,16 @@ void ProcessReactions(Frame& f,ReactionRuntime& rt,std::vector<Event>& events) {
             if(report.danger>0)RememberFireArea(s,{report.position,report.danger,report.observedAt});
             if(s.directionalSight||s.cognition)ReceiveObservations(s,{{report.enemy,report.contact}},p.source,f.time);
             else if(report.enemy>=0&&report.enemy<UnitCount&&report.contact.known&&f.time-report.contact.observedAt<=120&&report.contact.observedAt>s.reports[report.enemy].observedAt) {
-                s.reports[report.enemy]=report.contact;s.reports[report.enemy].visible=false;s.reports[report.enemy].registeredAt=f.time;s.reports[report.enemy].reportSource=p.source;
+                const float fired=s.reports[report.enemy].lastFireAt; // plan 030 M-S5: kept, as in a report
+                s.reports[report.enemy]=report.contact;s.reports[report.enemy].visible=false;if(rt.quietRelease)s.reports[report.enemy].lastFireAt=std::max(fired,report.contact.lastFireAt);s.reports[report.enemy].registeredAt=f.time;s.reports[report.enemy].reportSource=p.source;
             }
         } else if(p.kind==ReactionKind::PlatoonOrder) {
             if(p.directive.serial<=s.platoonOrder.serial||f.time>=p.directive.expiresAt)continue;
             ++s.knowledgeRevision;s.platoonOrder=p.directive;if(s.leaderEffects)s.initiativeAllowed=p.directive.initiativeAllowed;s.platoonOrder.receivedAt=p.receivedAt;s.platoonOrder.activatedAt=f.time;
             if(s.directionalSight||s.cognition)ReceiveObservations(s,{{p.directive.enemy,p.directive.contact}},p.source,f.time);
             else if(p.directive.enemy>=0&&p.directive.enemy<UnitCount&&p.directive.contact.known&&f.time-p.directive.contact.observedAt<=120&&p.directive.contact.observedAt>s.reports[p.directive.enemy].observedAt) {
-                s.reports[p.directive.enemy]=p.directive.contact;s.reports[p.directive.enemy].visible=false;s.reports[p.directive.enemy].reportSource=p.source;
+                const float fired=s.reports[p.directive.enemy].lastFireAt; // plan 030 M-S5: kept, as in a report
+                s.reports[p.directive.enemy]=p.directive.contact;s.reports[p.directive.enemy].visible=false;if(rt.quietRelease)s.reports[p.directive.enemy].lastFireAt=std::max(fired,p.directive.contact.lastFireAt);s.reports[p.directive.enemy].reportSource=p.source;
             }
             events.push_back({f.time,EventKind::Reaction,s.id,p.source,std::string(Name(s.id))+" accepts platoon order: "+PlatoonTaskName(s.platoonOrder.task)});
         } else if(p.kind==ReactionKind::Order) {
@@ -87,6 +89,29 @@ void ProcessReactions(Frame& f,ReactionRuntime& rt,std::vector<Event>& events) {
             }
             if(s.assignment.id)SetTaskStatus(s,TaskStatus::Superseded,TaskCause::Replaced,f.time,rt.diagnostics);
             s.assignment=p.order;s.assignment.receivedAt=p.receivedAt;s.assignment.activatedAt=f.time;
+            // Plan 029 M-C2 (only ever after a vault, so only with Config::vaulting): a hold order sent before his
+            // last vault landed that names its take-off spot is "hold where you are", given while his position
+            // still read the take-off. Over the wall now (or on his way over), he holds where he landed instead of
+            // vaulting straight back to the spot he has just left. His own memory of the vault and the order only.
+            if(s.vaultLandsAt>=0&&s.assignment.task==Task::Hold&&s.assignment.issuedAt<=s.vaultLandsAt&&
+                Distance(s.assignment.position,s.vaultTakeoff)<.3f)
+                s.assignment.position=s.vaultLanding;
+            // Plan 028 Stage 1: a covering-fire payload brings the leader's track of its threat with it,
+            // received with the order's own transport and reaction delay (as a platoon order's contact is).
+            if(!s.cognition&&p.order.fireEnemy>=0&&p.order.fireEnemy<UnitCount) {
+                const auto& track=p.order.fireContact;auto& report=s.reports[p.order.fireEnemy];
+                if(track.known&&f.time-track.observedAt<=120&&track.observedAt>report.observedAt&&track.observedAt>report.clearedAt) {
+                    report=track;report.visible=false;report.registeredAt=f.time;report.reportSource=p.source;
+                }
+            }
+            // Plan 030 M-S7 P4 (Config::coverSector): a sector payload brings the leader's track of each of its threats.
+            if(!s.cognition&&p.order.fireEnemy>=0&&p.order.fireSector)for(const auto& t:*p.order.fireSector) {
+                if(t.enemy<0||t.enemy>=UnitCount||t.enemy==p.order.fireEnemy)continue;
+                const auto& track=t.contact;auto& report=s.reports[t.enemy];
+                if(track.known&&f.time-track.observedAt<=120&&track.observedAt>report.observedAt&&track.observedAt>report.clearedAt) {
+                    report=track;report.visible=false;report.registeredAt=f.time;report.reportSource=p.source;
+                }
+            }
             if(s.assignment.id)SetTaskStatus(s,TaskStatus::Received,TaskCause::None,f.time,rt.diagnostics);
             events.push_back({f.time,EventKind::Reaction,s.id,p.source,std::string(Name(s.id))+" acknowledges "+TaskName(s.assignment.task)});
         } else if(p.kind==ReactionKind::FriendlySight) {
@@ -99,7 +124,17 @@ void ProcessReactions(Frame& f,ReactionRuntime& rt,std::vector<Event>& events) {
             bool fresh=!ct.known;
             if(p.contact.visible&&p.contact.observedAt>ct.clearedAt) {
                 if(!ct.known||Distance(ct.position,p.contact.position)>6)++s.knowledgeRevision;
+                // Plan 030 M-S5 (Config::coverQuietRelease): a sighting of him not firing does not erase
+                // that he was seen firing before; off, the new sighting's own record replaces it.
+                const float fired=ct.lastFireAt;
                 float cleared=ct.clearedAt;ct=p.contact;ct.clearedAt=cleared;ct.known=true;
+                if(rt.quietRelease)ct.lastFireAt=std::max(ct.lastFireAt,fired);
+            }
+            // Plan 030 K-1 (Config::retireFallen; SenseFall is the only source): he saw the man go down. His contact
+            // becomes that observation, where and when he saw him fall, keeping what it knew of his fire.
+            else if(p.contact.seenDown&&p.contact.observedAt>ct.clearedAt) {
+                const float fired=ct.lastFireAt,cleared=ct.clearedAt;
+                ct=p.contact;ct.clearedAt=cleared;ct.lastFireAt=std::max(ct.lastFireAt,fired);++s.knowledgeRevision;
             }
             else ct.visible=false;
             // registeredAt is the timestamp of the raw stimulus, not the current world.
@@ -112,7 +147,9 @@ void ProcessReactions(Frame& f,ReactionRuntime& rt,std::vector<Event>& events) {
             bool fresh=!ct.known;
             if(fresh||Distance(ct.position,p.contact.position)>6||p.contact.clearedAt>ct.clearedAt)++s.knowledgeRevision;
             float cleared=std::max(ct.clearedAt,p.contact.clearedAt);
+            const float fired=std::max(ct.lastFireAt,p.contact.lastFireAt); // plan 030 M-S5, below
             if(p.contact.observedAt>ct.observedAt)ct=p.contact;
+            if(rt.quietRelease)ct.lastFireAt=fired;
             ct.clearedAt=cleared;ct.known=ct.observedAt>cleared;ct.visible=false;ct.registeredAt=f.time;ct.reportSource=p.source;
             if(fresh)events.push_back({f.time,EventKind::Report,p.source,s.id,std::string(Name(s.id))+" processes report about "+Name(p.enemy)});
         } else if(p.kind==ReactionKind::SupportSector) {
@@ -135,7 +172,7 @@ void ProcessReactions(Frame& f,ReactionRuntime& rt,std::vector<Event>& events) {
             s.supportProgress=report;++s.knowledgeRevision;
             if(casualty&&rt.diagnostics&&rt.diagnostics->options.enabled){TraceEntry e;e.id=rt.diagnostics->nextId++;e.time=f.time;e.soldier=s.id;e.squad=s.squad;e.issuer=p.source;e.kind="support_unavailable_received";e.support=report.shooter;e.supportProgress=report;e.reason="support squad leader relayed original casualty evidence";rt.diagnostics->entries.push_back(e);}
         } else if(p.kind==ReactionKind::DeliveryReport) {
-            if(p.delivery.observedAt<=f.time&&f.time-p.delivery.observedAt<=(rt.recoveryFixture?10.f:6.f))RememberDelivery(s,p.delivery);
+            if(p.delivery.observedAt<=f.time&&f.time-p.delivery.observedAt<=(rt.recoveryFixture?10.f:6.f))RememberDelivery(s,p.delivery,rt.coverReports);
         } else if(p.kind==ReactionKind::Coverage) {
             ReceiveCoverage(s,p.coverage,f.time);
         } else if(p.kind==ReactionKind::TaskReport) {

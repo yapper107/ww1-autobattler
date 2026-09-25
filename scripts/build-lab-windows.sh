@@ -6,6 +6,7 @@ lab_dir="$ARMY_WINDOWS_BUILD_DIR/Saved/BattleLab"
 mkdir -p "$lab_dir/Sim"
 rsync -a --delete "${ARMY_LAB_SOURCE:-$repo_root/Unreal/Source/ArmyPrototype/Sim}/" "$lab_dir/Sim/"
 cp "$repo_root/tools/battle_cli.cpp" "$lab_dir/battle_cli.cpp"
+cp "$repo_root/tools/neural_worker.h" "$lab_dir/neural_worker.h"
 build_id="$(python3 "$repo_root/tools/source_id.py" "$lab_dir/Sim")"
 printf '#define ARMY_BUILD_ID "%s"\n' "$build_id" > "$lab_dir/build_stamp.h"
 python3 - "$lab_dir" <<'PY'

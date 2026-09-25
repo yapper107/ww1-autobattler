@@ -1,0 +1,918 @@
+{
+  "schema": 1,
+  "method": "masked_ppo",
+  "opponent": "active_legacy",
+  "candidates": 0,
+  "seed": 24,
+  "temperature": 0.050819162395782755,
+  "calibration_target_argmax_probability": 0.7,
+  "calibration_source": "schema-2 teacher rows without KEEP; actual rollout statistics reported separately",
+  "half_life_seconds": 0,
+  "lambda_half_life_seconds": 30,
+  "reward": "enemy_loss_fraction - own_loss_fraction + 0.25*(win-loss)",
+  "training_maps": [
+    701,
+    702,
+    703,
+    704,
+    705,
+    706,
+    707,
+    708,
+    709,
+    710,
+    711,
+    712,
+    713,
+    714,
+    715,
+    716,
+    717,
+    718,
+    719,
+    720,
+    721,
+    722,
+    723,
+    724,
+    725,
+    726,
+    727,
+    728,
+    729,
+    730,
+    731,
+    732,
+    733,
+    734,
+    735,
+    736,
+    737,
+    738,
+    739,
+    740,
+    741,
+    742,
+    743,
+    744,
+    745,
+    746,
+    747,
+    748,
+    749,
+    750,
+    751,
+    752,
+    753,
+    754,
+    755,
+    756,
+    757,
+    758,
+    759,
+    760
+  ],
+  "jobs": 12,
+  "initial_sha256": "a16bff3cd0d09bef1f2dc4dfe4f05dfb00e81a80242e99031bbd1c70f45ccd66",
+  "complete": true,
+  "build": "d73667841df73faa-linux",
+  "wall_seconds": 358.5512426360001,
+  "model_sha256": "7467b5c04f6202f963bc46550c70ba89d870ede939b4c92a95c9c013d57c431d",
+  "status": "experimental_not_promoted",
+  "framework": {
+    "torch": "2.14.0+cpu",
+    "numpy": "2.5.3"
+  },
+  "native_binary_sha256": "4afbb09ef31f5656def8699d0c2bcb1b6e73e86936a3c03b9fe15ae653cfcc62",
+  "source_files_sha256": {
+    "tools/neural/__init__.py": "f6a7b994ea079cd2073ab7faf8c36dc38de9b9983aa9a1380e3e3f504d6f3844",
+    "tools/neural/actor.py": "5b11d0fb2bded652fa59efeb6a798b5e98bc3318b6620dd6cb9109cbe30cfa0f",
+    "tools/neural/check_export.py": "657e6fb07dd5a4ac224506d70f34506a0aa2d776736e8c5302db7640e0109aac",
+    "tools/neural/evaluate.py": "62f34ef1f6f505e4b79a9cef7dc7095353a645fbf933f88b2ac8e37f947b7009",
+    "tools/neural/map_identity.py": "51c9c146bab6cd236c61fe7a7c930d193a103e9513fd01e01f88a2230490fba4",
+    "tools/neural/ppo.py": "04b46cc636fba7bed13b42622c0542ab1492710aed67f953c92ad1cde053a6fa",
+    "tools/neural/returns.py": "ad802f09d9f552b644c4c3e531cd8e4e5a00e798d0151ec7e23b29ea0e913fed",
+    "tools/neural/run.py": "433004acf2e7085ef6af9a34b0fae1a014395e7d0c6f4d1931335cec8fedf5b0",
+    "tools/neural/scenarios.py": "a6952c4590477751f43b7549817413cad3ed7db20f2648674118bb9911520f33",
+    "tools/neural/train.py": "b0daae90e787ff452e1427dab198011aa64d11784d710e61850bbcb49d0eec76",
+    "tools/neural/verify.py": "6ff9384a1be4c1f1818b95ae994551fe8173f6fa9a11bf2fbe3e503a276f4a41",
+    "tools/neural/video.py": "e091456f0121ac69035ca732ff9a7d29d2a0d552fb4e7952b0880b0b66157e8b",
+    "tools/neural/worker.py": "222a2e540cbf30380e0ca397fdcd33e546248d9179d69a06585eed40636b46c3",
+    "tools/neural_worker.h": "dd56b33e689f8a366c7e7db5f7fbd7e3513f6677d8655a896dcbc4f5e641efff"
+  },
+  "implementation_head": "c760cae7dd15bf827d23f2cab097920ae14fbb16",
+  "working_tree_has_uncommitted_implementation": true,
+  "final_checkpoint": 4,
+  "battles": 96,
+  "decisions": 46585,
+  "distinct_maps": 48,
+  "peak_worker_memory_bytes": 406949888,
+  "completed_cases": [
+    {
+      "map_seed": 756,
+      "battle_seed": 107,
+      "policy_seed": 2400001,
+      "digest": "9910573129456496542",
+      "action_hash": "1350049405571443479"
+    },
+    {
+      "map_seed": 743,
+      "battle_seed": 107,
+      "policy_seed": 2400013,
+      "digest": "15874691445749474943",
+      "action_hash": "9776266675618219590"
+    },
+    {
+      "map_seed": 750,
+      "battle_seed": 108,
+      "policy_seed": 2400002,
+      "digest": "13324168123585805440",
+      "action_hash": "6643335020573366836"
+    },
+    {
+      "map_seed": 723,
+      "battle_seed": 108,
+      "policy_seed": 2400014,
+      "digest": "10859845414635556029",
+      "action_hash": "1690077288551575640"
+    },
+    {
+      "map_seed": 707,
+      "battle_seed": 109,
+      "policy_seed": 2400003,
+      "digest": "1213118352156245454",
+      "action_hash": "8327342786428725692"
+    },
+    {
+      "map_seed": 717,
+      "battle_seed": 109,
+      "policy_seed": 2400015,
+      "digest": "6827714594771733471",
+      "action_hash": "7460627403087659283"
+    },
+    {
+      "map_seed": 722,
+      "battle_seed": 108,
+      "policy_seed": 2400004,
+      "digest": "17170308580149562832",
+      "action_hash": "7315598367753596033"
+    },
+    {
+      "map_seed": 732,
+      "battle_seed": 109,
+      "policy_seed": 2400016,
+      "digest": "10034559528676035416",
+      "action_hash": "12224860026962948488"
+    },
+    {
+      "map_seed": 728,
+      "battle_seed": 109,
+      "policy_seed": 2400005,
+      "digest": "5727532963937877555",
+      "action_hash": "12825670499473605623"
+    },
+    {
+      "map_seed": 733,
+      "battle_seed": 107,
+      "policy_seed": 2400017,
+      "digest": "12694595152618099017",
+      "action_hash": "18390518930287411492"
+    },
+    {
+      "map_seed": 720,
+      "battle_seed": 107,
+      "policy_seed": 2400006,
+      "digest": "3868572612228379870",
+      "action_hash": "13400351452171804203"
+    },
+    {
+      "map_seed": 718,
+      "battle_seed": 108,
+      "policy_seed": 2400018,
+      "digest": "3725514923742115084",
+      "action_hash": "7582221963928633741"
+    },
+    {
+      "map_seed": 740,
+      "battle_seed": 108,
+      "policy_seed": 2400007,
+      "digest": "8753470117332638931",
+      "action_hash": "3352203721568830910"
+    },
+    {
+      "map_seed": 705,
+      "battle_seed": 109,
+      "policy_seed": 2400019,
+      "digest": "15539447743378869752",
+      "action_hash": "6883676975023814514"
+    },
+    {
+      "map_seed": 740,
+      "battle_seed": 109,
+      "policy_seed": 2400008,
+      "digest": "853202751795453782",
+      "action_hash": "5416895707519052658"
+    },
+    {
+      "map_seed": 757,
+      "battle_seed": 107,
+      "policy_seed": 2400020,
+      "digest": "1430321689685573580",
+      "action_hash": "2313581389838186416"
+    },
+    {
+      "map_seed": 725,
+      "battle_seed": 108,
+      "policy_seed": 2400009,
+      "digest": "5105203765819145289",
+      "action_hash": "7031639540310141659"
+    },
+    {
+      "map_seed": 721,
+      "battle_seed": 107,
+      "policy_seed": 2400021,
+      "digest": "17039448136110400953",
+      "action_hash": "13601206907858150140"
+    },
+    {
+      "map_seed": 740,
+      "battle_seed": 107,
+      "policy_seed": 2400010,
+      "digest": "16902860567321111408",
+      "action_hash": "8592477983345982384"
+    },
+    {
+      "map_seed": 732,
+      "battle_seed": 107,
+      "policy_seed": 2400022,
+      "digest": "3049050312345665981",
+      "action_hash": "15105689741513963418"
+    },
+    {
+      "map_seed": 749,
+      "battle_seed": 107,
+      "policy_seed": 2400011,
+      "digest": "6975535951138780044",
+      "action_hash": "17864563404881658929"
+    },
+    {
+      "map_seed": 760,
+      "battle_seed": 107,
+      "policy_seed": 2400023,
+      "digest": "18396630099568306490",
+      "action_hash": "4309220582109832702"
+    },
+    {
+      "map_seed": 744,
+      "battle_seed": 107,
+      "policy_seed": 2400012,
+      "digest": "120844613673118080",
+      "action_hash": "4484531106838340353"
+    },
+    {
+      "map_seed": 727,
+      "battle_seed": 108,
+      "policy_seed": 2400024,
+      "digest": "14202487492082648295",
+      "action_hash": "12654633695515928431"
+    },
+    {
+      "map_seed": 720,
+      "battle_seed": 107,
+      "policy_seed": 2400025,
+      "digest": "3678628932185183805",
+      "action_hash": "5288333089740382428"
+    },
+    {
+      "map_seed": 723,
+      "battle_seed": 107,
+      "policy_seed": 2400037,
+      "digest": "12401254516141026615",
+      "action_hash": "3084091343654403984"
+    },
+    {
+      "map_seed": 752,
+      "battle_seed": 109,
+      "policy_seed": 2400026,
+      "digest": "11076970774270854895",
+      "action_hash": "489765680074395222"
+    },
+    {
+      "map_seed": 725,
+      "battle_seed": 108,
+      "policy_seed": 2400038,
+      "digest": "9280114313229828020",
+      "action_hash": "17381248727463465638"
+    },
+    {
+      "map_seed": 726,
+      "battle_seed": 108,
+      "policy_seed": 2400027,
+      "digest": "4612108332251696180",
+      "action_hash": "4756255149523904644"
+    },
+    {
+      "map_seed": 743,
+      "battle_seed": 108,
+      "policy_seed": 2400039,
+      "digest": "16729627070642190677",
+      "action_hash": "16279527052576564992"
+    },
+    {
+      "map_seed": 718,
+      "battle_seed": 109,
+      "policy_seed": 2400028,
+      "digest": "14808562262819207233",
+      "action_hash": "6572297450520997973"
+    },
+    {
+      "map_seed": 738,
+      "battle_seed": 108,
+      "policy_seed": 2400040,
+      "digest": "2027246601041664954",
+      "action_hash": "18030122334066513530"
+    },
+    {
+      "map_seed": 726,
+      "battle_seed": 109,
+      "policy_seed": 2400029,
+      "digest": "17414313596090512963",
+      "action_hash": "5271828929595128626"
+    },
+    {
+      "map_seed": 705,
+      "battle_seed": 108,
+      "policy_seed": 2400041,
+      "digest": "31028927921286894",
+      "action_hash": "6026110182556943797"
+    },
+    {
+      "map_seed": 753,
+      "battle_seed": 107,
+      "policy_seed": 2400030,
+      "digest": "12351406954096802479",
+      "action_hash": "1516740882325354005"
+    },
+    {
+      "map_seed": 703,
+      "battle_seed": 109,
+      "policy_seed": 2400042,
+      "digest": "17368563265520305922",
+      "action_hash": "12825496042310904168"
+    },
+    {
+      "map_seed": 746,
+      "battle_seed": 107,
+      "policy_seed": 2400031,
+      "digest": "2231773175253973473",
+      "action_hash": "6919218330261128223"
+    },
+    {
+      "map_seed": 759,
+      "battle_seed": 109,
+      "policy_seed": 2400043,
+      "digest": "13571169129927915587",
+      "action_hash": "15206287973779645788"
+    },
+    {
+      "map_seed": 740,
+      "battle_seed": 109,
+      "policy_seed": 2400032,
+      "digest": "10629571080151080590",
+      "action_hash": "13253160711181887939"
+    },
+    {
+      "map_seed": 760,
+      "battle_seed": 107,
+      "policy_seed": 2400044,
+      "digest": "7250173489512357467",
+      "action_hash": "5575343342550591163"
+    },
+    {
+      "map_seed": 755,
+      "battle_seed": 108,
+      "policy_seed": 2400033,
+      "digest": "13876746953121140076",
+      "action_hash": "10493414819350075723"
+    },
+    {
+      "map_seed": 720,
+      "battle_seed": 108,
+      "policy_seed": 2400045,
+      "digest": "13597655964351810049",
+      "action_hash": "12691092338900520475"
+    },
+    {
+      "map_seed": 731,
+      "battle_seed": 107,
+      "policy_seed": 2400034,
+      "digest": "11036221781703741986",
+      "action_hash": "14121132236361053896"
+    },
+    {
+      "map_seed": 739,
+      "battle_seed": 108,
+      "policy_seed": 2400046,
+      "digest": "1248196311513101062",
+      "action_hash": "13508464567658464321"
+    },
+    {
+      "map_seed": 717,
+      "battle_seed": 108,
+      "policy_seed": 2400035,
+      "digest": "1745215600134790278",
+      "action_hash": "15653410356771290033"
+    },
+    {
+      "map_seed": 735,
+      "battle_seed": 108,
+      "policy_seed": 2400047,
+      "digest": "3580282039864919180",
+      "action_hash": "16044991721404569459"
+    },
+    {
+      "map_seed": 722,
+      "battle_seed": 108,
+      "policy_seed": 2400036,
+      "digest": "11938781295969789030",
+      "action_hash": "12137234259320225080"
+    },
+    {
+      "map_seed": 730,
+      "battle_seed": 107,
+      "policy_seed": 2400048,
+      "digest": "5355924674095747620",
+      "action_hash": "12447976026219777364"
+    },
+    {
+      "map_seed": 728,
+      "battle_seed": 108,
+      "policy_seed": 2400049,
+      "digest": "4866224481931880766",
+      "action_hash": "9237276093633487882"
+    },
+    {
+      "map_seed": 741,
+      "battle_seed": 107,
+      "policy_seed": 2400061,
+      "digest": "18251646785981174748",
+      "action_hash": "6308159636777728206"
+    },
+    {
+      "map_seed": 760,
+      "battle_seed": 107,
+      "policy_seed": 2400050,
+      "digest": "8511955734862831046",
+      "action_hash": "17830754449186153137"
+    },
+    {
+      "map_seed": 715,
+      "battle_seed": 108,
+      "policy_seed": 2400062,
+      "digest": "4281215746768599694",
+      "action_hash": "13455213329306775100"
+    },
+    {
+      "map_seed": 752,
+      "battle_seed": 107,
+      "policy_seed": 2400051,
+      "digest": "15959459488650753144",
+      "action_hash": "14038679727665734688"
+    },
+    {
+      "map_seed": 744,
+      "battle_seed": 107,
+      "policy_seed": 2400063,
+      "digest": "15365932182083865353",
+      "action_hash": "15290413736879834086"
+    },
+    {
+      "map_seed": 758,
+      "battle_seed": 108,
+      "policy_seed": 2400052,
+      "digest": "11899796533537781096",
+      "action_hash": "16413184807964331826"
+    },
+    {
+      "map_seed": 717,
+      "battle_seed": 108,
+      "policy_seed": 2400064,
+      "digest": "10173784072573255806",
+      "action_hash": "6481201549744252296"
+    },
+    {
+      "map_seed": 750,
+      "battle_seed": 109,
+      "policy_seed": 2400053,
+      "digest": "17777517437436160307",
+      "action_hash": "12698303840818328359"
+    },
+    {
+      "map_seed": 759,
+      "battle_seed": 109,
+      "policy_seed": 2400065,
+      "digest": "1527137609316615213",
+      "action_hash": "5435965716446657447"
+    },
+    {
+      "map_seed": 743,
+      "battle_seed": 108,
+      "policy_seed": 2400054,
+      "digest": "6904498781807107623",
+      "action_hash": "14059846439584442828"
+    },
+    {
+      "map_seed": 706,
+      "battle_seed": 108,
+      "policy_seed": 2400066,
+      "digest": "5944225042624712465",
+      "action_hash": "1128619882742524068"
+    },
+    {
+      "map_seed": 716,
+      "battle_seed": 107,
+      "policy_seed": 2400055,
+      "digest": "16786996237818621255",
+      "action_hash": "13524359063199884447"
+    },
+    {
+      "map_seed": 716,
+      "battle_seed": 108,
+      "policy_seed": 2400067,
+      "digest": "779178680619020081",
+      "action_hash": "13425021109129561708"
+    },
+    {
+      "map_seed": 743,
+      "battle_seed": 109,
+      "policy_seed": 2400056,
+      "digest": "1631913632629946468",
+      "action_hash": "4582686818333616070"
+    },
+    {
+      "map_seed": 735,
+      "battle_seed": 109,
+      "policy_seed": 2400068,
+      "digest": "6001596243690813758",
+      "action_hash": "2409323978083069051"
+    },
+    {
+      "map_seed": 745,
+      "battle_seed": 107,
+      "policy_seed": 2400057,
+      "digest": "12445905358806322798",
+      "action_hash": "3293264280290676706"
+    },
+    {
+      "map_seed": 718,
+      "battle_seed": 109,
+      "policy_seed": 2400069,
+      "digest": "9456115526242277520",
+      "action_hash": "3711453380704741558"
+    },
+    {
+      "map_seed": 708,
+      "battle_seed": 107,
+      "policy_seed": 2400058,
+      "digest": "10590690048603143572",
+      "action_hash": "14623163949855942741"
+    },
+    {
+      "map_seed": 706,
+      "battle_seed": 107,
+      "policy_seed": 2400070,
+      "digest": "301249862137743317",
+      "action_hash": "10402412445994916194"
+    },
+    {
+      "map_seed": 721,
+      "battle_seed": 107,
+      "policy_seed": 2400059,
+      "digest": "12808713076278057567",
+      "action_hash": "826202446658490701"
+    },
+    {
+      "map_seed": 740,
+      "battle_seed": 108,
+      "policy_seed": 2400071,
+      "digest": "2813459274537750302",
+      "action_hash": "7532871632739642369"
+    },
+    {
+      "map_seed": 747,
+      "battle_seed": 109,
+      "policy_seed": 2400060,
+      "digest": "6748400273574627280",
+      "action_hash": "7020116786598459402"
+    },
+    {
+      "map_seed": 718,
+      "battle_seed": 107,
+      "policy_seed": 2400072,
+      "digest": "1415031151166141119",
+      "action_hash": "18297364034510800195"
+    },
+    {
+      "map_seed": 709,
+      "battle_seed": 108,
+      "policy_seed": 2400073,
+      "digest": "10617407941277651663",
+      "action_hash": "10639616831779684971"
+    },
+    {
+      "map_seed": 757,
+      "battle_seed": 109,
+      "policy_seed": 2400085,
+      "digest": "17176145116123455371",
+      "action_hash": "774296417534835072"
+    },
+    {
+      "map_seed": 758,
+      "battle_seed": 108,
+      "policy_seed": 2400074,
+      "digest": "13659507183428705248",
+      "action_hash": "5172705639849784310"
+    },
+    {
+      "map_seed": 728,
+      "battle_seed": 109,
+      "policy_seed": 2400086,
+      "digest": "6686407791264538742",
+      "action_hash": "13232382775885146452"
+    },
+    {
+      "map_seed": 743,
+      "battle_seed": 109,
+      "policy_seed": 2400075,
+      "digest": "1258889665199760832",
+      "action_hash": "9880478953959320553"
+    },
+    {
+      "map_seed": 758,
+      "battle_seed": 107,
+      "policy_seed": 2400087,
+      "digest": "11588516020615214002",
+      "action_hash": "10676091063348322760"
+    },
+    {
+      "map_seed": 712,
+      "battle_seed": 109,
+      "policy_seed": 2400076,
+      "digest": "11168021088771524624",
+      "action_hash": "11044228567335908192"
+    },
+    {
+      "map_seed": 746,
+      "battle_seed": 107,
+      "policy_seed": 2400088,
+      "digest": "6772617500838003841",
+      "action_hash": "11052690693409375771"
+    },
+    {
+      "map_seed": 726,
+      "battle_seed": 107,
+      "policy_seed": 2400077,
+      "digest": "13868044484195920356",
+      "action_hash": "11388774013051466326"
+    },
+    {
+      "map_seed": 740,
+      "battle_seed": 108,
+      "policy_seed": 2400089,
+      "digest": "18194551455616676030",
+      "action_hash": "909958208152733484"
+    },
+    {
+      "map_seed": 703,
+      "battle_seed": 107,
+      "policy_seed": 2400078,
+      "digest": "4571179286094803286",
+      "action_hash": "5027752840076794216"
+    },
+    {
+      "map_seed": 708,
+      "battle_seed": 108,
+      "policy_seed": 2400090,
+      "digest": "11139906610355134981",
+      "action_hash": "932373967130699641"
+    },
+    {
+      "map_seed": 741,
+      "battle_seed": 109,
+      "policy_seed": 2400079,
+      "digest": "10227855719772231068",
+      "action_hash": "17918911241568398248"
+    },
+    {
+      "map_seed": 756,
+      "battle_seed": 109,
+      "policy_seed": 2400091,
+      "digest": "9171777206118104370",
+      "action_hash": "698234569409571673"
+    },
+    {
+      "map_seed": 729,
+      "battle_seed": 109,
+      "policy_seed": 2400080,
+      "digest": "18297240394283302601",
+      "action_hash": "3820511552229588248"
+    },
+    {
+      "map_seed": 757,
+      "battle_seed": 107,
+      "policy_seed": 2400092,
+      "digest": "3600342606271279292",
+      "action_hash": "3957177044757691637"
+    },
+    {
+      "map_seed": 730,
+      "battle_seed": 109,
+      "policy_seed": 2400081,
+      "digest": "14409456294037367462",
+      "action_hash": "15073019252849475117"
+    },
+    {
+      "map_seed": 754,
+      "battle_seed": 109,
+      "policy_seed": 2400093,
+      "digest": "16478127541508818593",
+      "action_hash": "5395870620079941378"
+    },
+    {
+      "map_seed": 740,
+      "battle_seed": 107,
+      "policy_seed": 2400082,
+      "digest": "6543524329611849161",
+      "action_hash": "6375073052539908638"
+    },
+    {
+      "map_seed": 706,
+      "battle_seed": 107,
+      "policy_seed": 2400094,
+      "digest": "11430959048235299577",
+      "action_hash": "10459485405258998092"
+    },
+    {
+      "map_seed": 702,
+      "battle_seed": 107,
+      "policy_seed": 2400083,
+      "digest": "15214782144161375531",
+      "action_hash": "9597665675664769059"
+    },
+    {
+      "map_seed": 736,
+      "battle_seed": 109,
+      "policy_seed": 2400095,
+      "digest": "12328563718015592689",
+      "action_hash": "17517750090555573665"
+    },
+    {
+      "map_seed": 754,
+      "battle_seed": 108,
+      "policy_seed": 2400084,
+      "digest": "1787558517343776902",
+      "action_hash": "17323164548923053371"
+    },
+    {
+      "map_seed": 714,
+      "battle_seed": 107,
+      "policy_seed": 2400096,
+      "digest": "16922745426370617365",
+      "action_hash": "4170510734930032740"
+    }
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "learning": {
+        "samples": 12164,
+        "actor_samples": 10470,
+        "early_stop": false,
+        "steps": 192,
+        "actor_steps": 192,
+        "critic_steps": 192,
+        "epoch_kl": [
+          0.003376200530453876,
+          0.0047310489296571575,
+          0.006302333470174212,
+          0.0073068738666851405
+        ],
+        "last": {
+          "loss": -0.011213873513042927,
+          "anchor_kl": 0.006627489347010851
+        }
+      },
+      "mean_team_return": 0.12239583333333333,
+      "wins": 16,
+      "mean_entropy": 0.6975746179653384,
+      "argmax_share": 0.6133617838041459,
+      "mean_top_probability": 0.6065925182746824,
+      "keep_legal_share": 0.7041334423158814,
+      "wall_seconds": 85.3051538830041
+    },
+    {
+      "iteration": 2,
+      "learning": {
+        "samples": 11046,
+        "actor_samples": 10078,
+        "early_stop": false,
+        "steps": 176,
+        "actor_steps": 176,
+        "critic_steps": 176,
+        "epoch_kl": [
+          0.0009974666024087132,
+          0.003745133694875664,
+          0.006056908341385254,
+          0.005771577618476488
+        ],
+        "last": {
+          "loss": -0.1899494230747223,
+          "anchor_kl": 0.0002570099604781717
+        }
+      },
+      "mean_team_return": 0.1328125,
+      "wins": 15,
+      "mean_entropy": 0.6978098002337673,
+      "argmax_share": 0.6286616004114747,
+      "mean_top_probability": 0.6294374381776624,
+      "keep_legal_share": 0.7192483239119042,
+      "wall_seconds": 175.19287638000242
+    },
+    {
+      "iteration": 3,
+      "learning": {
+        "samples": 13726,
+        "actor_samples": 11520,
+        "early_stop": false,
+        "steps": 216,
+        "actor_steps": 216,
+        "critic_steps": 216,
+        "epoch_kl": [
+          0.0020757442185034354,
+          0.0009967930977129273,
+          0.002952011860907078,
+          0.0009386001051300102
+        ],
+        "last": {
+          "loss": -0.11081275343894958,
+          "anchor_kl": 0.003040354000404477
+        }
+      },
+      "mean_team_return": -0.15755208333333334,
+      "wins": 7,
+      "mean_entropy": 0.6757081253752838,
+      "argmax_share": 0.6244066018713809,
+      "mean_top_probability": 0.6216521880823093,
+      "keep_legal_share": 0.6794409497279377,
+      "wall_seconds": 276.30768370199803
+    },
+    {
+      "iteration": 4,
+      "learning": {
+        "samples": 9649,
+        "actor_samples": 9567,
+        "early_stop": false,
+        "steps": 152,
+        "actor_steps": 152,
+        "critic_steps": 152,
+        "epoch_kl": [
+          0.002919704989852658,
+          0.004753255627304082,
+          0.0034466509013087745,
+          0.0032906207318613495
+        ],
+        "last": {
+          "loss": 0.11051677912473679,
+          "anchor_kl": 0.010897508822381496
+        }
+      },
+      "mean_team_return": 0.17057291666666666,
+      "wins": 16,
+      "mean_entropy": 0.717458923708314,
+      "argmax_share": 0.6046514558472796,
+      "mean_top_probability": 0.5952368960014163,
+      "keep_legal_share": 0.7326856029857943,
+      "wall_seconds": 358.54309714500414
+    }
+  ],
+  "export_checks": {
+    "linux": {
+      "decisions": 2000,
+      "feature_rows": 64000,
+      "max_abs_error": 2.1457672119140625e-06,
+      "action_disagreements": 0,
+      "passed": true,
+      "platform": "Linux native probe versus PyTorch"
+    },
+    "windows": {
+      "decisions": 2000,
+      "feature_rows": 64000,
+      "max_abs_error": 2.1457672119140625e-06,
+      "action_disagreements": 0,
+      "passed": true,
+      "platform": "Windows MSVC probe versus Linux PyTorch"
+    }
+  },
+  "report": "docs/NEURAL_LEGACY_RL_PILOT.md",
+  "raw_training_report": ".local/plan024/rl/seed24-v2/training.json"
+}

@@ -14,6 +14,9 @@ from pathlib import Path
 
 from tools.loop import config, score as scoring, tree
 
+# The switches every scored battle runs with (score v8: both families share them).
+FLAGS = sorted({f for flags in config.FAMILY_FLAGS.values() for f in flags})
+
 LINEAGE_FILES = {
     'drills': ['DrillSim.cpp', 'SquadDrillSim.cpp', 'PlatoonTaskSim.cpp', 'PositionSim.cpp', 'LeaderSim.cpp'],
     'legacy': ['CommandSim.cpp', 'ManeuverSim.cpp', 'PlanSim.cpp', 'CoordinationSim.cpp', 'PlatoonSim.cpp'],
@@ -42,8 +45,13 @@ def brief(node_id: str) -> str:
     source = tree.node_dir(node_id)/'source'
     lines = [f'# Proposal brief: improve the {lineage} controller from node `{node_id}`', '',
              'You are proposing ONE general change to a squad and platoon AI in a deterministic C++17 battle simulator. '
-             'It is scored by attacking enemy soldiers who hold cover on generated town maps and never relocate. '
-             'Score per battle: fraction of defenders put out of action minus half the fraction of attackers lost.', '', '## Where the parent stands']
+             'It is scored by attacking enemy soldiers who hold cover and never relocate, on generated village and city2 maps, with soldiers able to '
+             'go prone, vault low walls and hide behind hedges (the battles run with ' + ' '.join(FLAGS) + '). '
+             'Score per battle: fraction of defenders put out of action minus half the fraction of attackers lost; the node ranks on the village '
+             'and city2 validation attacks, each family weighing one half.', '', '## Where the parent stands']
+    ranking = scoring.ranking_stats(result.get('objective') or {})
+    if ranking.get('mean') is not None:
+        lines.append(f"- ranked ({' + '.join(ranking.get('sets') or [])}): attack score {ranking['mean']:+.3f} (lower bound {ranking['lower']:+.3f})")
     for name, stats in (result.get('objective', {}).get('sets') or {}).items():
         if stats.get('mean') is None:
             continue
@@ -86,9 +94,11 @@ def brief(node_id: str) -> str:
               '', '## Check your own work before you finish',
               '- `./scripts/battle-lab.sh --version` must build.',
               f"- Run two of the parent's worst battles above on your build (`.local/lab/battle-lab {'--drills' if lineage == 'drills' else '--legacy-ai'} --map <map> "
-              '--static-defence <layout> --defenders 12 --defence-seed <seed> --seed 107 --seconds 600 --evaluate --no-trace --out <dir>`; the key reads '
-              f'`city-<map seed>-107-<layout>12s<defence seed>`, the map file is `{config.LOOP_ROOT}/maps/<map seed>/city-<map seed>.army`; use that absolute path, '
-              'your worktree has no copy) and compare casualties with the figures above. Attack battles run 600 s: pass `--seconds 600`.',
+              '--static-defence <layout> --defenders 12 --defence-seed <seed> --seed <battle seed> --seconds 600 ' + ' '.join(FLAGS) + ' --evaluate --no-trace --lean --out <dir>`; '
+              'the key reads `<family>-<map seed>-<battle seed>-<layout>12s<defence seed>` (family `village` or `city2`), the map file is '
+              f'`{config.LOOP_ROOT}/maps/<map seed>/<family>-<map seed>.army`; use that absolute path, '
+              'your worktree has no copy) and compare casualties with the figures above. Attack battles run 600 s: pass `--seconds 600`, and always '
+              'pass ' + ' '.join(FLAGS) + ': without them it is not the battle the loop scored.',
               '- Finish with: the mechanism in two sentences, the files and functions touched, what you measured, and what could go wrong. '
               'If the idea did not help in your own check, say so; a negative result is still recorded.']
     return '\n'.join(lines) + '\n'

@@ -55,3 +55,7 @@ __pycache__/
 blendcache_*/
 *.blend1
 *.blend2
+
+# Patch leftovers
+*.orig
+*.rej

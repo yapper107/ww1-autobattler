@@ -62,6 +62,14 @@ void ABattleGameMode::BeginPlay() {
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyTrenches")))Settings.terrain=army::Terrain::Trenches;
     Settings.drills=FParse::Param(FCommandLine::Get(),TEXT("ArmyDrills"))&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacy"));
     Settings.cognition=!Settings.drills&&FParse::Param(FCommandLine::Get(),TEXT("ArmyCognition"))&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacy"));
+    Settings.squadMachineGuns=!FParse::Param(FCommandLine::Get(),TEXT("ArmyPlatoonMG")); // Jordan, 24 Sep 2026: every squad a machine gunner
+    // Jordan, 24 Sep 2026 ("switch the switches to baseline"): prone, concealment, vaulting and retire-fallen
+    // are on by default; -ArmyNoProne, -ArmyNoConcealment, -ArmyNoVaulting, -ArmyNoRetireFallen turn them off.
+    Settings.prone=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoProne"));
+    Settings.concealment=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoConcealment"));
+    Settings.vaulting=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoVaulting"));
+    Settings.retireFallen=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoRetireFallen"));
+    Settings.spawnLanes=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoSpawnLanes"));
     if(army::TypedController(Settings)){Settings.foundations=true;FParse::Value(FCommandLine::Get(),TEXT("ArmyScenario="),CognitiveScenario);CognitiveScenario=FMath::Clamp(CognitiveScenario,0,Settings.drills?7:43);}
     FString GeneratedFamily; if(FParse::Value(FCommandLine::Get(),TEXT("ArmyGenerated="),GeneratedFamily)&&GeneratedFamily==TEXT("F1")){Settings.family=army::ScenarioFamily::F1;CognitiveScenario=0;Settings.terrain=army::Terrain::FracturedWorks;}
     FParse::Value(FCommandLine::Get(),TEXT("ArmyGenSeed="),Settings.genSeed);
@@ -76,9 +84,24 @@ void ABattleGameMode::BeginPlay() {
     FParse::Value(FCommandLine::Get(),TEXT("ArmyDefenceSeed="),Settings.staticDefence.seed);
     FParse::Value(FCommandLine::Get(),TEXT("ArmyBattleSeconds="),Settings.maxSeconds);
     Settings.maxSeconds=FMath::Clamp(Settings.maxSeconds,1.f,600.f);
+    FString NeuralModelFile;
+    if(FParse::Value(FCommandLine::Get(),TEXT("ArmyNeuralModel="),NeuralModelFile)) {
+        FString ModelSource;std::string PolicyError;
+        if(!FFileHelper::LoadFileToString(ModelSource,*NeuralModelFile)) {
+            UE_LOG(LogTemp,Fatal,TEXT("Cannot read neural squad model: %s"),*NeuralModelFile);return;
+        }
+        Settings.neuralPolicy=army::LoadSquadPolicy(TCHAR_TO_UTF8(*ModelSource),PolicyError);
+        if(!Settings.neuralPolicy||Settings.cognition||Settings.drills||Settings.foundations) {
+            UE_LOG(LogTemp,Fatal,TEXT("Neural squad model requires the Legacy executor: %s"),UTF8_TO_TCHAR(PolicyError.c_str()));return;
+        }
+        Settings.policyCandidates=Settings.neuralPolicy->candidates;
+        // Plan 026 P4: a schema-4 model plays through the schema-4 interface (go-now timing head).
+        Settings.policySchema=Settings.neuralPolicy->schema>=4?4:0;
+        UE_LOG(LogTemp,Display,TEXT("ARMY_NEURAL: Azure squad ranker, model digest %llu, schema %d"),Settings.neuralPolicy->digest,Settings.neuralPolicy->schema);
+    }
     MapSelection=Settings.terrain==army::Terrain::Trenches?1:0;
     FString ImportedKind;
-    if(FParse::Value(FCommandLine::Get(),TEXT("ArmyMap="),ImportedKind))SelectMap(ImportedKind==TEXT("trenches")?3:2);
+    if(FParse::Value(FCommandLine::Get(),TEXT("ArmyMap="),ImportedKind))SelectMap(ImportedKind==TEXT("trenches")?3:ImportedKind==TEXT("village")?4:ImportedKind==TEXT("city2")?5:2);
     Preparation=MakeUnique<army::Frame>(army::InitialFrame(Settings));
     Battle.map=army::MakeBattleMap(Settings);
     if(army::TypedController(Settings)){if(CognitiveScenario>=1&&CognitiveScenario<=7)army::MakeMGEncounter(Settings,CognitiveScenario,Battle.map,*Preparation);else if(CognitiveScenario==8)army::MakeMGEncounter(Settings,1,Battle.map,*Preparation);else if(CognitiveScenario>=9)army::MakeCognitiveEncounter(Settings,CognitiveScenario,Battle.map,*Preparation);}
@@ -124,13 +147,15 @@ void ABattleGameMode::EndPlay(const EEndPlayReason::Type Reason){
 }
 void ABattleGameMode::GenerateMap(){
     if(!bPreparation||GeneratorProcess.IsValid())return;
-    GeneratorSelection=MapSelection%2?3:2;
+    // Slots 2-5 generate their own family (city, trenches, village, city2); the two original maps map to city/trenches.
+    GeneratorSelection=MapSelection>=2?MapSelection:MapSelection%2?3:2;
     const uint32 Seed=Settings.battlefield?Settings.battlefield->seed+1:17;
     const FString Root=FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
     const FString Python=FPaths::ConvertRelativePathToFull(FPaths::EngineDir()/TEXT("Binaries/ThirdParty/Python3/Win64/python.exe"));
     const FString Script=Root/TEXT("Tools/generate_maps.py");
     if(!FPaths::FileExists(Python)||!FPaths::FileExists(Script)){Notice=TEXT("Generator missing: run the project build script");return;}
-    const FString Args=FString::Printf(TEXT("\"%s\" --kind %s --seed %u --native-target \"%s\" --output \"%s\""),*Script,GeneratorSelection==3?TEXT("trenches"):TEXT("city"),Seed,*Root,*(Root/TEXT("Saved/MapGenerator")));
+    // A village or city2 may retry its solve: --deadline aborts it cleanly (nothing written) inside the 30 s budget below.
+    const FString Args=FString::Printf(TEXT("\"%s\" --kind %s --seed %u --native-target \"%s\" --output \"%s\"%s"),*Script,GeneratorSelection==5?TEXT("city2"):GeneratorSelection==4?TEXT("village"):GeneratorSelection==3?TEXT("trenches"):TEXT("city"),Seed,*Root,*(Root/TEXT("Saved/MapGenerator")),GeneratorSelection>=4?TEXT(" --deadline 28"):TEXT(""));
     GeneratorProcess=FPlatformProcess::CreateProc(*Python,*Args,false,true,true,nullptr,0,*Root,nullptr);
     GeneratorStartedAt=FPlatformTime::Seconds();
     Notice=GeneratorProcess.IsValid()?TEXT("Generating map..."):TEXT("Could not start map generator");
@@ -138,14 +163,18 @@ void ABattleGameMode::GenerateMap(){
 bool ABattleGameMode::SelectMap(int Index){
     std::shared_ptr<const army::ImportedBattlefield> Imported;
     if(Index>=2){
-        const FString File=FPaths::ProjectConfigDir()/TEXT("GeneratedMaps")/(Index==2?TEXT("city.army"):TEXT("trenches.army"));
+        const FString File=FPaths::ProjectConfigDir()/TEXT("GeneratedMaps")/(Index==5?TEXT("city2.army"):Index==4?TEXT("village.army"):Index==3?TEXT("trenches.army"):TEXT("city.army"));
         FString Text;
         if(!FFileHelper::LoadFileToString(Text,*File)){Notice=TEXT("Generated map file missing");UE_LOG(LogTemp,Error,TEXT("ARMY_MAP: missing %s"),*File);return false;}
         std::string Error;Imported=army::ImportBattlefield(TCHAR_TO_UTF8(*Text),Error);
         if(!Imported){Notice=UTF8_TO_TCHAR(Error.c_str());UE_LOG(LogTemp,Error,TEXT("ARMY_MAP: %s"),*Notice);return false;}
-        UE_LOG(LogTemp,Display,TEXT("ARMY_MAP_LOADED: %s seed=%u solids=%d cover=%d"),*File,Imported->seed,int(Imported->map.obstacles.size()),int(Imported->map.windows.size()));
+        int Stairs=0,Hedges=0;
+        for(const auto& S:Imported->map.surfaces)Stairs+=S.kind==2;
+        for(const auto& O:Imported->map.obstacles)Hedges+=O.concealment;
+        UE_LOG(LogTemp,Display,TEXT("ARMY_MAP_LOADED: %s kind=%s seed=%u solids=%d cover=%d stairs=%d hedges=%d"),*File,UTF8_TO_TCHAR(Imported->kind.c_str()),Imported->seed,int(Imported->map.obstacles.size()),int(Imported->map.windows.size()),Stairs,Hedges);
     }
-    Settings.battlefield=Imported;Settings.terrain=(Index%2)?army::Terrain::Trenches:army::Terrain::FracturedWorks;
+    // Terrain follows the imported kind as in battle_cli (village, city and city2: FracturedWorks); the originals by slot.
+    Settings.battlefield=Imported;Settings.terrain=(Imported?Imported->kind=="trenches":Index%2!=0)?army::Terrain::Trenches:army::Terrain::FracturedWorks;
     Settings.family=army::ScenarioFamily::None;CognitiveScenario=0;MapSelection=Index;Zoom=Imported?.70f:1.f;CameraPan=FVector::ZeroVector;Notice=TEXT("");return true;
 }
 void ABattleGameMode::BuildScene() {
@@ -176,11 +205,19 @@ void ABattleGameMode::BuildScene() {
         }
         Mesh->AddInstance(FTransform(FQuat::Identity,Location,Scale));
     };
+    // A village's earth complement (below grade, top at grade) is the fields' surface, so it takes the ground colour;
+    // trench maps keep their earth.
+    const bool Village=Settings.battlefield&&Settings.battlefield->kind=="village";
+    const bool V2=Battle.map.formatVersion>=2; // timber slabs/treads only on ARMYMAP 2, so v1 town lintels keep their stone colour
     for(const auto& O:Battle.map.obstacles) {
         float Height=army::ObstacleHeight(O);
         if(Settings.battlefield){
-            const FLinearColor Color=O.center.z<0?FLinearColor(.31f,.30f,.21f):O.halfCover?FLinearColor(.49f,.39f,.24f):FLinearColor(.47f,.46f,.39f);
-            BatchCube(World(O.center,Height*50),FVector(O.half.x*2,O.half.y*2,Height),Color);continue;
+            // Plan 029: a hedge (the authored concealment bit) is green whether or not the battle runs with concealment on;
+            // a crater rim (flags bit1) is churned earth; floor slabs, stair treads and lintels (building, not blocking) are timber.
+            const FLinearColor Color=(O.concealment||(O.flags&1u))?FLinearColor(.20f,.33f,.14f):(O.flags&2u)?FLinearColor(.27f,.20f,.12f):
+                O.center.z<0?(Village?FLinearColor(.16f,.205f,.17f):FLinearColor(.31f,.30f,.21f)):V2&&O.building&&!O.blocksMovement?FLinearColor(.30f,.24f,.16f):O.halfCover?FLinearColor(.49f,.39f,.24f):FLinearColor(.47f,.46f,.39f);
+            // Everything from the upper slab up (slab 3.0, upper walls/sills 3.2, lintels) opens with the F cutaway.
+            BatchCube(World(O.center,Height*50),FVector(O.half.x*2,O.half.y*2,Height),Color,O.center.z>2.9f);continue;
         }
         auto* Piece=Shape(Cube,World(O.center,Height*50),FVector(O.half.x*2,O.half.y*2,Height),
             O.building?(O.blocksMovement?FLinearColor(0.32f,0.35f,0.33f):FLinearColor(0.30f,0.24f,0.16f)):
@@ -257,7 +294,7 @@ FVector ABattleGameMode::UnitPosition(int Id) const {
             P=P+(It->soldiers[Id].position-P)*A;
         }
     }
-    return World(P,S.Active()?(S.stance==army::Stance::Crouched?34:70):15);
+    return World(P,S.Active()?(S.stance==army::Stance::Crouched?34:S.stance==army::Stance::Prone?12:70):15);
 }
 bool ABattleGameMode::IsFinished() const {return !bPreparation&&ReplayTime>=Battle.duration;}
 void ABattleGameMode::BuildVisualTimeline() {
@@ -271,7 +308,7 @@ void ABattleGameMode::BuildVisualTimeline() {
             auto& V=VisualTimeline[K][I];const auto& S=F.soldiers[I];
             if(K)V=VisualTimeline[K-1][I];else V.phase=std::fmod(I*.61803398875,1.);
             if(!S.Active()) {
-                if(V.outAt<0){V.outAt=F.time;V.outCrouched=K?Battle.frames[K-1].soldiers[I].stance==army::Stance::Crouched:S.stance==army::Stance::Crouched;}
+                if(V.outAt<0){V.outAt=F.time;const auto Last=K?Battle.frames[K-1].soldiers[I].stance:S.stance;V.outCrouched=Last==army::Stance::Crouched||Last==army::Stance::Prone;}
                 continue;
             }
             V.outAt=-1;armyvisual::ReadHandling(S,V.handling);
@@ -283,7 +320,8 @@ void ABattleGameMode::BuildVisualTimeline() {
             const float Yaw=std::atan2(S.facing.y,S.facing.x),C=std::cos(Yaw),Sn=std::sin(Yaw);
             const float A=K?1-std::exp(-Dt/.12f):1;
             V.forward+=(Vel.x*C+Vel.y*Sn-V.forward)*A;V.right+=(-Vel.x*Sn+Vel.y*C-V.right)*A;
-            V.crouch+=((S.stance==army::Stance::Crouched?1.f:0.f)-V.crouch)*(K?1-std::exp(-Dt/.18f):1);
+            V.crouch+=((S.stance==army::Stance::Crouched||S.stance==army::Stance::Prone?1.f:0.f)-V.crouch)*(K?1-std::exp(-Dt/.18f):1);
+            V.prone+=((S.stance==army::Stance::Prone?1.f:0.f)-V.prone)*(K?1-std::exp(-Dt/.18f):1);
             V.aim+=((S.action==army::Action::Fire||S.movingFire||S.aimTarget>=0?1.f:0.f)-V.aim)*A;
             V.phase+=armyvisual::CycleRate(V)*Dt;
         }
@@ -299,20 +337,23 @@ void ABattleGameMode::ShowUnits() {
         A->SetActorHiddenInGame(!Preparation->soldiers[I].Active());
         FVector Location=UnitPosition(I);float Yaw=FMath::RadiansToDegrees(FMath::Atan2(S.facing.y,S.facing.x));
         if(auto* V=Cast<ASoldierVisual>(A)) {
-            Location.Z-=S.Active()?(S.stance==army::Stance::Crouched?34:70):15;
+            Location.Z-=S.Active()?(S.stance==army::Stance::Crouched?34:S.stance==army::Stance::Prone?12:70):15;
             armyvisual::State State;State.phase=std::fmod(I*.61803398875,1.);
-            State.crouch=S.stance==army::Stance::Crouched?1:0;
+            State.crouch=S.stance==army::Stance::Crouched||S.stance==army::Stance::Prone?1:0;State.prone=S.stance==army::Stance::Prone?1:0;
             if(!bPreparation&&K<VisualTimeline.size()) {
                 State=VisualTimeline[K][I];
                 if(Next&&S.Active()&&Battle.frames[K+1].soldiers[I].Active()) {
                     const auto& N=VisualTimeline[K+1][I];
                     State.forward=FMath::Lerp(State.forward,N.forward,Blend);State.right=FMath::Lerp(State.right,N.right,Blend);
-                    State.crouch=FMath::Lerp(State.crouch,N.crouch,Blend);State.aim=FMath::Lerp(State.aim,N.aim,Blend);State.phase=FMath::Lerp(State.phase,N.phase,double(Blend));
+                    State.crouch=FMath::Lerp(State.crouch,N.crouch,Blend);State.prone=FMath::Lerp(State.prone,N.prone,Blend);State.aim=FMath::Lerp(State.aim,N.aim,Blend);State.phase=FMath::Lerp(State.phase,N.phase,double(Blend));
                     const auto& NS=Battle.frames[K+1].soldiers[I];const float NYaw=FMath::RadiansToDegrees(FMath::Atan2(NS.facing.y,NS.facing.x));
                     Yaw+=FMath::FindDeltaAngleDegrees(Yaw,NYaw)*Blend;
                 }
             }
             armyvisual::ReadHandling(S,State.handling);
+            // Plan 029 M-C: between two snapshots of a vault the progress runs on (to 1 when he has landed by the next).
+            if(Next&&S.vaulting){const auto& NS=Battle.frames[K+1].soldiers[I];
+                State.handling.vaultProgress=NS.vaulting?FMath::Lerp(S.vaultProgress,NS.vaultProgress,Blend):FMath::Lerp(S.vaultProgress,1.f,Blend);}
             if(!bPreparation) {
                 const auto& Shots=VisualShots[I];auto Shot=std::upper_bound(Shots.begin(),Shots.end(),double(ReplayTime));
                 State.handling.lastShot=Shot==Shots.begin()?-1000:*std::prev(Shot);
@@ -322,10 +363,13 @@ void ABattleGameMode::ShowUnits() {
                     if(Upcoming.reloadStart<=ReplayTime&&Upcoming.reloadEnd>ReplayTime)State.handling=Upcoming;
                 }
             }
+            Location.Z-=armyvisual::ProneRootDrop*State.prone;
+            Location.Z+=armyvisual::VaultLift(State.handling);
             V->SetActorLocation(Location);V->SetActorRotation(FRotator(0,Yaw,0));V->Present(State,bPreparation?RealSeconds:ReplayTime);
         } else {
+            if(S.Active()&&S.vaulting){armyvisual::HandlingInput Vault;armyvisual::ReadHandling(S,Vault);Location.Z+=armyvisual::VaultLift(Vault);} // greybox lift
             A->SetActorLocation(Location);A->SetActorRotation(FRotator(0,Yaw,0));
-            A->SetActorScale3D(S.Active()?FVector(.88f,.88f,S.stance==army::Stance::Crouched?.58f:1.2f):FVector(1.25f,.65f,.18f));
+            A->SetActorScale3D(S.Active()?(S.stance==army::Stance::Prone?FVector(1.25f,.65f,.22f):FVector(.88f,.88f,S.stance==army::Stance::Crouched?.58f:1.2f)):FVector(1.25f,.65f,.18f));
         }
     }
 }
@@ -368,11 +412,11 @@ void ABattleGameMode::Command(FName Id) {
     else if(Id==TEXT("ember_doctrine")&&bPreparation) Settings.emberDoctrine=army::Doctrine((int(Settings.emberDoctrine)+1)%3);
     else if(Id==TEXT("doctrine")&&bPreparation) Settings.doctrine=army::Doctrine((int(Settings.doctrine)+1)%3);
     else if(Id==TEXT("approach")&&bPreparation) Settings.approach=army::Approach((int(Settings.approach)+1)%3);
-    else if(Id==TEXT("support")&&bPreparation) {Settings.supportWeapon=!Settings.supportWeapon;RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}
+    else if(Id==TEXT("support")&&bPreparation) {if(!Settings.supportWeapon){Settings.supportWeapon=true;Settings.squadMachineGuns=true;}else if(Settings.squadMachineGuns)Settings.squadMachineGuns=false;else Settings.supportWeapon=false;RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}
     else if(Id==TEXT("animdebug")) bAnimationDebug=!bAnimationDebug;
     else if(Id==TEXT("routes")) bRoutes=!bRoutes;
     else if(Id==TEXT("generatemap")&&bPreparation){GenerateMap();}
-    else if(Id==TEXT("terrain")&&bPreparation){if(SelectMap((MapSelection+1)%4)){Battle={};Battle.map=army::MakeBattleMap(Settings);RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}}
+    else if(Id==TEXT("terrain")&&bPreparation){if(SelectMap((MapSelection+1)%6)){Battle={};Battle.map=army::MakeBattleMap(Settings);RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}}
     else if(Id==TEXT("reloadmap")&&bPreparation&&Settings.battlefield){if(SelectMap(MapSelection)){Battle={};Battle.map=army::MakeBattleMap(Settings);RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();}}
     else if(Id==TEXT("seed")&&bPreparation) {++Settings.seed;RefreshPreparation();}
     else if(Id==TEXT("zoomin")) Zoom=FMath::Max(0.003f,Zoom/1.18f);
@@ -471,8 +515,9 @@ FVector ABattleGameMode::ShotMuzzle(const army::Shot& Shot) {
         Yaw+=FMath::FindDeltaAngleDegrees(Yaw,FMath::RadiansToDegrees(std::atan2(N.facing.y,N.facing.x)))*A;
         const auto& P=VisualTimeline[K+1][Shot.owner];
         State.forward=FMath::Lerp(State.forward,P.forward,A);State.right=FMath::Lerp(State.right,P.right,A);
-        State.crouch=FMath::Lerp(State.crouch,P.crouch,A);State.aim=FMath::Lerp(State.aim,P.aim,A);State.phase=FMath::Lerp(State.phase,P.phase,double(A));
+        State.crouch=FMath::Lerp(State.crouch,P.crouch,A);State.prone=FMath::Lerp(State.prone,P.prone,A);State.aim=FMath::Lerp(State.aim,P.aim,A);State.phase=FMath::Lerp(State.phase,P.phase,double(A));
     }
+    Position.Z-=armyvisual::ProneRootDrop*State.prone; // the muzzle of the pose actually drawn
     const auto SavedTransform=Visual->GetActorTransform();const auto SavedState=Visual->LastState;const double SavedTime=Visual->LastTime;
     armyvisual::ReadHandling(S,State.handling);State.handling.lastShot=Shot.time;State.aim=1;
     Visual->SetActorLocation(Position);Visual->SetActorRotation(FRotator(0,Yaw,0));Visual->Present(State,Shot.time);
@@ -672,9 +717,55 @@ void ABattleGameMode::SmokeTest(float Dt) {
     if(!bSmoke&&!bCapture)return;
     if(Settings.battlefield&&FParse::Param(FCommandLine::Get(),TEXT("ArmyMapPreview"))){
         const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
+        auto Load=[&](int Index){verify(SelectMap(Index));Battle={};Battle.map=army::MakeBattleMap(Settings);RefreshPreparation();BuildScene();GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);ShowUnits();};
+        // Plan 029 F-D/F-D2: -ArmyMap=village and -ArmyMap=city2 run their own preview (stages 100+): overview, a close
+        // two-storey house with and without its upper storey, the six-entry map cycle, then New+ on that slot (seed+1,
+        // 30 s budget). Screenshots and the report file are named after the kind (village*.png, city2*.png).
+        static int PreviewSlot=0;
+        if(SmokeStage==0&&(MapSelection==4||MapSelection==5)){SmokeStage=100;PreviewSlot=MapSelection;}
+        if(SmokeStage>=100){
+            static double VillageGenerated=0;
+            const FString Kind=PreviewSlot==5?TEXT("city2"):TEXT("village");const std::string KindUtf8=TCHAR_TO_UTF8(*Kind);
+            const FString Title=PreviewSlot==5?TEXT("City2"):TEXT("Village");
+            auto Shot=[&](const TCHAR* Suffix){FScreenshotRequest::RequestScreenshot(Dir/(Kind+Suffix+TEXT(".png")),true,false);};
+            if(SmokeStage==100&&RealSeconds>3){Shot(TEXT(""));++SmokeStage;}
+            else if(SmokeStage==101&&RealSeconds>5){ // the camera is placed one tick before its screenshot
+                const army::Building* House=nullptr;
+                for(const auto& B:Battle.map.buildings)if(B.floors>=2&&(!House||std::abs(B.center.x)+std::abs(B.center.y)<std::abs(House->center.x)+std::abs(House->center.y)))House=&B;
+                check(House);CameraPan=World(House->center,150);CameraPitch=38;CameraYaw=-60;Zoom=.075f;++SmokeStage;}
+            else if(SmokeStage==102&&RealSeconds>7){Shot(TEXT("-ground"));++SmokeStage;}
+            else if(SmokeStage==103&&RealSeconds>9){Command(TEXT("floors"));check(!bShowUpperFloor);Shot(TEXT("-ground-cutaway"));++SmokeStage;}
+            else if(SmokeStage==104&&RealSeconds>11){Command(TEXT("center"));++SmokeStage;}
+            else if(SmokeStage==105&&RealSeconds>13){Shot(TEXT("-cutaway"));++SmokeStage;}
+            else if(SmokeStage==106&&RealSeconds>15){
+                Command(TEXT("floors"));FString Cycle;
+                for(int I=0;I<6;++I){Command(TEXT("terrain"));Cycle+=FString::Printf(TEXT(" %d:%s"),MapSelection,Settings.battlefield?UTF8_TO_TCHAR(Settings.battlefield->kind.c_str()):Settings.terrain==army::Terrain::Trenches?TEXT("original-trenches"):TEXT("original-works"));}
+                UE_LOG(LogTemp,Display,TEXT("ARMY_MAP_CYCLE:%s"),*Cycle);
+                check(MapSelection==PreviewSlot&&Settings.battlefield&&Settings.battlefield->kind==KindUtf8&&Settings.battlefield->seed==17&&Settings.terrain==army::Terrain::FracturedWorks);
+                Command(TEXT("generatemap"));check(GeneratorProcess.IsValid());++SmokeStage;}
+            else if(SmokeStage==107&&!GeneratorProcess.IsValid()){
+                const double Seconds=FPlatformTime::Seconds()-GeneratorStartedAt;
+                UE_LOG(LogTemp,Display,TEXT("ARMY_MAP_GENERATED: %s seed=%u in %.2fs (%s)"),*Kind,Settings.battlefield->seed,Seconds,*Notice);
+                check(MapSelection==PreviewSlot&&Settings.battlefield->kind==KindUtf8&&Settings.battlefield->seed==18&&Seconds<30);
+                Shot(TEXT("-next"));
+                FFileHelper::SaveStringToFile(FString::Printf(TEXT("%s/close/cutaway presented; six-entry cycle returned to the %s; built-in New+ generated and loaded %s seed18 in %.2fs\n"),*Title,*Kind,*Kind,Seconds),*(FPaths::ProjectSavedDir()/(TEXT("map-preview-")+Kind+TEXT(".txt"))));
+                VillageGenerated=RealSeconds;++SmokeStage;}
+            // Close looks at the new map's first crater rim and (village only: city2 has no sunken lanes) sunken lane.
+            else if(SmokeStage==108&&RealSeconds>VillageGenerated+2){
+                const army::Obstacle* Rim=nullptr;for(const auto& O:Battle.map.obstacles)if(O.flags&2u){Rim=&O;break;}
+                if(Rim){CameraPan=World(Rim->center);CameraPitch=40;CameraYaw=-60;Zoom=.05f;}++SmokeStage;}
+            else if(SmokeStage==109&&RealSeconds>VillageGenerated+4){Shot(TEXT("-next-crater"));SmokeStage=PreviewSlot==5?112:110;}
+            else if(SmokeStage==110&&RealSeconds>VillageGenerated+6){
+                const army::GroundSurface* Lane=nullptr;for(const auto& L:Battle.map.surfaces)if(L.level<0&&L.kind==0){Lane=&L;break;}
+                if(Lane){CameraPan=World(Lane->center);CameraPitch=35;CameraYaw=-60;Zoom=.06f;}++SmokeStage;}
+            else if(SmokeStage==111&&RealSeconds>VillageGenerated+8){Shot(TEXT("-next-lane"));++SmokeStage;}
+            else if(SmokeStage==112&&RealSeconds>VillageGenerated+10){GetWorld()->GetFirstPlayerController()->ConsoleCommand(TEXT("quit"));++SmokeStage;}
+            return;
+        }
         if(SmokeStage==0&&RealSeconds>3){FScreenshotRequest::RequestScreenshot(Dir/TEXT("generated-town.png"),true,false);++SmokeStage;}
         else if(SmokeStage==1&&RealSeconds>6){Command(TEXT("floors"));FScreenshotRequest::RequestScreenshot(Dir/TEXT("generated-town-cutaway.png"),true,false);++SmokeStage;}
-        else if(SmokeStage==2&&RealSeconds>9){Command(TEXT("terrain"));++SmokeStage;}
+        // The trench slot is selected by index, not by cycling, so New+ below is asserted on trench seed 18 whatever the cycle length.
+        else if(SmokeStage==2&&RealSeconds>9){Load(3);++SmokeStage;}
         else if(SmokeStage==3&&RealSeconds>12){FScreenshotRequest::RequestScreenshot(Dir/TEXT("generated-trenches.png"),true,false);++SmokeStage;}
         else if(SmokeStage==4&&RealSeconds>15){Command(TEXT("generatemap"));check(GeneratorProcess.IsValid());++SmokeStage;}
         else if(SmokeStage==5&&!GeneratorProcess.IsValid()){check(Settings.battlefield->seed==18);FScreenshotRequest::RequestScreenshot(Dir/TEXT("generated-trenches-next.png"),true,false);FFileHelper::SaveStringToFile(TEXT("Town/cutaway/trenches presented; built-in New+ generated and loaded trench seed18\n"),*(FPaths::ProjectSavedDir()/TEXT("map-preview.txt")));++SmokeStage;}
@@ -737,9 +828,9 @@ void ABattleGameMode::SmokeTest(float Dt) {
     if(!bSmoke)return;
     if(SmokeStage==1&&RealSeconds>10) {
         const auto OriginalSettings=Settings;
-        Command(TEXT("doctrine"));Command(TEXT("approach"));Command(TEXT("support"));Command(TEXT("seed"));
+        Command(TEXT("doctrine"));Command(TEXT("approach"));for(int I=0;I<3&&Settings.supportWeapon;++I)Command(TEXT("support"));Command(TEXT("seed"));
         check(Settings.doctrine==army::Doctrine::Cautious&&Settings.approach==army::Approach::North&&!Settings.supportWeapon);
-        Command(TEXT("support"));check(Settings.supportWeapon); // exercise the option, then test an actual MG
+        Command(TEXT("support"));check(Settings.supportWeapon&&Settings.squadMachineGuns); // exercise the option (squad, platoon, rifles, squad), then test actual MGs
         // The short north-flank win does not exercise the late replay checks.
         // Restore the standard long battle after verifying every preparation control.
         Settings=OriginalSettings;RefreshPreparation();
@@ -985,9 +1076,9 @@ void ABattleHUD::DrawHUD() {
         Label(TEXT("APPROACH"),34,342,Muted,0.85f);
         Button(TEXT("approach"),UTF8_TO_TCHAR(army::ApproachName(G->Settings.approach)),34,363,260,38);
         Label(TEXT("EQUIPMENT"),34,416,Muted,0.85f);
-        Button(TEXT("support"),G->Settings.supportWeapon?TEXT("1 machine gun / platoon"):TEXT("All rifles"),34,437,260,38);
+        Button(TEXT("support"),G->Settings.supportWeapon?(G->Settings.squadMachineGuns?TEXT("1 machine gun / squad"):TEXT("1 machine gun / platoon")):TEXT("All rifles"),34,437,260,38);
         Button(TEXT("seed"),FString::Printf(TEXT("Battle seed: %u   +"),G->Settings.seed),34,491,260,34);
-        Button(TEXT("terrain"),G->Settings.battlefield?(G->MapSelection==3?TEXT("Trenches"):TEXT("Town")):G->Settings.terrain==army::Terrain::Trenches?TEXT("Original trenches"):TEXT("Original Works"),34,533,176,34);
+        Button(TEXT("terrain"),G->Settings.battlefield?(G->MapSelection==5?TEXT("City"):G->MapSelection==4?TEXT("Village"):G->MapSelection==3?TEXT("Trenches"):TEXT("Town")):G->Settings.terrain==army::Terrain::Trenches?TEXT("Original trenches"):TEXT("Original Works"),34,533,176,34);
         Button(TEXT("generatemap"),TEXT("New +"),214,533,80,34);
         if(G->Settings.battlefield)Label(TEXT("G: reload generator map / F: open roofs"),34,569,Muted,.65f);
         Label(TEXT("BATTLE LIMIT   ")+TimeLabel(G->Settings.maxSeconds),34,578,Gold,.9f);
@@ -1004,7 +1095,7 @@ void ABattleHUD::DrawHUD() {
         FString RoleLabel= UTF8_TO_TCHAR(army::RoleName(S.role));
         if(F.platoon[S.team].leader==S.id&&S.role!=army::Role::Lieutenant)RoleLabel=FString(UTF8_TO_TCHAR(army::RankTag(S.role)))+TEXT(" / ACTING PLATOON LEADER");
         else if(F.command[S.squad].leader==S.id&&S.role!=army::Role::Sergeant)RoleLabel+=TEXT(" / ACTING COMMANDER");
-        RoleLabel+=army::OnStairs(G->Battle.map,S.position)?TEXT(" / STAIRS"):S.position.z>1?TEXT(" / 2ND FLOOR"):S.position.z<-.1f?TEXT(" / TRENCH"):TEXT(" / GROUND");
+        RoleLabel+=army::OnStairs(G->Battle.map,S.position)?TEXT(" / STAIRS"):S.position.z>1?TEXT(" / 2ND FLOOR"):S.position.z<-.1f?(G->Settings.battlefield&&G->Settings.battlefield->kind=="village"?TEXT(" / LANE"):TEXT(" / TRENCH")):TEXT(" / GROUND");
         Label(RoleLabel,34,199,Muted,0.80f);
         Label(FString::Printf(TEXT("SIGHT %.0fm / %s"),army::SightRange(S),S.directionalSight?TEXT("140 DEGREE FIELD"):TEXT("ALL DIRECTIONS")),34,213,Muted,0.70f);
         Label(FString(TEXT("ORDER: "))+UTF8_TO_TCHAR(army::TaskName(S.assignment.task)),34,225,Gold,0.95f);
@@ -1016,7 +1107,7 @@ void ABattleHUD::DrawHUD() {
         Label(FString::Printf(TEXT("AIM  %.0f%%   /   %s"),S.aim*100,S.aim>=1?TEXT("READY"):S.aimTarget>=0?TEXT("ACQUIRING"):TEXT("NO FIRING SOLUTION")),34,339,Muted,0.8f);
         Rect(Ink,34,358,260,4);Rect(Gold,34,358,260*S.aim,4);
         Label(UTF8_TO_TCHAR(army::ActionName(S.action)),34,376,Gold,1.05f);
-        Label(S.stance==army::Stance::Crouched?TEXT("CROUCHED / LOW PROFILE"):TEXT("STANDING"),34,400,Azure,0.8f);
+        Label(S.vaulting?TEXT("VAULTING"):S.stance==army::Stance::Prone?TEXT("PRONE"):S.stance==army::Stance::Crouched?TEXT("CROUCHED / LOW PROFILE"):TEXT("STANDING"),34,400,Azure,0.8f);
         float Y=Wrapped(S.holdingFire?TEXT("Holding fire: friendly troops in the firing lane. Requesting clearance if blocked."):UTF8_TO_TCHAR(army::ReasonText(S.reason)),34,423);
         Label(FString::Printf(TEXT("Rounds fired: %d"),S.rounds),34,Y+10,Muted,0.85f);
         Label(FString::Printf(TEXT("%s / magazine %d of %d"),UTF8_TO_TCHAR(S.gun.name),S.magazineRemaining,S.gun.magazine),34,Y+29,Muted,0.8f);

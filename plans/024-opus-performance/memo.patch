@@ -1,0 +1,82 @@
+--- a/Unreal/Source/ArmyPrototype/Sim/SpatialSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/SpatialSim.cpp
+@@ -1,5 +1,6 @@
+ #include "BattleSim.h"
+ #include <algorithm>
++#include <array>
+ #include <numeric>
+ #include <cstring>
+ namespace army {
+@@ -37,24 +38,67 @@
+ #ifndef SEGMENT_MEMO_BITS
+ #define SEGMENT_MEMO_BITS 21
+ #endif
++// Hypothesis (unmeasured): repeat segment queries cluster in time, so a small
++// direct-mapped front table in front of the main memo serves most of them
++// without a random access into the 64 MiB table. Set to 0 to compile the front
++// table out and get the plain memo back.
++#ifndef SEGMENT_MEMO_FRONT_BITS
++#define SEGMENT_MEMO_FRONT_BITS 12
++#endif
+ struct SegmentMemo {
+     // Direct-mapped, 32-byte entries: seven argument words and a state word
+     // (bits 0-1: 1 clear, 2 blocked; bits 2+: kind). A collision evicts and the
+     // query is recomputed exactly, so the table size only affects speed.
+     struct Entry { uint32_t key[7]; uint32_t state; };
++#if SEGMENT_MEMO_FRONT_BITS>0
++    // Front table, indexed by the high hash bits. Inclusive: a valid front
++    // entry is always resident in the main table too (main eviction clears the
++    // evicted key's front copy), so a front hit is a hit the main table would
++    // also have served and the lookup/hit counters stay exact.
++    static_assert(SEGMENT_MEMO_FRONT_BITS<=20,"front table index must stay small");
++    std::array<Entry,(size_t(1)<<SEGMENT_MEMO_FRONT_BITS)> front{};
++#endif
+     uint64_t revision=0; std::vector<Entry> entries;
+     explicit SegmentMemo(size_t n):entries(n){}
+ };
++static inline uint64_t SegmentMemoHash(const uint32_t key[7],uint32_t kind){
++    uint64_t h=1469598103934665603ull;for(int i=0;i<7;++i)h=(h^key[i])*1099511628211ull;h=(h^uint64_t(kind))*1099511628211ull;
++    h^=h>>32;h*=0x9e3779b97f4a7c15ull;h^=h>>29;return h;
++}
++static inline bool SegmentMemoMatch(const SegmentMemo::Entry& e,const uint32_t key[7],uint32_t kind){
++    return (e.state&3)&&(e.state>>2)==kind&&std::memcmp(e.key,key,sizeof(uint32_t)*7)==0;
++}
+ bool MemoisedSegment(const Map& m,Vec3 a,Vec3 b,float pad,int kind,bool (*compute)(const Map&,Vec3,Vec3,float)){
+     if(!m.segments||m.segments->revision!=m.revision){m.segments=std::make_shared<SegmentMemo>(size_t(1)<<SEGMENT_MEMO_BITS);m.segments->revision=m.revision;}
++    SegmentMemo& memo=*m.segments;
+     uint32_t key[7];const float words[7]={a.x,a.y,a.z,b.x,b.y,b.z,pad};std::memcpy(key,words,sizeof key);
+-    uint64_t h=1469598103934665603ull;for(uint32_t k:key)h=(h^k)*1099511628211ull;h=(h^uint64_t(kind))*1099511628211ull;
+-    h^=h>>32;h*=0x9e3779b97f4a7c15ull;h^=h>>29;
+-    auto& e=m.segments->entries[h&(m.segments->entries.size()-1)];
++    const uint64_t h=SegmentMemoHash(key,uint32_t(kind));
+     if(m.queryProfile)++m.queryProfile->memoLookups;
+-    if((e.state&3)&&(e.state>>2)==uint32_t(kind)&&std::memcmp(e.key,key,sizeof key)==0){if(m.queryProfile)++m.queryProfile->memoHits;return (e.state&3)==1;}
++#if SEGMENT_MEMO_FRONT_BITS>0
++    SegmentMemo::Entry& f=memo.front[size_t(h>>(64-SEGMENT_MEMO_FRONT_BITS))];
++    if(SegmentMemoMatch(f,key,uint32_t(kind))){if(m.queryProfile)++m.queryProfile->memoHits;return (f.state&3)==1;}
++#endif
++    const size_t slot=size_t(h&(memo.entries.size()-1));
++    {   SegmentMemo::Entry& e=memo.entries[slot];
++        if(SegmentMemoMatch(e,key,uint32_t(kind))){if(m.queryProfile)++m.queryProfile->memoHits;
++#if SEGMENT_MEMO_FRONT_BITS>0
++            f=e;
++#endif
++            return (e.state&3)==1;}
++#if SEGMENT_MEMO_FRONT_BITS>0
++        // About to overwrite e: drop its front copy first so the front table
++        // never outlives the main entry it mirrors.
++        if(e.state&3){SegmentMemo::Entry& victim=memo.front[size_t(SegmentMemoHash(e.key,e.state>>2)>>(64-SEGMENT_MEMO_FRONT_BITS))];
++            if(victim.state==e.state&&std::memcmp(victim.key,e.key,sizeof e.key)==0)victim.state=0;}
++#endif
++    }
+     const bool clear=compute(m,a,b,pad);
+-    std::memcpy(e.key,key,sizeof key);e.state=(uint32_t(kind)<<2)|(clear?1u:2u);return clear;
++    const uint32_t state=(uint32_t(kind)<<2)|(clear?1u:2u);
++    SegmentMemo::Entry& e=memo.entries[slot];std::memcpy(e.key,key,sizeof key);e.state=state;
++#if SEGMENT_MEMO_FRONT_BITS>0
++    std::memcpy(f.key,key,sizeof key);f.state=state;
++#endif
++    return clear;
+ }
+ float IndexedContact(const Map& m,Vec3 a,Vec3 b,bool any,float padding){
+     if(m.obstacles.empty())return -1;

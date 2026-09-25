@@ -176,7 +176,7 @@ void Positions(AcceptedPlan& p,const Soldier& leader,const std::vector<Soldier>&
             // not merely the nearest cover model facing the original sector.
             float exposure=0;
             for(const auto& ct:memory.contacts)if(ct.known&&time-ct.observedAt<8&&Distance(ct.position,slot.shelter)<100){
-                if(!ProtectedAt(map,slot.shelter,ct.position,slot.crouch?Stance::Crouched:Stance::Standing)&&
+                if(!ProtectedAt(map,slot.shelter,ct.position,CoverStance(slot))&&
                     ClearLine3D(map,{ct.position.x,ct.position.y,ct.aimHeight},slot.shelter+Vec3{0,0,slot.crouch?.95f:1.7f}))
                     exposure+=TrackConfidence(ct,time)*(ct.automaticWeapon?2.f:1.f);
             }
@@ -278,13 +278,13 @@ void UpdateCognitivePlan(const Soldier& leader,const std::vector<Soldier>& squad
             const float targetHeight=KnownAimHeight(leader,gunSector,time);
             if(gunner&&supportRequestChanged&&p.hasSlot[index]&&CoverExists(map,p.slots[index].id)){
                 const auto& current=p.slots[index];
-                if(Distance(current.peek,gunSector)<=100&&ProtectedAt(map,current.shelter,gunSector,current.crouch?Stance::Crouched:Stance::Standing)&&
+                if(Distance(current.peek,gunSector)<=100&&ProtectedAt(map,current.shelter,gunSector,CoverStance(current))&&
                     (ClearLine3D(map,current.peek+Vec3{0,0,1.5f},gunSector+Vec3{0,0,targetHeight})||ClearLine3D(map,current.peek+Vec3{0,0,1.5f},gunSector+Vec3{0,0,1.5f})))chosen=&current;
             }
             if(gunner&&!chosen)choices=Viewpoints(*gunner,map,gunSector,gunner->position,2*SightRange(*gunner),1.5f,targetHeight);
             for(const auto& candidate:choices){
                 bool failed=false;for(const auto& failure:p.attempts)failed|=failure.method==CognitiveMethod::Hold&&Distance(failure.destination,candidate.peek)<2&&failure.geometry==map.revision;
-                if(!failed&&ProtectedAt(map,candidate.shelter,gunSector,candidate.crouch?Stance::Crouched:Stance::Standing)){chosen=&candidate;break;}
+                if(!failed&&ProtectedAt(map,candidate.shelter,gunSector,CoverStance(candidate))){chosen=&candidate;break;}
             }
             if(!chosen){Fail(p,TaskCause::Support,time);exhaust("no useful reachable support position remains; request revised mission");return;}
             p.slots[index]=*chosen;p.positions[index]=chosen->shelter;p.hasSlot[index]=true;++p.generations[index];p.expected[index]=0;
@@ -332,7 +332,7 @@ void UpdateCognitivePlan(const Soldier& leader,const std::vector<Soldier>& squad
                     for(int j=0;j<SquadSize;++j){
                         if(!p.movers[j]||!p.hasSlot[j]||p.unavailable[j]||p.holders[j]||p.scouts[j])continue;
                         const auto& slot=p.slots[j];
-                        if(Distance(member.position,slot.peek)>20||!ProtectedAt(map,slot.shelter,p.sector,slot.crouch?Stance::Crouched:Stance::Standing)||
+                        if(Distance(member.position,slot.peek)>20||!ProtectedAt(map,slot.shelter,p.sector,CoverStance(slot))||
                             !View(map,member,slot.peek,p.sector,1.7f,KnownAimHeight(leader,p.sector,time)))continue;
                         auto path=FollowFinalApproach(map,*p.route,member.position,slot.peek);if(path.empty())continue;
                         const auto cost=planner.Measure(member.position,path);
@@ -699,7 +699,7 @@ void UpdateCognitivePlan(const Soldier& leader,const std::vector<Soldier>& squad
     Positions(p,leader,squad,map,time);
     for(const auto& gunner:squad)if(gunner.Active()&&gunner.machineGun){
         auto supports=Viewpoints(gunner,map,sector,gunner.position,65,1.5f,KnownAimHeight(leader,sector,time));float bestDistance=1e9f;
-        for(const auto& slot:supports)if(ProtectedAt(map,slot.shelter,sector,slot.crouch?Stance::Crouched:Stance::Standing)){
+        for(const auto& slot:supports)if(ProtectedAt(map,slot.shelter,sector,CoverStance(slot))){
             float distance=Distance(gunner.position,slot.shelter);if(distance>=bestDistance)continue;
             bestDistance=distance;p.positions[gunner.id%SquadSize]=slot.shelter;p.slots[gunner.id%SquadSize]=slot;p.hasSlot[gunner.id%SquadSize]=true;
         }

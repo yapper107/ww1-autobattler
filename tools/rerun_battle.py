@@ -14,6 +14,7 @@ if sys.platform=='linux' and Path(a.binary).suffix.lower()=='.exe':
     output=subprocess.check_output(['wslpath','-w',str(Path(a.out).resolve())],text=True).strip()
 cmd=[a.binary,'--seed',str(m['seed']),'--seconds',str(m['duration_limit']),'--doctrine',str(m['doctrine']),'--approach',str(m['approach']),'--out',output,'--detail','--from',str(a.start),'--to',str(a.to)]
 cmd+=['--legacy-ai']
+if m.get('digest_kind')=='lean':cmd+=['--lean']
 cmd+=['--terrain',str(m.get('terrain',0))]
 if m.get('battlefield_file'):
     map_path=str((root/m['battlefield_file']).resolve())
@@ -22,6 +23,33 @@ if m.get('battlefield_file'):
     cmd+=['--map',map_path,'--map-digest',str(m['battlefield_digest'])]
 
 cmd+=['--ember-doctrine',str(m.get('ember_doctrine',0))]
+if m.get('neural_policy'):
+    model_path=str((root/m['policy_file']).resolve())
+    if sys.platform=='linux' and Path(a.binary).suffix.lower()=='.exe':
+        model_path=subprocess.check_output(['wslpath','-w',model_path],text=True).strip()
+    cmd+=['--neural-model',model_path,'--policy-digest',str(m['policy_digest'])]
+elif m.get('policy_candidates'):cmd+=['--policy-candidates',str(m['policy_candidates'])]
+for key,flag in [('moving_fire','--no-moving-fire'),('threat_aware_paths','--no-threat-aware-paths'),('stamina','--no-stamina'),('off_lane_paths','--no-off-lane-paths'),('order_pace','--no-order-pace'),
+                  ('keep_action','--no-keep-action'),('keep_kind_reset','--no-keep-kind-reset'),('keep_commit_clear','--no-keep-commit-clear'),('muzzle_credit','--no-muzzle-credit'),
+                  ('prone','--no-prone'),('concealment','--no-concealment'),('vaulting','--no-vaulting'),('retire_fallen','--no-retire-fallen'),('spawn_lanes','--no-spawn-lanes')]:  # on by default since 24 Sep 2026
+    if key in m and not m[key]:cmd.append(flag)
+# Plan 028 switches, written to the manifest only when on (off by default).
+for key,flag in [('cover_graduated','--cover-graduated'),('cover_requests','--cover-requests'),('cover_reports','--cover-reports'),
+                  ('cover_gun_aim','--cover-gun-aim'),('cover_shift','--cover-shift'),('cover_platoon','--cover-platoon'),
+                  ('impact_suppression','--impact-suppression'),('nerve','--nerve'),('stacked_suppression','--stacked-suppression'),('gunner_compensation','--gunner-compensation'),
+                  ('cover_quiet_release','--cover-quiet-release'),('cover_upper_stations','--cover-upper-stations'),('cover_rifle_base','--cover-rifle-base'),
+                  ('no_covering_fire','--no-covering-fire'),('graded_peek','--graded-peek'),('keep_down','--keep-down'),('pinned_neighbours','--pinned-neighbours'),
+                  ('cover_sector','--cover-sector')]:
+    if m.get(key):cmd.append(flag)
+if m.get('impact_radius') is not None:cmd+=['--impact-radius',str(m['impact_radius'])]  # plan 030 S1b: only when S1 is on at another radius
+# Plan 030 M-S7: the run constants, written only with their rule on and only when not the table's.
+for key,flag in [('peek_floor','--peek-floor'),('peek_curve','--peek-curve'),('keep_down_weight','--keep-down-weight'),('keep_down_grace','--keep-down-grace'),('neighbour_effect','--neighbour-effect')]:
+    if m.get(key) is not None:cmd+=[flag,str(m[key])]
+if m.get('cover_station_radius') is not None:cmd+=['--cover-station-radius',str(m['cover_station_radius'])]  # plan 030 M-S5: only when not 25
+# Plan 031 D: the fire-and-movement drill's teams (written only when on) and its run constants (only when not the table's).
+if m.get('fire_and_movement'):cmd+=['--fire-and-movement',m['fire_and_movement']]
+for key,flag in [('fm_leg','--fm-leg'),('fm_fire_window','--fm-fire-window'),('fm_deadline','--fm-deadline')]:
+    if m.get(key) is not None:cmd+=[flag,str(m[key])]
 if m.get('roster_seed'):cmd+=['--roster-seed',str(m['roster_seed'])]
 if m.get('foundations_policy'):cmd+=['--foundations','--estimate-bias',str(m.get('estimate_bias',0))]
 if m.get('cognition_policy') or m.get('drills_policy'):
@@ -38,6 +66,7 @@ if m.get('static_defence'):
     cmd+=['--static-defence',defence['layout'],'--defenders',str(defence['defenders']),'--defence-seed',str(defence['seed'])]
 if m.get('encounter'):cmd+=['--encounter',str(m['encounter'])]
 if not m['support_weapon']:cmd+=['--no-mg']
+if m.get('squad_machine_guns')==0:cmd+=['--platoon-mg']  # manifests before 24 Sep 2026 lack the key: one gun per platoon then
 if a.soldier is not None:cmd+=['--soldier',str(a.soldier)]
 if a.squad is not None:cmd+=['--squad',str(a.squad)]
 raise SystemExit(subprocess.call(cmd))

@@ -1,0 +1,217 @@
+{
+  "complete_benchmark": true,
+  "guards": {
+    "build": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "selectors": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "python_tests": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "protected_files": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "static_check": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "parity": {
+      "passed": false,
+      "detail": {
+        "ok": false,
+        "reason": "not run"
+      }
+    },
+    "zero_shot": {
+      "passed": true,
+      "detail": {
+        "failures": []
+      }
+    },
+    "firing_squads": {
+      "passed": true,
+      "detail": {
+        "failures": []
+      }
+    },
+    "attacker_firing_squads": {
+      "passed": true,
+      "detail": {
+        "failures": []
+      }
+    },
+    "under_2m": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 0.0070989642420746174,
+          "median": 0.005036021009585716,
+          "ci95": [
+            -0.00141357356742481,
+            0.015356233861154126
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "orders_azure_per_minute": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 13.150000000000002,
+          "median": 10.75,
+          "ci95": [
+            -10.625833333333333,
+            37.22666666666666
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "orders_ember_per_minute": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 6.483333333333337,
+          "median": 11.583333333333343,
+          "ci95": [
+            -13.093541666666665,
+            26.69166666666667
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "friendly_fire": {
+      "passed": true,
+      "detail": {
+        "town-dev": {
+          "count": 20,
+          "clusters": 20,
+          "mean": 0.911720244331965,
+          "median": 1.3833024805646539,
+          "ci95": [
+            -0.5494161578548095,
+            2.404525833580678
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "force_at_the_fight": {
+      "passed": true,
+      "detail": {
+        "town-attack-dev": {
+          "count": 60,
+          "clusters": 20,
+          "mean": -0.0025374814760293443,
+          "median": -0.0016083505485727234,
+          "ci95": [
+            -0.013601180315594092,
+            0.010957720053894225
+          ],
+          "unpaired": 0,
+          "passed": true
+        }
+      }
+    },
+    "fights_from_cover": {
+      "passed": true,
+      "detail": {
+        "town-attack-dev": {
+          "count": 60,
+          "clusters": 20,
+          "mean": -0.000869328821356448,
+          "median": -0.0010639328036914832,
+          "ci95": [
+            -0.003054135477413916,
+            0.0011578217042968774
+          ],
+          "unpaired": 0,
+          "limit": 0.005,
+          "passed": true
+        }
+      }
+    },
+    "seen_at_the_fight": {
+      "passed": true,
+      "detail": {
+        "town-attack-dev": {
+          "count": 60,
+          "clusters": 20,
+          "mean": -0.0028800018418643765,
+          "median": -0.004285243563213852,
+          "ci95": [
+            -0.011069432204720927,
+            0.005543567165753988
+          ],
+          "unpaired": 0,
+          "relaxed_by": {
+            "metric": "flank_fire_share",
+            "mean": -0.04500804950925082,
+            "ci95": [
+              -0.10789807650711748,
+              0.022686836987130424
+            ],
+            "earned": false
+          },
+          "limit": 0.04,
+          "passed": true
+        }
+      }
+    }
+  },
+  "paired_attack": {
+    "town-attack-dev": {
+      "count": 60,
+      "clusters": 20,
+      "mean": -0.016319444444444445,
+      "median": 0.0,
+      "ci95": [
+        -0.06684244791666666,
+        0.04166666666666667
+      ]
+    },
+    "town-attack-val": {
+      "count": 45,
+      "clusters": 15,
+      "mean": -0.03298611111111111,
+      "median": -0.015625,
+      "ci95": [
+        -0.06493055555555556,
+        0.00011574074074073916
+      ]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+--- .local/plan024/performance-round3/baseline/Sim/EnvironmentSim.cpp	2026-09-17 19:56:27.852557658 -0700
++++ .local/plan024/opus55-performance/agent/Sim/EnvironmentSim.cpp	2026-09-22 17:32:15.818959047 -0700
+@@ -423,20 +423,25 @@
+         return std::vector<Vec3>{};
+     };
+     std::vector<Vec3> points{from,to};points.insert(points.end(),ends.begin(),ends.end());
+-    const int n=int(points.size());std::vector<std::vector<Vec3>> paths(size_t(n*n));
+-    for(int i=0;i<count;++i){paths[size_t(i+2)]=attach(from,ends[i]);paths[size_t((i+2)*n+1)]=attach(ends[i],to);
+-        for(int j=0;j<count;++j)paths[size_t((i+2)*n+j+2)]=cache->surfacePaths[size_t(i*count+j)];}
++    // Endpoint-to-endpoint legs are read in place from the revision-owned cache,
++    // which the local shared_ptr keeps alive and nothing below resizes. Only the
++    // per-query attachments are owned here. Same legs, order and arithmetic.
++    const int n=int(points.size());const std::vector<Vec3> none;
++    std::vector<std::vector<Vec3>> attached(size_t(count*2));std::vector<const std::vector<Vec3>*> paths(size_t(n*n),&none);
++    for(int i=0;i<count;++i){attached[size_t(i*2)]=attach(from,ends[i]);attached[size_t(i*2+1)]=attach(ends[i],to);
++        paths[size_t(i+2)]=&attached[size_t(i*2)];paths[size_t((i+2)*n+1)]=&attached[size_t(i*2+1)];
++        for(int j=0;j<count;++j)paths[size_t((i+2)*n+j+2)]=&cache->surfacePaths[size_t(i*count+j)];}
+     std::vector<float> distance(size_t(n),1e30f);std::vector<int> parent(size_t(n),-1);std::vector<bool> visited(size_t(n),false);distance[0]=0;
+     for(int pass=0;pass<n;++pass){int u=-1;for(int i=0;i<n;++i)if(!visited[size_t(i)]&&(u<0||distance[size_t(i)]<distance[size_t(u)]))u=i;
+         if(u<0||distance[size_t(u)]>=1e29f)break;
+         if(u==1)break;
+         visited[size_t(u)]=true;
+-        for(int v=0;v<n;++v){const auto& path=paths[size_t(u*n+v)];if(path.empty())continue;float length=0;Vec3 previous=points[size_t(u)];
++        for(int v=0;v<n;++v){const auto& path=*paths[size_t(u*n+v)];if(path.empty())continue;float length=0;Vec3 previous=points[size_t(u)];
+             for(auto p:path){length+=Distance(previous,p);previous=p;}if(distance[size_t(u)]+length<distance[size_t(v)]){distance[size_t(v)]=distance[size_t(u)]+length;parent[size_t(v)]=u;}}
+     }
+     if(parent[1]<0)return {};
+     std::vector<int> chain;for(int node=1;node!=0;node=parent[size_t(node)])chain.push_back(node);std::reverse(chain.begin(),chain.end());
+-    std::vector<Vec3> result;int previous=0;for(int node:chain){const auto& path=paths[size_t(previous*n+node)];result.insert(result.end(),path.begin(),path.end());previous=node;}return result;
++    std::vector<Vec3> result;int previous=0;for(int node:chain){const auto& path=*paths[size_t(previous*n+node)];result.insert(result.end(),path.begin(),path.end());previous=node;}return result;
+ }
+ std::vector<Vec3> FindPath(const Map& m,Vec3 from,Vec3 to) {
+     struct Measure {QueryProfile* p;std::chrono::steady_clock::time_point start;

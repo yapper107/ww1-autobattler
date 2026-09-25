@@ -5,7 +5,7 @@ metrics), ``order_metrics.evaluate`` (soldier orders per minute per side) and th
 shots export (firing squads per side). Traces are off unless asked for.
 """
 from __future__ import annotations
-import json, os, subprocess, time
+import json, os, re, subprocess, time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import get_context
 from pathlib import Path
@@ -67,7 +67,7 @@ def default_jobs(requested=None, authored=True, seconds=SECONDS, lean=False):
     return max(1, min(requested, cap)) if requested else cap
 
 
-def battle_command(binary, controller, spec, seconds=SECONDS, trace=False, out=None):
+def battle_command(binary, controller, spec, seconds=SECONDS, trace=False, out=None, extra_args=()):
     seconds = spec.get('seconds', seconds)  # a scenario may carry its own time limit
     cmd = [str(binary), CONTROLLER_FLAG[controller]]
     if 'map' in spec:
@@ -79,12 +79,13 @@ def battle_command(binary, controller, spec, seconds=SECONDS, trace=False, out=N
     if spec.get('defence'):
         d = spec['defence']
         cmd += ['--static-defence', d['layout'], '--defenders', str(d['defenders']), '--defence-seed', str(d['seed'])]
+    cmd += list(spec.get('flags') or ())  # the family's natural state (config.FAMILY_FLAGS, score v8)
     cmd += ['--seed', str(spec['seed']), '--seconds', str(seconds), '--evaluate', '--out', str(out)]
     if not trace:
         cmd.append('--no-trace')
         if supports_lean(binary):
             cmd.append('--lean')
-    return cmd
+    return cmd + list(extra_args)
 
 
 ATTACKER_LOSS_WEIGHT = 0.5
@@ -101,7 +102,7 @@ def attack_metrics(metrics: dict) -> dict:
     return dict(attack_score=defender - ATTACKER_LOSS_WEIGHT*attacker, attack_cleared=int(bool(metrics.get('win_azure'))))
 
 
-KEPT_EXPORTS = ('manifest.json', 'summary.md')
+KEPT_EXPORTS = ('manifest.json', 'summary.md', 'neural.policy')
 
 
 def prune_exports(run: Path):
@@ -128,15 +129,18 @@ def firing_squads(run: Path):
     return [sum(1 for t, _ in seen if t == side) for side in (0, 1)]
 
 
-def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
+def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False, extra_args=(), keep_exports=False):
     import family_metrics, order_metrics
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    cmd = battle_command(binary, controller, spec, seconds, trace, out)
+    cmd = battle_command(binary, controller, spec, seconds, trace, out, extra_args)
     row = dict(spec, controller=controller, command=cmd, status='failed')
     started = time.monotonic()
     proc = subprocess.run(cmd, capture_output=True, text=True)
     row['wall_seconds'] = time.monotonic() - started
+    memory = re.search(r'peak_memory_bytes=(\d+)', proc.stdout)
+    if memory:
+        row['peak_memory_bytes'] = int(memory.group(1))
     if proc.returncode != 0:
         row['error'] = (proc.stderr or proc.stdout)[-2000:]
         return row
@@ -156,6 +160,11 @@ def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
                 raise ValueError('Binary returned another scenario')
         elif manifest['terrain'] != spec['terrain'] or manifest['seed'] != spec['seed']:
             raise ValueError('Binary returned another battle')
+        # Score v8: a switch the spec asked for must be on in the battle the binary fought (each plan 029 switch writes
+        # "<name>":true to the manifest only when on), so a binary that ignores a flag cannot pass as the family's state.
+        unset = [f for f in spec.get('flags') or () if manifest.get(f.lstrip('-').replace('-', '_')) is not True]
+        if unset:
+            raise ValueError(f'Binary did not apply {unset}')
         evaluated = family_metrics.evaluate(run)
         orders = order_metrics.evaluate(run)
         metrics = dict(evaluated['metrics'])
@@ -168,7 +177,7 @@ def run_battle(binary, controller, spec, out, seconds=SECONDS, trace=False):
                    unavailable=evaluated['unavailable'], firing_squads=firing_squads(run),
                    survivors=evaluated['survivors'], initial_actives=evaluated['initial_actives'],
                    digest=evaluated['digest'], digest_kind=manifest.get('digest_kind', 'full'), scenario_digest=evaluated['scenario_digest'])
-        if not trace:
+        if not trace and not keep_exports:
             prune_exports(run)
     except Exception as exc:  # recorded, never hidden
         row['error'] = f'{type(exc).__name__}: {exc}'

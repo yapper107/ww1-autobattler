@@ -56,7 +56,7 @@ static float MinimumAngle(Vec3 peek,Vec3 support,Vec3 target){
 bool TacticalPairLaneClear(const Map& map,const CoverPosition& a,const CoverPosition& b,const std::vector<Vec3>& targets){
     auto clears=[&](const CoverPosition& shooter,const CoverPosition& partner){
         const Vec3 muzzle=shooter.peek+Vec3{0,0,1.5f};
-        const float height=BodyHeight(partner.crouch?Stance::Crouched:Stance::Standing)*.75f;
+        const float height=BodyHeight(CoverStance(partner))*.75f;
         for(Vec3 target:targets){
             target=target+Vec3{0,0,1.4f};if(!ClearLine3D(map,muzzle,target))continue;
             Vec3 direction=target-muzzle;float lengthSquared=direction.x*direction.x+direction.y*direction.y+direction.z*direction.z;
@@ -98,7 +98,7 @@ std::vector<TacticalSlot> QueryTacticalPositions(const Soldier& leader,const std
         int targets=0,visibleTargets=0,samples=0,visibleSamples=0,protectedTracks=0,exposedPeekTracks=0;
         for(const auto& ct:knowledge.contacts)if(ct.known&&Distance(ct.position,q.target)<=12){
             ++targets;
-            protectedTracks+=ProtectedAt(map,c.shelter,ct.position,c.crouch?Stance::Crouched:Stance::Standing);
+            protectedTracks+=ProtectedAt(map,c.shelter,ct.position,CoverStance(c));
             exposedPeekTracks+=ClearLine3D(map,ct.position+Vec3{0,0,1.5f},c.peek+Vec3{0,0,1.5f});
             if(Distance(c.peek,ct.position)<=fireRange&&ClearLine3D(map,c.peek+Vec3{0,0,1.5f},ct.position+Vec3{0,0,1.4f}))++visibleTargets;
             // A single remembered gun report describes an uncertain position,
@@ -109,7 +109,7 @@ std::vector<TacticalSlot> QueryTacticalPositions(const Soldier& leader,const std
                 if(Distance(c.peek,target)<=fireRange&&ClearLine3D(map,c.peek+Vec3{0,0,1.5f},target+Vec3{0,0,.6f}))++visibleSamples;
             }
         }
-        if(!targets){protectedTracks=ProtectedAt(map,c.shelter,q.target,c.crouch?Stance::Crouched:Stance::Standing);exposedPeekTracks=ClearLine3D(map,q.target+Vec3{0,0,1.5f},c.peek+Vec3{0,0,1.5f});samples=1;visibleSamples=1;targets=1;visibleTargets=Distance(c.peek,q.target)<=fireRange&&ClearLine3D(map,c.peek+Vec3{0,0,1.5f},q.target+Vec3{0,0,1.4f});}
+        if(!targets){protectedTracks=ProtectedAt(map,c.shelter,q.target,CoverStance(c));exposedPeekTracks=ClearLine3D(map,q.target+Vec3{0,0,1.5f},c.peek+Vec3{0,0,1.5f});samples=1;visibleSamples=1;targets=1;visibleTargets=Distance(c.peek,q.target)<=fireRange&&ClearLine3D(map,c.peek+Vec3{0,0,1.5f},q.target+Vec3{0,0,1.4f});}
         const char* reason="accepted";
         if(!Walkable(map,c.shelter)||!Walkable(map,c.peek)||!ClearLine(map,c.shelter,c.peek,.46f))reason="non-executable cover pair";
         else if(q.minAngle>0&&Distance(c.peek,q.target)<15)reason="inside target defensive position";
@@ -117,9 +117,9 @@ std::vector<TacticalSlot> QueryTacticalPositions(const Soldier& leader,const std
         else if(angle<q.minAngle)reason="insufficient firing angle";
         else if(q.firing&&visibleTargets*2<targets)reason="less than half of target position visible";
         else if(q.protectedPosition&&c.crouch&&protectedTracks*2<=targets)reason="crouch shelter lacks majority protection";
-        else if(q.protectedPosition&&!ProtectedAt(map,c.shelter,q.target,c.crouch?Stance::Crouched:Stance::Standing))reason="cover faces away from target";
+        else if(q.protectedPosition&&!ProtectedAt(map,c.shelter,q.target,CoverStance(c)))reason="cover faces away from target";
         else {
-            for(const auto& ct:knowledge.contacts)if(ct.known&&ct.visible&&!ProtectedAt(map,c.shelter,ct.position,c.crouch?Stance::Crouched:Stance::Standing)){reason="exposed to observed threat";break;}
+            for(const auto& ct:knowledge.contacts)if(ct.known&&ct.visible&&!ProtectedAt(map,c.shelter,ct.position,CoverStance(c))){reason="exposed to observed threat";break;}
             if(std::string(reason)=="accepted")for(const auto& mover:movers)if(FindPath(map,mover.position,c.shelter).empty()){reason="mover cannot reach slot";break;}
         }
         if(d&&d->options.enabled){TraceEntry e;e.id=d->nextId++;e.parent=d->lastPlan[leader.squad];e.time=time;e.soldier=leader.id;e.squad=leader.squad;e.kind="position_query";e.coverId=c.id;e.geometry=map.revision;e.goal=c.shelter;e.position=c.peek;e.cover=c.shelter;e.aim=angle;e.reason=std::string(reason)+"; protected="+std::to_string(protectedTracks)+"/"+std::to_string(targets)+"; peek exposed="+std::to_string(exposedPeekTracks)+"; angle="+std::to_string(angle)+"; visible="+std::to_string(visibleTargets)+"/"+std::to_string(targets)+"; uncertainty samples="+std::to_string(visibleSamples)+"/"+std::to_string(samples);d->entries.push_back(e);}
@@ -237,7 +237,7 @@ std::vector<PlannedOrder> UpdateRecoveryDrill(const Soldier& leader,const std::v
                     const auto& cover=g.assaultSlots[slot];
                     useful&=MinimumAngle(cover.peek,g.supportPosition,contact.position)>=AssaultAngle&&
                         ClearLine3D(map,cover.peek+Vec3{0,0,1.5f},contact.position+Vec3{0,0,1.1f})&&
-                        ProtectedAt(map,cover.shelter,contact.position,cover.crouch?Stance::Crouched:Stance::Standing);
+                        ProtectedAt(map,cover.shelter,contact.position,CoverStance(cover));
                 }
                 if(!useful){
                     if(!ReslotAssault(leader,active,map,config,cmd,tracked,contact.position,time,d)){
@@ -279,7 +279,7 @@ std::vector<PlannedOrder> UpdateRecoveryDrill(const Soldier& leader,const std::v
                 if(!assigned){
                     bool safe=ProtectedAt(map,destination,g.targetPosition,Stance::Crouched);
                     if(!safe){float best=1e9f;for(const auto& cover:CoverPositions(map)){
-                        float distance=Distance(s.position,cover.shelter);if(distance>25||distance>=best||!ProtectedAt(map,cover.shelter,g.targetPosition,cover.crouch?Stance::Crouched:Stance::Standing))continue;
+                        float distance=Distance(s.position,cover.shelter);if(distance>25||distance>=best||!ProtectedAt(map,cover.shelter,g.targetPosition,CoverStance(cover)))continue;
                         bool occupied=false;for(Vec3 p:reserved)occupied|=Distance(p,cover.shelter)<1.5f;
                         if(!occupied&&!FindPath(map,s.position,cover.shelter).empty()){best=distance;destination=cover.shelter;}
                     }}
@@ -298,7 +298,7 @@ std::vector<PlannedOrder> UpdateRecoveryDrill(const Soldier& leader,const std::v
     if(g.node==DrillNode::Search){
         if(target>=0){g.target=target;g.targetPosition=knowledge.contacts[target].position;std::vector<Vec3> reservations;
             for(const auto& s:active){Vec3 shelter=s.position;float best=1e9f;
-                for(const auto& cover:CoverPositions(map)){float distance=Distance(s.position,cover.shelter);if(distance>25||distance>=best||!ProtectedAt(map,cover.shelter,g.targetPosition,cover.crouch?Stance::Crouched:Stance::Standing))continue;
+                for(const auto& cover:CoverPositions(map)){float distance=Distance(s.position,cover.shelter);if(distance>25||distance>=best||!ProtectedAt(map,cover.shelter,g.targetPosition,CoverStance(cover)))continue;
                     bool occupied=false;for(Vec3 p:reservations)if(Distance(p,cover.shelter)<1.5f)occupied=true;
                     if(!occupied&&!FindPath(map,s.position,cover.shelter).empty()){best=distance;shelter=cover.shelter;}
                 }
@@ -349,7 +349,7 @@ std::vector<PlannedOrder> UpdateRecoveryDrill(const Soldier& leader,const std::v
         const CoverPosition* formUp=nullptr;float formScore=1e9f;
         for(const auto& cover:CoverPositions(map)){
             float distance=Distance(cover.shelter,destination);
-            if(distance<12||distance>30||!ProtectedAt(map,cover.shelter,g.targetPosition,cover.crouch?Stance::Crouched:Stance::Standing)||
+            if(distance<12||distance>30||!ProtectedAt(map,cover.shelter,g.targetPosition,CoverStance(cover))||
                 ClearLine3D(map,cover.peek+Vec3{0,0,1.5f},g.targetPosition+Vec3{0,0,1.5f}))continue;
             float score=distance+.2f*Distance(from,cover.shelter);
             if(score<formScore&&!FindPath(map,from,cover.shelter).empty()&&!FindPath(map,cover.shelter,destination).empty()){formScore=score;formUp=&cover;}

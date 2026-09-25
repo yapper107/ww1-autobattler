@@ -5,58 +5,154 @@
 #include <limits>
 #include <queue>
 #include <chrono>
+#include <cstring>
+#if defined(_MSC_VER)&&!defined(__clang__)&&(defined(_M_X64)||defined(_M_IX86))
+#include <xmmintrin.h>
+#endif
 namespace army {
 struct TacticalVisibilityCache {
     // Coordinates occupy 48 bits. Store the answer in the spare high bit rather
     // than paying an eight-byte alignment pad per entry.
     struct Ray {uint64_t from=0,toAndVisible=0;};
     uint64_t revision=0;std::vector<Ray> rays=std::vector<Ray>(8388608);
+    static size_t Slot(uint64_t a,uint64_t b){
+        uint64_t hash=a*1099511628211ull+b;hash=(hash^(hash>>30))*0xbf58476d1ce4e5b9ull;hash=(hash^(hash>>27))*0x94d049bb133111ebull;hash^=hash>>31;
+        return size_t(hash&8388607);
+    }
+    // A load hint only: no table state or answer depends on it.
+    static void Prefetch(const Ray* ray){
+#if defined(__GNUC__)||defined(__clang__)
+        __builtin_prefetch(ray);
+#elif defined(_MSC_VER)&&(defined(_M_X64)||defined(_M_IX86))
+        _mm_prefetch(reinterpret_cast<const char*>(ray),_MM_HINT_T0);
+#else
+        (void)ray;
+#endif
+    }
 };
-static bool EstimatedVisible(const Map& map,Vec3 from,Vec3 to){
-    auto snap=[](Vec3 p){return Vec3{std::round(p.x*2)*.5f,std::round(p.y*2)*.5f,std::round(p.z*2)*.5f};};from=snap(from);to=snap(to);
-    auto pack=[](Vec3 p){return uint64_t(uint16_t(int(p.x*2)+32768))|(uint64_t(uint16_t(int(p.y*2)+32768))<<16)|(uint64_t(uint16_t(int(p.z*2)+32768))<<32);};
+TacticalRoutePlanner::SightPoint TacticalRoutePlanner::SnapSightPoint(Vec3 p){
+    // Preserve the original rounding, packing and arithmetic order exactly.
+    p={std::round(p.x*2)*.5f,std::round(p.y*2)*.5f,std::round(p.z*2)*.5f};
+    const uint64_t packed=uint64_t(uint16_t(int(p.x*2)+32768))|
+        (uint64_t(uint16_t(int(p.y*2)+32768))<<16)|
+        (uint64_t(uint16_t(int(p.z*2)+32768))<<32);
+    return {p,packed};
+}
+bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPoint& to) const {
+    return EstimatedVisible(from,to,TacticalVisibilityCache::Slot(from.packed,to.packed));
+}
+bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPoint& to,size_t slot) const {
     if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>();map.tacticalVisibility->revision=map.revision;}
-    uint64_t a=pack(from),b=pack(to),hash=a*1099511628211ull+b;hash=(hash^(hash>>30))*0xbf58476d1ce4e5b9ull;hash=(hash^(hash>>27))*0x94d049bb133111ebull;hash^=hash>>31;
-    auto& entry=map.tacticalVisibility->rays[hash&8388607];if(entry.from==a&&(entry.toAndVisible&0xffffffffffffull)==b)return (entry.toAndVisible>>63)!=0;
-    bool visible=ClearLine3D(map,from,to);entry={a,b|(uint64_t(visible)<<63)};return visible;
+    const uint64_t a=from.packed,b=to.packed;
+    auto& entry=map.tacticalVisibility->rays[slot];if(entry.from==a&&(entry.toAndVisible&0xffffffffffffull)==b)return (entry.toAndVisible>>63)!=0;
+    // This ray table already caches the exact snapped query. On prepared maps
+    // query the obstacle index directly instead of probing a second memo table.
+    // Preserve the sight counter and the ordinary unprepared-map fallback.
+    bool visible;
+    if(map.prepared){
+        if(map.queryProfile)++map.queryProfile->sight;
+        visible=IndexedContact(map,from.position,to.position,true)<0;
+    }else visible=ClearLine3D(map,from.position,to.position);
+    entry={a,b|(uint64_t(visible)<<63)};return visible;
 }
 const char* RouteStatusName(RouteStatus s){const char* n[]={"complete","unreachable","budget_exhausted","unsupported_surface","incomplete_topology"};return n[int(s)];}
 static float SegmentDistance(Vec3 p,Vec3 a,Vec3 b){Vec3 d=b-a;float len=d.x*d.x+d.y*d.y+d.z*d.z;float t=len>.0001f?std::clamp(((p.x-a.x)*d.x+(p.y-a.y)*d.y+(p.z-a.z)*d.z)/len,0.f,1.f):0;return Distance(p,a+d*t);}
-TacticalRoutePlanner::TacticalRoutePlanner(const Map& m,const Soldier& k,float at,Doctrine d,Stance posture):map(m),actor(WithTracks(k,at)),time(at),speed((k.machineGun?2.55f:3.15f)*(k.understoodHealth<55?.72f:1.f)*(posture==Stance::Crouched?.6f:1.f)),caution(d==Doctrine::Cautious?1.4f:d==Doctrine::Aggressive?.7f:1.f),stance(posture){
+TacticalRoutePlanner::TacticalRoutePlanner(const Map& m,const Soldier& k,float at,Doctrine d,Stance posture):map(m),actor(WithTracks(k,at)),time(at),speed((k.machineGun?2.55f:3.15f)*(k.understoodHealth<55?.72f:1.f)*Posture(posture).speed),caution(d==Doctrine::Cautious?1.4f:d==Doctrine::Aggressive?.7f:1.f),stance(posture){
     // Nearby reports describe one threatened patch. Keep its strongest weapon and uncertainty.
     // All reports remain in actor knowledge and crossing-specific fire tests.
     if(!map.prepared){map.routeGraph.reset();map.tacticalVisibility.reset();}
-    samples.reserve(4096);
     for(const auto& lane:actor.blockedLanes)if(time-lane.observedAt<6&&Distance(lane.origin,lane.target)>1)lanes.push_back(lane);
     for(int i=0;i<UnitCount;++i)if(i!=actor.id&&actor.allies[i].known&&time-actor.allies[i].observedAt<5)friends.push_back(actor.allies[i].position);
+    std::vector<Contact> groups;
     for(const auto& ct:actor.contacts)if(ct.known){bool merged=false;
-        for(auto& group:threats)if(Distance(group.position,ct.position)<4&&group.automaticWeapon==ct.automaticWeapon){if(ct.observedAt>group.observedAt)group=ct;merged=true;break;}
-        if(!merged)threats.push_back(ct);
+        for(auto& group:groups)if(Distance(group.position,ct.position)<4&&group.automaticWeapon==ct.automaticWeapon){if(ct.observedAt>group.observedAt)group=ct;merged=true;break;}
+        if(!merged)groups.push_back(ct);
     }
+    // Actor knowledge and time are fixed for the lifetime of this assessment.
+    // Reuse report weights; snap each endpoint only when first queried below.
+    threats.reserve(groups.size());
+    for(const auto& ct:groups){
+        const float u=std::min(8.f,std::ceil(TrackUncertainty(ct,time)/2)*2);
+        threats.push_back({ct.position,TrackConfidence(ct,time),u,ct.automaticWeapon});
+    }
+    // Exposure is the maximum of these nonnegative weighted visibility values.
+    // Larger upper bounds first let Sample skip more reports without changing
+    // that maximum. Group reports before sorting; keep equal bounds stable.
+    std::stable_sort(threats.begin(),threats.end(),[](const ThreatSample& a,const ThreatSample& b){
+        return a.confidence*(a.automaticWeapon?1.f:.7f)>b.confidence*(b.automaticWeapon?1.f:.7f);
+    });
 }
 RouteCost TacticalRoutePlanner::Sample(Vec3 p){
     // Half-metre cells, including elevation. Query batches are never shared between actors.
     int64_t key=(int64_t(std::lround((p.z+32)*2))*2048+std::lround((p.y+512)*2))*2048+std::lround((p.x+512)*2);
-    auto found=samples.find(key);if(found!=samples.end())return found->second;
-    RouteCost c;c.travel=1/speed;float seen=0;
-    for(const auto& ct:threats){
-        float confidence=TrackConfidence(ct,time),u=std::min(8.f,std::ceil(TrackUncertainty(ct,time)/2)*2);
-        // Even full visibility of this report cannot raise the current maximum.
-        // This bound skips only queries whose exact result cannot affect the cost.
-        if(seen>=confidence*(ct.automaticWeapon?1.f:.7f))continue;
+    if(const RouteCost* found=samples.Find(key))return *found;
+    RouteCost c;c.travel=1/speed;float seen=0;SightPoint body{};bool bodyReady=false;
+    // Exposure is the maximum over reports of (k/3)*confidence*weight, k being the
+    // number of the report's three rays that are visible. Every value is a finite
+    // float >= +0 (confidence is clamped to [0,1]), so the maximum, bits included,
+    // does not depend on the order in which reports are combined, and a report
+    // (or its remaining rays) may be skipped whenever even all remaining rays
+    // visible could not give a value above the current maximum: nonnegative float
+    // products are monotone, and the bound uses the same expression and addition
+    // sequence as the value. Rays already answered by the exact table are counted
+    // first, for all reports, and only then are unanswered rays queried.
+    static const float counted[4]={0.f,1.f/3,1.f/3+1.f/3,1.f/3+1.f/3+1.f/3};
+    auto& pending=exposureScratch;pending.clear();
+    for(size_t t=0;t<threats.size();++t){auto& ct=threats[t];
+        // Same report filters as before; seen is still zero here.
+        if(seen>=ct.confidence*(ct.automaticWeapon?1.f:.7f))continue;
+        const float u=ct.uncertainty;
         if(Distance(ct.position,p)>100+u)continue;
-        float visible=0;const Vec3 offsets[3]={{0,0},{u,0},{-u,0}};
-        for(Vec3 offset:offsets)if(EstimatedVisible(map,ct.position+offset+Vec3{0,0,1.5f},p+Vec3{0,0,stance==Stance::Crouched?.9f:1.5f}))visible+=1.f/3;
-        seen=std::max(seen,visible*confidence*(ct.automaticWeapon?1.f:.7f));
+        if(!ct.eyesReady){
+            const Vec3 offsets[3]={{0,0},{u,0},{-u,0}};
+            for(size_t i=0;i<3;++i)ct.eyes[i]=SnapSightPoint(ct.position+offsets[i]+Vec3{0,0,1.5f});
+            ct.eyesReady=true;
+        }
+        if(!bodyReady){body=SnapSightPoint(p+Vec3{0,0,Posture(stance).plannerBody});bodyReady=true;}
+        ExposureQuery q;q.threat=uint32_t(t);
+        for(size_t i=0;i<3;++i)q.slots[i]=TacticalVisibilityCache::Slot(ct.eyes[i].packed,body.packed);
+        pending.push_back(q);
+    }
+    if(!pending.empty()){
+        if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>();map.tacticalVisibility->revision=map.revision;}
+        const auto* rays=map.tacticalVisibility->rays.data();
+        // Independent table loads for every report start together.
+        for(const auto& q:pending)for(size_t slot:q.slots)TacticalVisibilityCache::Prefetch(rays+slot);
+        size_t unresolved=0;
+        for(auto& q:pending){const auto& ct=threats[q.threat];
+            const float weight=ct.automaticWeapon?1.f:.7f;
+            if(seen>=ct.confidence*weight)continue;
+            int visibleRays=0,unknown=0;
+            for(int i=0;i<3;++i){const auto& entry=rays[q.slots[i]];
+                if(entry.from==ct.eyes[i].packed&&(entry.toAndVisible&0xffffffffffffull)==body.packed)visibleRays+=int(entry.toAndVisible>>63);
+                else q.unknown[unknown++]=uint8_t(i);}
+            if(!unknown){seen=std::max(seen,counted[visibleRays]*ct.confidence*weight);continue;}
+            q.visible=uint8_t(visibleRays);q.unknownCount=uint8_t(unknown);pending[unresolved++]=q;
+        }
+        for(size_t r=0;r<unresolved;++r){const auto& q=pending[r];const auto& ct=threats[q.threat];
+            const float weight=ct.automaticWeapon?1.f:.7f;
+            int visibleRays=q.visible;bool bounded=false;
+            for(int j=0;j<q.unknownCount;++j){
+                if(counted[visibleRays+q.unknownCount-j]*ct.confidence*weight<=seen){bounded=true;break;}
+                const int i=q.unknown[j];
+                if(EstimatedVisible(ct.eyes[i],body,q.slots[i]))++visibleRays;
+            }
+            if(!bounded)seen=std::max(seen,counted[visibleRays]*ct.confidence*weight);
+        }
     }
     c.exposure=seen*8*caution/speed;
     c.fire=FireDanger(actor,p,time)*6*caution/speed;
     for(const auto& lane:lanes)
         c.lanes=std::max(c.lanes,std::max(0.f,1-SegmentDistance(p,lane.origin,lane.target)/2)*2/speed);
-    bool observed=Distance(p,actor.position)<20&&EstimatedVisible(map,actor.position+Vec3{0,0,1.5f},p+Vec3{0,0,1.5f});
+    bool observed=false;
+    if(Distance(p,actor.position)<20){
+        if(!observerEyeReady){observerEye=SnapSightPoint(actor.position+Vec3{0,0,1.5f});observerEyeReady=true;}
+        observed=EstimatedVisible(observerEye,
+            bodyReady&&stance==Stance::Standing?body:SnapSightPoint(p+Vec3{0,0,1.5f}));
+    }
     c.uncertainty=observed?0:.12f*caution/speed;
     for(Vec3 friendPosition:friends)c.congestion+=std::max(0.f,1-Distance(p,friendPosition)/2)*.5f/speed;
-    samples.emplace(key,c);return c;
+    samples.Insert(key,c);return c;
 }
 RouteCost TacticalRoutePlanner::Measure(Vec3 from,const std::vector<Vec3>& path,float* exposure){
     RouteCost total;if(exposure)*exposure=0;
@@ -69,7 +165,21 @@ struct RouteGraph {
     struct Edge {int to;std::vector<Vec3> points;};
     uint64_t revision=0;float floor=0;int width=0,height=0;
     std::vector<Vec3> nodes;std::vector<bool> valid,built;std::vector<std::vector<Edge>> edges;
+    // FindPath answers for this geometry revision, keyed by the exact bits of both
+    // endpoints. FindPath depends only on the geometry and its two arguments (its own
+    // caches are exact memos), so a stored answer is the answer a new call returns.
+    // Bounded: when full, further queries are computed and not stored.
+    struct PathKey {uint32_t bits[6];bool operator==(const PathKey& o) const {return std::memcmp(bits,o.bits,sizeof bits)==0;}};
+    struct PathKeyHash {size_t operator()(const PathKey& k) const {uint64_t h=1469598103934665603ull;for(uint32_t w:k.bits)h=(h^w)*1099511628211ull;return size_t(h^(h>>29));}};
+    std::unordered_map<PathKey,std::vector<Vec3>,PathKeyHash> paths;
 };
+// Same result as FindPath(map,from,to). The reference stays valid until the graph is replaced.
+static const std::vector<Vec3>& GraphPath(const Map& map,RouteGraph& g,Vec3 from,Vec3 to,std::vector<Vec3>& scratch){
+    RouteGraph::PathKey key;const float f[6]={from.x,from.y,from.z,to.x,to.y,to.z};std::memcpy(key.bits,f,sizeof key.bits);
+    auto found=g.paths.find(key);if(found!=g.paths.end())return found->second;
+    if(g.paths.size()>=32768){scratch=FindPath(map,from,to);return scratch;}
+    return g.paths.emplace(key,FindPath(map,from,to)).first->second;
+}
 std::vector<Vec3> TacticalRoutePlanner::RegionalPath(Vec3 from,Vec3 to,int budget,int& expanded,RouteStatus& status){
     if(!map.routeGraph||map.routeGraph->revision!=map.revision||map.routeGraph->floor!=from.z){
         auto graph=std::make_shared<RouteGraph>();graph->revision=map.revision;graph->floor=from.z;
@@ -85,14 +195,15 @@ std::vector<Vec3> TacticalRoutePlanner::RegionalPath(Vec3 from,Vec3 to,int budge
     auto connect=[&](Vec3 p){std::vector<std::pair<float,int>> choices;for(int i=0;i<n;++i)if(g.valid[i]&&Distance(p,g.nodes[i])<18)choices.push_back({Distance(p,g.nodes[i]),i});std::sort(choices.begin(),choices.end());return choices;};
     auto starts=connect(from),ends=connect(to);std::vector<float> cost(n,1e9f);std::vector<int> parent(n,-1);std::vector<std::vector<Vec3>> links(n);
     using Entry=std::pair<float,int>;std::priority_queue<Entry,std::vector<Entry>,std::greater<Entry>> open;
-    int used=0;for(auto option:starts){if(used>=4)break;auto path=FindPath(map,from,g.nodes[option.second]);if(path.empty())continue;
+    std::vector<Vec3> scratch;
+    int used=0;for(auto option:starts){if(used>=4)break;const auto& path=GraphPath(map,g,from,g.nodes[option.second],scratch);if(path.empty())continue;
         cost[option.second]=Measure(from,path).Total();links[option.second]=path;open.push({cost[option.second]+Distance(g.nodes[option.second],to)/speed,option.second});++used;}
     float best=1e9f;int goal=-1;std::vector<Vec3> final;expanded=0;status=RouteStatus::Unreachable;
     while(!open.empty()){
         auto entry=open.top();open.pop();int a=entry.second;Vec3 p=g.nodes[a];if(entry.first>cost[a]+Distance(p,to)/speed+.001f)continue;
         if(entry.first>=best)break;
         if(++expanded>budget){status=RouteStatus::BudgetExhausted;break;}
-        if(Distance(p,to)<18){auto tail=FindPath(map,p,to);if(!tail.empty()){float value=cost[a]+Measure(p,tail).Total();if(value<best){best=value;goal=a;final=tail;}}}
+        if(Distance(p,to)<18){const auto& tail=GraphPath(map,g,p,to,scratch);if(!tail.empty()){float value=cost[a]+Measure(p,tail).Total();if(value<best){best=value;goal=a;final=tail;}}}
         if(!g.built[a]){g.built[a]=true;for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){if(!dx&&!dy)continue;
             int x=a%g.width+dx,y=a/g.width+dy;if(x<0||y<0||x>=g.width||y>=g.height)continue;int b=y*g.width+x;if(!g.valid[b])continue;
             auto path=FindPath(map,p,g.nodes[b]);float length=0;Vec3 previous=p;for(auto end:path){length+=Distance(previous,end);previous=end;}
@@ -125,7 +236,9 @@ TacticalRoute TacticalRoutePlanner::Evaluate(Vec3 from,Vec3 to,int budget){
     if(map.queryProfile)map.queryProfile->tacticalExpanded+=uint64_t(r.expanded);
     // A completed physical query supplies an incumbent with fully measured tactical cost.
     // Exhausting the optimization budget never makes a reachable approach look impossible.
-    auto incumbent=FindPath(map,from,to);
+    std::vector<Vec3> incumbent;
+    if(map.routeGraph&&map.routeGraph->revision==map.revision){std::vector<Vec3> scratch;incumbent=GraphPath(map,*map.routeGraph,from,to,scratch);}
+    else incumbent=FindPath(map,from,to);
     if(!incumbent.empty()&&r.status==RouteStatus::Unreachable)r.status=RouteStatus::IncompleteTopology;
     if(!incumbent.empty()&&(r.points.empty()||Measure(from,incumbent).Total()<Measure(from,r.points).Total()))r.points=std::move(incumbent);
     if(r.points.empty())return r;

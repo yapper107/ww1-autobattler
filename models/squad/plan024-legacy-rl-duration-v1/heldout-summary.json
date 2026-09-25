@@ -1,0 +1,1781 @@
+{
+  "schema": 1,
+  "opponent": "active_legacy",
+  "phase": "heldout",
+  "maps": [
+    1101,
+    1102,
+    1103,
+    1104,
+    1105,
+    1106,
+    1107,
+    1108,
+    1109,
+    1110,
+    1111,
+    1112,
+    1113,
+    1114,
+    1115,
+    1116,
+    1117,
+    1118,
+    1119,
+    1120,
+    1121,
+    1122,
+    1123,
+    1124,
+    1125
+  ],
+  "complete": true,
+  "summary": {
+    "continuation": {
+      "battles": 75,
+      "wins": 35,
+      "draws": 2,
+      "mean_outcome": -0.04,
+      "means": {
+        "casualty_azure": 0.5958333333333333,
+        "casualty_ember": 0.5654166666666667,
+        "orders_azure_per_minute": 304.87555555555554,
+        "friendly_hits_per_100_soldier_minutes": 7.853472822580859,
+        "straggler_share": 0.04422106522145358,
+        "behind_corporal_share": 0.12889541720928105,
+        "replaced_before_arrival_share": 0.741622017201868
+      },
+      "ordinary_guards": {
+        "zero_shot": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "firing_squads": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "under_2m": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -0.001803473501552229,
+              "median": -0.001192257223168125,
+              "ci95": [
+                -0.006478858424270655,
+                0.002894733013907869
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_azure_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 0.7599999999999977,
+              "median": 5.833333333333314,
+              "ci95": [
+                -6.0496666666666705,
+                8.157833333333329
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_ember_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -0.622222222222216,
+              "median": 2.1666666666666856,
+              "ci95": [
+                -11.376611111111101,
+                10.19788888888889
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "friendly_fire": {
+          "passed": false,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 0.6534808134999388,
+              "median": 0.4764369403593154,
+              "ci95": [
+                0.08298368759007374,
+                1.1345955558686287
+              ],
+              "unpaired": 0,
+              "passed": false
+            }
+          }
+        }
+      }
+    },
+    "imitation": {
+      "battles": 75,
+      "wins": 35,
+      "draws": 6,
+      "mean_outcome": 0.013333333333333334,
+      "means": {
+        "casualty_azure": 0.5854166666666667,
+        "casualty_ember": 0.5566666666666666,
+        "orders_azure_per_minute": 310.3777777777778,
+        "friendly_hits_per_100_soldier_minutes": 7.325337923330919,
+        "straggler_share": 0.04532732332703181,
+        "behind_corporal_share": 0.1301288802340425,
+        "replaced_before_arrival_share": 0.7512917447736636
+      },
+      "ordinary_guards": {
+        "zero_shot": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "firing_squads": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "under_2m": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -0.001115360769036504,
+              "median": -0.0016555283422387407,
+              "ci95": [
+                -0.004499215146785206,
+                0.0022962626804700157
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_azure_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 6.262222222222222,
+              "median": 2.3333333333333144,
+              "ci95": [
+                -1.2780000000000016,
+                14.07783333333331
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_ember_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 3.548888888888892,
+              "median": 7.166666666666686,
+              "ci95": [
+                -5.9849444444444435,
+                11.777833333333339
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "friendly_fire": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 0.12534591424999775,
+              "median": 0.0904437279331507,
+              "ci95": [
+                -0.4587500017389379,
+                0.7158964025950981
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        }
+      }
+    },
+    "legacy": {
+      "battles": 75,
+      "wins": 23,
+      "draws": 6,
+      "mean_outcome": -0.30666666666666664,
+      "means": {
+        "casualty_azure": 0.5954166666666667,
+        "casualty_ember": 0.5483333333333333,
+        "orders_azure_per_minute": 304.11555555555555,
+        "friendly_hits_per_100_soldier_minutes": 7.199992009080921,
+        "straggler_share": 0.047426878631282934,
+        "behind_corporal_share": 0.13277549521533705,
+        "replaced_before_arrival_share": 0.7525250004179085
+      }
+    },
+    "rl24-i040": {
+      "battles": 75,
+      "wins": 35,
+      "draws": 4,
+      "mean_outcome": -0.013333333333333334,
+      "means": {
+        "casualty_azure": 0.58625,
+        "casualty_ember": 0.5691666666666667,
+        "orders_azure_per_minute": 307.58666666666664,
+        "friendly_hits_per_100_soldier_minutes": 7.998699747795912,
+        "straggler_share": 0.041716892618954074,
+        "behind_corporal_share": 0.12585067120796922,
+        "replaced_before_arrival_share": 0.7445837918762159
+      },
+      "ordinary_guards": {
+        "zero_shot": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "firing_squads": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "under_2m": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -0.002610864223929403,
+              "median": -0.0008264140096148065,
+              "ci95": [
+                -0.006651052800639711,
+                0.0015106376240028592
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_azure_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 3.471111111111108,
+              "median": 2.8333333333333712,
+              "ci95": [
+                -3.7692777777777815,
+                11.180111111111112
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_ember_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 0.05111111111111654,
+              "median": 3.5,
+              "ci95": [
+                -9.729722222222215,
+                9.58488888888889
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "friendly_fire": {
+          "passed": false,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 0.7987077387149906,
+              "median": 1.0552348734034611,
+              "ci95": [
+                0.1950845971148282,
+                1.3188592071224254
+              ],
+              "unpaired": 0,
+              "passed": false
+            }
+          }
+        }
+      }
+    },
+    "rl25-i040": {
+      "battles": 75,
+      "wins": 31,
+      "draws": 4,
+      "mean_outcome": -0.12,
+      "means": {
+        "casualty_azure": 0.5966666666666667,
+        "casualty_ember": 0.5741666666666667,
+        "orders_azure_per_minute": 302.9288888888889,
+        "friendly_hits_per_100_soldier_minutes": 7.82327970445087,
+        "straggler_share": 0.04595397874757584,
+        "behind_corporal_share": 0.12371675981344628,
+        "replaced_before_arrival_share": 0.7444076235953718
+      },
+      "ordinary_guards": {
+        "zero_shot": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "firing_squads": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "under_2m": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -0.003741227149281428,
+              "median": -0.0014901019578622693,
+              "ci95": [
+                -0.007340177881934478,
+                0.00011015475339836628
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_azure_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -1.1866666666666663,
+              "median": 0.0,
+              "ci95": [
+                -8.176944444444445,
+                6.16722222222222
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_ember_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -1.7955555555555505,
+              "median": 3.5,
+              "ci95": [
+                -11.156444444444443,
+                8.51305555555555
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "friendly_fire": {
+          "passed": false,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 0.6232876953699497,
+              "median": 0.7664266169716374,
+              "ci95": [
+                0.15625181473054522,
+                1.0222329240606174
+              ],
+              "unpaired": 0,
+              "passed": false
+            }
+          }
+        }
+      }
+    },
+    "rl26-i040": {
+      "battles": 75,
+      "wins": 32,
+      "draws": 4,
+      "mean_outcome": -0.09333333333333334,
+      "means": {
+        "casualty_azure": 0.5941666666666666,
+        "casualty_ember": 0.5779166666666666,
+        "orders_azure_per_minute": 305.5488888888889,
+        "friendly_hits_per_100_soldier_minutes": 8.023361595274574,
+        "straggler_share": 0.04618897129527176,
+        "behind_corporal_share": 0.13439090894795677,
+        "replaced_before_arrival_share": 0.742059582411364
+      },
+      "ordinary_guards": {
+        "zero_shot": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "firing_squads": {
+          "passed": true,
+          "detail": {
+            "failures": []
+          }
+        },
+        "under_2m": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -0.0020626031058104633,
+              "median": -0.0015082183611394573,
+              "ci95": [
+                -0.006632418730207906,
+                0.0024745015327893092
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_azure_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 1.4333333333333313,
+              "median": 7.166666666666686,
+              "ci95": [
+                -5.493555555555564,
+                8.911555555555548
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "orders_ember_per_minute": {
+          "passed": true,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": -1.2266666666666615,
+              "median": -0.16666666666668561,
+              "ci95": [
+                -10.513666666666664,
+                8.416444444444446
+              ],
+              "unpaired": 0,
+              "passed": true
+            }
+          }
+        },
+        "friendly_fire": {
+          "passed": false,
+          "detail": {
+            "town-dev": {
+              "count": 75,
+              "clusters": 25,
+              "mean": 0.8233695861936525,
+              "median": 1.1117188568150622,
+              "ci95": [
+                0.26231502266349527,
+                1.310545224381905
+              ],
+              "unpaired": 0,
+              "passed": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "paired": {
+    "continuation": {
+      "legacy": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.26666666666666666,
+          "median": 0.0,
+          "ci95": [
+            0.02666666666666667,
+            0.52
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0004166666666666667,
+          "median": 0.0,
+          "ci95": [
+            -0.02792708333333333,
+            0.029166666666666667
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.017083333333333332,
+          "median": 0.03125,
+          "ci95": [
+            -0.014166666666666666,
+            0.04875
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.7599999999999977,
+          "median": 5.833333333333314,
+          "ci95": [
+            -6.0496666666666705,
+            8.157833333333329
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.6534808134999388,
+          "median": 0.4764369403593154,
+          "ci95": [
+            0.08298368759007374,
+            1.1345955558686287
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0032058134098293506,
+          "median": 0.0014337737716297802,
+          "ci95": [
+            -0.009872958377848714,
+            0.002693385473497715
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.003880078006055995,
+          "median": -0.002947339176948019,
+          "ci95": [
+            -0.023581593108122703,
+            0.015505123226111575
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.010902983216040496,
+          "median": -0.010384655261793663,
+          "ci95": [
+            -0.018311293353934173,
+            -0.0034108163089999277
+          ]
+        }
+      },
+      "imitation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.05333333333333334,
+          "median": 0.0,
+          "ci95": [
+            -0.3466666666666667,
+            0.25333333333333335
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.010416666666666666,
+          "median": 0.0,
+          "ci95": [
+            -0.02375,
+            0.044583333333333336
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.00875,
+          "median": 0.0,
+          "ci95": [
+            -0.02875,
+            0.0425
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -5.502222222222224,
+          "median": 0.0,
+          "ci95": [
+            -12.73116666666667,
+            1.6953333333333171
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.5281348992499411,
+          "median": 0.5170177361362116,
+          "ci95": [
+            -0.035163718727023605,
+            1.0293720318369655
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0011062581055782232,
+          "median": 0.002318945035620284,
+          "ci95": [
+            -0.008410694355940702,
+            0.005561133509318963
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0012334630247614502,
+          "median": -0.007880987948489487,
+          "ci95": [
+            -0.020182202030070855,
+            0.017116456646567444
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.009669727571795603,
+          "median": -0.009043365178186047,
+          "ci95": [
+            -0.01766594949964917,
+            -0.0025125852189541464
+          ]
+        }
+      }
+    },
+    "imitation": {
+      "legacy": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.32,
+          "median": 0.0,
+          "ci95": [
+            0.06666666666666667,
+            0.6
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.01,
+          "median": 0.0,
+          "ci95": [
+            -0.04625,
+            0.025416666666666667
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.008333333333333333,
+          "median": 0.0,
+          "ci95": [
+            -0.017927083333333333,
+            0.035427083333333276
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 6.262222222222222,
+          "median": 2.3333333333333144,
+          "ci95": [
+            -1.2780000000000016,
+            14.07783333333331
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.12534591424999775,
+          "median": 0.0904437279331507,
+          "ci95": [
+            -0.4587500017389379,
+            0.7158964025950981
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.002099555304251127,
+          "median": -0.00279714034493804,
+          "ci95": [
+            -0.007954585390503123,
+            0.0042365505982919355
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0026466149812945433,
+          "median": 0.0017188279564517156,
+          "ci95": [
+            -0.015863262706693793,
+            0.010605960689783237
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0012332556442448913,
+          "median": -0.00013175230566531138,
+          "ci95": [
+            -0.009752018159652652,
+            0.007276377505277564
+          ]
+        }
+      },
+      "continuation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.05333333333333334,
+          "median": 0.0,
+          "ci95": [
+            -0.25333333333333335,
+            0.3466666666666667
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.010416666666666666,
+          "median": 0.0,
+          "ci95": [
+            -0.044583333333333336,
+            0.02375
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.00875,
+          "median": 0.0,
+          "ci95": [
+            -0.0425,
+            0.02875
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 5.502222222222224,
+          "median": 0.0,
+          "ci95": [
+            -1.695333333333328,
+            12.73116666666667
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.5281348992499411,
+          "median": -0.5170177361362116,
+          "ci95": [
+            -1.0293720318369657,
+            0.03516371872702296
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0011062581055782232,
+          "median": -0.002318945035620284,
+          "ci95": [
+            -0.0055611335093189666,
+            0.0084106943559407
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0012334630247614502,
+          "median": 0.007880987948489487,
+          "ci95": [
+            -0.017116456646567454,
+            0.020182202030070824
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.009669727571795603,
+          "median": 0.009043365178186047,
+          "ci95": [
+            0.0025125852189541355,
+            0.01766594949964916
+          ]
+        }
+      }
+    },
+    "legacy": {
+      "imitation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.32,
+          "median": 0.0,
+          "ci95": [
+            -0.6,
+            -0.06666666666666667
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.01,
+          "median": 0.0,
+          "ci95": [
+            -0.025416666666666667,
+            0.04625
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.008333333333333333,
+          "median": 0.0,
+          "ci95": [
+            -0.03542708333333333,
+            0.017927083333333278
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -6.262222222222222,
+          "median": -2.3333333333333144,
+          "ci95": [
+            -14.077833333333334,
+            1.2780000000000005
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.12534591424999775,
+          "median": -0.0904437279331507,
+          "ci95": [
+            -0.7158964025950983,
+            0.4587500017389376
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.002099555304251127,
+          "median": 0.00279714034493804,
+          "ci95": [
+            -0.004236550598291946,
+            0.007954585390503123
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0026466149812945433,
+          "median": -0.0017188279564517156,
+          "ci95": [
+            -0.010605960689783249,
+            0.01586326270669378
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0012332556442448913,
+          "median": 0.00013175230566531138,
+          "ci95": [
+            -0.007276377505277569,
+            0.009752018159652643
+          ]
+        }
+      },
+      "continuation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.26666666666666666,
+          "median": 0.0,
+          "ci95": [
+            -0.52,
+            -0.02666666666666667
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0004166666666666667,
+          "median": 0.0,
+          "ci95": [
+            -0.029166666666666667,
+            0.027927083333333276
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.017083333333333332,
+          "median": -0.03125,
+          "ci95": [
+            -0.04875,
+            0.014166666666666666
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.7599999999999977,
+          "median": -5.833333333333314,
+          "ci95": [
+            -8.157833333333329,
+            6.049666666666666
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.6534808134999388,
+          "median": -0.4764369403593154,
+          "ci95": [
+            -1.1345955558686287,
+            -0.08298368759007402
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0032058134098293506,
+          "median": -0.0014337737716297802,
+          "ci95": [
+            -0.002693385473497717,
+            0.009872958377848705
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.003880078006055995,
+          "median": 0.002947339176948019,
+          "ci95": [
+            -0.015505123226111599,
+            0.023581593108122665
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.010902983216040496,
+          "median": 0.010384655261793663,
+          "ci95": [
+            0.003410816308999926,
+            0.01831129335393417
+          ]
+        }
+      }
+    },
+    "rl24-i040": {
+      "legacy": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.29333333333333333,
+          "median": 0.0,
+          "ci95": [
+            0.07966666666666669,
+            0.5066666666666667
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.009166666666666667,
+          "median": 0.0,
+          "ci95": [
+            -0.03666666666666667,
+            0.017083333333333332
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.020833333333333332,
+          "median": 0.0,
+          "ci95": [
+            -0.011666666666666667,
+            0.05501041666666661
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 3.471111111111108,
+          "median": 2.8333333333333712,
+          "ci95": [
+            -3.7692777777777815,
+            11.180111111111112
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.7987077387149906,
+          "median": 1.0552348734034611,
+          "ci95": [
+            0.1950845971148282,
+            1.3188592071224254
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.005709986012328854,
+          "median": -0.001121023657632978,
+          "ci95": [
+            -0.012988186250370848,
+            0.0010789300619274745
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0069248240073678255,
+          "median": -0.002947339176948019,
+          "ci95": [
+            -0.027363353071078806,
+            0.012925063909738752
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.007941208541692507,
+          "median": -0.005872521118489349,
+          "ci95": [
+            -0.01655534104288347,
+            -7.020876955131974e-05
+          ]
+        }
+      },
+      "imitation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.02666666666666667,
+          "median": 0.0,
+          "ci95": [
+            -0.32,
+            0.2536666666666649
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0008333333333333334,
+          "median": 0.03125,
+          "ci95": [
+            -0.03916666666666667,
+            0.03959374999999994
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0125,
+          "median": 0.0,
+          "ci95": [
+            -0.024583333333333332,
+            0.049166666666666664
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -2.7911111111111144,
+          "median": -4.333333333333371,
+          "ci95": [
+            -12.765777777777782,
+            7.115944444444442
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.6733618244649928,
+          "median": 0.9911952212076844,
+          "ci95": [
+            0.03529212548223423,
+            1.2452047358976939
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.003610430708077727,
+          "median": -0.0005425973905039197,
+          "ci95": [
+            -0.010241533458882639,
+            0.0024220855208041585
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.004278209026073281,
+          "median": -0.021738757654661753,
+          "ci95": [
+            -0.023261741873436007,
+            0.015409998166902176
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.006707952897447616,
+          "median": -0.006432917994784071,
+          "ci95": [
+            -0.015287147703070773,
+            0.0017195089460314626
+          ]
+        }
+      },
+      "continuation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.02666666666666667,
+          "median": 0.0,
+          "ci95": [
+            -0.12,
+            0.2
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.009583333333333333,
+          "median": 0.0,
+          "ci95": [
+            -0.03625,
+            0.01625
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.00375,
+          "median": 0.0,
+          "ci95": [
+            -0.01625,
+            0.022083333333333333
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 2.71111111111111,
+          "median": 0.0,
+          "ci95": [
+            -2.851500000000003,
+            8.35794444444444
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.1452269252150517,
+          "median": 0.0,
+          "ci95": [
+            -0.11855094339951265,
+            0.4300423283643098
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0025041726024995037,
+          "median": 0.0,
+          "ci95": [
+            -0.0053571802909939984,
+            0.00045140486935383277
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.003044746001311831,
+          "median": 0.0,
+          "ci95": [
+            -0.01202068784207977,
+            0.006091398554701002
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0029617746743479884,
+          "median": 0.0,
+          "ci95": [
+            -0.001855538833076958,
+            0.0077698314187969715
+          ]
+        }
+      }
+    },
+    "rl25-i040": {
+      "legacy": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.18666666666666668,
+          "median": 0.0,
+          "ci95": [
+            -0.08,
+            0.4666666666666667
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.00125,
+          "median": 0.0,
+          "ci95": [
+            -0.029177083333333333,
+            0.030833333333333334
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.025833333333333333,
+          "median": 0.0625,
+          "ci95": [
+            -0.012083333333333333,
+            0.06458333333333334
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -1.1866666666666663,
+          "median": 0.0,
+          "ci95": [
+            -8.176944444444445,
+            6.16722222222222
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.6232876953699497,
+          "median": 0.7664266169716374,
+          "ci95": [
+            0.15625181473054522,
+            1.0222329240606174
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.00147289988370709,
+          "median": 0.0014751096653034777,
+          "ci95": [
+            -0.00951689361192006,
+            0.006222988450166679
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.00905873540189078,
+          "median": -0.0022826739348821568,
+          "ci95": [
+            -0.026739806517786013,
+            0.008643661282358259
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.008117376822536717,
+          "median": -0.007715793163244666,
+          "ci95": [
+            -0.01560650985404111,
+            -0.000698525574589168
+          ]
+        }
+      },
+      "imitation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.13333333333333333,
+          "median": 0.0,
+          "ci95": [
+            -0.44,
+            0.18666666666666668
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.01125,
+          "median": 0.03125,
+          "ci95": [
+            -0.027510416666666666,
+            0.04625
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0175,
+          "median": 0.0,
+          "ci95": [
+            -0.025,
+            0.06208333333333333
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -7.448888888888889,
+          "median": -5.333333333333314,
+          "ci95": [
+            -16.004444444444434,
+            0.5735555555555503
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.4979417811199519,
+          "median": 0.6164969007366503,
+          "ci95": [
+            -0.006836970264969915,
+            0.9740326939552957
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.000626655420544037,
+          "median": -0.0012217205719835533,
+          "ci95": [
+            -0.006700173727476739,
+            0.00864652397779118
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.006412120420596234,
+          "median": -0.010570927270968478,
+          "ci95": [
+            -0.021930855120867676,
+            0.010239534896487112
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.006884121178291826,
+          "median": -0.005776831863788412,
+          "ci95": [
+            -0.014852670112819471,
+            0.0003649013261737221
+          ]
+        }
+      },
+      "continuation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.08,
+          "median": 0.0,
+          "ci95": [
+            -0.25333333333333335,
+            0.09333333333333334
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0008333333333333334,
+          "median": 0.0,
+          "ci95": [
+            -0.015416666666666667,
+            0.018333333333333333
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.00875,
+          "median": 0.0,
+          "ci95": [
+            -0.0125,
+            0.02876041666666661
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -1.946666666666664,
+          "median": 0.0,
+          "ci95": [
+            -6.083444444444445,
+            2.0777777777777815
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.03019311812998917,
+          "median": 0.0,
+          "ci95": [
+            -0.29391393590355086,
+            0.22719879915545219
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0017329135261222605,
+          "median": 0.0,
+          "ci95": [
+            -0.002613661758958238,
+            0.006214221001056087
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.005178657395834785,
+          "median": 0.0,
+          "ci95": [
+            -0.012257193113298273,
+            0.0018930652937847229
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.002785606393503778,
+          "median": 0.0,
+          "ci95": [
+            -0.0029784926459085754,
+            0.00786834772231433
+          ]
+        }
+      }
+    },
+    "rl26-i040": {
+      "legacy": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.21333333333333335,
+          "median": 0.0,
+          "ci95": [
+            -0.04,
+            0.4666666666666667
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.00125,
+          "median": 0.0,
+          "ci95": [
+            -0.026677083333333334,
+            0.024583333333333332
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.029583333333333333,
+          "median": 0.0625,
+          "ci95": [
+            0.00375,
+            0.05626041666666661
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 1.4333333333333313,
+          "median": 7.166666666666686,
+          "ci95": [
+            -5.493555555555564,
+            8.911555555555548
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.8233695861936525,
+          "median": 1.1117188568150622,
+          "ci95": [
+            0.26231502266349527,
+            1.310545224381905
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0012379073360111734,
+          "median": -5.387132827365526e-05,
+          "ci95": [
+            -0.009383395101224636,
+            0.006476273956195762
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0016154137326197255,
+          "median": -0.0026138493777351918,
+          "ci95": [
+            -0.02173307759950338,
+            0.023746744445069846
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.010465418006544451,
+          "median": -0.00917313841936962,
+          "ci95": [
+            -0.01782964392016553,
+            -0.003417177642478661
+          ]
+        }
+      },
+      "imitation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.10666666666666667,
+          "median": 0.0,
+          "ci95": [
+            -0.4,
+            0.16
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.00875,
+          "median": 0.0,
+          "ci95": [
+            -0.025010416666666667,
+            0.042927083333333275
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.02125,
+          "median": 0.0,
+          "ci95": [
+            -0.0125,
+            0.051677083333333276
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -4.8288888888888915,
+          "median": -1.5,
+          "ci95": [
+            -13.500666666666666,
+            3.037777777777777
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.6980236719436548,
+          "median": 0.6191840051328441,
+          "ci95": [
+            0.04837333733927083,
+            1.2812338116749893
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0008616479682399537,
+          "median": 0.00028486879338282187,
+          "ci95": [
+            -0.00734230119826079,
+            0.009317932522448063
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.004262028713914269,
+          "median": -0.00849313247049363,
+          "ci95": [
+            -0.016545088899908005,
+            0.025082142328906043
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.009232162362299559,
+          "median": -0.00847395044862087,
+          "ci95": [
+            -0.01650719028603171,
+            -0.0021308049547462695
+          ]
+        }
+      },
+      "continuation": {
+        "outcome": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.05333333333333334,
+          "median": 0.0,
+          "ci95": [
+            -0.26666666666666666,
+            0.14666666666666667
+          ]
+        },
+        "casualty_azure": {
+          "count": 75,
+          "clusters": 25,
+          "mean": -0.0016666666666666668,
+          "median": 0.0,
+          "ci95": [
+            -0.022916666666666665,
+            0.020416666666666666
+          ]
+        },
+        "casualty_ember": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0125,
+          "median": 0.0,
+          "ci95": [
+            -0.00625,
+            0.030416666666666668
+          ]
+        },
+        "orders_azure_per_minute": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.6733333333333337,
+          "median": 0.0,
+          "ci95": [
+            -4.584666666666667,
+            5.7023888888888905
+          ]
+        },
+        "friendly_hits_per_100_soldier_minutes": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.16988877269371366,
+          "median": 0.0,
+          "ci95": [
+            -0.20885113072259076,
+            0.5041338957325964
+          ]
+        },
+        "straggler_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.001967906073818177,
+          "median": 0.0,
+          "ci95": [
+            -0.00215373393767023,
+            0.006507894077980058
+          ]
+        },
+        "behind_corporal_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0054954917386757195,
+          "median": 0.0,
+          "ci95": [
+            -0.002471965336021984,
+            0.01405161394884859
+          ]
+        },
+        "replaced_before_arrival_share": {
+          "count": 75,
+          "clusters": 25,
+          "mean": 0.0004375652094960447,
+          "median": 0.0,
+          "ci95": [
+            -0.004706176479950834,
+            0.00540554272805985
+          ]
+        }
+      }
+    }
+  },
+  "wall_seconds": 2376.104578170998,
+  "jobs": 7
+}

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 from tools.loop import config
-from tools.loop.config import BASELINE_ROOT, BASELINES, SECONDS, spec_key
+from tools.loop.config import BASELINE_ROOT, BASELINES, SECONDS, flags_key, spec_key
 from tools.loop.runner import run_specs
 
 
@@ -25,7 +25,8 @@ def set_epoch(fingerprint: str):
 
 
 def _cache_path(name, spec, seconds):
-    return BASELINE_ROOT/_EPOCH/name/spec['set']/f"{spec_key(spec)}-{spec.get('seconds', seconds)}.json"
+    # The family flags are part of the cache identity: a row fought without them never stands in for one with them.
+    return BASELINE_ROOT/_EPOCH/name/spec['set']/f"{spec_key(spec)}{flags_key(spec)}-{spec.get('seconds', seconds)}.json"
 
 
 def cached(name, spec, seconds=SECONDS):

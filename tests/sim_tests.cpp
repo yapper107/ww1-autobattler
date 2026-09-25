@@ -229,12 +229,15 @@ static void BuildingTests() {
     gun.allies[1].position.z=UpperFloor;gun.allies[1].aimHeight=UpperFloor+1.85f;
     assert(ShouldHoldFire(gun,FriendlyFireRisk(gun,map,{25,2.6f,4.7f},0)));
     assert(ShotSpread(gun)>0.032f&&VerticalSpread(gun)>0.008f);
-    // Building broad-phase culling must give exactly the same first physical hit.
+    // Building broad-phase culling must give exactly the same first physical hit. A round's contact is
+    // with solid geometry only (plan 029: concealment is skipped); sight meets every obstacle.
     for(int i=0;i<240;++i){Vec3 a{-10,float(i%17)-8,float(i%9)*0.8f},b{10,float((i*7)%17)-8,float((i*5)%9)*0.8f};
-        float exact=2;for(const auto& o:map.obstacles){float t=SegmentObstacle(a,b,o);if(t>=0)exact=std::min(exact,t);}
+        float exact=2,seen=2;for(const auto& o:map.obstacles){float t=SegmentObstacle(a,b,o);if(t>=0){seen=std::min(seen,t);if(!o.concealment)exact=std::min(exact,t);}}
         if(exact>1)exact=-1;
+        if(seen>1)seen=-1;
         assert(std::abs(exact-MapContact(map,a,b))<0.00001f);
-        assert(ClearLine3D(map,a,b)==(exact<0));
+        assert(ClearLine3D(map,a,b)==(seen<0));
+        assert(ClearLine3DSolid(map,a,b)==(exact<0));
         Map unculled=map;for(auto& building:unculled.buildings)building.obstacleCount=0;
         assert(ClearLine(map,a,b,0.48f)==ClearLine(unculled,a,b,0.48f));
     }
@@ -768,10 +771,28 @@ static void CoordinationTests() {
 #include "leader_tests.h"
 #include "stats_tests.h"
 #include "static_defence_tests.h"
+#include "imported_v2_tests.h"
 #include "moving_fire_tests.h"
 #include "paths_tests.h"
 #include "stamina_tests.h"
 #include "group_tests.h"
+#include "neural_tests.h"
+#include "covering_tests.h"
+#include "cover_request_tests.h"
+#include "cover_supply_tests.h"
+#include "prone_tests.h"
+#include "concealment_tests.h"
+#include "vault_tests.h"
+#include "credit_tests.h"
+#include "gunner_tests.h"
+#include "suppression_tests.h"
+#include "cover_useful_tests.h"
+#include "knowledge_tests.h"
+#include "no_covering_tests.h"
+#include "jordan_suppression_tests.h"
+#include "squad_guns_tests.h"
+#include "spawn_lanes_tests.h"
+#include "fire_movement_tests.h"
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -781,13 +802,28 @@ static void ReturnFreedMemory(){
     malloc_trim(0);
 #endif
 }
+// Plan 028 Stage 4: a Frame is 1.6 MB. Built here, off main's stack (never inlined, so its temporary
+// is gone when it returns), so every test group called from main keeps that much more stack: with it in
+// main's frame the suite ran within 16 KB of the default 8 MB limit.
+static __attribute__((noinline)) std::unique_ptr<army::Frame> HeapInitialFrame(const army::Config& c){return std::make_unique<army::Frame>(army::InitialFrame(c));}
 int main(int argc,char** argv) {
+    if(argc>1&&std::string(argv[1])=="--neural"){NeuralTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--leaders"){LeaderTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--stats"){StatsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--static-defence"){StaticDefenceTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--imported-v2"){ImportedV2Tests();return 0;}
     if(argc>1&&std::string(argv[1])=="--moving-fire"){MovingFireTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--paths"){PathsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--stamina"){StaminaTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--prone"){ProneTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--concealment"){ConcealmentTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--vault"){VaultTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--credit"){CreditTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--squad-guns"){SquadGunsTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--spawn-lanes"){SpawnLanesTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--fire-movement"){FireMovementTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--gunner"){GunnerTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--suppression"){SuppressionTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--group"){GroupTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--platoon"){PlatoonTests(argc>2?argv[2]:"all");return 0;}
     if(argc>1&&std::string(argv[1])=="--drills"){DrillsTests(argc>2?argv[2]:"all");return 0;}
@@ -799,7 +835,15 @@ int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--foundations"){FoundationsTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--recovery"){RecoveryTests();RecoveryGateTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--routes"){RouteTests();return 0;}
-    RouteTests();
+    if(argc>1&&std::string(argv[1])=="--covering"){CoveringTraceTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--cover-graduated"){GraduatedCoverTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--cover-requests"){CoverRequestTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--cover-supply"){CoverSupplyTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--cover-useful"){CoverUsefulTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--knowledge"){KnowledgeTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--no-covering"){NoCoveringTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--jordan-suppression"){JordanSuppressionTests();return 0;}
+    NeuralTests();RouteTests();
     std::cout.setf(std::ios::unitbuf);
     auto begin=std::chrono::steady_clock::now();
     if(argc>1&&std::string(argv[1])=="--encounters"){MGEncounterTests();return 0;}
@@ -810,7 +854,7 @@ int main(int argc,char** argv) {
         switch(field){case 0:++changed.seed;break;case 1:changed.doctrine=Doctrine::Cautious;break;case 2:changed.approach=Approach::North;break;case 3:changed.supportWeapon=false;break;case 4:changed.maxSeconds=60;break;case 5:changed.terrain=Terrain::Trenches;break;}
         assert(!SameConfig(original,changed));
     }
-    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();StaticDefenceTests();MovingFireTests();PathsTests();StaminaTests();GroupTests();
+    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();CoveringTraceTests();GraduatedCoverTests();CoverRequestTests();CoverSupplyTests();StaticDefenceTests();ImportedV2Tests();MovingFireTests();PathsTests();StaminaTests();GroupTests();ProneTests();ConcealmentTests();VaultTests();CreditTests();SuppressionTests();GunnerTests();CoverUsefulTests();KnowledgeTests();JordanSuppressionTests();NoCoveringTests();SquadGunsTests();SpawnLanesTests();FireMovementTests();
     if(argc>1){std::cout<<"Focused simulation checks passed\n";return 0;}
     MGEncounterTests();
     Map m; m.obstacles={{{0,0},{2,5},true}};
@@ -848,7 +892,7 @@ int main(int argc,char** argv) {
     }
     assert(above&&below&&longestBurst>=8);
     std::cout<<"Recorded vertical dispersion: above and below aim; longest stationary MG burst: "<<longestBurst<<" rounds\n";
-    auto initial=InitialFrame(c);
+    const auto initialFrame=HeapInitialFrame(c);const auto& initial=*initialFrame;
     for(int i=0;i<TeamSize;++i)assert(Distance(initial.soldiers[i].position,initial.soldiers[i+TeamSize].position*-1.f)<0.001f);
     const auto onePrint=Fingerprint(one);assert(onePrint==repeatPrint);
     size_t pairedBounds=0,windowTeamRounds=0,passageWaits=0,usefulSupport=0,engagedFire=0;int completedBounds=0;
@@ -954,6 +998,7 @@ int main(int argc,char** argv) {
                     horizontal*=std::sqrt(std::max(0.f,energy-DepositedEnergy(energy))/energy);++passed;
                 }
                 for(const auto& obstacle:r.map.obstacles) {
+                    if(obstacle.concealment)continue; // plan 029: rounds pass through concealment
                     float hit=SegmentObstacle(a.position,b.position,obstacle);
                     assert(hit<0||(k+1==shot.flight.size()&&shot.impact==Shot::Impact::Cover&&hit>0.99f));
                 }

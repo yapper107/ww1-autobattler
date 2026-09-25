@@ -192,6 +192,67 @@ def squad_participation(root, frames, first_shot) -> dict:
                 straggler_share=straggling/living if living else None, behind_corporal_share=behind/riflemen if riflemen else None)
 
 
+def _segment_box(a, b, low, high) -> bool:
+    """Whether the segment a-b meets the axis-aligned box [low, high] (slab test)."""
+    t0, t1 = 0.0, 1.0
+    for k in range(3):
+        d = b[k] - a[k]
+        if abs(d) < 1e-9:
+            if a[k] < low[k] or a[k] > high[k]:
+                return False
+            continue
+        u, w = (low[k] - a[k])/d, (high[k] - a[k])/d
+        if u > w:
+            u, w = w, u
+        t0, t1 = max(t0, u), min(t1, w)
+        if t0 > t1:
+            return False
+    return True
+
+
+def hits_through_concealment(root, frames) -> dict:
+    """Plan 029 (Jordan, 23 September 2026: hedges block sight, not bullets; "a new measure watches hits through
+    concealment"). hits_through_concealment: hits (every victim of every round, both teams, friendly included) whose
+    round crossed a concealment obstacle (a hedge) on its way to that victim, per 100 living soldier-minutes of the
+    whole battle. A round is taken as the straight line from its muzzle to its end, and a victim's place on it as his
+    position in the last evaluation frame at or before the hit, projected onto that line. The hedges are the
+    geometry export's obstacles marked "concealment" (written only by a battle with concealment on; with it off a
+    hedge is an ordinary solid and the measure is 0)."""
+    import bisect
+    geometry = Path(root)/'geometry.jsonl'
+    if not frames or not geometry.exists():
+        return dict(hits_through_concealment=None)
+    step = frames[1]['time'] - frames[0]['time'] if len(frames) > 1 else 0.2
+    minutes = sum(step for frame in frames for s in frame['soldiers'] if s['alive'])/60
+    versions = []
+    for line in open(geometry):
+        row = json.loads(line)
+        versions.append((row['time'], [((o['center'][0] - o['half'][0], o['center'][1] - o['half'][1], o['center'][2]),
+                                        (o['center'][0] + o['half'][0], o['center'][1] + o['half'][1], o['center'][2] + o['height']))
+                                       for o in row['obstacles'] if o.get('concealment')]))
+    count = 0
+    if any(boxes for _, boxes in versions):
+        times = [f['time'] for f in frames]
+        version_times = [t for t, _ in versions]
+        for line in open(Path(root)/'shots.jsonl'):
+            if '"victims":[]' in line:
+                continue
+            shot = json.loads(line)
+            boxes = versions[max(0, bisect.bisect_right(version_times, shot['time']) - 1)][1]
+            if not boxes:
+                continue
+            a, b = shot['start'], shot['end']
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            length2 = dx*dx + dy*dy
+            for victim in shot['victims']:
+                frame = frames[max(0, bisect.bisect_right(times, victim['time']) - 1)]
+                p = next(m['position'] for m in frame['soldiers'] if m['id'] == victim['soldier'])
+                t = min(1.0, max(0.0, ((p[0] - a[0])*dx + (p[1] - a[1])*dy)/length2)) if length2 > 1e-12 else 0.0
+                at = (a[0] + dx*t, a[1] + dy*t, a[2] + (b[2] - a[2])*t)
+                count += int(any(_segment_box(a, at, low, high) for low, high in boxes))
+    return dict(hits_through_concealment=count*100/minutes if minutes else None)
+
+
 MOVEMENT_TASKS = {2, 4, 6, 7, 8, 9}  # Advance, Rally, ClearLane, Flank, PullBack, BoundMove
 ARRIVED = 3.0                        # metres from the goal he was walking to
 
@@ -233,6 +294,7 @@ def evaluate(root) -> dict:
     engaged_firing_share  of attackers at the fight for most of a 30 s window, those who fired in it
     contact_exposed_share of attacker-seconds at the fight, those with an enemy line of sight on the man
                           (a soldier working from cover is exposed only while he peeks)
+    hits_through_concealment  hits through a hedge per 100 living soldier-minutes, both teams, whole battle (plan 029)
     idle_exposed_share    of attacker-seconds at the fight, those in which the man stands still (Fire or Hold, no
                           displacement), an enemy has a line of sight on him and he has no fire solution of his own:
                           seen and unable to shoot, as opposed to seen because he is shooting (score v6)
@@ -259,6 +321,8 @@ def evaluate(root) -> dict:
     none['stutter_share'] = stutter
     none.update(squad_participation(root, frames, first_shot))
     none.update(order_churn(frames) if frames else dict(replaced_before_arrival_share=None, regroup_orders_per_soldier_minute=None))
+    concealed = hits_through_concealment(root, frames)
+    none.update(concealed)
     if first_shot is None:
         return none
     living = at_fight = contact_seconds = contact_exposed = idle_exposed = 0.0
@@ -305,7 +369,7 @@ def evaluate(root) -> dict:
                     net = math.hypot(p[0] - state['origin'][0], p[1] - state['origin'][1])
                     dithering += int(state['path'] >= DITHER_RATIO*max(net, 0.5))
                 track[s['id']] = dict(start=t, origin=p, last=p, path=0.0, close=0, frames=0)
-    return dict(**flank, **restless, **squad_participation(root, frames, first_shot), **order_churn(frames), idle_exposed_share=idle_exposed/contact_seconds if contact_seconds else None, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
+    return dict(**flank, **restless, **squad_participation(root, frames, first_shot), **order_churn(frames), **concealed, idle_exposed_share=idle_exposed/contact_seconds if contact_seconds else None, stutter_share=stutter, at_fight_share=at_fight/living if living else None,
                 engaged_firing_share=engaged_fired/engaged_windows if engaged_windows else None,
                 contact_exposed_share=contact_exposed/contact_seconds if contact_seconds else None,
                 close_dither_share=dithering/dither_windows if dither_windows else None,

@@ -11,13 +11,17 @@
 #include "CommandSim.h"
 #include "CoordinationSim.h"
 #include "TrafficSim.h"
+#include "FireMovementSim.h"
 #include <algorithm>
+#include <cstring>
 #include <cmath>
 #include <iomanip>
 #include <limits>
 #include <queue>
 #include <sstream>
 #include <unordered_map>
+#include <cstring>
+#include <memory>
 
 namespace army {
 // Let covering fire create a lasting maneuver window across gaps between bursts.
@@ -69,9 +73,11 @@ float SegmentObstacle(Vec3 a,Vec3 b,const Obstacle& o) {
     return SegmentBounds(a,b,{o.center.x-o.half.x,o.center.y-o.half.y,o.center.z},
         {o.center.x+o.half.x,o.center.y+o.half.y,top});
 }
+// Bullets pass through concealment (plan 029): a round's contact is with solid geometry only. On a map
+// without concealment no obstacle is skipped, so the answer is unchanged.
 float MapContact(const Map& map,Vec3 from,Vec3 to) {
     if(map.queryProfile)++map.queryProfile->collision;
-    if(map.prepared)return IndexedContact(map,from,to,false);
+    if(map.prepared)return IndexedContact(map,from,to,false,-1,map.hasConcealment);
     float first=2;size_t building=0;
     for(size_t i=0;i<map.obstacles.size();++i) {
         if(building<map.buildings.size()&&i==map.buildings[building].firstObstacle) {
@@ -79,15 +85,13 @@ float MapContact(const Map& map,Vec3 from,Vec3 to) {
             Obstacle bounds{b.center,b.half+Vec3{0.23f,0.23f,0},true,false,UpperFloor*2};
             if(b.obstacleCount&&SegmentObstacle(from,to,bounds)<0){i+=b.obstacleCount-1;continue;}
         }
+        if(map.obstacles[i].concealment)continue;
         float hit=SegmentObstacle(from,to,map.obstacles[i]);if(hit>=0)first=std::min(first,hit);
     }
     return first<=1?first:-1;
 }
-static bool IndexedClear3D(const Map& map,Vec3 from,Vec3 to,float){return IndexedContact(map,from,to,true)<0;}
-bool ClearLine3D(const Map& map,Vec3 from,Vec3 to) {
-    if(map.queryProfile)++map.queryProfile->sight;
-    if(map.prepared)return MemoisedSegment(map,from,to,-1,0,IndexedClear3D);
-    // Visibility needs any blocker, while a projectile needs the closest hit.
+// The unprepared any-blocker loop; solidOnly skips concealment obstacles.
+static bool UnpreparedClear3D(const Map& map,Vec3 from,Vec3 to,bool solidOnly) {
     size_t building=0;
     for(size_t i=0;i<map.obstacles.size();++i) {
         if(building<map.buildings.size()&&i==map.buildings[building].firstObstacle) {
@@ -95,23 +99,91 @@ bool ClearLine3D(const Map& map,Vec3 from,Vec3 to) {
             Obstacle bounds{b.center,b.half+Vec3{0.23f,0.23f,0},true,false,UpperFloor*2};
             if(b.obstacleCount&&SegmentObstacle(from,to,bounds)<0){i+=b.obstacleCount-1;continue;}
         }
+        if(solidOnly&&map.obstacles[i].concealment)continue;
         if(SegmentObstacle(from,to,map.obstacles[i])>=0)return false;
     }
     return true;
 }
-float BodyHeight(Stance stance) {return stance==Stance::Crouched?0.9f:1.85f;}
-bool ProtectedAt(const Map& map,Vec3 position,Vec3 threat,Stance stance) {
+static bool IndexedClear3D(const Map& map,Vec3 from,Vec3 to,float){return IndexedContact(map,from,to,true)<0;}
+static bool IndexedSolidClear3D(const Map& map,Vec3 from,Vec3 to,float){return IndexedContact(map,from,to,true,-1,true)<0;}
+bool ClearLine3D(const Map& map,Vec3 from,Vec3 to) {
+    if(map.queryProfile)++map.queryProfile->sight;
+    if(map.prepared)return MemoisedSegment(map,from,to,-1,0,IndexedClear3D);
+    // Visibility needs any blocker, while a projectile needs the closest hit.
+    return UnpreparedClear3D(map,from,to,false);
+}
+bool ClearLine3DSolid(const Map& map,Vec3 from,Vec3 to) {
+    if(!map.hasConcealment)return ClearLine3D(map,from,to);
+    if(map.queryProfile)++map.queryProfile->sight;
+    if(map.prepared)return MemoisedSegment(map,from,to,-1,2,IndexedSolidClear3D);
+    return UnpreparedClear3D(map,from,to,true);
+}
+float BodyHeight(Stance stance) {return Posture(stance).body;}
+static bool ProtectedAtCompute(const Map& map,Vec3 position,Vec3 threat,Stance stance) {
     Vec3 dir=Normal(position-threat),side{-dir.y,dir.x};
     // Test both shoulders and the centre at head and torso height.
     for(float offset:{-0.4f,0.f,0.4f}) for(float fraction:{0.5f,0.96f}) {
         Vec3 p=position+side*offset;
         Vec3 body{p.x,p.y,p.z+BodyHeight(stance)*fraction},enemyEye{threat.x,threat.y,threat.z+1.7f};
         // Actual cover must lie between the soldier and threat, close enough to
-        // shelter behind. A distant obstruction is concealment, not local cover.
+        // shelter behind. A distant obstruction is concealment, not local cover; so is a hedge
+        // (plan 029: self-preservation reads solid cover only).
         Vec3 nearEnd=body+(enemyEye-body)*std::min(1.f,3.f/std::max(0.01f,Distance(body,enemyEye)));
-        if(ClearLine3D(map,body,nearEnd))return false;
+        if(ClearLine3DSolid(map,body,nearEnd))return false;
     }
     return true;
+}
+namespace {
+// Optimisation (plan 024 round 4): an exact memo of the cover test on prepared maps. The answer
+// is a function of the geometry and the bitwise arguments. On a prepared map every line query
+// goes through the segment memo, which belongs to exactly one geometry revision (it is replaced
+// whenever the revision changes, and InvalidateGeometry drops it); copies of a map share it only
+// while they share the geometry. So a segment memo object, while it is valid for the map's
+// revision, identifies the geometry, and its object is the owner of an entry here. Each owner is
+// pinned by a weak_ptr, so its address can never be reused by another memo while entries may
+// name it; owners get a process-unique small id. A collision evicts; a miss recomputes exactly.
+struct ProtectionMemo {
+    struct Entry { uint32_t key[6]; uint32_t owner; uint32_t state; }; // state: 1 exposed, 2 protected, stance<<2
+    static constexpr size_t Bits=16;
+    std::vector<Entry> entries;
+    struct Owner { uint32_t id; uint64_t revision; };
+    std::unordered_map<const void*,Owner> owners;
+    std::vector<std::weak_ptr<SegmentMemo>> pins;
+    const void* last=nullptr; Owner lastOwner{0,0};
+    ProtectionMemo():entries(size_t(1)<<Bits){}
+    // The id of a registered owner valid for this revision, or 0.
+    uint32_t Find(const void* memo,uint64_t revision) {
+        if(!memo)return 0;
+        if(memo!=last){auto it=owners.find(memo);if(it==owners.end())return 0;last=memo;lastOwner=it->second;}
+        return lastOwner.revision==revision?lastOwner.id:0;
+    }
+    // Called right after a computation on a prepared map, when map.segments is valid for map.revision.
+    uint32_t Register(const Map& map) {
+        const void* memo=map.segments.get();if(!memo)return 0;
+        if(const uint32_t id=Find(memo,map.revision))return id;
+        if(owners.count(memo))return 0; // registered for another revision: never cache under it
+        if(pins.size()>=(size_t(1)<<14)){ // bound the pins: forget everything and start again
+            std::fill(entries.begin(),entries.end(),Entry{});owners.clear();pins.clear();last=nullptr;lastOwner={0,0};
+        }
+        pins.push_back(map.segments);const Owner owner{uint32_t(pins.size()),map.revision};
+        owners.emplace(memo,owner);last=memo;lastOwner=owner;return owner.id;
+    }
+};
+thread_local ProtectionMemo protectionMemo;
+}
+bool ProtectedAt(const Map& map,Vec3 position,Vec3 threat,Stance stance) {
+    if(!map.prepared)return ProtectedAtCompute(map,position,threat,stance);
+    auto& memo=protectionMemo;
+    uint32_t key[6];const float words[6]={position.x,position.y,position.z,threat.x,threat.y,threat.z};std::memcpy(key,words,sizeof key);
+    const uint32_t posture=uint32_t(stance)<<2;
+    uint64_t h=1469598103934665603ull;for(uint32_t k:key)h=(h^k)*1099511628211ull;h=(h^posture)*1099511628211ull;
+    h^=h>>32;h*=0x9e3779b97f4a7c15ull;h^=h>>29;
+    auto& e=memo.entries[h&((size_t(1)<<ProtectionMemo::Bits)-1)];
+    const uint32_t owner=memo.Find(map.segments.get(),map.revision);
+    if(owner&&e.owner==owner&&(e.state&~3u)==posture&&(e.state&3)&&std::memcmp(e.key,key,sizeof key)==0)return (e.state&3)==2;
+    const bool result=ProtectedAtCompute(map,position,threat,stance);
+    if(const uint32_t id=memo.Register(map)){std::memcpy(e.key,key,sizeof key);e.owner=id;e.state=posture|(result?2u:1u);}
+    return result;
 }
 bool ProjectilePosition(const Shot& s,float time,Vec3& p) {
     if(s.flight.empty()||time<s.time||time>s.impactTime) return false;
@@ -169,7 +241,9 @@ const char* ReasonText(Reason r) {
         "Advancing under squad orders.","Holding while the command group sets the plan.","Regrouping with the squad corporal.","Holding overwatch. Suppressing the enemy position.",
         "Wounded. Moving to a protected supporting position.","Wounded but fighting. Providing supporting fire.",
         "Following a quieter flank under squad orders.","No safe flank reported. Pulling back to regroup.","Moving aside to clear a reported friendly firing lane.",
-        "Exposed to fire. Seeking nearby shelter before resuming orders.","Holding protected cover. A firing angle can wait.","At the assigned waypoint. Waiting for the next squad order.","Yielding at a doorway or stairs. Keeping the passage clear.","Moving while the other fireteam covers.","Covering the other fireteam. Holding this firing position.","Assigned window team. Supporting the squad from the building."};
+        "Exposed to fire. Seeking nearby shelter before resuming orders.","Holding protected cover. A firing angle can wait.","At the assigned waypoint. Waiting for the next squad order.","Yielding at a doorway or stairs. Keeping the passage clear.","Moving while the other fireteam covers.","Covering the other fireteam. Holding this firing position.","Assigned window team. Supporting the squad from the building.",
+        "Caught in the open under fire. Lying flat and firing where a clear line allows.",
+        "Vaulting an obstacle on the way. Cannot fire until landed."};
     return labels[int(r)];
 }
 const char* DoctrineName(Doctrine d) { return d==Doctrine::Cautious?"Cautious":d==Doctrine::Aggressive?"Aggressive":"Balanced"; }
@@ -214,7 +288,7 @@ void InitialFrameInto(const Config& c,Frame& f) {
         s.recoilSign=(SoldierHash(roster,rosterSlot,2)&1ull)?1.f:-1.f;
         s.maxHealth=100*StatScale(s.stats.Get(Stat::Endurance));s.health=s.maxHealth;
         s.stamina=StaminaCapacity(s);
-        EquipWeapon(s,{s.squad%SquadsPerTeam==0&&slot==SquadSize-1&&(s.team==1||c.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
+        EquipWeapon(s,{(c.squadMachineGuns||s.squad%SquadsPerTeam==0)&&slot==SquadSize-1&&(s.team==1||c.supportWeapon)?WeaponId::MachineGun:WeaponId::Rifle,{}});
         s.role=slot==0?Role::Sergeant:slot==1?Role::Corporal:s.machineGun?Role::MachineGunner:Role::Rifleman;
         if(s.squad%SquadsPerTeam==0&&slot==5)s.role=Role::Lieutenant;
         if(s.squad%SquadsPerTeam==0&&slot==6)s.role=Role::PlatoonSergeant;
@@ -294,7 +368,7 @@ bool FlankHoldsFire(const Soldier& s,float time) {
     for(const auto& ct:s.contacts)if(ct.known&&ct.visible&&time-ct.observedAt<=2&&Distance(s.position,ct.position)<=30)return false;
     return true;
 }
-bool WalkingFire(const Soldier& s,float time) {return !s.sprinting&&AttackMovement(s)&&s.magazineRemaining>0&&!FlankHoldsFire(s,time);}
+bool WalkingFire(const Soldier& s,float time) {return !s.vaulting&&!s.sprinting&&AttackMovement(s)&&s.magazineRemaining>0&&!FlankHoldsFire(s,time);}
 // Stamina and the sprint to cover (plan 022). Endurance owns the capacity and the recovery,
 // speed the pace; the gunner carries the weight both ways. Nothing here reads the map, an
 // enemy body or the Config: the movement stage applies config.stamina.
@@ -304,12 +378,45 @@ float SprintPace(const Soldier& s) {return std::max(1.f,(s.machineGun?Sprint().g
 // appended at the end behind its switch: off, a battle is bit for bit what it was before the field
 // existed, whatever value PlanSquad happened to compute for it.
 float MovementSpeed(const Soldier& s,const Config& c) {
-    return (s.machineGun?2.55f:3.15f)*(s.health<55?0.72f:1.f)*(1-s.suppression*0.45f)*(s.stance==Stance::Crouched?0.6f:1.f)*
+    return (s.machineGun?2.55f:3.15f)*(s.health<55?0.72f:1.f)*(1-s.suppression*0.45f)*Posture(s.stance).speed*
         (s.movingFire?s.gun.moving.pace:1.f)*(s.sprinting?SprintPace(s):1.f)*(c.orderPace?s.assignment.pace:1.f);
 }
 // Full again in recoverySeconds/endurance at rest: a tougher man holds more and refills sooner.
 float StaminaRecovery(const Soldier& s) {return StaminaCapacity(s)*StatScale(s.stats.Get(Stat::Endurance))/std::max(.01f,Sprint().recoverySeconds);}
 bool CanSprint(const Soldier& s) {return !s.winded&&s.stamina>0&&s.health>=Sprint().woundedHealth;}
+// Plan 029 M-C. Everything read is his own: understood health (what the planner and the execution agree
+// on), stamina, winded latch, stats, whether he carries the gun, his stance.
+VaultClass VaultClassOf(const Soldier& s,const Config& c) {
+    if(!c.vaulting)return VaultClass::None;
+    const auto& v=Vaulting();
+    if(s.understoodHealth<v.woundedHealth||s.stance==Stance::Prone)return VaultClass::None;
+    if(c.stamina&&(s.winded||s.stamina<v.lowStamina))return VaultClass::None;
+    const bool strong=!s.machineGun&&(s.stats.Get(Stat::Strength)+s.stats.Get(Stat::Dexterity))*.5f>=v.highStat;
+    return strong&&(!c.stamina||s.stamina>=v.highStamina)?VaultClass::High:VaultClass::Low;
+}
+float VaultSeconds(const Soldier& s,VaultClass need) {
+    return (need==VaultClass::High?Vaulting().highSeconds:Vaulting().lowSeconds)/StatScale(s.stats.Get(Stat::Dexterity));
+}
+VaultStep VaultStepFor(const Map& map,const Soldier& s,Vec3 dest,const Config& c,VaultClass* need,float* height) {
+    if(!c.vaulting||ClearLine(map,s.position,dest,.46f))return VaultStep::Walk;
+    float top=0;const VaultClass needed=VaultCrossing(map,s.position,dest,VaultClass::High,&top);
+    if(need)*need=needed;
+    if(height)*height=top;
+    if(needed==VaultClass::None)return VaultStep::Walk;
+    return int(VaultClassOf(s,c))>=int(needed)?VaultStep::Vault:VaultStep::Replan;
+}
+float VaultLegMetres(const Map& map,Vec3 a,Vec3 b,VaultClass cls) {
+    const auto& v=Vaulting();
+    // Only a leg no longer than a vault's can be one; the walk test is VaultStepFor's.
+    if(cls==VaultClass::None||Distance(a,b)>v.maxLeg+.05f||ClearLine(map,a,b,.46f))return 0;
+    const VaultClass need=VaultCrossing(map,a,b,cls);
+    return need==VaultClass::None?0.f:(need==VaultClass::High?v.highSeconds:v.lowSeconds)*v.plannerPace;
+}
+float PathTravel(const Map& map,Vec3 from,const std::vector<Vec3>& path,VaultClass cls) {
+    float length=0;Vec3 p=from;
+    for(Vec3 q:path){length+=Distance(p,q)+VaultLegMetres(map,p,q,cls);p=q;}
+    return length;
+}
 // Empty lungs cost him his aim and steadiness, fading linearly back as the stamina returns.
 // Exactly 1 at full stamina, so a fresh man, and every battle with the feature off, is
 // bit-identical to the pre-022 arithmetic.
@@ -322,7 +429,9 @@ float StaminaPenalty(const Soldier& s,float atEmpty) {
 // spends it only while sprinting, recovers at half the rate while walking and at the full
 // rate standing still, empties into winded and comes out of it only when he is FULL again
 // (the user's rule).
-void StepStamina(Soldier& s,bool sprinting,bool displaced,float seconds) {
+void StepStamina(Soldier& s,bool sprinting,bool displaced,float seconds,float spend) {
+    // A vault (plan 029 M-C) is paid at once; it can empty him, and then he is winded like a sprinter.
+    if(spend>0){s.stamina=std::max(0.f,s.stamina-spend);if(s.stamina<=0)s.winded=true;}
     const float capacity=StaminaCapacity(s);
     if(sprinting) {
         s.stamina=std::max(0.f,s.stamina-seconds*(s.machineGun?Sprint().gunnerDrain:1.f));
@@ -339,6 +448,7 @@ bool SprintTrigger(const Soldier& s,bool revealedAhead,float remaining) {
     // leaves them alone, and a seated defender therefore never sprints.
     if(remaining<Sprint().minimumRun)return false;
     if(revealedAhead)return true;                                        // a stretch a known enemy watches
+    if(s.assignment.fm.displace&&s.assignment.fm.gun==s.id)return true;  // plan 031 D: the drill's gun displacing to a new station
     if(s.assignment.task==Task::PullBack||s.action==Action::Retreat)return true;  // a squad retreat
     if(s.assignment.execution.rushSeconds>0)return true;                 // the bounded rush of a typed assault
     if(s.action!=Action::Cover)return false;
@@ -349,25 +459,43 @@ bool SprintTrigger(const Soldier& s,bool revealedAhead,float remaining) {
 float WalkingFireRange(const Soldier& s) {return s.gun.moving.range;}
 float MovePenalty(float factor,float scale) {return 1+(factor-1)/std::max(0.01f,scale);}
 float AimReady(const Soldier& s) {return s.movingFire?Clamp(s.gun.moving.aimCap,0.05f,1.f):1.f;}
+float DuckThreshold(const Config& c,int team){const Doctrine d=team?c.emberDoctrine:c.doctrine;return d==Doctrine::Cautious?0.40f:d==Doctrine::Aggressive?0.65f:0.52f;}
+bool NervePinned(const Soldier& s,const Config& c){return c.nerve&&s.nerve>SuppressionRules().pinnedAt;}
+float AimSuppression(const Soldier& s){return s.shakenShots>0?std::max(s.suppression,SuppressionRules().shakenSuppression):s.suppression;}
+void StepSuppression(Soldier& s,const Config& c,float time,float seconds){
+    const float composure=StatScale(s.stats.Get(Stat::Composure));
+    // Plan 030 M-S7 (P2 keep-down, P3 neighbours): when he was last above his duck threshold, before this tick's decay.
+    if((c.keepDown||c.pinnedNeighbours)&&s.suppression>DuckThreshold(c,s.team))s.aboveDuckAt=time;
+    if(c.nerve){
+        // S2: nerve reads the fire on him as it stands before this tick's decay. Going from pinned to released
+        // shakes his next firstShots rounds.
+        const auto& rule=SuppressionRules();const bool was=s.nerve>rule.pinnedAt;
+        s.nerve=Clamp(s.suppression>DuckThreshold(c,s.team)?s.nerve+seconds*rule.nerveGain:s.nerve-seconds*rule.nerveDecay*composure,0,1);
+        if(was&&s.nerve<=rule.pinnedAt)s.shakenShots=rule.firstShots;
+    }
+    // S3: rounds still arriving hold his suppression where it is.
+    if(c.stackedSuppression&&time-s.lastNearMissAt<SuppressionRules().stackWindow)return;
+    s.suppression=std::max(0.f,s.suppression-seconds*SuppressionRecoveryPerSecond*StatScale(s.stats.Get(Stat::Composure)));
+}
 float AimSeconds(const Soldier& s) {
     const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
-    return 0.45f/(s.gun.ergonomics*dexterity)*(1+3*s.suppression)*(s.health<55?1.3f:1.f)*
-        (s.movingFire?MovePenalty(s.gun.moving.aimSeconds,dexterity):1.f)*StaminaPenalty(s,Sprint().windedAim);
+    return 0.45f/(s.gun.ergonomics*dexterity)*(1+3*AimSuppression(s))*(s.health<55?1.3f:1.f)*
+        (s.movingFire?MovePenalty(s.gun.moving.aimSeconds,dexterity):1.f)*StaminaPenalty(s,Sprint().windedAim)*Posture(s.stance).aim;
 }
 // The walk widens what the shooter contributes; the weapon's mechanical deviation stays.
 // The factor is exactly 1 when he is not moving, so a stationary shot is bit-identical.
 static float SpreadWalk(const Soldier& s) {return s.movingFire?MovePenalty(s.gun.moving.spread,StatScale(s.stats.Get(Stat::Composure))):1.f;}
 float ShotSpread(const Soldier& s) {
     const float m=SpreadWalk(s);
-    return s.gun.baseDeviation+0.040f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+s.suppression*0.10f*m;
+    return s.gun.baseDeviation+0.040f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+AimSuppression(s)*0.10f*m;
 }
 float VerticalSpread(const Soldier& s) {
     const float m=SpreadWalk(s);
-    return 0.014f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+s.suppression*0.024f*m;
+    return 0.014f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+AimSuppression(s)*0.024f*m;
 }
 float SwayAmplitude(const Soldier& s) {
     const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
-    return 0.010f/(s.gun.ergonomics*dexterity)*(s.stance==Stance::Crouched?0.7f:1.f)*(1+2*s.suppression)*
+    return 0.010f/(s.gun.ergonomics*dexterity)*Posture(s.stance).sway*(1+2*s.suppression)*
         (s.movingFire?MovePenalty(s.gun.moving.sway,dexterity):1.f)*StaminaPenalty(s,Sprint().windedSway);
 }
 Vec3 SwayOffset(const Soldier& s,float time) {
@@ -377,7 +505,7 @@ Vec3 SwayOffset(const Soldier& s,float time) {
 }
 float RecoilKick(const Soldier& s) {
     const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
-    return s.gun.recoil/(s.gun.ergonomics*dexterity)*(s.stance==Stance::Crouched?0.8f:1.f)*
+    return s.gun.recoil/(s.gun.ergonomics*dexterity)*Posture(s.stance).recoil*
         (s.movingFire?MovePenalty(s.gun.moving.recoilKick,dexterity):1.f);
 }
 void ApplyRecoil(Soldier& s) {const float kick=RecoilKick(s);s.recoil.x+=0.3f*s.recoilSign*kick;s.recoil.y+=kick;}
@@ -392,9 +520,14 @@ void DecayRecoil(Soldier& s,float seconds) {
     const float k=std::exp(-seconds*4*s.gun.ergonomics*dexterity*walk);
     s.recoil.x*=k;s.recoil.y*=k;
 }
+float RecoilHold(const Soldier& s) {
+    const auto& t=GunnerCompensation();
+    return Clamp(t.share*StatScale(s.stats.Get(Stat::Dexterity))*(1-t.suppressionLoss*s.suppression),0,1);
+}
+Vec3 HeldRecoil(const Soldier& s) {return s.recoil*(1-s.recoilHold);}
 float ReportDelay(float base,const Soldier& sender) {return base/StatScale(sender.stats.Get(Stat::Wisdom));}
-void UpdateAim(Soldier& s,int target,Vec3 point,float dt) {
-    if(target<0||(s.action!=Action::Fire&&!s.movingFire)||s.suppression>=0.8f) {s.aim=0;s.aimTarget=-1;return;}
+void UpdateAim(Soldier& s,int target,Vec3 point,float dt,bool graded) {
+    if(target<0||(s.action!=Action::Fire&&!s.movingFire)||(s.suppression>=0.8f&&!graded)) {s.aim=0;s.aimTarget=-1;return;}
     if(s.aimTarget!=target)s.aim=0;
     else if(Distance(s.aimPoint,point)>1.5f)s.aim*=0.5f;
     s.aimTarget=target;s.aimPoint=point;
@@ -417,7 +550,7 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
         const float cross=(offset.x*shot.y-offset.y*shot.x)/denominator;
         if(along>0&&along<1&&cross>0&&cross<1&&Distance(s.position+shot*along,lane.target)>12)risk=1;
     }
-    const float muzzle=s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f);
+    const float muzzle=s.position.z+Posture(s.stance).muzzle;
     const bool automatic=s.gun.action==WeaponAction::Automatic;
     for(int id=0;id<UnitCount;++id) {
         const auto& ct=s.allies[id];float age=time-ct.observedAt;
@@ -427,8 +560,8 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
             Vec3 offset=p-s.position;float along=offset.x*direction.x+offset.y*direction.y;
             if(along<0||along>std::min(110.f,range+25))continue;
             // Solid terrain protects a friendly hidden beyond it. This uses only
-            // that friendly's observed/predicted position, never enemy truth.
-            if(!ClearLine3D(map,{s.position.x,s.position.y,muzzle},{p.x,p.y,ct.position.z+(ct.aimHeight-ct.position.z)*0.75f}))continue;
+            // that friendly's observed/predicted position, never enemy truth. A hedge does not (plan 029).
+            if(!ClearLine3DSolid(map,{s.position.x,s.position.y,muzzle},{p.x,p.y,ct.position.z+(ct.aimHeight-ct.position.z)*0.75f}))continue;
             const float width=0.55f+along*ShotSpread(s)+(automatic?0.6f:0.15f)+age*0.2f;
             const float lateral=std::abs(offset.x*direction.y-offset.y*direction.x);
             float height=muzzle+(aim.z-muzzle)*along/range;
@@ -437,8 +570,13 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
             risk=std::max(risk,std::max(0.f,1-lateral/width));
         }
     }
-    if(s.cognition&&s.supportSector.shooter==s.id&&time>=s.supportSector.observedAt&&time-s.supportSector.observedAt<=8){
-        for(const auto& friendly:s.supportSector.friendlies){
+    // Received movement intent bounds where an unseen friendly can be: the cognition gun's support
+    // sector, and (plan 028 Stage 1e) the ordered mover stations a Legacy covering payload carries.
+    const std::vector<FriendlyIntent>* intents=nullptr;
+    if(s.cognition&&s.supportSector.shooter==s.id&&time>=s.supportSector.observedAt&&time-s.supportSector.observedAt<=8)intents=&s.supportSector.friendlies;
+    else if(FirePayloadLive(s,time)&&s.assignment.fireFriendlies)intents=s.assignment.fireFriendlies.get();
+    if(intents){
+        for(const auto& friendly:*intents){
             const float age=time-friendly.observedAt;if(age<0||age>8||friendly.soldier==s.id)continue;
             // Received movement intent bounds where an unseen friendly can be;
             // do not pretend the reported position is a fresh personal sighting.
@@ -448,7 +586,7 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
                 Vec3 p=friendly.position+(length>.01f?delta*(ahead/length):Vec3{}),offset=p-s.position;
                 const float along=offset.x*direction.x+offset.y*direction.y;
                 if(along<0||along>std::min(110.f,range+25))continue;
-                if(!ClearLine3D(map,{s.position.x,s.position.y,muzzle},p+Vec3{0,0,1.3f}))continue;
+                if(!ClearLine3DSolid(map,{s.position.x,s.position.y,muzzle},p+Vec3{0,0,1.3f}))continue;
                 const float lateral=std::abs(offset.x*direction.y-offset.y*direction.x);
                 const float width=.55f+along*ShotSpread(s)+.6f+std::min(2.f,age*.35f);
                 risk=std::max(risk,std::max(0.f,1-lateral/width));
@@ -458,22 +596,43 @@ float FriendlyFireRisk(const Soldier& s,const Map& map,Vec3 aim,float time) {
     return risk;
 }
 bool ShouldHoldFire(const Soldier& s,float risk) {return risk>=(s.gun.action==WeaponAction::Automatic?0.25f:0.45f);}
+int SectorLoud(const Soldier& s,float time){
+    if(!s.assignment.fireSector||!FirePayloadLive(s,time))return -1;
+    int loud=-1;float at=-1e9f;
+    for(const auto& t:*s.assignment.fireSector){if(t.enemy<0||t.enemy>=UnitCount)continue;const float fired=s.contacts[t.enemy].lastFireAt;
+        if(time-fired<=PinRules().sectorLoud&&fired<=time&&fired>at){at=fired;loud=t.enemy;}}
+    return loud;
+}
 FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
     FireSolution best;float score=1e9f;
     if(s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)return best;
-    const bool support=s.assignment.task==Task::Overwatch||s.assignment.task==Task::BoundCover||(s.machineGun&&s.assignment.task==Task::RearGuard);
-    const Vec3 muzzle{s.position.x,s.position.y,s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f)};
+    const bool baseSupport=s.assignment.task==Task::Overwatch||s.assignment.task==Task::BoundCover||(s.machineGun&&s.assignment.task==Task::RearGuard);
+    const Vec3 muzzle{s.position.x,s.position.y,s.position.z+Posture(s.stance).muzzle};
     const bool sectorCurrent=s.assignment.id&&time>=s.supportSector.observedAt&&time-s.supportSector.observedAt<=8;
-    auto requested=[&](int enemy){return s.cognition&&support&&((s.assignment.execution.rifleSupport&&s.assignment.execution.supportThreat==enemy)||
-        (sectorCurrent&&!s.supportSector.lifted&&std::any_of(s.supportSector.threats.begin(),s.supportSector.threats.end(),[&](const SupportThreat& t){return t.enemy==enemy;})));};
+    // Plan 028 Stage 1d: a live Legacy covering payload makes him a support shooter for its enemy only.
+    const int payload=FirePayloadLive(s,time)?s.assignment.fireEnemy:-1;
+    // Plan 030 M-S7 P4 (Config::coverSector; null otherwise): the gun's share of the request's sector. Every threat in it
+    // is his as the payload's enemy is (a report he may fire into, a priority), and he works them a burst at a time.
+    const std::vector<SupportThreat>* sector=payload>=0&&s.assignment.fireSector&&!s.assignment.fireSector->empty()?s.assignment.fireSector.get():nullptr;
+    auto inSector=[&](int enemy){if(!sector)return false;for(const auto& t:*sector)if(t.enemy==enemy)return true;return false;};
+    auto supportFor=[&](int enemy){return baseSupport||enemy==payload||inSector(enemy);};
+    const bool support=baseSupport;
+    auto requested=[&](int enemy){return (s.cognition&&support&&((s.assignment.execution.rifleSupport&&s.assignment.execution.supportThreat==enemy)||
+        (sectorCurrent&&!s.supportSector.lifted&&std::any_of(s.supportSector.threats.begin(),s.supportSector.threats.end(),[&](const SupportThreat& t){return t.enemy==enemy;}))))||
+        (payload>=0&&enemy==payload)||inSector(enemy);};
     auto remembered=[&](int enemy){
         Contact ct=s.contacts[enemy];const auto& report=s.reports[enemy];
-        if(support&&(s.cognition?report.observedAt>ct.observedAt:report.known&&(!ct.known||report.observedAt>ct.observedAt))){ct=report;if(s.cognition)ct.visible=false;}
+        if(supportFor(enemy)&&(s.cognition?report.observedAt>ct.observedAt:report.known&&(!ct.known||report.observedAt>ct.observedAt))){ct=report;if(s.cognition)ct.visible=false;}
         if(s.cognition){ct.clearedAt=std::max(s.contacts[enemy].clearedAt,report.clearedAt);ct.known=TrackConfidence(ct,time)>.15f;}
         return ct;
     };
     auto usable=[&](const Contact& ct,int enemy){
-        if(!s.cognition)return ct.known&&time-ct.observedAt<=6;
+        // Plan 030 K-1 (Config::retireFallen; never set otherwise): he knows the man he was asked to cover is down.
+        if(ct.seenDown&&(enemy==payload||inSector(enemy)))return false;
+        // Jordan's ruling 2 (plan 028): an ordered covering shooter may fire into a reported, unseen
+        // position only while its uncertainty fits the weapon's spread, as the cognition rule below.
+        if(!s.cognition)return ct.known&&(time-ct.observedAt<=6||((enemy==payload||inSector(enemy))&&ct.observedAt<=time&&
+            TrackUncertainty(ct,time)<=Distance(s.position,ct.position)*ShotSpread(s)));
         if(!ct.known||ct.observedAt>time||ct.clearedAt>=ct.observedAt)return false;
         if(time-ct.observedAt<=6)return true;
         // A requested enemy position may still be denied after the gun ducks.
@@ -501,33 +660,50 @@ FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
         if(enemy>=0&&enemy<UnitCount){Contact ct=remembered(enemy);
             if(usable(ct,enemy)&&Distance(s.position,ct.position)<=100&&ClearLine3D(map,muzzle,aimPoint(ct,enemy)))priorities.insert(priorities.begin(),enemy);}
     }
-    const int preferred=priorities.empty()?-1:priorities[(s.rounds/6)%priorities.size()];
+    if(payload>=0&&!sector){Contact ct=remembered(payload);
+        if(usable(ct,payload)&&Distance(s.position,ct.position)<=100&&ClearLine3D(map,muzzle,aimPoint(ct,payload)))priorities.insert(priorities.begin(),payload);}
+    int preferred=priorities.empty()?-1:priorities[(s.rounds/6)%priorities.size()];
+    // P4: the sector's threats he can fire on, loudest first; the one he just saw fire has the next burst, otherwise
+    // they take turns a burst each (18 rounds sustained, 3 otherwise: the fire stage's own bursts).
+    std::vector<int> worked;
+    if(sector){
+        for(const auto& t:*sector){if(t.enemy<0||t.enemy>=UnitCount)continue;Contact ct=remembered(t.enemy);
+            if(usable(ct,t.enemy)&&Distance(s.position,ct.position)<=100&&ClearLine3D(map,muzzle,aimPoint(ct,t.enemy)))worked.push_back(t.enemy);}
+        priorities.insert(priorities.begin(),worked.begin(),worked.end());
+        if(!worked.empty()){
+            const int loud=SectorLoud(s,time);
+            const int burst=s.gun.action==WeaponAction::Automatic&&(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard)?18:3;
+            preferred=loud>=0&&std::find(worked.begin(),worked.end(),loud)!=worked.end()?loud:worked[size_t(s.rounds/burst)%worked.size()];
+        }
+    }
     for(int i=0;i<UnitCount;++i) {
         Contact ct=remembered(i);
         if(!ct.known)continue;
-        if(support&&sectorCurrent&&s.supportSector.lifted&&std::any_of(s.supportSector.threats.begin(),s.supportSector.threats.end(),[&](const SupportThreat& threat){return threat.enemy==i;}))continue;
+        const bool supportHere=supportFor(i);
+        if(supportHere&&sectorCurrent&&s.supportSector.lifted&&std::any_of(s.supportSector.threats.begin(),s.supportSector.threats.end(),[&](const SupportThreat& threat){return threat.enemy==i;}))continue;
         if(s.assignment.id&&s.assignment.teamPlan.liftFire&&Distance(ct.position,s.assignment.teamPlan.liftedSector)<12&&Distance(ct.position,s.position)>15)continue;
-        if(support) {if(!usable(ct,i))continue;}
+        if(supportHere) {if(!usable(ct,i))continue;}
         else if(time-ct.observedAt>(ct.visible?ReactionSeconds(s,ReactionKind::Sight)+.4f+(s.cognition?ct.detectionDelay:0.f):2.f))continue;
         Vec3 target=aimPoint(ct,i);
         float distance=Distance(s.position,ct.position);
         if(distance>100||distance<0.5f)continue;
-        if(!support&&ct.visible&&!ClearLine3D(map,muzzle,target))continue;
-        if(support&&!ct.visible&&!ClearLine3D(map,muzzle,target)){
+        if(!supportHere&&ct.visible&&!ClearLine3D(map,muzzle,target))continue;
+        if(supportHere&&!ct.visible&&!ClearLine3D(map,muzzle,target)){
             Vec3 bestEdge=target;float nearestEdge=1e9f;
             for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,ct.position)<4){Vec3 point=cover.peek+Vec3{0,0,1.5f};
                 float shift=Distance(point,target);if(shift<nearestEdge&&ClearLine3D(map,muzzle,point)){nearestEdge=shift;bestEdge=point;}}
             if(nearestEdge<1e8f)target=bestEdge;
         }
-        if(support||!ct.visible) {
+        if(supportHere||!ct.visible) {
             Vec3 direction=Normal(ct.position-s.position);
             if(!ClearLine3D(map,muzzle,{muzzle.x+direction.x*2,muzzle.y+direction.y*2,muzzle.z}))continue;
         }
         float value=distance+(ct.visible?0.f:12.f)+(i==s.aimTarget?-10.f:0.f);
         if(std::find(priorities.begin(),priorities.end(),i)!=priorities.end())value-=80;
         if(i==preferred)value-=30;
+        if(!worked.empty()&&i==preferred)value-=170; // P4: the sector's turn decides, not the distance
         if(ShouldHoldFire(s,FriendlyFireRisk(s,map,target,time)))value+=1000;
-        if(value<score) {score=value;best={i,target,ct.observedAt,support||!ct.visible};}
+        if(value<score) {score=value;best={i,target,ct.observedAt,supportHere||!ct.visible};}
     }
     // Reuse requested bounded area fire (fixture 27), but the authority here is
     // an explicit drills assault-support contract rather than a fresh sighting.
@@ -625,7 +801,9 @@ static bool RevealedAhead(const Map& map,const Soldier& s,const std::vector<Vec3
 // Shortest first, and always the fallback: a failed, budget-exhausted or over-long covered
 // search can never leave a soldier without a path or send him across the map.
 static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,const Config& c,float time,PathChoice* choice){
-    auto shortest=FindPath(map,s.position,goal);
+    // Plan 029 M-C: his own walk, at the vault class he has now (None, the old search, when off).
+    const VaultClass own=VaultClassOf(s,c);
+    auto shortest=FindPath(map,s.position,goal,own);
     if(shortest.empty())return shortest;
     const float pace=CautionPace(s),shortestLength=PathLength(s.position,shortest);
     // The revealed stretches are charged at the pace he will actually have (plan 022).
@@ -662,7 +840,7 @@ static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,
         cells.emplace(key,value);return value;
     };
     int expanded=0;RouteStatus status=RouteStatus::Unreachable;
-    auto covered=FindCostPath(map,s.position,goal,[&](Vec3 p){return exposedCell(p)?1+Caution().sightCharge:1.f;},Caution().budget,expanded,status);
+    auto covered=FindCostPath(map,s.position,goal,[&](Vec3 p){return exposedCell(p)?1+Caution().sightCharge:1.f;},Caution().budget,expanded,status,own);
     if(covered.empty()){if(choice)choice->why="no covered alternative";return shortest;}
     const float coveredLength=PathLength(s.position,covered);
     if(choice)choice->alternativeLength=coveredLength;
@@ -679,12 +857,14 @@ static std::vector<Vec3> CautiousPath(const Map& map,const Soldier& s,Vec3 goal,
 std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,const Tactics& tactics,const Config& c,float time,PathChoice* choice){
     // Emergency shelter and peek moves are two metres long and must be instant; the covered
     // search is for the legs that cross ground.
-    auto cautious=[&](Vec3 to){return c.threatAwarePaths&&!tactics.emergency?CautiousPath(map,s,to,c,time,choice):FindPath(map,s.position,to);};
+    // Plan 029 M-C: every leg he walks on his own takes his vault class; the squad corridor does not.
+    const VaultClass own=VaultClassOf(s,c);
+    auto cautious=[&](Vec3 to){return c.threatAwarePaths&&!tactics.emergency?CautiousPath(map,s,to,c,time,choice):FindPath(map,s.position,to,own);};
     if(s.assignment.id&&s.assignment.hasSlot&&!tactics.emergency){
         const auto& slot=s.assignment.slot;
         const bool localGoal=Distance(goal,slot.peek)<.05f||Distance(goal,slot.shelter)<.05f;
         const bool atSlot=Distance(s.position,slot.shelter)+Distance(s.position,slot.peek)<=Distance(slot.shelter,slot.peek)+1.5f;
-        if(localGoal&&atSlot)return FindPath(map,s.position,goal);
+        if(localGoal&&atSlot)return FindPath(map,s.position,goal,own);
     }
 
     const auto& route=s.assignment.teamPlan.route;
@@ -707,47 +887,97 @@ std::vector<Vec3> TaskExecutionPath(const Map& map,const Soldier& s,Vec3 goal,co
     return cautious(goal);
 }
 struct Runtime { std::vector<Vec3> path;size_t cursor=0;float cooldown=0;float nextSprintCheck=0;bool revealedAhead=false;Vec3 destination{999,999};Tactics tactics;Assignment lastOrder;FireSolution burst;Vec3 progressPosition{};float nextPathCheck=0,avoidUntil=0;bool trafficWaiting=false;std::vector<Vec3> parkingPath;size_t parkingCursor=0;Vec3 parkingGoal{999,999};int burstRounds=0,burstLength=0,bursts=0;
-    uint64_t pathKnown=0;CoverRule lastCoverRule=CoverRule::None; };
+    uint64_t pathKnown=0;CoverRule lastCoverRule=CoverRule::None;
+    float riseUntil=0; // plan 029 M-A1 (Config::prone): getting up from prone, frozen and silent until then
+    // Plan 029 M-C (Config::vaulting): the vault in progress, its landing, and the reason and stance
+    // he had at take-off (given back on landing; he does not think while vaulting).
+    float vaultStart=0,vaultEnd=0;Vec3 vaultTo{};Reason vaultReason=Reason::Search;Stance vaultStance=Stance::Standing; };
 struct Projectile { Vec3 p,velocity;int owner;size_t shot;float mass=0,dragK=0;std::array<bool,UnitCount> suppressed{},struck{}; bool delivered=false; };
 // Decision code receives only self/remembered contacts and friendly positions.
 // It has no authoritative enemy roster or hidden enemy positions.
 static bool UsefulCover(const Soldier& s,const Map& map,const Tactics& memory,float time) {
     if(!memory.assigned||std::min(Distance(s.position,memory.shelter),Distance(s.position,memory.peek))>1.5f)return false;
     bool angle=false;
+    const Stance stance=ShelterStance(memory);
     for(const auto& ct:s.contacts)if(ct.known&&time-ct.observedAt<8) {
-        if(ct.visible&&!ProtectedAt(map,memory.shelter,ct.position,memory.halfCover?Stance::Crouched:Stance::Standing))return false;
-        if(ProtectedAt(map,memory.shelter,ct.position,memory.halfCover?Stance::Crouched:Stance::Standing)&&
-            ClearLine3D(map,memory.peek+Vec3{0,0,1.5f},{ct.position.x,ct.position.y,ct.aimHeight}))angle=true;
+        // Once an angle is found only a visible contact can still change the answer (to false).
+        if(angle&&!ct.visible)continue;
+        // One query serves both tests below: the original asked it twice with identical arguments.
+        const bool covered=ProtectedAt(map,memory.shelter,ct.position,stance);
+        if(ct.visible&&!covered)return false;
+        if(!angle&&covered&&ClearLine3D(map,memory.peek+Vec3{0,0,memory.proneCover?Posture(Stance::Crouched).muzzle:1.5f},{ct.position.x,ct.position.y,ct.aimHeight}))angle=true;
     }
     return angle;
 }
-bool BetterCoverNearby(const Map& map,const Soldier& s,const std::vector<Vec3>& friends,Tactics& memory,float time){
+bool BetterCoverNearby(const Map& map,const Soldier& s,const std::vector<Vec3>& friends,Tactics& memory,float time,VaultClass cls,bool byPath){
     if(!memory.assigned)return false;
     std::vector<KnownThreat> threats;uint64_t known=0;KnownThreats(s,time,threats,known);
     if(threats.empty())return false;
     auto protects=[&](Vec3 p,Stance posture){int count=0;for(const auto& threat:threats)if(ProtectedAt(map,p,threat.position,posture))++count;return count;};
-    const int current=protects(memory.shelter,memory.halfCover?Stance::Crouched:Stance::Standing);
+    const int current=protects(memory.shelter,ShelterStance(memory));
     if(current>=int(threats.size()))return false; // His cover already answers every enemy he knows about.
     const CoverPosition* best=nullptr;int bestCount=current;float bestTravel=1e9f;
-    for(const auto& cover:CoverPositions(map)){
+    // Plan 029 M-C2 (byPath): the qualifying candidates in (more enemies answered, shorter straight line,
+    // catalogue) order; each one's path is asked only while its straight line could still beat the best
+    // path so far (a path is never shorter than the line), and the limit is on the path's length.
+    struct Qualified {int count;float travel;uint32_t index;};std::vector<Qualified> qualified;
+    const auto& covers=CoverPositions(map);
+    for(size_t index=0;index<covers.size();++index){const auto& cover=covers[index];
         const float travel=Distance(s.position,cover.shelter);
         if(travel<.5f||travel>Caution().betterCover||!Walkable(map,cover.shelter)||!ClearLine(map,cover.shelter,cover.peek,.48f))continue;
         bool occupied=false;
         for(Vec3 ally:friends)if(Distance(ally,cover.shelter)<2.f||Distance(ally,cover.peek)<1.8f)occupied=true;
         if(occupied)continue;
-        const int count=protects(cover.shelter,cover.crouch?Stance::Crouched:Stance::Standing);
+        const int count=protects(cover.shelter,CoverStance(cover));
         if(count<=current)continue;
+        if(byPath){qualified.push_back({count,travel,uint32_t(index)});continue;}
         if(!best||count>bestCount||(count==bestCount&&travel<bestTravel)){best=&cover;bestCount=count;bestTravel=travel;}
     }
-    if(!best||FindPath(map,s.position,best->shelter).empty())return false;
+    if(byPath){
+        std::sort(qualified.begin(),qualified.end(),[](const Qualified& a,const Qualified& b){
+            return a.count>b.count||(a.count==b.count&&(a.travel<b.travel||(a.travel==b.travel&&a.index<b.index)));});
+        uint32_t bestIndex=0;
+        for(const auto& q:qualified){
+            if(best&&(q.count<bestCount||q.travel>bestTravel))break;
+            const auto& cover=covers[q.index];
+            const auto path=FindPath(map,s.position,cover.shelter,cls);if(path.empty())continue;
+            const float travel=std::max(q.travel,PathTravel(map,s.position,path,cls));
+            if(travel>Caution().betterCover)continue;
+            if(!best||travel<bestTravel||(travel==bestTravel&&q.index<bestIndex)){best=&cover;bestCount=q.count;bestTravel=travel;bestIndex=q.index;}
+        }
+        if(!best)return false;
+    }else if(!best||FindPath(map,s.position,best->shelter,cls).empty())return false;
     const float ready=memory.readyAt;memory={};memory.readyAt=ready;
-    memory.assigned=true;memory.halfCover=best->crouch;memory.shelter=best->shelter;memory.peek=best->peek;
+    memory.assigned=true;memory.halfCover=best->crouch;memory.proneCover=best->prone;memory.shelter=best->shelter;memory.peek=best->peek;
     memory.coverId=best->id;memory.geometryRevision=map.revision;memory.lastProgress=time;memory.travelPosition=s.position;
     memory.expires=time+12+bestTravel/1.5f;memory.coverRule=CoverRule::BetterCover;
     return true;
 }
-Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vector<Vec3>& friends,Tactics& memory,float time,DecisionAlternatives* alternatives) {
+int PinnedNeighbours(std::array<Soldier,UnitCount>& soldiers,const Map& map,const Config& c,const std::function<bool(const Soldier&)>& atCover){
+    const auto& pin=PinRules();std::array<bool,UnitCount> lifted{};int lifts=0;
+    auto settled=[&](const Soldier& q){const Task task=q.assignment.task;
+        if(q.vaulting||q.action==Action::Advance||q.action==Action::Retreat)return false;
+        if(task==Task::Advance||task==Task::Rally||task==Task::Flank||task==Task::BoundMove||task==Task::ClearLane||task==Task::PullBack)return false;
+        return atCover(q);};
+    for(const auto& p:soldiers)if(p.Active()&&p.suppression>DuckThreshold(c,p.team))
+        for(const auto& q:soldiers)if(q.id!=p.id&&!lifted[q.id]&&q.Active()&&q.squad==p.squad&&Distance(q.position,p.position)<=pin.neighbourRadius&&settled(q)&&
+            ClearLine3D(map,p.position+Vec3{0,0,Posture(p.stance).eye},q.position+Vec3{0,0,Posture(q.stance).eye}))lifted[q.id]=true;
+    for(auto& q:soldiers)if(lifted[q.id]){const float floor=std::min(c.neighbourEffect,DuckThreshold(c,q.team)-pin.neighbourMargin);
+        if(q.suppression<floor){q.suppression=floor;++lifts;}}
+    return lifts;
+}
+bool KeepDownApplies(const Soldier& s,const Config& c,float time){return s.suppression>DuckThreshold(c,s.team)||time-s.aboveDuckAt<=c.keepDownGrace;}
+// Plan 030 M-S7 P1 (Config::gradedPeek): the one draw of a settle, counter-based (SplitMix64 of the battle seed, the
+// man and the time), so the battle's random stream is never touched: with the rule off nothing is drawn at all.
+float SettleDraw(uint32_t seed,int soldier,float time){
+    uint64_t x=(uint64_t(seed)<<32)^(uint64_t(uint32_t(soldier))<<24)^uint64_t(uint32_t(std::lround(double(time)*1000)));
+    x+=0x9E3779B97F4A7C15ull;x=(x^(x>>30))*0xBF58476D1CE4E5B9ull;x=(x^(x>>27))*0x94D049BB133111EBull;x^=x>>31;
+    return float(x>>40)/16777216.f;
+}
+float GradedPeekChance(const Config& c,float suppression){return std::max(c.peekFloor,std::pow(std::max(0.f,1-suppression),c.peekCurve));}
+Order ChooseOrderBase(const Soldier& s,const Map& map,const Config& c,const std::vector<Vec3>& friends,Tactics& memory,float time,DecisionAlternatives* alternatives,bool* openGround) {
     Doctrine d=s.team?c.emberDoctrine:c.doctrine;
+    const VaultClass own=VaultClassOf(s,c); // plan 029 M-C: his reachability takes his vault class (None when off)
     float sign=s.team?-1.f:1.f;
     Vec3 objective=s.assignment.task==Task::None?s.position:s.assignment.position;
     int threat=-1;float nearest=1e9f;bool visible=false;
@@ -756,6 +986,13 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
         float dist=Distance(s.position,ct.position);
         if((ct.visible&&!visible)||(ct.visible==visible&&dist<nearest)) {nearest=dist;threat=i;visible=ct.visible;}
     }
+    // Plan 028 Stage 1d: a live covering payload names the enemy he is to fire on. Unless he sees an
+    // enemy himself, that is the threat he watches, peeks at and fires on; his duck, pinned and
+    // under-fire rules are unchanged.
+    const int requestedEnemy=FirePayloadLive(s,time)?s.assignment.fireEnemy:-1;
+    if(requestedEnemy>=0&&!visible){const auto& ct=s.contacts[requestedEnemy];
+        if(ct.known&&time-ct.observedAt<=10){threat=requestedEnemy;nearest=Distance(s.position,ct.position);}}
+    const bool requestedThreat=requestedEnemy>=0&&threat==requestedEnemy;
     // Old cover is not an indefinite hold order. Once contact has expired,
     // follow a changed mission unless incoming fire still demands shelter.
     // A holder's protective shelter may lie up to 8 m from his post (protectHold below). Releasing it at 3 m
@@ -773,12 +1010,12 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     const Vec3 enemy=threat>=0?s.contacts[threat].position:s.assignment.sector;
     const float duckAt=d==Doctrine::Cautious?0.40f:d==Doctrine::Aggressive?0.65f:0.52f;
     const bool pressure=s.suppression>duckAt;
-    const bool terrainScreen=s.assignment.id&&!ClearLine3D(map,enemy+Vec3{0,0,1.5f},s.position+Vec3{0,0,BodyHeight(s.stance)*.8f});
+    const bool terrainScreen=s.assignment.id&&!ClearLine3DSolid(map,enemy+Vec3{0,0,1.5f},s.position+Vec3{0,0,BodyHeight(s.stance)*.8f}); // a hedge is no screen (plan 029)
     const bool exposed=!terrainScreen&&!ProtectedAt(map,s.position,enemy,s.stance);
     // A firing edge is deliberately exposed, but has a remembered shelter to duck
     // into. Open-ground firing has no such refuge and must trigger self-preservation.
     const bool nearShelter=memory.assigned&&std::min(Distance(s.position,memory.shelter),Distance(s.position,memory.peek))<1.5f&&
-        ProtectedAt(map,memory.shelter,enemy,memory.halfCover?Stance::Crouched:Stance::Standing);
+        ProtectedAt(map,memory.shelter,enemy,ShelterStance(memory));
     const bool openFire=exposed&&!nearShelter&&s.suppression>0.08f;
     const bool exposedStop=visible&&exposed&&!nearShelter&&(s.action==Action::Fire||s.action==Action::Hold);
     const bool protectHold=(s.assignment.task==Task::Hold||s.assignment.task==Task::BoundCover||rearGuard)&&Distance(s.position,objective)<1.5f&&exposed&&!memory.assigned;
@@ -808,21 +1045,21 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     if(c.threatAwarePaths&&underFire&&nearShelter&&memory.assigned)memory.expires=std::max(memory.expires,time+12);
     const bool contactExposure=visible&&exposed&&!nearShelter&&
         (s.assignment.task==Task::Advance||s.assignment.task==Task::Hold||s.assignment.task==Task::Rally||s.assignment.task==Task::None);
-    if(memory.emergency&&memory.assigned&&ProtectedAt(map,memory.shelter,enemy,memory.halfCover?Stance::Crouched:Stance::Standing)&&
+    if(memory.emergency&&memory.assigned&&ProtectedAt(map,memory.shelter,enemy,ShelterStance(memory))&&
         (pressure||(holdingPost&&Distance(memory.shelter,objective)<8)))memory.expires=std::max(memory.expires,time+3);
     if(memory.emergency&&time>=memory.expires&&!pressure){memory.assigned=false;memory.emergency=false;}
     const bool localSafety=(pressure&&exposed)||openFire||exposedStop||contactExposure||protectHold||(memory.emergency&&memory.assigned&&time<memory.expires);
     // The one way out of cover while under fire: better cover close by. Otherwise he stays,
     // which the memory block below does once its expiry is renewed above.
     if(c.threatAwarePaths&&underFire&&nearShelter&&orderedMove&&memory.assigned&&!memory.emergency&&!localSafety){
-        if(BetterCoverNearby(map,s,friends,memory,time))
+        if(BetterCoverNearby(map,s,friends,memory,time,own,c.vaulting))
             return {memory.shelter,Action::Cover,Reason::Relocate,memory.halfCover?Stance::Crouched:Stance::Standing};
         memory.coverRule=CoverRule::StayedUnderFire;
     }
     const bool maneuverArrival=s.assignment.task==Task::BoundMove||s.assignment.task==Task::Flank;
     if(maneuverArrival&&!memory.assigned&&Distance(s.position,objective)<1.5f){
         for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,objective)<.75f&&ClearLine(map,cover.shelter,cover.peek,.48f)){
-            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=cover.crouch;memory.shelter=cover.shelter;memory.peek=cover.peek;
+            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=cover.crouch;memory.proneCover=cover.prone;memory.shelter=cover.shelter;memory.peek=cover.peek;
             memory.coverId=cover.id;memory.geometryRevision=map.revision;memory.lastProgress=time;memory.expires=time+180;
             if(!cover.crouch)for(int step=1;step<=60;++step){Vec3 trial=cover.shelter+(cover.peek-cover.shelter)*(step/60.f);
                 if(ClearLine3D(map,trial+Vec3{0,0,1.5f},enemy+Vec3{0,0,1.45f})){memory.peek=trial;break;}}
@@ -853,14 +1090,30 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     }
     if(s.assignment.task==Task::BoundCover&&!memory.assigned&&(!localSafety||Distance(s.position,objective)<1)) {
         for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,objective)<0.6f) {
-            const Stance sheltered=cover.crouch?Stance::Crouched:Stance::Standing;
+            const Stance sheltered=CoverStance(cover);
             bool safe=ProtectedAt(map,cover.shelter,enemy,sheltered);
             for(const auto& ct:s.contacts)if(ct.visible&&!ProtectedAt(map,cover.shelter,ct.position,sheltered))safe=false;
             if(!safe)continue;
-            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=cover.crouch;memory.shelter=cover.shelter;memory.peek=cover.peek;
+            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=cover.crouch;memory.proneCover=cover.prone;memory.shelter=cover.shelter;memory.peek=cover.peek;
             if(!cover.crouch)for(int step=1;step<=60;++step){Vec3 trial=cover.shelter+(cover.peek-cover.shelter)*(step/60.f);
                 if(ClearLine3D(map,trial+Vec3{0,0,1.5f},enemy+Vec3{0,0,1.45f})){memory.peek=trial;break;}}
             memory.expires=time+180;memory.lastProgress=time;break;
+        }
+    }
+    // Plan 028 Stage 4 (Config::coverShift): a shift order names a catalogue cover with a line onto the enemy
+    // he is to cover. He takes its shelter and, at a tall wall, the edge that bears on that enemy, as a
+    // BoundCover man takes his. Only a shift order carries fireShift.
+    if(s.assignment.fireShift&&requestedThreat&&(s.assignment.task==Task::Hold||s.assignment.task==Task::Overwatch)&&
+        !memory.assigned&&(!localSafety||Distance(s.position,objective)<1)) {
+        for(const auto& cover:CoverPositions(map))if(Distance(cover.shelter,objective)<0.1f) {
+            const Stance sheltered=CoverStance(cover);
+            bool safe=ProtectedAt(map,cover.shelter,enemy,sheltered);
+            for(const auto& ct:s.contacts)if(ct.visible&&!ProtectedAt(map,cover.shelter,ct.position,sheltered))safe=false;
+            if(!safe)break;
+            memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=cover.crouch;memory.proneCover=cover.prone;memory.shelter=cover.shelter;memory.peek=cover.peek;
+            if(!cover.crouch)for(int step=1;step<=60;++step){Vec3 trial=cover.shelter+(cover.peek-cover.shelter)*(step/60.f);
+                if(ClearLine3D(map,trial+Vec3{0,0,1.5f},{enemy.x,enemy.y,s.contacts[threat].aimHeight})){memory.peek=trial;break;}}
+            memory.expires=time+60;memory.lastProgress=time;memory.travelPosition=s.position;break;
         }
     }
     if(overwatch&&!memory.assigned&&(!localSafety||Distance(s.position,objective)<0.7f)) {
@@ -884,12 +1137,18 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
     bool pinned=s.suppression>0.72f||(s.reason==Reason::Suppressed&&s.suppression>0.35f);
     bool flanked=false;
     if(memory.assigned) {
-        if(memory.defensiveOnly&&threat>=0&&ClearLine3D(map,{memory.peek.x,memory.peek.y,memory.peek.z+1.5f},{enemy.x,enemy.y,s.contacts[threat].aimHeight}))memory.defensiveOnly=false;
-        const Stance sheltered=memory.halfCover?Stance::Crouched:Stance::Standing;
+        if(memory.defensiveOnly&&threat>=0&&ClearLine3D(map,{memory.peek.x,memory.peek.y,memory.peek.z+(memory.proneCover?Posture(Stance::Crouched).muzzle:1.5f)},{enemy.x,enemy.y,s.contacts[threat].aimHeight}))memory.defensiveOnly=false;
+        const Stance sheltered=ShelterStance(memory);
         for(const auto& ct:s.contacts) if(ct.visible&&!ProtectedAt(map,memory.shelter,ct.position,sheltered)) flanked=true;
         if(!flanked&&time<memory.expires) {
             const bool sustained=s.machineGun&&overwatch;
             bool threatened=pinned||s.suppression>duckAt;
+            // Plan 030 M-S7 P1 (Config::gradedPeek): a graded peek is not cut short by the fire that is on him: he
+            // stays up until he has fired a round, been hit, or peekHold has passed; then the rules as they stand.
+            if(c.gradedPeek&&memory.gradedPeek) {
+                if(memory.peeking&&s.rounds==memory.roundsAtPeek&&s.health>=memory.healthAtPeek&&time-memory.gradedAt<PinRules().peekHold)threatened=false;
+                else memory.gradedPeek=false;
+            }
             if(memory.peeking&&(threatened||s.reloadUntil>time)) {
                 memory.peeking=false;memory.phaseUntil=time+0.7f;memory.lastProgress=time;memory.lastDistance=1e9f;
             }
@@ -901,64 +1160,182 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
             if(dist<=0.12f) {
                 if(memory.defensiveOnly)return {memory.shelter,Action::Hold,Reason::ProtectedHold,sheltered};
                 if(memory.phaseUntil<0)memory.phaseUntil=time;
-                if(!memory.peeking&&time>=memory.phaseUntil&&time>=s.reloadUntil&&!pinned&&s.suppression<(d==Doctrine::Cautious?0.25f:d==Doctrine::Aggressive?0.5f:0.35f)) {
+                if(!memory.peeking&&time>=memory.phaseUntil&&time>=s.reloadUntil&&!pinned&&!NervePinned(s,c)&&s.suppression<(d==Doctrine::Cautious?0.25f:d==Doctrine::Aggressive?0.5f:0.35f)) {
                     memory.peeking=true;memory.phaseUntil=-1;memory.lastDistance=1e9f;memory.lastProgress=time;
                     memory.roundsAtPeek=s.rounds;memory.healthAtPeek=s.health;
-                    return {memory.peek,memory.halfCover?Action::Fire:Action::Cover,sustained?Reason::SuppressiveFire:memory.halfCover?Reason::PopUp:Reason::Peek};
+                    // At prone cover (a crater rim) he pops up crouched: his crouched muzzle clears the rim (plan 029).
+                    return {memory.peek,memory.halfCover?Action::Fire:Action::Cover,sustained?Reason::SuppressiveFire:memory.halfCover?Reason::PopUp:Reason::Peek,PeekStance(memory)};
+                }
+                // Plan 030 M-S7 P1 (Config::gradedPeek, Jordan's rule 1): above his duck threshold he is not hard-ducked.
+                // Each settle he comes up for one round with chance max(peekFloor, (1 - suppression)^peekCurve), one
+                // draw a settle; otherwise he stays down another settle. Below the threshold nothing changes, nor for a
+                // man holding a movement order (plan 020 holds him in cover under fire; the rule never touches him).
+                if(c.gradedPeek&&!orderedMove&&!memory.peeking&&time>=memory.phaseUntil&&time>=s.reloadUntil&&!NervePinned(s,c)&&s.suppression>duckAt) {
+                    memory.gradedDrawAt=time;
+                    if(SettleDraw(c.seed,s.id,time)<GradedPeekChance(c,s.suppression)) {
+                        memory.peeking=true;memory.phaseUntil=-1;memory.lastDistance=1e9f;memory.lastProgress=time;
+                        memory.roundsAtPeek=s.rounds;memory.healthAtPeek=s.health;memory.gradedPeek=true;memory.gradedAt=time;
+                        return {memory.peek,memory.halfCover?Action::Fire:Action::Cover,sustained?Reason::SuppressiveFire:memory.halfCover?Reason::PopUp:Reason::Peek,PeekStance(memory)};
+                    }
+                    memory.phaseUntil=time+PinRules().settleSeconds;
                 }
                 return {goal,memory.peeking?Action::Fire:Action::Hold,
                     pinned?Reason::Suppressed:memory.peeking?(sustained?Reason::SuppressiveFire:memory.halfCover?Reason::PopUp:Reason::CoverFire):memory.halfCover?Reason::Duck:Reason::Settle,
-                    memory.peeking?Stance::Standing:sheltered};
+                    memory.peeking?PeekStance(memory):sheltered};
             }
         }
     }
+    // Plan 028 Stage 1d: on the post he was tasked from, sheltered from the threat he is to cover and
+    // with a line onto it standing, he rises and fires from where he is: nobody moves to get a line.
+    if(requestedThreat&&!visible&&!exposed&&!localSafety&&!pinned&&!NervePinned(s,c)&&!flanked&&!memory.assigned&&
+        (s.assignment.task==Task::Hold||s.assignment.task==Task::BoundCover||s.assignment.task==Task::Overwatch||s.assignment.task==Task::Window)&&
+        Distance(s.position,objective)<1.5f&&ClearLine3D(map,{s.position.x,s.position.y,s.position.z+1.5f},{enemy.x,enemy.y,s.contacts[threat].aimHeight}))
+        return {s.position,Action::Fire,Reason::CoverFire,Stance::Standing};
     const bool relocating=memory.assigned;
 
     memory.assigned=false;
     // Pair genuinely sheltered positions with reachable firing edges. Reserve both.
-    Vec3 best{},bestPeek{};bool bestHalf=false,bestDefensive=false;float bestScore=1e9f;
-    for(const auto& candidate:CoverPositions(map)) {
-            Vec3 p=candidate.shelter,peek=candidate.peek;
-            if(localSafety&&!OnStairs(map,s.position)&&std::abs(p.z-s.position.z)>0.5f)continue;
+    Vec3 best{},bestPeek{};bool bestHalf=false,bestProne=false,bestDefensive=false;float bestScore=1e9f;
+    const auto& covers=CoverPositions(map);
+    // Plan 029 M-C2 (Config::vaulting): a candidate's travel is the length of his own-class path to it
+    // (PathTravel, a vault at its seconds), not the straight line, in its score and its limit. The straight-
+    // line score is a lower bound of it, so both searches below stay exact. Off: the straight line.
+    const bool byPath=c.vaulting;
+    float bestTravel=0;
+    auto pathScore=[&](float score,float straight,const std::vector<Vec3>& path,float limit,float& travel){
+        travel=std::max(straight,PathTravel(map,s.position,path,own));
+        return travel>limit?1e9f:score+(travel-straight)*(localSafety?3.f:0.9f);};
+    // Loop-invariant: the soldier's own stair test does not depend on the candidate.
+    const bool onStairs=localSafety&&OnStairs(map,s.position);
+    const float aimZ=threat>=0?s.contacts[threat].aimHeight:enemy.z+1.65f;
+    // At prone cover he fires crouched over the rim (plan 029 M-A2): his firing line starts at the crouched muzzle.
+    auto firingLine=[&](Vec3 at,bool prone=false){return ClearLine3D(map,{at.x,at.y,at.z+(prone?Posture(Stance::Crouched).muzzle:1.5f)},{enemy.x,enemy.y,aimZ});};
+    if(!alternatives) {
+        // Exact reordering of the search below (the traced branch keeps the original loop).
+        // The score depends on the shelter only, never on the peek, and the original keeps
+        // the first candidate, in catalogue order, with the lowest score among those that
+        // pass every test and have a path. Every test is a pure geometric query (memo tables
+        // change speed only), so the same candidate is found by visiting candidates in
+        // (score, catalogue index) order and stopping at the first that passes every test and
+        // has a path. Shelter-only tests run first; the peek walk runs only for the few left.
+        struct Ranked {float score;uint32_t index;};
+        std::vector<Ranked> ranked;
+        const bool advanceBound=s.assignment.task==Task::Advance&&!pinned&&!localSafety;
+        const float advanceLimit=advanceBound?Distance(s.position,objective)+1:0.f;
+        const float rearLimit=rearGuard&&localSafety?std::max(sign*s.position.x,sign*objective.x)+2:0.f;
+        const bool protectBound=protectHold&&!openFire&&!exposedStop&&!pressure;
+        const bool stationBound=(overwatch||rearGuard)&&!localSafety;
+        for(size_t index=0;index<covers.size();++index) {
+            const auto& candidate=covers[index];
+            const Vec3 p=candidate.shelter;
+            if(localSafety&&!onStairs&&std::abs(p.z-s.position.z)>0.5f)continue;
             if(candidate.window&&s.assignment.task!=Task::Window&&s.assignment.task!=Task::Overwatch&&!rearGuard&&!localSafety)continue;
-            float travel=Distance(s.position,p);
-            if(travel>(localSafety?35.f:candidate.window?30.f:20.f)||!Walkable(map,p))continue;
-            const Stance sheltered=candidate.crouch?Stance::Crouched:Stance::Standing;
-            auto firingLine=[&](Vec3 at){return ClearLine3D(map,{at.x,at.y,at.z+1.5f},{enemy.x,enemy.y,threat>=0?s.contacts[threat].aimHeight:enemy.z+1.65f});};
-            // Stop at the first firing clearance, instead of walking a metre beyond the edge.
+            const float travel=Distance(s.position,p);
+            if(travel>(localSafety?35.f:candidate.window?30.f:20.f))continue;
+            const float toObjective=Distance(p,objective);
+            if(stationBound&&toObjective>6)continue;
+            if(rearGuard&&localSafety&&sign*p.x>rearLimit)continue;
+            if(protectBound&&toObjective>8)continue;
+            if(advanceBound&&toObjective>advanceLimit)continue;
+            float score=(candidate.window?(p.z>1?-8.f:-3.f):0.f)+travel*(localSafety?3.f:0.9f)+toObjective*(localSafety?0.1f:d==Doctrine::Aggressive?1.3f:0.65f);
+            if(d==Doctrine::Cautious) score+=std::max(0.f,22-Distance(p,enemy));
+            if(!(score<bestScore))continue; // never selectable (the original compares against 1e9)
+            ranked.push_back({score,uint32_t(index)});
+        }
+        std::sort(ranked.begin(),ranked.end(),[](const Ranked& x,const Ranked& y){return x.score<y.score||(x.score==y.score&&x.index<y.index);});
+        uint32_t bestIndex=0;
+        for(const auto& rank:ranked) {
+            if(byPath&&rank.score>bestScore)break; // no path can bring it under the best
+            const auto& candidate=covers[rank.index];
+            const Vec3 p=candidate.shelter;
+            if(!Walkable(map,p))continue;
+            bool occupied=false;
+            for(Vec3 ally:friends) if(Distance(ally,p)<2.0f) {occupied=true;break;}
+            if(occupied)continue;
+            const Stance sheltered=CoverStance(candidate);
+            if(!ProtectedAt(map,p,enemy,sheltered))continue;
+            bool candidateExposed=false;
+            for(const auto& ct:s.contacts) if(ct.visible) {
+                // ProtectedAt(p,enemy) is already known true; an identical query needs no repeat.
+                if(std::memcmp(&ct.position,&enemy,sizeof(Vec3))==0)continue;
+                if(!ProtectedAt(map,p,ct.position,sheltered)) {candidateExposed=true;break;}
+            }
+            if(candidateExposed)continue;
+            Vec3 peek=candidate.peek;bool found=false;
             if(!candidate.crouch)for(int step=1;step<=60;++step) {
                 Vec3 trial=p+(candidate.peek-p)*(step/60.f);
-                if(firingLine(trial)) {peek=trial;break;}
+                if(firingLine(trial)) {peek=trial;found=true;break;}
             }
-            const bool defensive=!firingLine(peek);
+            // A peek found by the walk has just been tested with this exact query.
+            const bool defensive=found?false:!firingLine(peek,candidate.prone);
             if(defensive){if(!localSafety)continue;peek=p;}
-            if(!Walkable(map,peek)||!ProtectedAt(map,p,enemy,sheltered)||
-                !ClearLine(map,p,peek,0.48f)) continue;
-            bool occupied=false,candidateExposed=false;
-            for(Vec3 ally:friends) if(Distance(ally,p)<2.0f||Distance(ally,peek)<1.8f) occupied=true;
-            for(const auto& ct:s.contacts) if(ct.visible&&!ProtectedAt(map,p,ct.position,sheltered)) candidateExposed=true;
-            if(occupied||candidateExposed)continue;
-            // Reassessment always retains a valid current shelter as a candidate.
-            if((overwatch||rearGuard)&&!localSafety&&(Distance(p,objective)>6||Distance(peek,objective)>6))continue;
-            if(rearGuard&&localSafety&&sign*p.x>std::max(sign*s.position.x,sign*objective.x)+2)continue;
-            if(protectHold&&!openFire&&!exposedStop&&!pressure&&Distance(p,objective)>8)continue;
-            if(s.assignment.task==Task::Advance&&!pinned&&!localSafety&&Distance(p,objective)>Distance(s.position,objective)+1)continue;
-            float score=(candidate.window?(p.z>1?-8.f:-3.f):0.f)+travel*(localSafety?3.f:0.9f)+Distance(p,objective)*(localSafety?0.1f:d==Doctrine::Aggressive?1.3f:0.65f);
-            if(d==Doctrine::Cautious) score+=std::max(0.f,22-Distance(p,enemy));
-            if(alternatives)alternatives->Add(p,score,"geometrically suitable; scored before reachability");
-            if(score<bestScore&&!FindPath(map,s.position,p).empty()) {bestScore=score;best=p;bestPeek=peek;bestHalf=candidate.crouch;bestDefensive=defensive;}
+            if(!Walkable(map,peek)||!ClearLine(map,p,peek,0.48f))continue;
+            for(Vec3 ally:friends) if(Distance(ally,peek)<1.8f) {occupied=true;break;}
+            if(occupied)continue;
+            if(stationBound&&Distance(peek,objective)>6)continue;
+            if(byPath){
+                const auto path=FindPath(map,s.position,p,own);if(path.empty())continue;
+                float travel=0;const float score=pathScore(rank.score,Distance(s.position,p),path,localSafety?35.f:candidate.window?30.f:20.f,travel);
+                if(!(score<1e8f))continue;
+                if(score<bestScore||(score==bestScore&&rank.index<bestIndex)){
+                    bestScore=score;bestIndex=rank.index;bestTravel=travel;best=p;bestPeek=peek;bestHalf=candidate.crouch;bestProne=candidate.prone;bestDefensive=defensive;}
+                continue;
+            }
+            if(FindPath(map,s.position,p,own).empty())continue;
+            bestScore=rank.score;best=p;bestPeek=peek;bestHalf=candidate.crouch;bestProne=candidate.prone;bestDefensive=defensive;
+            break;
+        }
+    } else {
+        for(const auto& candidate:covers) {
+                Vec3 p=candidate.shelter,peek=candidate.peek;
+                if(localSafety&&!onStairs&&std::abs(p.z-s.position.z)>0.5f)continue;
+                if(candidate.window&&s.assignment.task!=Task::Window&&s.assignment.task!=Task::Overwatch&&!rearGuard&&!localSafety)continue;
+                float travel=Distance(s.position,p);
+                if(travel>(localSafety?35.f:candidate.window?30.f:20.f)||!Walkable(map,p))continue;
+                const Stance sheltered=CoverStance(candidate);
+                // Stop at the first firing clearance, instead of walking a metre beyond the edge.
+                if(!candidate.crouch)for(int step=1;step<=60;++step) {
+                    Vec3 trial=p+(candidate.peek-p)*(step/60.f);
+                    if(firingLine(trial)) {peek=trial;break;}
+                }
+                const bool defensive=!firingLine(peek,candidate.prone);
+                if(defensive){if(!localSafety)continue;peek=p;}
+                if(!Walkable(map,peek)||!ProtectedAt(map,p,enemy,sheltered)||
+                    !ClearLine(map,p,peek,0.48f)) continue;
+                bool occupied=false,candidateExposed=false;
+                for(Vec3 ally:friends) if(Distance(ally,p)<2.0f||Distance(ally,peek)<1.8f) occupied=true;
+                for(const auto& ct:s.contacts) if(ct.visible&&!ProtectedAt(map,p,ct.position,sheltered)) candidateExposed=true;
+                if(occupied||candidateExposed)continue;
+                // Reassessment always retains a valid current shelter as a candidate.
+                if((overwatch||rearGuard)&&!localSafety&&(Distance(p,objective)>6||Distance(peek,objective)>6))continue;
+                if(rearGuard&&localSafety&&sign*p.x>std::max(sign*s.position.x,sign*objective.x)+2)continue;
+                if(protectHold&&!openFire&&!exposedStop&&!pressure&&Distance(p,objective)>8)continue;
+                if(s.assignment.task==Task::Advance&&!pinned&&!localSafety&&Distance(p,objective)>Distance(s.position,objective)+1)continue;
+                float score=(candidate.window?(p.z>1?-8.f:-3.f):0.f)+travel*(localSafety?3.f:0.9f)+Distance(p,objective)*(localSafety?0.1f:d==Doctrine::Aggressive?1.3f:0.65f);
+                if(d==Doctrine::Cautious) score+=std::max(0.f,22-Distance(p,enemy));
+                if(alternatives)alternatives->Add(p,score,"geometrically suitable; scored before reachability");
+                if(byPath){
+                    if(!(score<bestScore))continue;
+                    const auto path=FindPath(map,s.position,p,own);if(path.empty())continue;
+                    float pathTravel=0;const float scored=pathScore(score,travel,path,localSafety?35.f:candidate.window?30.f:20.f,pathTravel);
+                    if(scored<bestScore){bestScore=scored;bestTravel=pathTravel;best=p;bestPeek=peek;bestHalf=candidate.crouch;bestProne=candidate.prone;bestDefensive=defensive;}
+                    continue;
+                }
+                if(score<bestScore&&!FindPath(map,s.position,p,own).empty()) {bestScore=score;best=p;bestPeek=peek;bestHalf=candidate.crouch;bestProne=candidate.prone;bestDefensive=defensive;}
+        }
     }
     if(bestScore<1e8f) {
-        memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=bestHalf;memory.shelter=best;memory.peek=bestPeek;memory.lastProgress=time;
+        memory={};memory.coverRule=verdict;memory.assigned=true;memory.halfCover=bestHalf;memory.proneCover=bestProne;memory.shelter=best;memory.peek=bestPeek;memory.lastProgress=time;
         memory.emergency=localSafety;memory.defensiveOnly=bestDefensive;
-        memory.expires=time+Distance(s.position,best)/1.5f+(localSafety?6.f:d==Doctrine::Cautious?22.f:d==Doctrine::Aggressive?10.f:16.f);
+        memory.expires=time+(byPath?bestTravel:Distance(s.position,best))/1.5f+(localSafety?6.f:d==Doctrine::Cautious?22.f:d==Doctrine::Aggressive?10.f:16.f);
         return {best,Action::Cover,localSafety?Reason::EmergencyCover:pinned?Reason::Suppressed:flanked?Reason::Flanked:relocating?Reason::Relocate:Reason::Contact};
     }
     if(pinned||(pressure&&exposed)||openFire||exposedStop||contactExposure) {
+        if(openGround)*openGround=true; // plan 029 M-A1: every cover search has failed him here
         Vec3 away=s.position+Normal(s.position-enemy)*5.f;
         away.x=Clamp(away.x,-map.halfWidth+1,map.halfWidth-1);
         away.y=Clamp(away.y,-map.halfHeight+1,map.halfHeight-1);
-        if(!FindPath(map,s.position,away).empty())return {away,Action::Retreat,pressure?Reason::Suppressed:Reason::EmergencyCover,Stance::Crouched};
+        if(!FindPath(map,s.position,away,own).empty())return {away,Action::Retreat,pressure?Reason::Suppressed:Reason::EmergencyCover,Stance::Crouched};
         return {s.position,Action::Hold,Reason::Suppressed,Stance::Crouched};
     }
     if(rearGuard)return {objective,Distance(s.position,objective)>0.7f?Action::Cover:visible?Action::Fire:Action::Hold,Reason::RearFire};
@@ -973,6 +1350,87 @@ Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vec
         AttackMovementTask(s.assignment.task)&&s.magazineRemaining>0&&!FlankHoldsFire(s,time);
     if(visible&&nearest<preferred&&!pressOn) return {s.position,Action::Fire,Reason::ClearShot};
     return {objective,Action::Advance,visible?Reason::Search:Reason::LostContact};
+}
+Order ChooseOrder(const Soldier& s,const Map& map,const Config& c,const std::vector<Vec3>& friends,Tactics& memory,float time,DecisionAlternatives* alternatives) {
+    // Plan 031 D: an order of the fire-and-movement drill (its marker is only ever set with Config::fireAndMovement)
+    // passes its gate; every other order is decided exactly as before.
+    if(s.assignment.fm.gun>=0)return ApplyFireMovement(s,map,c,friends,memory,time,alternatives);
+    return ChooseOrderPlain(s,map,c,friends,memory,time,alternatives);
+}
+Order ChooseOrderPlain(const Soldier& s,const Map& map,const Config& c,const std::vector<Vec3>& friends,Tactics& memory,float time,DecisionAlternatives* alternatives) {
+    if(!c.prone)return ChooseOrderBase(s,map,c,friends,memory,time,alternatives,nullptr);
+    // The cover search resets his memory freely; when he went down is his own.
+    const float since=memory.proneSince;bool open=false;
+    const Order decided=ChooseOrderBase(s,map,c,friends,memory,time,alternatives,&open);
+    memory.proneSince=since;
+    return ApplyProne(s,map,c,memory,time,decided,open);
+}
+// Plan 029 M-A1. Own position, the map and the enemies he knows of (his contacts and the reports he
+// has received): never an enemy body.
+bool ProneUseful(const Soldier& s,const Map& map,float time) {
+    if(OnStairs(map,s.position))return false;
+    for(const auto& b:map.buildings)   // inside the outer walls, as ClearLine3D bounds a building
+        if(std::abs(s.position.x-b.center.x)<=b.half.x+.23f&&std::abs(s.position.y-b.center.y)<=b.half.y+.23f)return false;
+    std::vector<KnownThreat> threats;uint64_t known=0;KnownThreats(s,time,threats,known);
+    const auto& rule=Postures();
+    for(const auto& threat:threats)if(Distance(s.position,threat.position)<=rule.threatRange&&
+        threat.position.z+rule.threatEye-(s.position.z+Posture(Stance::Prone).body)>rule.threatAbove)return false;
+    return true;
+}
+Order ApplyProne(const Soldier& s,const Map& map,const Config& c,Tactics& memory,float time,const Order& decided,bool openGround) {
+    if(!c.prone)return decided;
+    const auto& rule=Postures();
+    const Doctrine d=s.team?c.emberDoctrine:c.doctrine;
+    const float duckAt=d==Doctrine::Cautious?0.40f:d==Doctrine::Aggressive?0.65f:0.52f;
+    // Lying where he is: he fires only at an enemy he sees over a clear line from his prone muzzle.
+    auto down=[&]{
+        const Vec3 muzzle=s.position+Vec3{0,0,Posture(Stance::Prone).muzzle};bool line=false;
+        for(const auto& ct:s.contacts)if(ct.known&&ct.visible&&
+            ClearLine3D(map,muzzle,{ct.position.x+ct.aimOffset.x,ct.position.y+ct.aimOffset.y,ct.aimHeight})){line=true;break;}
+        return Order{s.position,line?Action::Fire:Action::Hold,Reason::Prone,Stance::Prone};
+    };
+    auto rise=[&]{memory.proneSince=-1;return decided;};
+    // Plan 029 M-A2: lying at prone cover (a crater rim) he is there by the cover rules, not these: they
+    // shelter him prone and pop him up crouched, and he leaves as he would leave any cover. Only when every
+    // cover search has failed him does he stay down there under the rules below, as in the open.
+    if(s.stance==Stance::Prone&&!openGround){
+        for(const auto& cover:CoverPositions(map))if(cover.prone&&Distance(cover.shelter,s.position)<.3f){memory.proneSince=-1;return decided;}
+    }
+    if(s.stance!=Stance::Prone) {
+        memory.proneSince=-1;
+        // He goes down only where every cover search has just failed him, when he is pressed (the rise
+        // below needs suppression under duckAt-0.2, so going down only above duckAt leaves a band of
+        // 0.2 between the two and he cannot flicker), and where lying down would help.
+        if(!openGround||s.suppression<=duckAt||!ProneUseful(s,map,time))return decided;
+        memory.proneSince=time;
+        return down();
+    }
+    if(memory.proneSince<0)memory.proneSince=time; // a reset lost the clock: start it again
+    const bool held=time-memory.proneSince>=rule.minimumSeconds;
+    const bool pinned=s.suppression>0.72f;
+    bool quiet=s.suppression<duckAt-rule.riseMargin&&!NervePinned(s,c); // plan 030 S2: nerve holds him down
+    if(quiet)for(const auto& ct:s.contacts)if(ct.known&&ct.visible&&Distance(s.position,ct.position)<=rule.riseContact){quiet=false;break;}
+    if(held&&quiet)return rise();
+    // A squad-wide retreat raises him at once, as it takes a man out of cover under fire (plan 020).
+    const bool moves=decided.action!=Action::Hold&&decided.action!=Action::Fire&&Distance(s.position,decided.goal)>.7f;
+    if(s.assignment.task==Task::PullBack&&moves)return rise();
+    // Still pressed with nowhere to go: he stays down.
+    if(openGround)return down();
+    if(decided.action==Action::Cover&&Distance(s.position,decided.goal)>.12f) {
+        if(!pinned) {
+            const auto path=FindPath(map,s.position,decided.goal);
+            const float length=path.empty()?1e9f:PathLength(s.position,path);
+            // Cover within crawling range: he crawls to it lying down.
+            if(length<=rule.crawlRange)return {decided.goal,Action::Cover,decided.reason,Stance::Prone};
+            // A move to cover beyond it that the emergency search did not make (an ordered post, a better
+            // position, a relocation) raises him once he has been down long enough; the emergency search's
+            // own far cover does not: he stays down.
+            if(held&&!memory.emergency&&!path.empty())return rise();
+        }
+        const float ready=memory.readyAt,since=memory.proneSince;
+        memory={};memory.readyAt=ready;memory.proneSince=since;   // no reservation he will not use
+    }
+    return down();
 }
 // Segment against a vertical body cylinder, expressed relative to its moving centre.
 static float SegmentBody(Vec3 a,Vec3 b,float height) {
@@ -1004,7 +1462,7 @@ float SightRange(const Soldier& s){return s.gun.engagementRange*StatScale(s.stat
 Contact SenseEnemy(const Soldier& observer,const Soldier& target,const Map& map,float time) {
     Contact ct;
     if(!observer.Active()||!target.Active()||observer.team==target.team||!InVisualField(observer,target.position,SightRange(observer)))return ct;
-    Vec3 eye=observer.position+Vec3{0,0,observer.stance==Stance::Crouched?0.82f:1.7f};
+    Vec3 eye=observer.position+Vec3{0,0,Posture(observer.stance).eye};
     Vec3 sight=Normal(target.position-observer.position),side{-sight.y,sight.x};
     for(float fraction:{0.90f,0.72f,0.5f})for(float lateral:{0.f,-0.3f,0.3f}) {
         Vec3 offset=side*lateral,p=target.position+offset;
@@ -1012,6 +1470,23 @@ Contact SenseEnemy(const Soldier& observer,const Soldier& target,const Map& map,
         if(ClearLine3D(map,eye,{p.x,p.y,z})) {
             ct.detectionDelay=observer.cognition?(.1f+.5f*Distance(observer.position,target.position)/SightRange(observer)+.25f*(1-fraction)+.1f*std::abs(lateral))/StatScale(observer.stats.Get(Stat::Perception)):0;
             ct.known=ct.visible=true;ct.originalObserver=observer.id;ct.position=target.position;ct.observedAt=time;ct.aimHeight=z;ct.aimOffset=offset;ct.automaticWeapon=target.gun.action==WeaponAction::Automatic;if(time-target.lastShotAt<1)ct.lastFireAt=target.lastShotAt;return ct;
+        }
+    }
+    return ct;
+}
+Contact SenseFall(const Soldier& observer,const Soldier& target,const Map& map,float time) {
+    Contact ct;
+    if(!observer.Active()||observer.team==target.team||!InVisualField(observer,target.position,SightRange(observer)))return ct;
+    Vec3 eye=observer.position+Vec3{0,0,Posture(observer.stance).eye};
+    Vec3 sight=Normal(target.position-observer.position),side{-sight.y,sight.x};
+    for(float fraction:{0.90f,0.72f,0.5f})for(float lateral:{0.f,-0.3f,0.3f}) {
+        Vec3 offset=side*lateral,p=target.position+offset;
+        float z=target.position.z+BodyHeight(target.stance)*fraction;
+        if(ClearLine3D(map,eye,{p.x,p.y,z})) {
+            // He is in sight: whether he is still in the fight is what the observer sees now.
+            if(target.Active())return ct;
+            ct.known=true;ct.visible=false;ct.seenDown=true;ct.originalObserver=observer.id;ct.position=target.position;ct.observedAt=time;
+            ct.aimHeight=z;ct.aimOffset=offset;ct.automaticWeapon=target.gun.action==WeaponAction::Automatic;return ct;
         }
     }
     return ct;
@@ -1040,7 +1515,37 @@ bool ResolveDeathmatch(Record& record,const Frame& frame,bool projectilesPending
         record.winner<0?"Time limit: equal surviving soldiers. Draw.":"Time limit: more surviving soldiers wins.";
     return true;
 }
+// The covering-fire delivery credit ray: a round that passed near its aim point is credited
+// support only if the line from where it was fired to where it now is is clear. Off (Legacy),
+// the line starts at the shooter's feet (the typed controllers use the muzzle), so a man firing
+// over low cover, or a village's earth complement whose top is at z 0, denies every credit.
+// Plan 029 F-E (Config::muzzleCredit): from the muzzle for every controller, and solid-only as
+// every other bullet test (ruling A), so a hedge the round went through does not deny it.
+bool DeliveryLineClear(const Map& map,const Config& c,const Shot& shot,const Soldier& shooter,Vec3 end) {
+    if(!c.muzzleCredit) {
+        const Vec3 from=(c.recoveryFixture||TypedController(c))?shot.flight.front().position:shot.start;
+        return ClearLine3D(map,from,end+(from-end)*.001f);
+    }
+    // The flight record's first sample is the muzzle at the moment of firing; a shot without one
+    // (none is fired that way today) falls back to the muzzle height of his present stance.
+    const Vec3 from=!shot.flight.empty()?shot.flight.front().position:shot.start+Vec3{0,0,Posture(shooter.stance).muzzle};
+    return ClearLine3DSolid(map,from,end+(from-end)*.001f);
+}
 Record Simulate(const Config& input,const DiagnosticOptions& options,const std::vector<GeometryEdit>& edits,int encounter) {
+    if((input.neuralPolicy||input.policyCandidates||input.externalPolicy||input.policySchema)&&
+        (input.cognition||input.drills||input.foundations||input.recoveryFixture))
+        throw std::invalid_argument("Neural squads require the Legacy executor");
+    if(input.externalPolicy!=bool(options.squadActionCallback)||
+       (input.externalPolicy&&input.neuralPolicy))
+        throw std::invalid_argument("External policy requires an exclusive action callback");
+    if(input.policyCandidates!=0&&input.policyCandidates!=30)
+        throw std::invalid_argument("Policy candidates must be 0 or 30");
+    if(input.neuralPolicy&&input.policyCandidates!=input.neuralPolicy->candidates)
+        throw std::invalid_argument("Model and candidate schema do not match");
+    if(input.policySchema!=0&&input.policySchema!=4)
+        throw std::invalid_argument("Policy schema must be 0 or 4");
+    if(input.neuralPolicy&&(input.neuralPolicy->schema>=4)!=(input.policySchema>=4))
+        throw std::invalid_argument("Model and policy schema do not match");
     auto geometry=edits;
     if(input.battlefield&&(input.family!=ScenarioFamily::None||encounter||input.recoveryFixture))throw std::invalid_argument("Imported maps cannot combine with generated families or fixtures");
     if(input.family!=ScenarioFamily::None&&(encounter!=0||input.recoveryFixture||input.terrain!=Terrain::FracturedWorks))throw std::invalid_argument("Generated scenarios cannot combine with encounters, recovery or authored terrain");
@@ -1068,6 +1573,23 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     auto totalStart=DiagnosticClock::now();
     Config c=input;c.maxSeconds=Clamp(c.maxSeconds,1,600);
     Record r;r.config=c;r.map=c.family==ScenarioFamily::None?MakeBattleMap(c):Map{};Frame f=InitialFrame(c);
+    // Plan 029: with concealment off a hedge is an ordinary solid. The flag is cleared on this battle's own
+    // copy before any query, with every cache the copy shares with the imported map dropped (the revision
+    // is kept); `flags` keeps the authored bit for display. A map without concealment is untouched.
+    if(!c.concealment&&r.map.hasConcealment){
+        for(auto& o:r.map.obstacles)o.concealment=false;
+        r.map.hasConcealment=false;r.map.tacticalVisibility.reset();r.map.routeGraph.reset();r.map.spatial.reset();r.map.segments.reset();
+        r.map.navigation.reset();r.map.coverCatalog.reset();r.map.coverRevision=0;r.map.rasterStatic.reset();
+    }
+    // Plan 029 M-A2, the same convention for prone cover. Off: an imported prone record (`C ... crouch=2`) is the
+    // crouched cover it always was, cleared on this battle's own copy. On: the copy carries the flag, so the
+    // derived catalogue adds prone cover behind low obstacles. Only the cover caches read either; a map with
+    // no prone records keeps every cache when the switch is off.
+    const bool proneRecords=std::any_of(r.map.windows.begin(),r.map.windows.end(),[](const CoverPosition& w){return w.prone;});
+    if(c.prone||proneRecords){
+        if(c.prone)r.map.proneCover=true;else for(auto& w:r.map.windows)w.prone=false;
+        r.map.coverCatalog.reset();r.map.coverRevision=0;r.map.rasterStatic.reset();
+    }
     if(c.family!=ScenarioFamily::None){auto generated=std::make_shared<GeneratedScenario>(GenerateLeaderScenario(c));ApplyScenario(*generated,c,r.map,f);r.generated=generated;}
     if(encounter>0&&encounter<=7){r.encounter=encounter;MakeMGEncounter(c,encounter,r.map,f);}
     if(encounter==8){r.encounter=8;MakeMGEncounter(c,1,r.map,f);}
@@ -1086,7 +1608,8 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         c.staticDefence.resolved=true;c.staticDefence.objective=plan->objective;c.staticDefence.attackerObjectives=plan->attackerObjectives;
         r.config=c;r.defence=plan;defence=plan;
     }
-    r.map.queryProfile=std::make_shared<QueryProfile>();CommandRuntime command;command.reactions.recoveryFixture=c.recoveryFixture;if(encounter>=4||c.family==ScenarioFamily::F1||defence)command.fixedDefender=1;
+    r.map.queryProfile=std::make_shared<QueryProfile>();CommandRuntime command;command.reactions.recoveryFixture=c.recoveryFixture;command.reactions.coverReports=c.coverReports&&!c.foundations&&!c.recoveryFixture;command.reactions.quietRelease=c.coverQuietRelease&&!c.foundations&&!c.recoveryFixture;if(encounter>=4||c.family==ScenarioFamily::F1||defence)command.fixedDefender=1;
+    const bool retireFallen=RetireFallen(c); // plan 030 K-1: only the perception stage reads it
     command.reportDelay=TypedController(c)?c.reportDelay:MessageDelay;
     if(encounter>=9&&encounter<=43){command.platoon.nextSerial=9001;for(int squad=0;squad<SquadCount;++squad){
         const auto& order=f.soldiers[squad*SquadSize].platoonOrder;command.platoon.lastOrders[squad]=order;
@@ -1108,7 +1631,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     // the usual shelter/peek cycle starts immediately instead of searching for cover.
     if(defence)for(const auto& s:f.soldiers)if(s.Active()&&defence->Defends(s.id)) {
         const auto& slot=defence->At(s.id).cover;auto& cover=run[s.id].tactics;
-        cover.assigned=true;cover.halfCover=slot.crouch;cover.shelter=slot.shelter;cover.peek=slot.peek;
+        cover.assigned=true;cover.halfCover=slot.crouch;cover.proneCover=slot.prone;cover.shelter=slot.shelter;cover.peek=slot.peek;
         cover.coverId=slot.id;cover.geometryRevision=r.map.revision;cover.travelPosition=s.position;cover.expires=c.maxSeconds+60;
     }
     // A held position steps straight to its own shelter or firing edge. A routed
@@ -1152,7 +1675,9 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 for(const auto& unit:f.soldiers){auto& a=run[unit.id];
                     // Only a locally encountered loss invalidates tactical cover immediately.
                     if(a.tactics.assigned&&Distance(unit.position,a.tactics.shelter)<2&&!CoverExists(r.map,a.tactics.coverId))a.tactics={};
-                    if(a.cursor<a.path.size()&&!ClearLine(r.map,unit.position,a.path[a.cursor],0.46f)){a.destination={999,999};a.path.clear();a.cursor=0;}
+                    // A vault leg of his own class stays valid (plan 029 M-C; never asked with the switch off).
+                    if(a.cursor<a.path.size()&&!ClearLine(r.map,unit.position,a.path[a.cursor],0.46f)&&
+                        !(c.vaulting&&VaultCrossing(r.map,unit.position,a.path[a.cursor],VaultClassOf(unit,c))!=VaultClass::None)){a.destination={999,999};a.path.clear();a.cursor=0;}
                 }
             }
         }
@@ -1171,7 +1696,14 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(options.enabled){TraceEntry e;e.id=r.diagnostics->nextId++;e.time=f.time;e.soldier=s.id;e.squad=s.squad;e.geometry=r.map.revision;e.kind="geometry_observed";e.reason="local geometry change recognized after observation delay";r.diagnostics->entries.push_back(e);}
             }
         }
-        for(auto& s:f.soldiers) {s.suppression=std::max(0.f,s.suppression-TickSeconds*SuppressionRecoveryPerSecond*StatScale(s.stats.Get(Stat::Composure)));DecayRecoil(s,TickSeconds);}
+        for(auto& s:f.soldiers) {StepSuppression(s,c,f.time,TickSeconds);DecayRecoil(s,TickSeconds);}
+        // Plan 030 M-S7 P3 (Config::pinnedNeighbours, Jordan's rule 3): while a man is above his duck threshold, each
+        // squadmate within neighbourRadius, at his cover and going nowhere, not holding a movement order, with a line to
+        // him, holds at least neighbourEffect suppression: a floor, the same for one pinned man or several, never
+        // within neighbourMargin of his own threshold. When the pinned man recovers it decays as any suppression.
+        if(c.pinnedNeighbours)r.neighbourLifts+=PinnedNeighbours(f.soldiers,r.map,c,[&](const Soldier& q){
+            const auto& m=run[q.id].tactics;
+            return m.assigned&&std::min(Distance(q.position,m.shelter),Distance(q.position,m.peek))<1.5f;});
         if(c.foundations)for(auto& observer:f.soldiers)UpdateAttention(observer,f.time,TickSeconds);
         if(tick%4==0) {
             if(TypedController(c))for(const auto& s:f.soldiers){
@@ -1184,7 +1716,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(enemy.team==s.team) {
                     if(enemy.id==s.id)continue;
                     Contact ct;ct.visible=enemy.Active()&&InVisualField(s,enemy.position,SightRange(s))&&ClearLine3D(r.map,
-                        {s.position.x,s.position.y,s.position.z+(s.stance==Stance::Crouched?0.82f:1.7f)},{enemy.position.x,enemy.position.y,enemy.position.z+BodyHeight(enemy.stance)*0.9f});
+                        {s.position.x,s.position.y,s.position.z+Posture(s.stance).eye},{enemy.position.x,enemy.position.y,enemy.position.z+BodyHeight(enemy.stance)*0.9f});
                     if(ct.visible){ct.known=true;ct.position=enemy.position;ct.observedAt=f.time;ct.aimHeight=enemy.position.z+BodyHeight(enemy.stance);}
                     auto& wasVisible=command.reactions.sensedVisible[s.id][enemy.id];
                     if(ct.visible||wasVisible) {
@@ -1197,6 +1729,9 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 }
                 Contact ct=SenseEnemy(s,enemy,r.map,f.time);
                 auto& wasVisible=command.reactions.sensedVisible[s.id][enemy.id];
+                // Plan 030 K-1 (Config::retireFallen, Legacy): a man in sight at his last look and gone from it
+                // now is looked at again; if the line to him is clear he is seen down (SenseFall).
+                if(retireFallen&&wasVisible&&!ct.visible){const Contact down=SenseFall(s,enemy,r.map,f.time);if(down.seenDown)ct=down;}
                 if(ct.visible||wasVisible) {
                     PendingReaction reaction;reaction.kind=ReactionKind::Sight;reaction.enemy=enemy.id;reaction.contact=ct;
                     QueueReaction(s,reaction,f.time,command.reactions);
@@ -1222,10 +1757,12 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         }
         if(c.recoveryFixture||c.foundations)UpdateTaskReports(f,command);
         if(c.foundations&&tick%100==0)for(const auto& observer:f.soldiers)if(observer.Active())TraceBeliefs(r.diagnostics.get(),observer,f.time);
+        if(options.trainingStateSink)options.trainingStateSink(f);
         UpdateCommands(f,r.map,c,command,r.events);
         r.diagnostics->commands+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         {
-            for(auto& s:f.soldiers) if(s.Active()&&(tick%12==0||tick==1||run[s.id].tactics.assigned||s.assignment.serial!=run[s.id].lastOrder.serial)) {
+            // A man in the middle of a vault does not think until he has landed (plan 029 M-C; never set when off).
+            for(auto& s:f.soldiers) if(s.Active()&&!s.vaulting&&(tick%12==0||tick==1||run[s.id].tactics.assigned||s.assignment.serial!=run[s.id].lastOrder.serial)) {
                 std::vector<Vec3> allies;
                 for(const auto& friendUnit:f.soldiers) if(friendUnit.id!=s.id&&friendUnit.team==s.team&&friendUnit.Active()) {
                     allies.push_back(friendUnit.position);
@@ -1235,11 +1772,21 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 auto& state=run[s.id];
                 if(state.lastOrder.serial!=s.assignment.serial) {
                     if(state.lastOrder.task!=s.assignment.task||Distance(state.lastOrder.position,s.assignment.position)>0.5f) {
-                        const bool urgent=s.assignment.task==Task::PullBack||s.assignment.task==Task::Flank||s.assignment.task==Task::ClearLane||s.assignment.task==Task::BoundMove;
+                        // Plan 031 D: the drill's gun sent to a new station leaves the cover he holds for it (fm is never set when off).
+                        const bool urgent=s.assignment.task==Task::PullBack||s.assignment.task==Task::Flank||s.assignment.task==Task::ClearLane||s.assignment.task==Task::BoundMove||
+                            (s.assignment.fm.displace&&s.assignment.fm.gun==s.id);
                         const bool useful=UsefulCover(WithReports(s,f.time),r.map,state.tactics,f.time);
                         const bool differentDestination=Distance(s.assignment.position,state.tactics.shelter)>3;
-                        if(!state.tactics.assigned||((urgent||!useful)&&differentDestination)) {
+                        // Plan 028 Stage 4 (Config::coverShift): a shift to covered ground with a line onto the
+                        // enemy he is to cover gives up the cover he holds, unless he is pinned: plan 020's
+                        // better cover close by. Only a shift order carries fireShift.
+                        const bool shiftOrder=s.assignment.fireShift&&FirePayloadLive(s,f.time)&&
+                            s.understoodSuppression<CoverSupplyConstants.pinnedSuppression&&Distance(s.assignment.position,state.tactics.shelter)>1;
+                        if(!state.tactics.assigned||((urgent||!useful)&&differentDestination)||shiftOrder) {
+                            // A new order does not stand him up: when he went down is his own (plan 029).
+                            const float proneSince=state.tactics.proneSince;
                             state.tactics={};state.tactics.readyAt=f.time+std::max(0.f,state.cooldown);
+                            state.tactics.proneSince=proneSince;
                         }
                     }
                     state.lastOrder=s.assignment;
@@ -1250,11 +1797,15 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 auto* detail=DetailedFor(r.diagnostics.get(),s.id,s.squad,f.time)?&alternatives:nullptr;
                 if(s.assignment.id)PrepareTaskExecution(understood,state.tactics,f.time,c.threatAwarePaths);
                 Order d=s.assignment.id?ExecuteTask(understood,geometryViews?(*geometryViews)[s.id]:r.map,c,allies,state.tactics,f.time,detail):ChooseOrder(understood,geometryViews?(*geometryViews)[s.id]:r.map,c,allies,state.tactics,f.time,detail);
+                if(c.gradedPeek){r.gradedSettles+=state.tactics.gradedDrawAt==f.time;r.gradedPeeks+=state.tactics.gradedPeek&&state.tactics.gradedAt==f.time;} // plan 030 M-S7 P1
+                // Plan 031 D (the marker is only ever set with Config::fireAndMovement): since when he holds for the gate.
+                if(s.assignment.fm.gun>=0&&s.assignment.fm.gun!=s.id){if(state.tactics.fmHeldAt==f.time){if(s.fmWaitSince<0)s.fmWaitSince=f.time;}else s.fmWaitSince=-100;}
+                else if(s.fmWaitSince>=0)s.fmWaitSince=-100;
                 if(c.recoveryFixture&&s.team==command.fixedDefender){
                     // Fixed defenders may duck and fire at their authored low
                     // cover, but do not invent new positions in the test lane.
                     const Vec3 anchor=r.frames.front().soldiers[s.id].position;
-                    const bool duck=understood.suppression>.52f||s.reloadUntil>f.time;
+                    const bool duck=understood.suppression>.52f||s.reloadUntil>f.time||NervePinned(s,c);
                     d={anchor,duck?Action::Hold:Action::Fire,duck?Reason::Suppressed:Reason::CoverFire,duck?Stance::Crouched:Stance::Standing};
                     state.tactics={};
                 }
@@ -1266,12 +1817,12 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     // suppression are untouched.
                     const auto& slot=defence->At(s.id).cover;
                     if(Distance(d.goal,slot.shelter)>Distance(slot.shelter,slot.peek)+1.f) {
-                        const bool duck=understood.suppression>.52f||s.reloadUntil>f.time||d.action==Action::Retreat;
-                        const Stance sheltered=slot.crouch?Stance::Crouched:Stance::Standing;
+                        const bool duck=understood.suppression>.52f||s.reloadUntil>f.time||d.action==Action::Retreat||NervePinned(s,c);
+                        const Stance sheltered=CoverStance(slot);
                         d=duck?Order{slot.shelter,Action::Hold,Reason::Suppressed,sheltered}:
-                                Order{slot.peek,Action::Fire,slot.crouch?Reason::PopUp:Reason::CoverFire,Stance::Standing};
+                                Order{slot.peek,Action::Fire,slot.crouch?Reason::PopUp:Reason::CoverFire,slot.prone?Stance::Crouched:Stance::Standing};
                         auto& memory=state.tactics;const float ready=memory.readyAt;
-                        memory={};memory.readyAt=ready;memory.assigned=true;memory.halfCover=slot.crouch;
+                        memory={};memory.readyAt=ready;memory.assigned=true;memory.halfCover=slot.crouch;memory.proneCover=slot.prone;
                         memory.shelter=slot.shelter;memory.peek=slot.peek;memory.peeking=!duck;memory.phaseUntil=-1;
                         memory.coverId=slot.id;memory.geometryRevision=r.map.revision;memory.lastProgress=f.time;
                         memory.travelPosition=s.position;memory.roundsAtPeek=s.rounds;memory.healthAtPeek=s.health;
@@ -1285,7 +1836,10 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 }
                 if(s.action!=d.action||s.reason!=d.reason)
                     event(EventKind::Decision,s.id,-1,std::string(Name(s.id))+": "+ReasonText(d.reason));
+                const bool wasProne=s.stance==Stance::Prone;
                 s.action=d.action;s.reason=d.reason;s.goal=d.goal;s.stance=d.stance;
+                // Getting up costs him time (plan 029): he stands where he lay and cannot fire until he is up.
+                if(c.prone&&wasProne&&s.stance!=Stance::Prone)state.riseUntil=f.time+Postures().riseSeconds/StatScale(s.stats.Get(Stat::Dexterity));
                 // The cover rule is traced when the verdict changes, not every think.
                 if(state.tactics.coverRule!=state.lastCoverRule){
                     if(state.tactics.coverRule!=CoverRule::None)TraceCoverRule(r.diagnostics.get(),s,f.time,state.tactics.coverRule,d.goal);
@@ -1303,7 +1857,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             }
         }
         // Rush duration is an execution bound, not the soldier think cadence.
-        if(c.drills)for(auto& soldier:f.soldiers)if(soldier.Active()&&soldier.assignment.drillInstance>0&&
+        if(c.drills)for(auto& soldier:f.soldiers)if(soldier.Active()&&!soldier.vaulting&&soldier.assignment.drillInstance>0&&
             soldier.assignment.execution.rushSeconds>0&&!soldier.assignment.execution.paused&&
             f.time-soldier.assignment.activatedAt-soldier.assignment.drillRushPausedSeconds>=soldier.assignment.execution.rushSeconds&&
             (soldier.action==Action::Advance||soldier.action==Action::Retreat)){
@@ -1319,10 +1873,11 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             std::vector<TrafficInput> requests;
             for(const auto& s:f.soldiers)if(s.Active()&&s.team==team){const auto& a=run[s.id];
                 if(defence&&defence->Defends(s.id))continue; // A held position never yields a passage.
+                if(s.vaulting)continue; // nor does a man going over a wall (plan 029 M-C)
                 Vec3 next=a.cursor<a.path.size()?a.path[a.cursor]:s.goal;
                 requests.push_back({&s,next,(s.action!=Action::Fire&&s.action!=Action::Hold)||a.trafficWaiting});}
             auto decisions=CoordinatePassages(r.map,passages,requests,traffic,f.time);
-            for(auto& s:f.soldiers)if(s.Active()&&s.team==team){auto& a=run[s.id];const auto& d=decisions[s.id];
+            for(auto& s:f.soldiers)if(s.Active()&&s.team==team&&!s.vaulting){auto& a=run[s.id];const auto& d=decisions[s.id];
                 if(d.waiting) {
                     if(!a.trafficWaiting)event(EventKind::Decision,s.id,-1,std::string(Name(s.id))+": yields passage and seeks a holding position");
                     a.trafficWaiting=true;s.waitingPassage=d.passage;s.passageWaitSeconds=f.time-traffic.since[s.id];
@@ -1340,11 +1895,28 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     a.path=executionPath(s,s.goal,f.time);a.cursor=0;if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_recovery",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);s.action=Action::Advance;}
             }
         }
+        // Plan 029 M-C: a man killed or incapacitated in the middle of a vault falls where he took off.
+        if(c.vaulting)for(auto& s:f.soldiers)if(!s.Active()&&s.vaulting){s.vaulting=false;s.vaultProgress=0;s.vaultHeight=0;}
         for(auto& s:f.soldiers) if(s.Active()) {
             auto& a=run[s.id];
             const Vec3 stood=s.position;s.sprinting=false;
+            // Plan 029 M-C. held: a vault in progress, begun or refused this tick; nothing else moves him.
+            // spend: the stamina a vault begun this tick costs, paid at once. Both stay false/0 when off.
+            bool held=false;float spend=0;
+            if(s.vaulting){
+                held=true;s.sprinting=false;s.stance=Stance::Standing;
+                s.vaultProgress=std::min(1.f,(f.time-a.vaultStart)/std::max(1e-3f,a.vaultEnd-a.vaultStart));
+                if(f.time>=a.vaultEnd-1e-4f){
+                    // Landing: on the far side, with the reason and stance he took off with.
+                    s.vaulting=false;s.vaultProgress=0;s.vaultHeight=0;
+                    if(Walkable(r.map,a.vaultTo)){s.position=a.vaultTo;if(a.cursor<a.path.size()&&Distance(a.path[a.cursor],a.vaultTo)<1e-4f)++a.cursor;}
+                    else{a.path.clear();a.cursor=0;} // the far side is gone (a geometry change): he stays and replans
+                    s.stance=a.vaultStance;if(s.reason==Reason::Vault)s.reason=a.vaultReason;
+                    a.progressPosition=s.position;a.nextPathCheck=f.time+2; // the vault was progress: no stall check at once
+                }
+            }
             if(a.cursor>=a.path.size())s.coveredPath=false; // the detour is over once he has walked it
-            if(f.time>=a.nextPathCheck) {
+            if(!held&&f.time>=a.nextPathCheck) {
                 const bool moving=s.action!=Action::Fire&&s.action!=Action::Hold&&Distance(s.position,s.goal)>0.7f;
                 if(moving&&(a.cursor>=a.path.size()||Distance(s.position,a.progressPosition)<0.15f)) {
                     if(TypedController(c)&&Distance(s.position,a.progressPosition)<.15f)a.avoidUntil=f.time+3;
@@ -1364,15 +1936,39 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 }
                 a.progressPosition=s.position;a.nextPathCheck=f.time+2;
             }
-            if(a.cursor<a.path.size()&&s.action!=Action::Fire&&s.action!=Action::Hold) {
+            if(!held&&a.cursor<a.path.size()&&s.action!=Action::Fire&&s.action!=Action::Hold&&!(c.prone&&f.time<a.riseUntil)) {
                 if(c.recoveryFixture||TypedController(c))while(a.cursor+1<a.path.size()&&Distance(s.position,a.path[a.cursor])<.35f&&
                     std::abs(s.position.z-a.path[a.cursor+1].z)<.05f&&ClearLine(r.map,s.position,a.path[a.cursor+1],.48f))++a.cursor;
+                const Vec3 dest=a.path[a.cursor];
+                // Plan 029 M-C: a leg he cannot walk that is one vault. If his class covers it he goes over,
+                // standing, at once and paying for it now; if it needs more than he has left (winded, hurt,
+                // short of stamina) he replans at his own class this tick. A static defender never vaults.
+                if(c.vaulting&&!(defence&&defence->Defends(s.id))){
+                    VaultClass need=VaultClass::None;float height=0;const VaultStep step=VaultStepFor(r.map,s,dest,c,&need,&height);
+                    if(step!=VaultStep::Walk){
+                        held=true;
+                        if(step==VaultStep::Vault){
+                            a.vaultStart=f.time;a.vaultEnd=f.time+VaultSeconds(s,need);a.vaultTo=dest;a.vaultReason=s.reason;a.vaultStance=s.stance;
+                            s.vaulting=true;s.vaultProgress=0;s.vaultHeight=height;s.vaultTakeoff=s.position;s.vaultLanding=dest;s.vaultLandsAt=a.vaultEnd;s.stance=Stance::Standing;s.reason=Reason::Vault;s.sprinting=false;
+                            s.facing=Normal(dest-s.position);
+                            if(c.stamina)spend=need==VaultClass::High?Vaulting().highStamina:Vaulting().lowStamina;
+                            ++r.vaults;event(EventKind::Decision,s.id,-1,std::string(Name(s.id))+": "+ReasonText(Reason::Vault));
+                        } else {
+                            a.path=executionPath(s,s.goal,f.time);a.cursor=0;
+                            if(s.assignment.id&&!a.tactics.emergency&&Distance(s.position,s.goal)>.7f)ReportTaskNavigation(s,!a.path.empty(),f.time,command.diagnostics);
+                            TracePath(r.diagnostics.get(),s,r.map,f.time,a.path,"path_vault_class",s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0);
+                        }
+                    }
+                }
+            }
+            if(!held&&a.cursor<a.path.size()&&s.action!=Action::Fire&&s.action!=Action::Hold&&!(c.prone&&f.time<a.riseUntil)) {
                 Vec3 dest=a.path[a.cursor];float dist=Distance(s.position,dest);
                 // The sprint (plan 022). The revealed-stretch trigger is measured on its own
                 // half-second cadence, never once per tick per enemy; every other trigger is
                 // his own order and state. The factor is exactly 1 when he walks.
                 if(c.stamina&&f.time>=a.nextSprintCheck){a.revealedAhead=RevealedAhead(r.map,s,a.path,a.cursor,f.time);a.nextSprintCheck=f.time+Sprint().checkSeconds;}
-                s.sprinting=c.stamina&&CanSprint(s)&&SprintTrigger(s,a.revealedAhead,Distance(s.position,s.goal));
+                // A man crawling to cover never sprints (plan 029); nobody else is ever prone.
+                s.sprinting=c.stamina&&s.stance!=Stance::Prone&&CanSprint(s)&&SprintTrigger(s,a.revealedAhead,Distance(s.position,s.goal));
                 // Walking fire costs pace: the flag is what the firing stage measured at the
                 // end of the previous tick, so a man who opens fire slows from the next step.
                 float speed=MovementSpeed(s,c);
@@ -1404,7 +2000,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     s.position=dest;++a.cursor; // reach the corner/floor exactly before turning
                 }
             }
-            if(c.stamina)StepStamina(s,s.sprinting,Distance(stood,s.position)>1e-4f,TickSeconds);
+            if(c.stamina)StepStamina(s,s.sprinting,s.vaulting||Distance(stood,s.position)>1e-4f,TickSeconds,spend);
         }
         r.diagnostics->movement+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         // Swept 3D ballistics at 200 Hz. A round born at this tick boundary starts
@@ -1438,10 +2034,11 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 Vec3 end{b.p.x+(next.x-b.p.x)*first,b.p.y+(next.y-b.p.y)*first,b.p.z+(next.z-b.p.z)*first};
                 const float endTime=std::min(f.time,startTime+dt*first);
                 for(auto& s:f.soldiers) if(s.Active()&&s.team!=f.soldiers[b.owner].team&&!b.suppressed[s.id]) {
-                    // A round can suppress each soldier once; shelter occludes near misses.
+                    // A round can suppress each soldier once; solid shelter occludes near misses (a hedge does not).
                     Vec3 ep{end.x,end.y,end.z};
-                    if(SegmentDistance(b.p,ep,s.position+Vec3{0,0,BodyHeight(s.stance)*0.7f})<2.2f&&ClearLine3D(r.map,end,{s.position.x,s.position.y,s.position.z+BodyHeight(s.stance)*0.7f})) {
+                    if(SegmentDistance(b.p,ep,s.position+Vec3{0,0,BodyHeight(s.stance)*0.7f})<2.2f&&ClearLine3DSolid(r.map,end,{s.position.x,s.position.y,s.position.z+BodyHeight(s.stance)*0.7f})) {
                         s.suppression=Clamp(s.suppression+0.23f/StatScale(s.stats.Get(Stat::Composure)),0,1);b.suppressed[s.id]=true;
+                        if(c.stackedSuppression)s.lastNearMissAt=f.time;
                     }
                 }
                 shot.end=end;shot.impactTime=endTime;shot.flight.push_back({endTime,end});
@@ -1452,6 +2049,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     const float energy=0.5f*b.mass*Dot(v,v),remainder=energy-DepositedEnergy(energy);
                     const float damage=HitDamage(energy,HitSeverity(rng.Next()));
                     victim.health=std::max(0.f,victim.health-damage);victim.suppression=Clamp(victim.suppression+0.3f/StatScale(victim.stats.Get(Stat::Composure)),0,1);
+                    if(c.stackedSuppression)victim.lastNearMissAt=f.time;
                     shot.victims.push_back({hit,endTime,energy});b.struck[hit]=true;
                     shot.hit=true;shot.target=shot.victims.front().soldier;
                     event(EventKind::Hit,b.owner,hit,std::string(Name(b.owner))+" hit "+Name(hit));r.events.back().time=endTime;
@@ -1470,8 +2068,48 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 }
                 if(impact==Shot::Impact::None&&(endTime-shot.time>1||std::abs(end.x)>r.map.halfWidth+3||std::abs(end.y)>r.map.halfHeight+3)) impact=Shot::Impact::OutOfBounds;
                 shot.impact=exited?Shot::Impact::None:impact;
+                // Plan 030 S1 (Config::impactSuppression): a round stopped by a solid suppresses the men that solid
+                // shelters: within Config::impactRadius of where he shelters (his remembered shelter while he is at it, or where
+                // he stands), with the solid between the round and him (tested from impactBack short of the stop, so a
+                // round in the ground at his feet is not "his cover"). Once per round per soldier; a near miss above
+                // keeps its own rule and weight and is not counted twice.
+                if(c.impactSuppression&&!exited&&hit<0&&impact==Shot::Impact::Cover){
+                    const auto& rule=SuppressionRules();const int side=f.soldiers[b.owner].team;
+                    const float leg=Distance(b.p,end);
+                    const Vec3 back=leg>rule.impactBack?end+(b.p-end)*(rule.impactBack/leg):b.p;
+                    for(auto& s:f.soldiers)if(s.Active()&&s.team!=side&&!b.suppressed[s.id]){
+                        const auto& memory=run[s.id].tactics;const float body=BodyHeight(s.stance);
+                        auto near=[&](Vec3 at){return SegmentDistance(at,at+Vec3{0,0,body},end)<=c.impactRadius;};
+                        const bool atShelter=memory.assigned&&std::min(Distance(s.position,memory.shelter),Distance(s.position,memory.peek))<1.5f;
+                        if(!near(s.position)&&!(atShelter&&near(memory.shelter)))continue;
+                        if(ClearLine3DSolid(r.map,back,{s.position.x,s.position.y,s.position.z+body*0.7f}))continue;
+                        s.suppression=Clamp(s.suppression+rule.impactWeight/StatScale(s.stats.Get(Stat::Composure)),0,1);b.suppressed[s.id]=true;
+                        if(c.stackedSuppression)s.lastNearMissAt=f.time;
+                        ++r.impactSuppressions;
+                    }
+                }
+                // Plan 030 M-S7 P2 (Config::keepDown, Jordan's rule 2): S1's detection of a round stopped in the cover he
+                // shelters behind (at keepDownRadius), which counts only while his suppression is above his duck threshold
+                // or was within keepDownGrace: then it adds keepDownWeight / composure, once per round, never twice with a
+                // near miss or S1. Below it the round does nothing.
+                if(c.keepDown&&!exited&&hit<0&&impact==Shot::Impact::Cover){
+                    const auto& rule=SuppressionRules();const float radius=PinRules().keepDownRadius;const int side=f.soldiers[b.owner].team;
+                    const float leg=Distance(b.p,end);
+                    const Vec3 back=leg>rule.impactBack?end+(b.p-end)*(rule.impactBack/leg):b.p;
+                    for(auto& s:f.soldiers)if(s.Active()&&s.team!=side&&!b.suppressed[s.id]){
+                        if(!KeepDownApplies(s,c,f.time))continue;
+                        const auto& memory=run[s.id].tactics;const float body=BodyHeight(s.stance);
+                        auto near=[&](Vec3 at){return SegmentDistance(at,at+Vec3{0,0,body},end)<=radius;};
+                        const bool atShelter=memory.assigned&&std::min(Distance(s.position,memory.shelter),Distance(s.position,memory.peek))<1.5f;
+                        if(!near(s.position)&&!(atShelter&&near(memory.shelter)))continue;
+                        if(ClearLine3DSolid(r.map,back,{s.position.x,s.position.y,s.position.z+body*0.7f}))continue;
+                        s.suppression=Clamp(s.suppression+c.keepDownWeight/StatScale(s.stats.Get(Stat::Composure)),0,1);b.suppressed[s.id]=true;
+                        if(c.stackedSuppression)s.lastNearMissAt=f.time;
+                        ++r.keepDownImpacts;
+                    }
+                }
                 auto& shooter=f.soldiers[b.owner];
-                if(!b.delivered&&shot.aimedEnemy>=0&&SegmentDistance(b.p,end,shot.aimedAt)<6&&ClearLine3D(r.map,(c.recoveryFixture||TypedController(c))?shot.flight.front().position:shot.start,end+(((c.recoveryFixture||TypedController(c))?shot.flight.front().position:shot.start)-end)*.001f)) {
+                if(!b.delivered&&shot.aimedEnemy>=0&&SegmentDistance(b.p,end,shot.aimedAt)<6&&DeliveryLineClear(r.map,c,shot,shooter,end)) {
                     b.delivered=true;
                     FireDelivery report;report.supportWeapon=shooter.machineGun;report.shooter=b.owner;report.enemy=shot.aimedEnemy;
                     for(const auto& old:shooter.deliveries)if(old.shooter==b.owner&&(c.recoveryFixture||(old.enemy==report.enemy&&Distance(old.target,shot.aimedAt)<6)))report=old;
@@ -1483,7 +2121,7 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                     for(int k=7;k>0;--k)report.times[k]=report.times[k-1];
                     report.times[0]=f.time;
                     report.firstAt=f.time;report.rounds=0;for(float t:report.times)if(f.time-t<=6){++report.rounds;report.firstAt=std::min(report.firstAt,t);}
-                    RememberDelivery(shooter,report);
+                    RememberDelivery(shooter,report,command.reactions.coverReports);
                 }
                 if(exited)continue; // Delivery was judged on this pass; the round flies on from the body.
                 if(impact!=Shot::Impact::None)bullets.erase(bullets.begin()+i);
@@ -1506,15 +2144,20 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             // drive reloadUntil directly to silence a soldier keep working.
             if(s.magazineRemaining<=0&&!s.reloadDeferred&&f.time>=s.reloadUntil)s.magazineRemaining=s.gun.magazine;
             // Fire after stopping, or on the move while attacking on foot (plan 019).
-            const bool walking=c.movingFire&&WalkingFire(s,f.time);
-            if((s.action!=Action::Fire&&!walking)||s.suppression>=0.8f||f.time<s.reloadUntil) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;continue;}
+            const bool walking=c.movingFire&&s.stance!=Stance::Prone&&WalkingFire(s,f.time); // a crawler never fires (plan 029)
+            // Plan 030 M-S7 P1 (Config::gradedPeek): a man up on a graded peek fires his round whatever the fire on him.
+            const bool gradedShot=c.gradedPeek&&a.tactics.gradedPeek;
+            if((s.action!=Action::Fire&&!walking)||(s.suppression>=0.8f&&!gradedShot)||f.time<s.reloadUntil||(c.prone&&f.time<a.riseUntil)||s.vaulting) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;continue;}
             // From here the aim model, the friendly-fire cone and the pace read this flag.
             s.movingFire=walking;
-            const Vec3 muzzle{s.position.x,s.position.y,s.position.z+(s.stance==Stance::Crouched?0.72f:1.5f)};
+            const Vec3 muzzle{s.position.x,s.position.y,s.position.z+Posture(s.stance).muzzle};
             const bool automatic=s.gun.action==WeaponAction::Automatic;
             const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
             const bool sustained=automatic&&(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard||(s.assignment.drillInstance>0&&s.assignment.teamPlan.assaultAreaFire&&s.assignment.task==Task::BoundCover));
             if((s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)||f.time-a.burst.observedAt>6||(s.assignment.id&&s.assignment.teamPlan.liftFire&&Distance(a.burst.point,s.assignment.teamPlan.liftedSector)<12))a.burst={};
+            // Plan 030 M-S7 P4 (a sector payload, Config::coverSector only): a threat of the sector he saw fire just now
+            // takes the next burst at once, so the burst he is holding on another is broken off.
+            if(sustained&&a.burst.enemy>=0&&s.assignment.fireSector){const int loud=SectorLoud(s,f.time);if(loud>=0&&loud!=a.burst.enemy)a.burst={};}
             FireSolution solution=SelectFireSolution(s,r.map,f.time);
             if(sustained&&a.burst.enemy>=0&&f.time-a.burst.observedAt<=6)solution=a.burst;
             if(solution.enemy<0) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;s.movingFire=false;continue;}
@@ -1537,10 +2180,12 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             int target=solution.enemy;
             Vec3 aim{solution.point.x,solution.point.y,solution.point.z-1.5f};
             float best=Length({aim.x-s.position.x,aim.y-s.position.y,0});
-            UpdateAim(s,target,aim,TickSeconds);
+            UpdateAim(s,target,aim,TickSeconds,gradedShot);
             if(a.cooldown>0||s.aim<AimReady(s))continue;
             const float spread=ShotSpread(s)+(!automatic&&solution.area?.015f:0.f);
-            const Vec3 off=SwayOffset(s,f.time)+s.recoil;
+            // Plan 030 M-S4: an automatic gunner holds against the recoil he felt on his last round.
+            const bool compensate=c.gunnerCompensation&&automatic;
+            const Vec3 off=SwayOffset(s,f.time)+(compensate?HeldRecoil(s):s.recoil);
             float angle=std::atan2(aim.y-s.position.y,aim.x-s.position.x)+off.x+(rng.Next()-0.5f)*2*spread;
             Vec3 direction={std::cos(angle),std::sin(angle)};s.facing=direction;
             const float speed=s.gun.muzzleVelocity;
@@ -1550,7 +2195,10 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             Shot shot;shot.suppressive=solution.area;shot.movingFire=walking;shot.aimedAt=solution.point;shot.time=shot.impactTime=f.time;shot.owner=s.id;shot.aimedEnemy=solution.enemy;shot.start=shot.end=s.position;
             shot.flight.push_back({f.time,muzzle});r.shots.push_back(shot);
             bullets.push_back({muzzle,{direction.x*speed,direction.y*speed,vz},s.id,r.shots.size()-1,s.gun.bulletMass,s.gun.dragK,{},{}});
-            ++s.rounds;s.lastShotAt=f.time;ApplyRecoil(s);s.aim=sustained?0.98f:automatic?0.8f:s.gun.action==WeaponAction::SemiAuto?0.5f:0.2f;
+            ++s.rounds;s.lastShotAt=f.time;if(s.shakenShots>0)--s.shakenShots;ApplyRecoil(s);if(compensate)s.recoilHold=RecoilHold(s);s.aim=sustained?0.98f:automatic?0.8f:s.gun.action==WeaponAction::SemiAuto?0.5f:0.2f;
+            // Plan 031 D (Config::fireAndMovement; the marker is only ever set then): a round of the drill's gun fired set at
+            // his station on a threat of his sector is heard at once by every man of his squad (the gate's local perception).
+            if(s.assignment.fm.gun==s.id&&FmGunRound(s,solution.enemy,f.time)){s.fmFireAt=f.time;for(auto& mate:f.soldiers)if(mate.squad==s.squad&&mate.Active())mate.fmHeardAt=f.time;}
             s.blockedSeconds=0;s.lastBlockedAt=-100;
             // Cyclic rate is mechanical and never stat-modified; burst structure is behaviour.
             a.cooldown=automatic||s.gun.action==WeaponAction::SemiAuto?s.gun.cyclicSeconds:

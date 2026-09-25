@@ -2,25 +2,59 @@
 """Generate JSON geometry + SVGs, or serve the local interactive map workshop.
 
 python3 tools/generate_maps.py --seed 17 --output .local/mapgen/preview
+python3 tools/generate_maps.py --kind village --seed 1201 --deadline 30
 python3 tools/generate_maps.py --serve --port 8766
+
+--deadline S aborts generation that has not finished within S seconds (exit 3);
+nothing is written or published when it does.
 """
 import argparse
 from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import sys
+import time
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
-from mapgen import city, trenches
+from mapgen import city, trenches, village, city2
 from mapgen.render import svg
 from mapgen.validate import validate
 from mapgen.native import export as export_native
 
 
+KINDS=('city','trenches','village','city2')
+
+
+def generate(kind,seed,damage,deadline=None):
+    if deadline is None:
+        return _generate(kind,seed,damage)
+    return _build(kind,seed,damage,deadline)
+
+
 @lru_cache(maxsize=12)
-def generate(kind,seed,damage):
-    if kind not in ('city','trenches') or not 0<=seed<=4294967295 or not 0<=damage<=1:
-        raise ValueError('Choose city or trenches, seed 0–4294967295, damage 0–1.')
+def _generate(kind,seed,damage):
+    return _build(kind,seed,damage,None)
+
+
+def _build(kind,seed,damage,deadline):
+    if kind not in KINDS or not 0<=seed<=4294967295 or not 0<=damage<=1:
+        raise ValueError('Choose city, trenches, village or city2, seed 0–4294967295, damage 0–1.')
+    if kind in ('village','city2'):
+        try:
+            m=(city2 if kind=='city2' else village).generate(seed,damage,deadline=deadline)
+        except village.GenerationFailed as error:
+            raise ValueError(str(error))
+        m['meta']=dict(cover='validated examples supplement cover derived from all eligible physical geometry',
+                       buildings='two-storey houses and farmhouses have interior stairs and upper firing windows; roofs are decorative',
+                       runtime_integration=True)
+        if kind=='city2':
+            # Jordan accepted the city2 look on 23 September 2026; the importer accepts the kind (ae3224df477f0f4c).
+            m['meta'].update(buildings='connected native rectangular wings; each upper floor owns its stairs and windows',
+                             runtime_integration=True)
+        if not m['validation']['passed']:
+            raise ValueError('; '.join(m['validation']['errors'][:8]))
+        return dict(map=m,svg=svg(m))
     m=(city if kind=='city' else trenches).generate(seed,damage)
     m['meta']=dict(cover='validated examples supplement cover derived from all eligible physical geometry',
                    buildings='single-storey shells; decorative roofs do not imply upper floors',
@@ -45,10 +79,19 @@ def main():
     parser.add_argument('--unreal',action='store_true',help='Also write the two native maps to Unreal/Config/GeneratedMaps')
     parser.add_argument('--mirror',type=Path,help='Existing Windows build mirror to receive generated map data')
     parser.add_argument('--port',type=int,default=8766)
-    parser.add_argument('--kind',choices=('city','trenches'),help='Generate one map family')
+    parser.add_argument('--kind',choices=KINDS,help='Generate one family (village and city2 only when named)')
+    parser.add_argument('--deadline',type=float,help='Abort, writing nothing, if generation takes longer than this many seconds')
     parser.add_argument('--native-target',type=Path,help='Project directory to receive Config/GeneratedMaps (editor integration)')
     args=parser.parse_args()
-    samples={kind:generate(kind,args.seed,args.damage) for kind in ((args.kind,) if args.kind else ('city','trenches'))}
+    # city2 publication was gated until Jordan accepted the look (23 September 2026); it now publishes like the village.
+    deadline=time.monotonic()+args.deadline if args.deadline is not None else None
+    try:
+        samples={kind:generate(kind,args.seed,args.damage,deadline) for kind in ((args.kind,) if args.kind else ('city','trenches'))}
+        if deadline is not None and time.monotonic()>deadline:
+            raise village.DeadlineExceeded('generation deadline exceeded; no map was written')
+    except village.DeadlineExceeded as error:
+        print(f'deadline: {error}',file=sys.stderr,flush=True)
+        sys.exit(3)
     args.output.mkdir(parents=True,exist_ok=True)
     for kind,data in samples.items():
         (args.output/f'{kind}-{args.seed}.json').write_text(json.dumps(data['map'],indent=2)+'\n')
@@ -57,7 +100,8 @@ def main():
         if args.native_target:
             folder=args.native_target/'Config'/'GeneratedMaps';folder.mkdir(parents=True,exist_ok=True)
             temporary=folder/f'{kind}.army.{os.getpid()}.tmp';temporary.write_text(export_native(data['map']));temporary.replace(folder/f'{kind}.army')
-        print(kind,json.dumps(data['map']['validation']),flush=True)
+        summary={k:v for k,v in data['map']['validation'].items() if k!='support'}
+        print(kind,json.dumps(summary),flush=True)
     def publish(data):
         kind=data['map']['kind'];text=export_native(data['map'])
         targets=[Path(__file__).resolve().parents[1]/'Unreal']

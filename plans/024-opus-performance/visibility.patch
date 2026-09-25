@@ -1,0 +1,107 @@
+--- a/Unreal/Source/ArmyPrototype/Sim/TacticalRouteSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/TacticalRouteSim.cpp
+@@ -5,12 +5,31 @@
+ #include <limits>
+ #include <queue>
+ #include <chrono>
++#include <memory>
++#include <cstdint>
+ namespace army {
+ struct TacticalVisibilityCache {
+     // Coordinates occupy 48 bits. Store the answer in the spare high bit rather
+-    // than paying an eight-byte alignment pad per entry.
++    // than paying an eight-byte alignment pad per entry, and occupancy in the
++    // spare high bit of the endpoint word.
+     struct Ray {uint64_t from=0,toAndVisible=0;};
+-    uint64_t revision=0;std::vector<Ray> rays=std::vector<Ray>(8388608);
++    // The three eye rays of one report share their body endpoint and are always
++    // asked together, so they are addressed by the report anchor and live in one
++    // four-way set: one cache line for the group instead of three unrelated
++    // ones. Every ray still stores and verifies both of its own snapped
++    // endpoints, so the set only decides where a ray lives, never its answer.
++    // Ray size, set count and total footprint match the previous flat table.
++    static constexpr size_t Ways=4,Sets=2097152,Slots=Ways*Sets;
++    uint64_t revision=0;
++    std::vector<Ray> storage=std::vector<Ray>(Slots+Ways-1);
++    Ray* sets=nullptr;
++    TacticalVisibilityCache(){
++        // Sets must not straddle cache lines; the allocator only promises the
++        // sixteen-byte record alignment, so place them by hand.
++        void* start=storage.data();size_t space=storage.size()*sizeof(Ray);
++        sets=static_cast<Ray*>(std::align(Ways*sizeof(Ray),Slots*sizeof(Ray),start,space));
++        if(!sets)sets=storage.data();
++    }
+ };
+ TacticalRoutePlanner::SightPoint TacticalRoutePlanner::SnapSightPoint(Vec3 p){
+     // Preserve the original rounding, packing and arithmetic order exactly.
+@@ -20,10 +39,17 @@
+         (uint64_t(uint16_t(int(p.z*2)+32768))<<32);
+     return {p,packed};
+ }
+-bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPoint& to) const {
++bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPoint& to,uint64_t group) const {
+     if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>();map.tacticalVisibility->revision=map.revision;}
+-    uint64_t a=from.packed,b=to.packed,hash=a*1099511628211ull+b;hash=(hash^(hash>>30))*0xbf58476d1ce4e5b9ull;hash=(hash^(hash>>27))*0x94d049bb133111ebull;hash^=hash>>31;
+-    auto& entry=map.tacticalVisibility->rays[hash&8388607];if(entry.from==a&&(entry.toAndVisible&0xffffffffffffull)==b)return (entry.toAndVisible>>63)!=0;
++    using Cache=TacticalVisibilityCache;
++    // The group anchor and the body pick the set; the same mixing as before.
++    uint64_t a=from.packed,b=to.packed,hash=group*1099511628211ull+b;hash=(hash^(hash>>30))*0xbf58476d1ce4e5b9ull;hash=(hash^(hash>>27))*0x94d049bb133111ebull;hash^=hash>>31;
++    Cache::Ray* set=map.tacticalVisibility->sets+(hash&(Cache::Sets-1))*Cache::Ways;
++    // An occupied record carries the high bit, so a free way reads as zero and
++    // a stored ray still answers only for its own two snapped endpoints.
++    const uint64_t tag=a|(1ull<<63);
++    for(size_t w=0;w<Cache::Ways;++w)
++        if(set[w].from==tag&&(set[w].toAndVisible&0xffffffffffffull)==b)return (set[w].toAndVisible>>63)!=0;
+     // This ray table already caches the exact snapped query. On prepared maps
+     // query the obstacle index directly instead of probing a second memo table.
+     // Preserve the sight counter and the ordinary unprepared-map fallback.
+@@ -32,7 +58,12 @@
+         if(map.queryProfile)++map.queryProfile->sight;
+         visible=IndexedContact(map,from.position,to.position,true)<0;
+     }else visible=ClearLine3D(map,from.position,to.position);
+-    entry={a,b|(uint64_t(visible)<<63)};return visible;
++    // Fill the set before replacing, so a whole eye group stays resident; a
++    // full set gives up the victim this ray is keyed to. Either choice only
++    // decides what is recomputed later, never an answer.
++    size_t way=0;while(way<Cache::Ways&&set[way].from)++way;
++    if(way==Cache::Ways)way=size_t((a*0x9e3779b97f4a7c15ull)>>62);
++    set[way]={tag,b|(uint64_t(visible)<<63)};return visible;
+ }
+ const char* RouteStatusName(RouteStatus s){const char* n[]={"complete","unreachable","budget_exhausted","unsupported_surface","incomplete_topology"};return n[int(s)];}
+ static float SegmentDistance(Vec3 p,Vec3 a,Vec3 b){Vec3 d=b-a;float len=d.x*d.x+d.y*d.y+d.z*d.z;float t=len>.0001f?std::clamp(((p.x-a.x)*d.x+(p.y-a.y)*d.y+(p.z-a.z)*d.z)/len,0.f,1.f):0;return Distance(p,a+d*t);}
+@@ -80,7 +111,10 @@
+         }
+         if(!bodyReady){body=SnapSightPoint(p+Vec3{0,0,stance==Stance::Crouched?.9f:1.5f});bodyReady=true;}
+         float visible=0;
+-        for(const auto& eye:ct.eyes)if(EstimatedVisible(eye,body))visible+=1.f/3;
++        // One report, one body, three rays: address them together under the
++        // report anchor. Same order, same queries, same accumulation.
++        const uint64_t group=ct.eyes[0].packed;
++        for(const auto& eye:ct.eyes)if(EstimatedVisible(eye,body,group))visible+=1.f/3;
+         seen=std::max(seen,visible*confidence*(ct.automaticWeapon?1.f:.7f));
+     }
+     c.exposure=seen*8*caution/speed;
+@@ -90,8 +124,9 @@
+     bool observed=false;
+     if(Distance(p,actor.position)<20){
+         if(!observerEyeReady){observerEye=SnapSightPoint(actor.position+Vec3{0,0,1.5f});observerEyeReady=true;}
++        // A lone ray is its own group, as the observer eye is fixed here.
+         observed=EstimatedVisible(observerEye,
+-            bodyReady&&stance!=Stance::Crouched?body:SnapSightPoint(p+Vec3{0,0,1.5f}));
++            bodyReady&&stance!=Stance::Crouched?body:SnapSightPoint(p+Vec3{0,0,1.5f}),observerEye.packed);
+     }
+     c.uncertainty=observed?0:.12f*caution/speed;
+     for(Vec3 friendPosition:friends)c.congestion+=std::max(0.f,1-Distance(p,friendPosition)/2)*.5f/speed;
+--- a/Unreal/Source/ArmyPrototype/Sim/TacticalRouteSim.h
++++ b/Unreal/Source/ArmyPrototype/Sim/TacticalRouteSim.h
+@@ -33,7 +33,9 @@
+     std::vector<ThreatSample> threats;std::vector<FireLane> lanes;std::vector<Vec3> friends;
+     SightPoint observerEye{};bool observerEyeReady=false;
+     static SightPoint SnapSightPoint(Vec3 position);
+-    bool EstimatedVisible(const SightPoint& from,const SightPoint& to) const;
++    // group: the anchor whose rays are asked together (eyes[0] of a report, or
++    // the ray itself when alone). It selects the cache set, never the answer.
++    bool EstimatedVisible(const SightPoint& from,const SightPoint& to,uint64_t group) const;
+     std::vector<Vec3> RegionalPath(Vec3 from,Vec3 to,int budget,int& expanded,RouteStatus& status);
+ public:
+     TacticalRoutePlanner(const Map& geometry,const Soldier& knowledge,float at,Doctrine doctrine=Doctrine::Balanced,Stance posture=Stance::Standing);

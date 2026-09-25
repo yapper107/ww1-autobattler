@@ -1,0 +1,1216 @@
+{
+  "status": "experimental_not_promoted",
+  "seed": 25,
+  "iteration": 40,
+  "model_sha256": "c680dd14a25112dcd472d200d1c45130cec569c782ea6814b112fc77395b11d6",
+  "native_source": "d73667841df73faa-linux",
+  "experiment": {
+    "schema": 1,
+    "created_utc": "2026-09-22T21:01:12.146835+00:00",
+    "seeds": [
+      24,
+      25,
+      26
+    ],
+    "iterations": 40,
+    "episodes": 24,
+    "jobs_per_seed": 4,
+    "concurrent_seeds": 3,
+    "candidates": 0,
+    "seconds": 360,
+    "training_maps": [
+      701,
+      760
+    ],
+    "development_maps": [
+      901,
+      910
+    ],
+    "heldout_maps": [
+      1101,
+      1125
+    ],
+    "battle_seeds": [
+      107,
+      108,
+      109
+    ],
+    "development_checkpoints": [
+      4,
+      5,
+      10,
+      15,
+      20,
+      25,
+      30,
+      35,
+      40
+    ],
+    "initial": "models/squad/plan024-imitation-v1/squad.policy",
+    "binary": ".local/plan024/long-rl/bin/battle-lab",
+    "baseline_binary": ".local/plan024/baseline/battle-lab",
+    "native_source": "d73667841df73faa-linux",
+    "reward": "enemy_loss_fraction - own_loss_fraction + 0.25*(win-loss)",
+    "selection": "Among development checkpoint arms passing ordinary guards: highest win-minus-loss, lower own loss, earlier update, lower seed. If none passes, same rank for diagnosis only.",
+    "final_comparison": "All three update40 seeds, selected checkpoint if distinct, Legacy, imitation and untrained continuation. Average final-seed differences within each matched case; bootstrap map clusters. Also report individual seeds. No checkpoint/seed chosen on heldout.",
+    "stopping": "Fixed40 updates; abort only on numerical/integrity/resource failure. No opportunistic extension based on inspected outcomes.",
+    "default": "Legacy",
+    "fable_review": "Unavailable: launcher session directory read-only; existing architecture retained.",
+    "historical_regression": "Full270 paired battles on development-selected checkpoint; diagnostic only. All conduct thresholds unchanged.",
+    "videos": "Best/middle/worst development pairs by reward difference, existing Plan023 30s side-by-side format.",
+    "training_order_note": "Four workers per seed instead of pilot12; this changes minibatch row order. Compare checkpoint4 and40 within these new runs for duration evidence, do not claim exact pilot continuation.",
+    "source_head": "c760cae7dd15bf827d23f2cab097920ae14fbb16",
+    "sha256": {
+      ".local/plan024/long-rl/bin/battle-lab": "4afbb09ef31f5656def8699d0c2bcb1b6e73e86936a3c03b9fe15ae653cfcc62",
+      "models/squad/plan024-imitation-v1/squad.policy": "a16bff3cd0d09bef1f2dc4dfe4f05dfb00e81a80242e99031bbd1c70f45ccd66",
+      "tools/loop/guards.json": "0843a6819da1e6f315ca9060f3f231528c612a34794b628ee4a68d16829c6f5a",
+      "tools/neural/__init__.py": "f6a7b994ea079cd2073ab7faf8c36dc38de9b9983aa9a1380e3e3f504d6f3844",
+      "tools/neural/actor.py": "5b11d0fb2bded652fa59efeb6a798b5e98bc3318b6620dd6cb9109cbe30cfa0f",
+      "tools/neural/check_export.py": "657e6fb07dd5a4ac224506d70f34506a0aa2d776736e8c5302db7640e0109aac",
+      "tools/neural/evaluate.py": "62f34ef1f6f505e4b79a9cef7dc7095353a645fbf933f88b2ac8e37f947b7009",
+      "tools/neural/map_identity.py": "51c9c146bab6cd236c61fe7a7c930d193a103e9513fd01e01f88a2230490fba4",
+      "tools/neural/ppo.py": "04b46cc636fba7bed13b42622c0542ab1492710aed67f953c92ad1cde053a6fa",
+      "tools/neural/returns.py": "ad802f09d9f552b644c4c3e531cd8e4e5a00e798d0151ec7e23b29ea0e913fed",
+      "tools/neural/run.py": "433004acf2e7085ef6af9a34b0fae1a014395e7d0c6f4d1931335cec8fedf5b0",
+      "tools/neural/scenarios.py": "a6952c4590477751f43b7549817413cad3ed7db20f2648674118bb9911520f33",
+      "tools/neural/train.py": "b0daae90e787ff452e1427dab198011aa64d11784d710e61850bbcb49d0eec76",
+      "tools/neural/verify.py": "6ff9384a1be4c1f1818b95ae994551fe8173f6fa9a11bf2fbe3e503a276f4a41",
+      "tools/neural/video.py": "e091456f0121ac69035ca732ff9a7d29d2a0d552fb4e7952b0880b0b66157e8b",
+      "tools/neural/worker.py": "222a2e540cbf30380e0ca397fdcd33e546248d9179d69a06585eed40636b46c3"
+    }
+  },
+  "training_report": ".local/plan024/long-rl/seed25/training.json",
+  "completed_training_battles": 960,
+  "source_checkpoint": ".local/plan024/long-rl/seed25/iteration-040",
+  "export_check": {
+    "decisions": 2000,
+    "feature_rows": 64000,
+    "max_abs_error": 1.9073486328125e-06,
+    "action_disagreements": 0,
+    "passed": true,
+    "platform": "Linux native probe versus PyTorch"
+  },
+  "windows_check": "Unavailable in this sandbox: WSL interop socket denied. No new Windows result claimed.",
+  "iterations": [
+    {
+      "iteration": 1,
+      "learning": {
+        "samples": 17138,
+        "actor_samples": 9726,
+        "early_stop": false,
+        "steps": 268,
+        "actor_steps": 268,
+        "critic_steps": 268,
+        "epoch_kl": [
+          0.002156474341244063,
+          0.00218532503619499,
+          0.002402654553106874,
+          0.0017660808568135127
+        ],
+        "last": {
+          "loss": 0.11573591828346252,
+          "anchor_kl": 0.0022839088924229145
+        }
+      },
+      "mean_team_return": -0.16536458333333334,
+      "wins": 7,
+      "mean_entropy": 0.5511957043076664,
+      "argmax_share": 0.6897563830771808,
+      "mean_top_probability": 0.6841044489845366,
+      "keep_legal_share": 0.564268752416883,
+      "wall_seconds": 204.29794921700523
+    },
+    {
+      "iteration": 2,
+      "learning": {
+        "samples": 13966,
+        "actor_samples": 10051,
+        "early_stop": false,
+        "steps": 220,
+        "actor_steps": 220,
+        "critic_steps": 220,
+        "epoch_kl": [
+          0.0017114146741844863,
+          0.004503970560820207,
+          0.003888137256810943,
+          0.006129365360638405
+        ],
+        "last": {
+          "loss": 0.249193012714386,
+          "anchor_kl": 0.007664026692509651
+        }
+      },
+      "mean_team_return": -0.01953125,
+      "wins": 11,
+      "mean_entropy": 0.6508283466572204,
+      "argmax_share": 0.6380796345618829,
+      "mean_top_probability": 0.6349798334699309,
+      "keep_legal_share": 0.6502906631459928,
+      "wall_seconds": 407.58075104200543
+    },
+    {
+      "iteration": 3,
+      "learning": {
+        "samples": 14088,
+        "actor_samples": 9916,
+        "early_stop": false,
+        "steps": 224,
+        "actor_steps": 224,
+        "critic_steps": 224,
+        "epoch_kl": [
+          0.0005716470255395875,
+          0.0028470128822730596,
+          0.0013701107327425464,
+          0.0018204853822262647
+        ],
+        "last": {
+          "loss": 0.13330422341823578,
+          "anchor_kl": 0.0025885007344186306
+        }
+      },
+      "mean_team_return": -0.020833333333333332,
+      "wins": 13,
+      "mean_entropy": 0.6210644246252809,
+      "argmax_share": 0.6639935530695045,
+      "mean_top_probability": 0.6634992710364412,
+      "keep_legal_share": 0.6295018077480989,
+      "wall_seconds": 611.0270796149998
+    },
+    {
+      "iteration": 4,
+      "learning": {
+        "samples": 12233,
+        "actor_samples": 10455,
+        "early_stop": false,
+        "steps": 192,
+        "actor_steps": 192,
+        "critic_steps": 192,
+        "epoch_kl": [
+          0.0019164805432816318,
+          0.002750821429425481,
+          0.004441412193019216,
+          0.004156824391974837
+        ],
+        "last": {
+          "loss": -0.07962088286876678,
+          "anchor_kl": 0.00888447742909193
+        }
+      },
+      "mean_team_return": 0.010416666666666666,
+      "wins": 11,
+      "mean_entropy": 0.6868220572979395,
+      "argmax_share": 0.628065433637841,
+      "mean_top_probability": 0.6250514876394503,
+      "keep_legal_share": 0.7149424077678911,
+      "wall_seconds": 821.6792557180015
+    },
+    {
+      "iteration": 5,
+      "learning": {
+        "samples": 11241,
+        "actor_samples": 9621,
+        "early_stop": false,
+        "steps": 176,
+        "actor_steps": 176,
+        "critic_steps": 176,
+        "epoch_kl": [
+          0.0010077306305144164,
+          0.0012127877508400756,
+          0.0016192680906449023,
+          0.002525771764494156
+        ],
+        "last": {
+          "loss": -0.10642938315868378,
+          "anchor_kl": 0.015835491940379143
+        }
+      },
+      "mean_team_return": -0.014322916666666666,
+      "wins": 13,
+      "mean_entropy": 0.67850875648223,
+      "argmax_share": 0.6147386605675608,
+      "mean_top_probability": 0.6175657762494691,
+      "keep_legal_share": 0.6874042582982222,
+      "wall_seconds": 1069.344165774004
+    },
+    {
+      "iteration": 6,
+      "learning": {
+        "samples": 9326,
+        "actor_samples": 8011,
+        "early_stop": false,
+        "steps": 148,
+        "actor_steps": 148,
+        "critic_steps": 148,
+        "epoch_kl": [
+          0.002311069916851466,
+          0.0053376093173857385,
+          0.006785457194662469,
+          0.00660029128463568
+        ],
+        "last": {
+          "loss": 0.11808482557535172,
+          "anchor_kl": 0.004262369591742754
+        }
+      },
+      "mean_team_return": 0.020833333333333332,
+      "wins": 12,
+      "mean_entropy": 0.6574435940790516,
+      "argmax_share": 0.6339392449971558,
+      "mean_top_probability": 0.6379992754261407,
+      "keep_legal_share": 0.6794124847264703,
+      "wall_seconds": 1300.6738793450058
+    },
+    {
+      "iteration": 7,
+      "learning": {
+        "samples": 12666,
+        "actor_samples": 10295,
+        "early_stop": false,
+        "steps": 200,
+        "actor_steps": 200,
+        "critic_steps": 200,
+        "epoch_kl": [
+          0.0006462431058193538,
+          0.0016065237243063188,
+          0.000962742710067208,
+          0.004004669374722541
+        ],
+        "last": {
+          "loss": 0.2505020499229431,
+          "anchor_kl": 0.011032741516828537
+        }
+      },
+      "mean_team_return": -0.06901041666666667,
+      "wins": 9,
+      "mean_entropy": 0.6590956337960553,
+      "argmax_share": 0.6346996322411982,
+      "mean_top_probability": 0.6406120563206229,
+      "keep_legal_share": 0.676646353699272,
+      "wall_seconds": 1544.6007216060025
+    },
+    {
+      "iteration": 8,
+      "learning": {
+        "samples": 14035,
+        "actor_samples": 10865,
+        "early_stop": false,
+        "steps": 220,
+        "actor_steps": 220,
+        "critic_steps": 220,
+        "epoch_kl": [
+          0.00167862792965239,
+          0.0009323489046074858,
+          0.001393500512171823,
+          0.0016727228401665088
+        ],
+        "last": {
+          "loss": -0.10075011104345322,
+          "anchor_kl": 0.004033407662063837
+        }
+      },
+      "mean_team_return": -0.057291666666666664,
+      "wins": 9,
+      "mean_entropy": 0.6680389158253547,
+      "argmax_share": 0.6327721818957284,
+      "mean_top_probability": 0.6301677222638848,
+      "keep_legal_share": 0.6827080138809262,
+      "wall_seconds": 1795.570290872005
+    },
+    {
+      "iteration": 9,
+      "learning": {
+        "samples": 13299,
+        "actor_samples": 8859,
+        "early_stop": false,
+        "steps": 208,
+        "actor_steps": 208,
+        "critic_steps": 208,
+        "epoch_kl": [
+          0.002069608832013864,
+          0.00451046369699878,
+          0.007590255237807134,
+          0.005639208663006455
+        ],
+        "last": {
+          "loss": 0.002707637846469879,
+          "anchor_kl": 0.004089424852281809
+        }
+      },
+      "mean_team_return": -0.08203125,
+      "wins": 10,
+      "mean_entropy": 0.6238895836487922,
+      "argmax_share": 0.6553613311904443,
+      "mean_top_probability": 0.657667726316445,
+      "keep_legal_share": 0.640844542188604,
+      "wall_seconds": 2041.5812143050061
+    },
+    {
+      "iteration": 10,
+      "learning": {
+        "samples": 11222,
+        "actor_samples": 11031,
+        "early_stop": false,
+        "steps": 176,
+        "actor_steps": 176,
+        "critic_steps": 176,
+        "epoch_kl": [
+          0.000980809683510555,
+          0.0022109014289180924,
+          0.0034792144001800037,
+          0.0043429105098763444
+        ],
+        "last": {
+          "loss": -0.10788846015930176,
+          "anchor_kl": 0.005735705606639385
+        }
+      },
+      "mean_team_return": 0.040364583333333336,
+      "wins": 13,
+      "mean_entropy": 0.6954613149090721,
+      "argmax_share": 0.6163058917391434,
+      "mean_top_probability": 0.6175957605629983,
+      "keep_legal_share": 0.7190010713229026,
+      "wall_seconds": 2292.526223741006
+    },
+    {
+      "iteration": 11,
+      "learning": {
+        "samples": 12900,
+        "actor_samples": 9465,
+        "early_stop": false,
+        "steps": 204,
+        "actor_steps": 204,
+        "critic_steps": 204,
+        "epoch_kl": [
+          0.0013403235826930607,
+          0.001201084128650357,
+          0.0030690054634041845,
+          0.0010095888322708283
+        ],
+        "last": {
+          "loss": -0.003715494880452752,
+          "anchor_kl": 0.009401164948940277
+        }
+      },
+      "mean_team_return": 0.041666666666666664,
+      "wins": 13,
+      "mean_entropy": 0.6279787769274331,
+      "argmax_share": 0.6586699988467093,
+      "mean_top_probability": 0.6555272348799795,
+      "keep_legal_share": 0.6396542742618995,
+      "wall_seconds": 2538.6630559610057
+    },
+    {
+      "iteration": 12,
+      "learning": {
+        "samples": 13173,
+        "actor_samples": 10609,
+        "early_stop": false,
+        "steps": 208,
+        "actor_steps": 208,
+        "critic_steps": 208,
+        "epoch_kl": [
+          0.0024811786332850925,
+          0.0052058400774285234,
+          0.010222808592662655,
+          0.006707706261741889
+        ],
+        "last": {
+          "loss": 0.06455343961715698,
+          "anchor_kl": 0.00524130230769515
+        }
+      },
+      "mean_team_return": -0.07161458333333333,
+      "wins": 10,
+      "mean_entropy": 0.6295930810936101,
+      "argmax_share": 0.6628423615179786,
+      "mean_top_probability": 0.6536101774621091,
+      "keep_legal_share": 0.645191837496985,
+      "wall_seconds": 2777.2969369300044
+    },
+    {
+      "iteration": 13,
+      "learning": {
+        "samples": 14018,
+        "actor_samples": 10428,
+        "early_stop": false,
+        "steps": 220,
+        "actor_steps": 220,
+        "critic_steps": 220,
+        "epoch_kl": [
+          0.0023770151487657017,
+          0.0040326286285921305,
+          0.0039562273571945765,
+          0.0023012800055717112
+        ],
+        "last": {
+          "loss": -0.02350776642560959,
+          "anchor_kl": 0.006235700566321611
+        }
+      },
+      "mean_team_return": -0.06770833333333333,
+      "wins": 10,
+      "mean_entropy": 0.6470399125850177,
+      "argmax_share": 0.6434532875095113,
+      "mean_top_probability": 0.6467520190890957,
+      "keep_legal_share": 0.6653339970114781,
+      "wall_seconds": 3036.9566045710017
+    },
+    {
+      "iteration": 14,
+      "learning": {
+        "samples": 10972,
+        "actor_samples": 9123,
+        "early_stop": false,
+        "steps": 172,
+        "actor_steps": 172,
+        "critic_steps": 172,
+        "epoch_kl": [
+          0.0036418135328459057,
+          0.0057894993570568815,
+          0.004327687832473676,
+          0.007346327205793019
+        ],
+        "last": {
+          "loss": -0.01779397763311863,
+          "anchor_kl": 0.014901578426361084
+        }
+      },
+      "mean_team_return": -0.009114583333333334,
+      "wins": 11,
+      "mean_entropy": 0.6375326559155899,
+      "argmax_share": 0.6459187325617435,
+      "mean_top_probability": 0.6382881258322061,
+      "keep_legal_share": 0.6617547884712014,
+      "wall_seconds": 3277.610534738
+    },
+    {
+      "iteration": 15,
+      "learning": {
+        "samples": 13377,
+        "actor_samples": 11522,
+        "early_stop": false,
+        "steps": 212,
+        "actor_steps": 212,
+        "critic_steps": 212,
+        "epoch_kl": [
+          0.0008459488792234029,
+          0.003941511998179058,
+          0.004961819739582596,
+          0.00769655602277515
+        ],
+        "last": {
+          "loss": -0.1227823942899704,
+          "anchor_kl": 0.01850835047662258
+        }
+      },
+      "mean_team_return": 0.07682291666666667,
+      "wins": 13,
+      "mean_entropy": 0.6403978169814428,
+      "argmax_share": 0.6602872666001119,
+      "mean_top_probability": 0.6597383387613746,
+      "keep_legal_share": 0.6652241474362653,
+      "wall_seconds": 3546.338151229
+    },
+    {
+      "iteration": 16,
+      "learning": {
+        "samples": 10334,
+        "actor_samples": 10278,
+        "early_stop": false,
+        "steps": 164,
+        "actor_steps": 164,
+        "critic_steps": 164,
+        "epoch_kl": [
+          0.0035175414058943623,
+          0.0034884248094861204,
+          0.007275823426167774,
+          0.005029516406596507
+        ],
+        "last": {
+          "loss": -0.08998480439186096,
+          "anchor_kl": 0.008066367357969284
+        }
+      },
+      "mean_team_return": -0.08072916666666667,
+      "wins": 10,
+      "mean_entropy": 0.7380510660457825,
+      "argmax_share": 0.5848136035773287,
+      "mean_top_probability": 0.5846405881888629,
+      "keep_legal_share": 0.7520225565601873,
+      "wall_seconds": 3796.807343063003
+    },
+    {
+      "iteration": 17,
+      "learning": {
+        "samples": 11568,
+        "actor_samples": 10911,
+        "early_stop": false,
+        "steps": 184,
+        "actor_steps": 184,
+        "critic_steps": 184,
+        "epoch_kl": [
+          0.0013458070085483732,
+          0.0015966091723263335,
+          0.00171446176379818,
+          0.003068073801460717
+        ],
+        "last": {
+          "loss": 0.05022691190242767,
+          "anchor_kl": 0.025087546557188034
+        }
+      },
+      "mean_team_return": -0.11197916666666667,
+      "wins": 8,
+      "mean_entropy": 0.7198670172269784,
+      "argmax_share": 0.607409359252545,
+      "mean_top_probability": 0.6131024765242813,
+      "keep_legal_share": 0.7420144956740918,
+      "wall_seconds": 4041.9483290780045
+    },
+    {
+      "iteration": 18,
+      "learning": {
+        "samples": 14550,
+        "actor_samples": 9949,
+        "early_stop": false,
+        "steps": 228,
+        "actor_steps": 228,
+        "critic_steps": 228,
+        "epoch_kl": [
+          0.0021553603006087426,
+          0.0019907965733425284,
+          0.0039795529412221566,
+          0.0020488952198080327
+        ],
+        "last": {
+          "loss": 0.12535379827022552,
+          "anchor_kl": 0.00930287316441536
+        }
+      },
+      "mean_team_return": -0.08203125,
+      "wins": 10,
+      "mean_entropy": 0.6006915288324238,
+      "argmax_share": 0.6864343295884802,
+      "mean_top_probability": 0.6850358634360036,
+      "keep_legal_share": 0.6323847140732305,
+      "wall_seconds": 4328.609478278006
+    },
+    {
+      "iteration": 19,
+      "learning": {
+        "samples": 11464,
+        "actor_samples": 9290,
+        "early_stop": false,
+        "steps": 180,
+        "actor_steps": 180,
+        "critic_steps": 180,
+        "epoch_kl": [
+          0.0009335468672576839,
+          0.005127195348267406,
+          0.008543948721706033,
+          0.006130208689378589
+        ],
+        "last": {
+          "loss": -0.05020079389214516,
+          "anchor_kl": 0.014985119923949242
+        }
+      },
+      "mean_team_return": -0.06510416666666667,
+      "wins": 10,
+      "mean_entropy": 0.6585308920099724,
+      "argmax_share": 0.6479300384058022,
+      "mean_top_probability": 0.6428654765702769,
+      "keep_legal_share": 0.6804052994953826,
+      "wall_seconds": 4708.979097342002
+    },
+    {
+      "iteration": 20,
+      "learning": {
+        "samples": 11298,
+        "actor_samples": 8901,
+        "early_stop": false,
+        "steps": 180,
+        "actor_steps": 180,
+        "critic_steps": 180,
+        "epoch_kl": [
+          0.00271260870291857,
+          0.00374610419220341,
+          0.005171583450425811,
+          0.00589357778043268
+        ],
+        "last": {
+          "loss": 0.10599320381879807,
+          "anchor_kl": 0.013994399458169937
+        }
+      },
+      "mean_team_return": -0.010416666666666666,
+      "wins": 10,
+      "mean_entropy": 0.6262346778891278,
+      "argmax_share": 0.6549453741938555,
+      "mean_top_probability": 0.6502953147345796,
+      "keep_legal_share": 0.6562761628495536,
+      "wall_seconds": 4994.945278891006
+    },
+    {
+      "iteration": 21,
+      "learning": {
+        "samples": 12117,
+        "actor_samples": 9656,
+        "early_stop": false,
+        "steps": 192,
+        "actor_steps": 192,
+        "critic_steps": 192,
+        "epoch_kl": [
+          0.0031403605120184012,
+          0.003892345142542279,
+          0.00553691461250223,
+          0.0038179308546409194
+        ],
+        "last": {
+          "loss": 0.22744445502758026,
+          "anchor_kl": 0.00950735155493021
+        }
+      },
+      "mean_team_return": -0.13671875,
+      "wins": 9,
+      "mean_entropy": 0.6393458266794204,
+      "argmax_share": 0.6701902873022373,
+      "mean_top_probability": 0.6664445622950431,
+      "keep_legal_share": 0.6592389647176972,
+      "wall_seconds": 5251.402410235001
+    },
+    {
+      "iteration": 22,
+      "learning": {
+        "samples": 13185,
+        "actor_samples": 8703,
+        "early_stop": false,
+        "steps": 208,
+        "actor_steps": 208,
+        "critic_steps": 208,
+        "epoch_kl": [
+          0.0007566244564124336,
+          0.0008829229181831655,
+          0.000938896960011162,
+          0.0015602580955572873
+        ],
+        "last": {
+          "loss": 0.01828404702246189,
+          "anchor_kl": 0.01082624588161707
+        }
+      },
+      "mean_team_return": -0.015625,
+      "wins": 11,
+      "mean_entropy": 0.6218615960871507,
+      "argmax_share": 0.655634852092656,
+      "mean_top_probability": 0.6589180110669702,
+      "keep_legal_share": 0.6409626678300637,
+      "wall_seconds": 5504.063054041006
+    },
+    {
+      "iteration": 23,
+      "learning": {
+        "samples": 12033,
+        "actor_samples": 9422,
+        "early_stop": false,
+        "steps": 192,
+        "actor_steps": 192,
+        "critic_steps": 192,
+        "epoch_kl": [
+          0.002730177171770313,
+          0.003942783914840138,
+          0.00245511351535589,
+          0.0038480132065414497
+        ],
+        "last": {
+          "loss": 0.18452146649360657,
+          "anchor_kl": 0.00038405146915465593
+        }
+      },
+      "mean_team_return": -0.005208333333333333,
+      "wins": 10,
+      "mean_entropy": 0.6383640551777798,
+      "argmax_share": 0.6524333179461944,
+      "mean_top_probability": 0.6492722695678573,
+      "keep_legal_share": 0.6533123482650138,
+      "wall_seconds": 5755.589124099002
+    },
+    {
+      "iteration": 24,
+      "learning": {
+        "samples": 11660,
+        "actor_samples": 8940,
+        "early_stop": false,
+        "steps": 184,
+        "actor_steps": 184,
+        "critic_steps": 184,
+        "epoch_kl": [
+          0.0011452190961347064,
+          0.005673510009543741,
+          0.005292687613425372,
+          0.0040215495248768955
+        ],
+        "last": {
+          "loss": 0.039115823805332184,
+          "anchor_kl": 0.01020424161106348
+        }
+      },
+      "mean_team_return": 0.0013020833333333333,
+      "wins": 10,
+      "mean_entropy": 0.6320207774320595,
+      "argmax_share": 0.6542969948796259,
+      "mean_top_probability": 0.6492219531951727,
+      "keep_legal_share": 0.6438422631712812,
+      "wall_seconds": 5998.760202762001
+    },
+    {
+      "iteration": 25,
+      "learning": {
+        "samples": 13140,
+        "actor_samples": 10041,
+        "early_stop": false,
+        "steps": 208,
+        "actor_steps": 208,
+        "critic_steps": 208,
+        "epoch_kl": [
+          0.0053749318712202395,
+          0.007612819774207123,
+          0.010527903263626577,
+          0.010887349011615245
+        ],
+        "last": {
+          "loss": -0.12650561332702637,
+          "anchor_kl": 0.0071771531365811825
+        }
+      },
+      "mean_team_return": 0.037760416666666664,
+      "wins": 14,
+      "mean_entropy": 0.666209807216304,
+      "argmax_share": 0.652552907335748,
+      "mean_top_probability": 0.6480280295814037,
+      "keep_legal_share": 0.6751840718255392,
+      "wall_seconds": 6230.751342380005
+    },
+    {
+      "iteration": 26,
+      "learning": {
+        "samples": 12572,
+        "actor_samples": 9763,
+        "early_stop": false,
+        "steps": 200,
+        "actor_steps": 200,
+        "critic_steps": 200,
+        "epoch_kl": [
+          0.00255944087077247,
+          0.005749772766702893,
+          0.004769773326007531,
+          0.00587553025806071
+        ],
+        "last": {
+          "loss": -0.21717782318592072,
+          "anchor_kl": 0.010363047011196613
+        }
+      },
+      "mean_team_return": -0.12109375,
+      "wins": 9,
+      "mean_entropy": 0.6614037815087906,
+      "argmax_share": 0.6423642316225696,
+      "mean_top_probability": 0.6388023304928404,
+      "keep_legal_share": 0.6740702593326254,
+      "wall_seconds": 6488.633579086003
+    },
+    {
+      "iteration": 27,
+      "learning": {
+        "samples": 11266,
+        "actor_samples": 9671,
+        "early_stop": false,
+        "steps": 180,
+        "actor_steps": 180,
+        "critic_steps": 180,
+        "epoch_kl": [
+          0.0012652822221746712,
+          0.001109407022294948,
+          0.0014777460077065074,
+          0.0021347302325989
+        ],
+        "last": {
+          "loss": 0.8590255975723267,
+          "anchor_kl": 0.02068469673395157
+        }
+      },
+      "mean_team_return": 0.11197916666666667,
+      "wins": 12,
+      "mean_entropy": 0.6825990541157783,
+      "argmax_share": 0.6342050506925853,
+      "mean_top_probability": 0.629774248672475,
+      "keep_legal_share": 0.6981116337670489,
+      "wall_seconds": 6746.212292756005
+    },
+    {
+      "iteration": 28,
+      "learning": {
+        "samples": 11559,
+        "actor_samples": 9027,
+        "early_stop": false,
+        "steps": 184,
+        "actor_steps": 184,
+        "critic_steps": 184,
+        "epoch_kl": [
+          0.0011842941886578153,
+          0.0015467690367681238,
+          0.0033670198327087016,
+          0.00692948067427289
+        ],
+        "last": {
+          "loss": -0.3946029245853424,
+          "anchor_kl": 0.040077731013298035
+        }
+      },
+      "mean_team_return": -0.0859375,
+      "wins": 10,
+      "mean_entropy": 0.627807068420504,
+      "argmax_share": 0.6699440637327129,
+      "mean_top_probability": 0.6698757355160337,
+      "keep_legal_share": 0.6657121307606341,
+      "wall_seconds": 7003.611601879005
+    },
+    {
+      "iteration": 29,
+      "learning": {
+        "samples": 15351,
+        "actor_samples": 10996,
+        "early_stop": false,
+        "steps": 240,
+        "actor_steps": 240,
+        "critic_steps": 240,
+        "epoch_kl": [
+          0.006459832972030112,
+          0.005488837229290543,
+          0.008048084680710587,
+          0.007268543805413439
+        ],
+        "last": {
+          "loss": 0.021583495661616325,
+          "anchor_kl": 0.011634930036962032
+        }
+      },
+      "mean_team_return": -0.06770833333333333,
+      "wins": 10,
+      "mean_entropy": 0.6034813174958377,
+      "argmax_share": 0.7048552573347329,
+      "mean_top_probability": 0.7009957439336737,
+      "keep_legal_share": 0.6241684834463086,
+      "wall_seconds": 7424.047471089005
+    },
+    {
+      "iteration": 30,
+      "learning": {
+        "samples": 15454,
+        "actor_samples": 9164,
+        "early_stop": false,
+        "steps": 244,
+        "actor_steps": 244,
+        "critic_steps": 244,
+        "epoch_kl": [
+          0.0008682319231815913,
+          0.003657497898140936,
+          0.0056131001917986,
+          0.004729988883541745
+        ],
+        "last": {
+          "loss": 0.029347030445933342,
+          "anchor_kl": 0.015139979310333729
+        }
+      },
+      "mean_team_return": -0.125,
+      "wins": 8,
+      "mean_entropy": 0.5827990676011153,
+      "argmax_share": 0.6871605256404923,
+      "mean_top_probability": 0.6868332679313269,
+      "keep_legal_share": 0.6053261944805358,
+      "wall_seconds": 7738.955689816001
+    },
+    {
+      "iteration": 31,
+      "learning": {
+        "samples": 11591,
+        "actor_samples": 9077,
+        "early_stop": false,
+        "steps": 184,
+        "actor_steps": 184,
+        "critic_steps": 184,
+        "epoch_kl": [
+          0.002215609901655583,
+          0.002955115418004953,
+          0.004557011134563806,
+          0.0047135430573760455
+        ],
+        "last": {
+          "loss": 0.032993167638778687,
+          "anchor_kl": 0.017544126138091087
+        }
+      },
+      "mean_team_return": -0.0078125,
+      "wins": 12,
+      "mean_entropy": 0.6567744515877728,
+      "argmax_share": 0.6303315583259194,
+      "mean_top_probability": 0.6291374062822082,
+      "keep_legal_share": 0.6713190384316695,
+      "wall_seconds": 8009.221271896
+    },
+    {
+      "iteration": 32,
+      "learning": {
+        "samples": 11053,
+        "actor_samples": 9853,
+        "early_stop": false,
+        "steps": 176,
+        "actor_steps": 176,
+        "critic_steps": 176,
+        "epoch_kl": [
+          0.003061175745634286,
+          0.002798221141060609,
+          0.004882405974907789,
+          0.008426499217945247
+        ],
+        "last": {
+          "loss": -0.03890332207083702,
+          "anchor_kl": 0.003947259392589331
+        }
+      },
+      "mean_team_return": 0.07682291666666667,
+      "wins": 14,
+      "mean_entropy": 0.6590187998850413,
+      "argmax_share": 0.6423532547233463,
+      "mean_top_probability": 0.6500508765214551,
+      "keep_legal_share": 0.681149230522316,
+      "wall_seconds": 8275.953010296005
+    },
+    {
+      "iteration": 33,
+      "learning": {
+        "samples": 12479,
+        "actor_samples": 11122,
+        "early_stop": false,
+        "steps": 196,
+        "actor_steps": 196,
+        "critic_steps": 196,
+        "epoch_kl": [
+          0.0008445571028828256,
+          0.0015198048060155991,
+          0.0025223439019739446,
+          0.003643319656514067
+        ],
+        "last": {
+          "loss": -0.08612839132547379,
+          "anchor_kl": 0.02725217491388321
+        }
+      },
+      "mean_team_return": 0.005208333333333333,
+      "wins": 11,
+      "mean_entropy": 0.7089815682343638,
+      "argmax_share": 0.5983822561910439,
+      "mean_top_probability": 0.605003862497112,
+      "keep_legal_share": 0.7155288847780769,
+      "wall_seconds": 8543.112083387
+    },
+    {
+      "iteration": 34,
+      "learning": {
+        "samples": 12647,
+        "actor_samples": 8336,
+        "early_stop": false,
+        "steps": 200,
+        "actor_steps": 200,
+        "critic_steps": 200,
+        "epoch_kl": [
+          0.001260074395364626,
+          0.0007993605509829384,
+          0.0010509803791078176,
+          0.0013451593107545673
+        ],
+        "last": {
+          "loss": -0.03789689391851425,
+          "anchor_kl": 0.03194701299071312
+        }
+      },
+      "mean_team_return": -0.11848958333333333,
+      "wins": 9,
+      "mean_entropy": 0.6180254572737546,
+      "argmax_share": 0.6800192095230279,
+      "mean_top_probability": 0.6758989318897292,
+      "keep_legal_share": 0.6243138639706856,
+      "wall_seconds": 8779.123084839004
+    },
+    {
+      "iteration": 35,
+      "learning": {
+        "samples": 16036,
+        "actor_samples": 9273,
+        "early_stop": false,
+        "steps": 252,
+        "actor_steps": 252,
+        "critic_steps": 252,
+        "epoch_kl": [
+          0.002601165833448009,
+          0.003295165543981474,
+          0.0013658653361813017,
+          0.0029055895214518926
+        ],
+        "last": {
+          "loss": 0.051234614104032516,
+          "anchor_kl": 0.0171896331012249
+        }
+      },
+      "mean_team_return": -0.19401041666666666,
+      "wins": 6,
+      "mean_entropy": 0.5840017242722009,
+      "argmax_share": 0.6750773210097911,
+      "mean_top_probability": 0.6774139172466304,
+      "keep_legal_share": 0.6046110307398296,
+      "wall_seconds": 9006.361249865004
+    },
+    {
+      "iteration": 36,
+      "learning": {
+        "samples": 13857,
+        "actor_samples": 10822,
+        "early_stop": false,
+        "steps": 220,
+        "actor_steps": 220,
+        "critic_steps": 220,
+        "epoch_kl": [
+          0.0008752537101942297,
+          0.0010633937445834259,
+          0.0031714498269714373,
+          0.0016436037471346838
+        ],
+        "last": {
+          "loss": -0.21375638246536255,
+          "anchor_kl": 0.02941552735865116
+        }
+      },
+      "mean_team_return": -0.1640625,
+      "wins": 7,
+      "mean_entropy": 0.6524417440227253,
+      "argmax_share": 0.6600280542623597,
+      "mean_top_probability": 0.6555479547183461,
+      "keep_legal_share": 0.667132137211723,
+      "wall_seconds": 9261.245877714005
+    },
+    {
+      "iteration": 37,
+      "learning": {
+        "samples": 13674,
+        "actor_samples": 10225,
+        "early_stop": false,
+        "steps": 216,
+        "actor_steps": 216,
+        "critic_steps": 216,
+        "epoch_kl": [
+          0.005508904398799234,
+          0.002403288604577771,
+          0.004997517403880075,
+          0.0039048986388302083
+        ],
+        "last": {
+          "loss": 0.12512923777103424,
+          "anchor_kl": 0.009772367775440216
+        }
+      },
+      "mean_team_return": -0.11458333333333333,
+      "wins": 10,
+      "mean_entropy": 0.6260417900811096,
+      "argmax_share": 0.659378883625881,
+      "mean_top_probability": 0.6619971898851706,
+      "keep_legal_share": 0.6278905709898567,
+      "wall_seconds": 9499.232260648001
+    },
+    {
+      "iteration": 38,
+      "learning": {
+        "samples": 16555,
+        "actor_samples": 9911,
+        "early_stop": false,
+        "steps": 260,
+        "actor_steps": 260,
+        "critic_steps": 260,
+        "epoch_kl": [
+          0.0011286622652094825,
+          0.003114767186926275,
+          0.0061223653428261774,
+          0.003694951059166111
+        ],
+        "last": {
+          "loss": 0.014496107585728168,
+          "anchor_kl": 0.022770408540964127
+        }
+      },
+      "mean_team_return": 0.07161458333333333,
+      "wins": 12,
+      "mean_entropy": 0.6022754544200862,
+      "argmax_share": 0.6651717094590803,
+      "mean_top_probability": 0.664421657677983,
+      "keep_legal_share": 0.6233501036670077,
+      "wall_seconds": 9745.488747986004
+    },
+    {
+      "iteration": 39,
+      "learning": {
+        "samples": 10951,
+        "actor_samples": 9433,
+        "early_stop": false,
+        "steps": 172,
+        "actor_steps": 172,
+        "critic_steps": 172,
+        "epoch_kl": [
+          0.0016272113139462801,
+          0.001294311158517809,
+          0.0006358359823749615,
+          0.0011571512474534014
+        ],
+        "last": {
+          "loss": -0.1022769957780838,
+          "anchor_kl": 0.011319594457745552
+        }
+      },
+      "mean_team_return": -0.0546875,
+      "wins": 9,
+      "mean_entropy": 0.6601079370297335,
+      "argmax_share": 0.6380327218766767,
+      "mean_top_probability": 0.6405010749229085,
+      "keep_legal_share": 0.6693344974385304,
+      "wall_seconds": 9980.497777853001
+    },
+    {
+      "iteration": 40,
+      "learning": {
+        "samples": 11807,
+        "actor_samples": 9380,
+        "early_stop": false,
+        "steps": 188,
+        "actor_steps": 188,
+        "critic_steps": 188,
+        "epoch_kl": [
+          0.004406455286276111,
+          0.008489158298415162,
+          0.006477921324243932,
+          0.0077017090976365336
+        ],
+        "last": {
+          "loss": -0.3643631935119629,
+          "anchor_kl": 0.004050615709275007
+        }
+      },
+      "mean_team_return": 0.09765625,
+      "wins": 14,
+      "mean_entropy": 0.6684299842462179,
+      "argmax_share": 0.6364770850768516,
+      "mean_top_probability": 0.6399044045271999,
+      "keep_legal_share": 0.6702258780980501,
+      "wall_seconds": 10205.908841946002
+    }
+  ]
+}

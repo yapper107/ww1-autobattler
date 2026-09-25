@@ -28,6 +28,8 @@ struct PendingReaction {
 };
 struct ReactionRuntime {
     bool recoveryFixture=false;
+    bool coverReports=false; // plan 028 Stage 2a: Legacy remembers deliveries per shooter and enemy
+    bool quietRelease=false; // plan 030 M-S5 (Config::coverQuietRelease): a contact keeps when its enemy was last seen firing
     Diagnostics* diagnostics=nullptr;
     std::vector<PendingReaction> pending;
     std::array<std::array<bool,UnitCount>,UnitCount> sensedVisible{};

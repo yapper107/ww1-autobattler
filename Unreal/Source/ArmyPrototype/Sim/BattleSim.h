@@ -2,6 +2,7 @@
 // Engine-independent authoritative simulation. Units are metres and seconds.
 #include "Stats.h"
 #include "Weapons.h"
+#include "SquadPolicy.h"
 #include <array>
 #include <cstdint>
 #include <string>
@@ -28,17 +29,30 @@ struct Obstacle {
     float height = 0;
     bool blocksMovement = true;
     uint64_t id=0;
+    // Plan 029 (ARMYMAP 2 only; defaults everywhere else). flags: bit0 concealment (blocks sight,
+    // not bullets), bit1 crater rim, bit2 reserved. concealment mirrors bit0.
+    bool concealment=false;
+    uint32_t flags=0;
 };
 constexpr float UpperFloor = 3.2f;
-struct Building { Vec3 center; Vec3 half{5,4,0}; size_t firstObstacle=0, obstacleCount=0; };
-struct CoverPosition { Vec3 shelter, peek; bool crouch = true, window = false; uint64_t id=0, source=0; };
+// authoredStairs: true for AddBuilding's authored house (fixed 10x8 shell, stair, slab, windows);
+// false for an imported ARMYMAP 2 footprint (`B` record), which owns no obstacles and whose stairs
+// are explicit stair surfaces. id/floors are the `B` record's (0 for authored buildings).
+struct Building { Vec3 center; Vec3 half{5,4,0}; size_t firstObstacle=0, obstacleCount=0; bool authoredStairs=true; uint64_t id=0; int floors=0; };
+// prone: ARMYMAP 2 `C ... crouch=2` (shelter prone, pop-up crouched); crouch stays true for it.
+struct CoverPosition { Vec3 shelter, peek; bool crouch = true, window = false; uint64_t id=0, source=0; bool prone=false; };
 struct NavigationCache;
 struct RouteGraph;
 struct TacticalVisibilityCache;
 struct SpatialIndex;
 struct SegmentMemo; // Exact-argument memo of line queries for one geometry revision (SpatialSim.cpp).
+struct SquadRasterStatic; // Plan 026 4c: static map-view channels of one geometry revision (SquadRaster.h).
 struct QueryProfile { double tacticalSeconds=0,corridorSeconds=0;uint64_t tacticalQueries=0,tacticalExpanded=0; double navigationSeconds=0; uint64_t paths=0,sight=0,collision=0,memoLookups=0,memoHits=0;int depth=0; };
-struct GroundSurface {uint64_t id=0;Vec3 center{},half{},slope{};};
+// Plan 029: kind 0 floor, 1 ramp, 2 stair; level -1 lane/trench floor, 0 grade, >=1 storey; building
+// is the owning `B` id (0 none); replacesGrade = level<=0 || stair. Defaults for ARMYMAP 1 and authored maps.
+struct GroundSurface {uint64_t id=0;Vec3 center{},half{},slope{};int kind=0,level=0;uint64_t building=0;bool replacesGrade=true;};
+// Plan 029 `P` record: a ground-level door passage (z 0) of an imported building.
+struct DoorPassage {Vec3 center{},half{};};
 struct SurfaceLink {uint64_t id=0;Vec3 from{},to{};};
 bool InsideSurface(const GroundSurface& surface,Vec3 p);
 float SurfaceHeight(const GroundSurface& surface,Vec3 p);
@@ -53,6 +67,7 @@ struct Map {
     mutable std::shared_ptr<const SpatialIndex> spatial;
     mutable std::shared_ptr<SegmentMemo> segments;
     mutable std::shared_ptr<const std::vector<CoverPosition>> coverCatalog;
+    mutable std::shared_ptr<const SquadRasterStatic> rasterStatic; // read only by the schema-4 map view
     float halfWidth = 170, halfHeight = 150;
     std::vector<Obstacle> obstacles;
     std::vector<Building> buildings;
@@ -60,6 +75,18 @@ struct Map {
     mutable std::shared_ptr<NavigationCache> navigation;
     mutable std::shared_ptr<RouteGraph> routeGraph;
     mutable std::shared_ptr<TacticalVisibilityCache> tacticalVisibility;
+    // Plan 029 map-format flags, set only by the ARMYMAP 2 importer (and PrepareGeometry for the
+    // derived two). Every map-format feature gates on these, so ARMYMAP 1 and authored maps never change.
+    int formatVersion=0;           // 0 authored, 1 or 2 imported
+    bool stackedSurfaces=false;    // ARMYMAP 2: layered Supported semantics (package F-B)
+    bool hasConcealment=false;     // derived in PrepareGeometry: some obstacle has concealment
+    bool importedBuildings=false;  // ARMYMAP 2 `B` records filled `buildings` (authoredStairs=false)
+    // Plan 029 M-A2, a battle flag, not a map-format one: set by Simulate on its own copy when
+    // Config::prone is on. The derived cover catalogue of an ARMYMAP 2 map adds prone cover behind low
+    // obstacles only then.
+    bool proneCover=false;
+    std::vector<size_t> stairSurfaces;     // derived in PrepareGeometry: indices of kind-2 surfaces
+    std::vector<DoorPassage> doorPassages; // ARMYMAP 2 `P` records
 };
 struct MapDecoration { Vec3 center{},half{}; int kind=0; }; // road, yard, floor, roof, damaged floor
 struct ImportedBattlefield {
@@ -85,7 +112,9 @@ bool CoverExists(const Map& map,uint64_t id);
 float SegmentBox(Vec3 a, Vec3 b, const Obstacle& box, float padding = 0);
 float ObstacleHeight(const Obstacle& box);
 float SegmentObstacle(Vec3 a, Vec3 b, const Obstacle& box);
-float IndexedContact(const Map& map,Vec3 from,Vec3 to,bool any,float padding=-1);
+// solidOnly (plan 029): obstacles with `concealment` (hedges) are skipped, so the answer is the
+// contact with solid geometry only. Only callers that ask for it change; the default is unchanged.
+float IndexedContact(const Map& map,Vec3 from,Vec3 to,bool any,float padding=-1,bool solidOnly=false);
 // Memoises compute(map,a,b,pad) by the exact bits of its arguments for the map's
 // current revision. kind separates callers whose semantics differ for equal
 // arguments. Results are identical to calling compute directly.
@@ -93,11 +122,56 @@ bool MemoisedSegment(const Map& map,Vec3 a,Vec3 b,float pad,int kind,bool (*comp
 float MapContact(const Map& map, Vec3 a, Vec3 b);
 float SegmentSoldier(Vec3 a, Vec3 b, Vec3 from, Vec3 to, float height = 1.85f);
 bool ClearLine3D(const Map& map, Vec3 from, Vec3 to);
+// Plan 029 concealment: the line through solid geometry only (a hedge blocks sight, not bullets).
+// Bullets (MapContact), cover (ProtectedAt), friendly-fire masking, near-miss suppression and the
+// terrain screen use it; every sight caller keeps ClearLine3D. On a map without concealment it is
+// ClearLine3D itself (same memo entry, kind 0); otherwise it is memoised as kind 2.
+bool ClearLine3DSolid(const Map& map, Vec3 from, Vec3 to);
 bool ClearLine(const Map& map, Vec3 a, Vec3 b, float padding = 0);
 bool Walkable(const Map& map, Vec3 p);
 std::vector<Vec3> FindPath(const Map& map, Vec3 from, Vec3 to);
+// Plan 029 M-C, vaulting (Config::vaulting). The class of vault a man can make: None (he walks
+// round), Low (garden walls and fences up to 1.2 m, everyone) and High (walls up to 2.0 m, the strong
+// and nimble). Ordered: a leg a Low man can vault a High man can vault too.
+enum class VaultClass { None, Low, High };
+// Every number vaulting uses, in one place. Heights are metres above his feet; seconds are at
+// dexterity 100; stamina is seconds of sprint capacity (plan 022), charged up front.
+struct VaultTable {
+    float lowTop=1.2f;          // m: the highest top a Low vault clears
+    float highTop=2.0f;         // m: the highest top a High vault clears
+    float depth=1.0f;           // m: the thickest obstacle one vault crosses (along the leg)
+    float headroom=1.0f;        // m of clear space above the top
+    float maxLeg=3.2f;          // m from take-off to landing
+    float lowSeconds=.9f;       // s over a low obstacle at dexterity 100 (divided by StatScale(Dex))
+    float highSeconds=1.8f;     // s over a wall
+    float lowStamina=1.0f;      // s of stamina a low vault costs
+    float highStamina=2.5f;     // s of stamina a wall costs
+    float pad=.3f;              // m: obstacles within this of the leg are the ones he goes over
+    float highStat=102;         // mean(strength, dexterity) for a High vault (about one man a squad)
+    float woundedHealth=55;     // health below this: no vault (the existing wounded cutoff)
+    float plannerPace=3.15f;    // m/s: a vault's seconds become this many metres of path in the search
+};
+inline const VaultTable& Vaulting(){static const VaultTable table;return table;}
+// Whether the leg a->b is one vault for a man of class cls, and the class it needs: None when it is not
+// (or cls is None), Low when a Low man can make it, High when only a High man can. Pure geometry: both
+// ends walkable at the same height, neither on stairs, at most maxLeg long over supported ground; every
+// movement-band obstacle within pad of the leg a solid that blocks movement (never a hedge, never a
+// building's wall, sill or door), standing on the ground, crossed completely and at most depth thick,
+// with its top within the class's height and headroom above it; at least one such obstacle. Memoised
+// (kinds 3 and 4) on a prepared map. height (optional, unmemoised) is the top above his feet.
+VaultClass VaultCrossing(const Map& map, Vec3 a, Vec3 b, VaultClass cls, float* height=nullptr);
+// The class form of FindPath (plan 029 M-C). None is FindPath(map,from,to) exactly; Low and High may
+// take vault legs (two or three grid cells over an obstacle the 1-cell step cannot pass).
+std::vector<Vec3> FindPath(const Map& map, Vec3 from, Vec3 to, VaultClass cls);
+// Every obstacle whose footprint the 2D segment a-b padded by pad touches and whose vertical extent
+// overlaps (zlo, zhi) (center.z < zhi && top > zlo), in ascending index order.
+void CollectObstacles(const Map& map, Vec3 a, Vec3 b, float pad, float zlo, float zhi, std::vector<size_t>& out);
 
-enum class Stance { Standing, Crouched };
+enum class Stance { Standing, Crouched, Prone }; // Prone: plan 029 M-A1, only with Config::prone
+// Plan 029 M-A2: the stance a cover record shelters a man in. A prone record (a crater rim, `crouch=2`)
+// exists only in a battle with Config::prone on (Simulate clears it otherwise), so with the switch off
+// this is exactly the `crouch ? Crouched : Standing` it replaces.
+inline Stance CoverStance(const CoverPosition& c){return c.prone?Stance::Prone:c.crouch?Stance::Crouched:Stance::Standing;}
 float BodyHeight(Stance stance);
 bool ProtectedAt(const Map& map, Vec3 position, Vec3 threat, Stance stance);
 enum class Doctrine { Balanced, Cautious, Aggressive };
@@ -138,6 +212,65 @@ struct BoundTuning {
                                       // running this long: the wait was not buying anything more
 };
 inline constexpr BoundTuning BoundConstants{};
+// Plan 028 Stage 3c, Jordan's thresholds of 23 Sep 2026 (Config::coverGraduated). All ages are the
+// leader's own track ages (time - observedAt of his WithTracks view).
+struct CoverGradeTuning {
+    float primaryAge=20;     // the covering gate's primary is chosen among tracks seen within this
+    float shortWait=8;       // T: a crossing nobody can cover is held this long, then graded
+    float dangerAge=10;      // the danger tests count overlooking tracks seen within this
+    int highTracks=5;        // high danger: this many such tracks overlook the crossing ...
+    float highExposure=.6f;  // ... or a machine gun among them, or the crossing's exposure reaches this
+};
+inline constexpr CoverGradeTuning CoverGradeConstants{};
+// Plan 028 Stage 1 (Config::coverRequests, Legacy only): the call for covering fire and its answer.
+struct CoverRequestTuning {
+    float lifetime=8;        // a request lives this long after the leader last renewed it
+    float resendSeconds=4;   // a payload is re-sent to a man at most this often ...
+    float newerContact=4;    // ... and only for a new enemy, a contact this much newer, or before it lapses
+    int riflemen=2;          // stationary riflemen whose own spot bears on the threat, at most
+    float gunNoLine=8;       // the gun is re-stationed onto the threat only after this long without a line
+    int creditRounds=3;      // the covering gate's own bar (CoveringPath), for request_to_credit_seconds
+};
+inline constexpr CoverRequestTuning CoverRequestConstants{};
+// Plan 028 Stage 4, "finish the supply side" (Jordan, 23 Sep 2026): the gun aimed at the crossing's
+// threat (Config::coverGunAim), short covered shifts for covering riflemen (Config::coverShift) and
+// the platoon's support squad aimed at the mover's threat (Config::coverPlatoon). First values, not tuned.
+struct CoverSupplyTuning {
+    float gunAimRange=25;     // m: the gun's new station bearing on the threat lies within this of him
+    float gunAimCooldown=10;  // s: the gun is re-aimed at most this often (a gun that moves is silent)
+    float gunReach=100;       // m: a gun whose station has a clear line onto the threat within this (his weapon's
+                              // reach, SelectFireSolution) already bears on it and is not moved
+    float creditWindow=6;     // s: the leader's own delivery reports that make the gun "credited" (never moved)
+    float shiftRange=8;       // m: a covering rifleman's shift to a place with a line, at most
+    float shiftMin=1;         // m: ... and at least (a shift is a move to another cover, not a step)
+    float shiftRevealed=1;    // s: a shift reveals him to one known enemy at most this long (plan 020's
+                              // 3 s is a whole 8 m walk, so the shift's own bar is tighter)
+    float pinnedSuppression=.35f; // a man this suppressed is pinned: never shifted
+    float shiftTrackAge=6;    // s: men are shifted only onto a threat the leader saw this recently
+    float shiftCooldown=20;   // s: a man is not shifted again this soon (no shuttling between two places)
+    float crossingClear=3;    // m: a shifted man or the re-aimed gun stays this far off the crossing
+    float platoonLineBonus=6; // the support squad's score for a line onto the mover's threat (a gun is 8)
+    float platoonPayloadAge=20; // s: the platoon support payload lives while its track is this fresh
+};
+inline constexpr CoverSupplyTuning CoverSupplyConstants{};
+// Plan 030 M-S5 (S5, Config::coverQuietRelease, Legacy only): the covering gate released on observed
+// silence. A known threat overlooking the crossing is quiet when the leader's knowledge (his own
+// sighting or a report, contact lastFireAt) has not seen it fire for quietSeconds, or when it is under
+// credited fire and has not fired since that fire began and for at least creditedQuiet. The credited-
+// delivery test alone (CoveringPath) passes the commit wait only after fallbackSeconds of waiting.
+struct CoverQuietTuning {
+    float quietSeconds=3;     // s: an overlooking threat not seen firing this long is quiet
+    float creditedQuiet=1;    // s: ... or this long, under credited fire that began after his last shot
+    float creditWindow=6;     // s: the leader's delivery reports that make a threat "under credited fire"
+    float fallbackSeconds=8;  // s: the credited-delivery test alone releases the commit wait after this
+};
+inline constexpr CoverQuietTuning CoverQuietConstants{};
+// Plan 030 M-S5 (Config::coverRifleBase, Legacy only): with no gun station bearing on a request's threat,
+// the covering pair is tasked from the cover its men already hold, if that cover bears on the threat.
+struct CoverRifleBaseTuning {
+    float coverSnap=1.5f;     // m: a man this close to a cover's shelter holds that cover (and fires from its peek)
+};
+inline constexpr CoverRifleBaseTuning CoverRifleBaseConstants{};
 // Plan 023, the rifle group moves as one. One table for the whole design, next to the bound's:
 // the geometry of a station and the margins the later stages need. First values, not tuned.
 struct GroupTuning {
@@ -174,6 +307,45 @@ struct GroupTuning {
     float fallbackTravel=60;               // how far back a withdrawal looks for its fall-back position
 };
 inline constexpr GroupTuning GroupConstants{};
+// Plan 031 Stage D, the squad fire-and-movement drill (Config::fireAndMovement, Legacy only). Every constant the drill
+// uses lives here; legLength, fireWindow and deadline are also run values (Config::fmLeg, fmFireWindow, fmDeadline, CLI
+// --fm-leg, --fm-fire-window, --fm-deadline) for sweeps. First values, set sensibly, not measured.
+struct FireMovementTuning {
+    float legLength=15;      // m: in contact a running bound is cut to the route stages that fit in this (at least one stage;
+                             // the planner's stages are 12-18 m, so a leg is one stage unless this is raised past 24)
+    float fireWindow=3;      // s: a leg starts only if the riflemen heard their gun fire on a leg threat this recently
+    float deadline=20;       // s: the gate closed this long while men still wait at the leg start: Legacy for this leg
+    float threatAge=20;      // s: a leg threat is a known track seen within this (plan 028 3c: an older one is not waited on)
+    float threatReach=95;    // m: a track overlooks a point of the leg within this (AssumedEnemyReach)
+    float gunReach=100;      // m: the gun bears on a threat within this (SelectFireSolution's reach)
+    float setRadius=6;       // m: a round the gun fires within this of his station is fired "set" (his overwatch cover search radius)
+    float stationRadius=40;  // m: a new station for the gun is searched this close to him or to the leg's start (the group)
+    float leash=60;          // m: his station stays within this of the leg's end (the rifle group not too far ahead)
+    float keepGrace=6;       // s: within a leg his station is kept until it has borne on none of the leg's threats this long
+    float laneClear=4;       // m: his line onto a threat passes at least this far from the leg's path and the men at its start
+    float spacing=4.5f;      // m: his station is this far from any rifle station (haltSpacing)
+    float payloadSeconds=8;  // s: the gun's fire payload lives this long after a plan renews it (CoverRequestConstants.lifetime)
+    float departMin=4;       // m: a decision that moves him less than this is a step, a peek, a duck or a slot adjustment, not a
+                             // departure (SprintTable::minimumRun: the hops a man walks)
+    float waitCover=1.5f;    // m: waiting at the leg start he takes catalogue cover this close to him (CoverRifleBaseConstants.coverSnap)
+    float waitReach=8;       // m: ... and with none that close, he goes to cover this close that shelters him from the enemy he
+                             // watches, rather than wait in the open (where his exposed-stop rule would send him running for any)
+    float downReach=3;       // m: at the leg end he gets down behind catalogue cover this close to his station, else crouches
+    float arriveRadius=8;    // m: an advance leg is reached when most of the group is this close to its end (the bound's arrival)
+    float advanceMin=6;      // m: an advance shorter than this is not cut into legs
+    float backstop=1.5f;     // x deadline: a rifleman who has waited this long goes whatever he hears (should the leader's
+                             // deadline not reach him: a squad between leaders)
+};
+inline constexpr FireMovementTuning FireMovementConstants{};
+// Plan 031 D: what an order of the drill carries. gun: the squad's gun whose fire opens the leg (-1: no drill, every
+// field inert); leg: the leader's leg (or hold spell) serial; displace: the gun's own order sends him to a new station
+// (he may sprint). On the group's orders (the leader's, the NCO's and those the relay sends) it names the group's leg;
+// on the gun's order gun is the gunner himself.
+struct FireMovementOrder {
+    int gun=-1,leg=0;
+    bool displace=false;
+};
+inline bool SameFireMovementOrder(const FireMovementOrder& a,const FireMovementOrder& b){return a.gun==b.gun&&a.leg==b.leg&&a.displace==b.displace;}
 // Plan 023 A (3.1). What the group's objective is: a bound's destination, a halt on the place the
 // leader was ordered to, or a hold in contact where the group already stands and fights.
 // Stage D adds two kinds of its own: the support gun's firing position, angled off the rifle
@@ -214,6 +386,13 @@ struct GroupStations {
     // is the officer with the leading squad, index 1 the platoon sergeant behind it.
     int supportStationFor=-1;
     std::array<int,2> staffLead{{-1,-1}},staffSerial{{0,0}};
+    // Plan 028 Stage 4 (Config::coverShift): the covered place a man was shifted to for a covering request
+    // stays his station for the rest of this objective (shiftSerial), whatever becomes of the request, so
+    // he is never walked back; and when he was last shifted (he is not shifted again within shiftCooldown).
+    std::array<int,SquadSize> shiftSerial{};
+    std::array<Vec3,SquadSize> shiftPlace{};
+    std::array<float,SquadSize> shiftedAt=[]{std::array<float,SquadSize> a{};a.fill(-100.f);return a;}();
+    std::array<bool,SquadSize> shiftArrived{}; // evidence only: the cover_shift arrival row was written
 };
 enum class TaskStatus { Issued, Received, Executing, Interrupted, Blocked, Done, Failed, Superseded };
 enum class GoalPurpose { None, Seize, Support, Observe, Withdraw };
@@ -243,6 +422,25 @@ struct ObservationCoverage {
     float observedAt=-100,receivedAt=-100;
     unsigned samples=0; // Nine tested sight lines; never a claim that the region is safe.
 };
+struct Contact {
+    bool known = false, visible = false;
+    Vec3 position{};
+    float observedAt = -100;
+    float aimHeight = 1.45f;
+    Vec3 aimOffset{};
+    float detectionDelay=0; // Sensory exposure/distance cost, never used by legacy policy.
+    float registeredAt = -100;
+    int reportSource=-1;
+    int originalObserver=-1; // Preserved across relays; never refreshed by forwarding.
+    bool automaticWeapon=false;
+    float clearedAt=-100, emptySince=-1, passedAt=-1, lastFireAt=-100;
+    // Plan 030 K-1 (Config::retireFallen, Legacy only; never set otherwise): the holder of this observation saw
+    // the man put out of action while he had a line on him (observedAt is then when he saw him down), or holds
+    // a report of such an observation. Carried whole through every report path.
+    bool seenDown=false;
+};
+struct FriendlyIntent {int soldier=-1;Vec3 position{},destination{};float observedAt=-100;};
+struct SupportThreat {int enemy=-1;Contact contact;};
 struct TaskReceipt {
     ExecutionContract execution;
     ObservationCoverage coverage;
@@ -272,11 +470,28 @@ struct Assignment {
     // the shared movement step behind Config::orderPace. Soldier-level, carried by the plain
     // struct copy on delivery like every other order field. Never above 1 here.
     float pace=1.f;
+    // Plan 028 Stage 1 (Config::coverRequests, Legacy only): a covering-fire payload. The leader's own
+    // track of the enemy he wants covered (fireContact, as he held it when he sent the order), how long
+    // the request lives, who asked (the direct reply of Stage 2a goes to him) and the ordered mover
+    // stations the shooter must not fire through. fireEnemy -1 is no payload: every field is then inert.
+    int fireEnemy=-1,fireRequester=-1;
+    Contact fireContact;
+    float fireUntil=-100;
+    std::shared_ptr<const std::vector<FriendlyIntent>> fireFriendlies;
+    // Plan 028 Stage 4 (Config::coverShift): this order shifts him to a covered place with a line on the
+    // payload's enemy; he gives up the cover he holds for it unless pinned (plan 020's better cover close by).
+    bool fireShift=false;
+    // Plan 030 M-S7 P4 (Config::coverSector, Legacy only; null otherwise): the gun's share of the request's sector,
+    // every known threat overlooking the crossing that no covering rifleman took, loudest first, each with the
+    // leader's track of it. The gun works it a burst at a time (SelectFireSolution).
+    std::shared_ptr<const std::vector<SupportThreat>> fireSector;
+    // Plan 031 Stage D (Config::fireAndMovement, Legacy only; gun -1 otherwise): the drill's leg this order belongs to.
+    FireMovementOrder fm;
 };
 enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector, Coverage, SupportProgress, SquadRadio };
 enum class Action { Advance, Cover, Fire, Retreat, Hold, Wounded, Killed };
 enum class Reason { Search, Contact, Suppressed, Injury, ClearShot, Watching, LostContact, Down,
-    Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition };
+    Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition, Prone, Vault };
 enum class EventKind { Contact, Decision, Shot, Hit, Casualty, Result, OrderIssued, OrderReceived, Report, Succession, Reaction };
 enum class Terrain { FracturedWorks, Trenches };
 struct OfficerProfile { float judgment=.7f, risk=.5f, adaptability=.7f, communication=.7f; };
@@ -374,6 +589,70 @@ struct SprintTable {
     float minimumRun=4;         // m; a shorter hop (a peek, a duck, a slot adjustment) is walked
 };
 inline const SprintTable& Sprint(){static const SprintTable table;return table;}
+// The three postures (plan 029 M-A1). Every number a stance changes lives here, in one place.
+// Standing and crouched are exactly the literals each site carried before the table existed, so a
+// battle without Config::prone is bit for bit what it was; only the prone row is new.
+struct PostureEntry {
+    float body;        // m; the body a round or a sight line meets (BodyHeight)
+    float eye;         // m above his feet; what he sees from
+    float muzzle;      // m above his feet; where his rounds start
+    float speed;       // multiple of his walking pace (a prone man crawls)
+    float sway;        // sway amplitude multiple
+    float recoil;      // recoil kick multiple
+    float aim;         // aim-time multiple
+    float plannerBody; // m; the body the tactical route planner tests for exposure
+};
+struct PostureTable {
+    PostureEntry standing{1.85f,1.7f,1.5f,1.f,1.f,1.f,1.f,1.5f};
+    PostureEntry crouched{0.9f,0.82f,0.72f,0.6f,0.7f,0.8f,1.f,0.9f};
+    PostureEntry prone{0.35f,0.30f,0.30f,0.3f,0.5f,0.7f,1.1f,0.35f};
+    // The prone rules (Jordan's rulings, plan 029). Nothing reads them while Config::prone is off.
+    float crawlRange=6;       // m of path to cover he crawls to lying down; beyond it he stays down
+    float riseSeconds=.8f;    // s to get up at dexterity 100: frozen and silent until he is up
+    float minimumSeconds=3;   // s he stays down before quiet raises him, or a cover order does
+    float riseMargin=.2f;     // quiet: suppression below his duck threshold minus this
+    float riseContact=30;     // m; quiet: no enemy in sight this close
+    float threatRange=60;     // m; the known threats the height test reads
+    float threatAbove=2;      // m; a known enemy eye this far above his prone body: prone is no use
+    float threatEye=1.7f;     // m; the eye height he assumes on a known enemy
+};
+inline constexpr PostureTable PostureValues{};
+inline const PostureTable& Postures(){return PostureValues;}
+// Plan 030 suppression mechanics (S1 impacts on cover, S2 nerve, S3 stacked suppression). Every number
+// the three switches use lives here, in one place; nothing reads it while its switch is off.
+struct SuppressionTable {
+    float impactRadius=1.5f;    // S1: default of Config::impactRadius (m from his shelter or position to a round stopped by a solid)
+    float impactWeight=.15f;    // S1: suppression such a round adds, divided by StatScale(composure)
+    float impactBack=.05f;      // S1: m back along the round's last leg from which "the solid shelters him" is tested
+    float nerveGain=.25f;       // S2: nerve gained per s while his suppression is above his duck threshold
+    float nerveDecay=.03f;      // S2: nerve lost per s otherwise, times StatScale(composure)
+    float pinnedAt=.5f;         // S2: nerve above this: the rise and pop-up rules do not release him
+    int firstShots=3;           // S2: rounds after a release fired with the shaken cone and settle
+    float shakenSuppression=1;  // S2: the suppression those rounds' cone and settle are computed at (fully suppressed)
+    float stackWindow=2;        // S3: s after a round reached him during which his suppression does not decay
+};
+inline const SuppressionTable& SuppressionRules(){static const SuppressionTable table;return table;}
+// Plan 030 M-S7, Jordan's suppression design (24 Sep 2026): the defaults of the Config run values (P1 peek floor and
+// curve, P2 weight and grace, P3 effect) and the fixed geometry and timings of the four rules. Nothing reads it while
+// the rules are off.
+struct PinTable {
+    float peekFloor=.15f;       // P1: default Config::peekFloor: the least chance per settle of a peek above his duck threshold
+    float peekCurve=2;          // P1: default Config::peekCurve: the chance is max(floor, (1 - suppression)^curve)
+    float settleSeconds=.7f;    // P1: one settle: the 0.7 s a man stays down after a duck before he may come up
+    float peekHold=4;           // P1: a graded peek ends when he has fired a round, is hit, or after this many s
+    float keepDownWeight=.15f;  // P2: default Config::keepDownWeight (suppression per round in his cover, / composure)
+    float keepDownRadius=2.2f;  // P2: S1's detection of a round in his cover, at S1b's 2.2 m
+    float keepDownGrace=2;      // P2: default Config::keepDownGrace: s after his suppression was last above his threshold
+    float neighbourEffect=.10f; // P3: default Config::neighbourEffect: the floor a pinned man puts on the men near him
+    float neighbourRadius=8;    // P3: m; squadmates this close, in cover, with a line to him
+    float neighbourMargin=.2f;  // P3: the floor never reaches his duck threshold less this (the come-up band)
+    int sectorGunCapacity=2;    // P4: threats the gun works alone; above it the covering pair takes the nearest
+    int sectorMax=6;            // P4: threats a request carries at most
+    float sectorLoud=1.5f;      // P4: a sector threat the gunner saw fire this recently gets the next burst at once
+};
+inline const PinTable& PinRules(){static const PinTable table;return table;}
+inline const PostureEntry& Posture(Stance stance){
+    return stance==Stance::Crouched?PostureValues.crouched:stance==Stance::Prone?PostureValues.prone:PostureValues.standing;}
 // What one path decision cost, for the trace and the battle totals. Never read by policy.
 struct PathChoice {
     bool searched=false,covered=false;
@@ -437,8 +716,119 @@ struct Config {
     // into the digest only when it differs from 1, so cognition, drills and the static defenders
     // (which never set it) are bit-identical whether the switch is on or off.
     bool orderPace=true;
+    // Plan 026 P2 ablation switches for the three schema-3 (KEEP) interface differences. On by
+    // default = current behaviour; each is folded into the digest and written to the manifest only
+    // when false, so every existing battle keeps its digest.
+    bool keepAction=true,keepKindReset=true,keepCommitClear=true;
+    // Plan 028 Stage 3c (Jordan's ruling 4 of 23 Sep 2026), Legacy only: the covering gate waits
+    // only on an overlooking enemy seen within 20 s; a stale threat crosses after the short wait,
+    // and a fresh one nobody covers is graded (CoverGradeConstants): high danger goes round, low
+    // danger crosses. Off by default; folded into the digest and the manifest only when true.
+    bool coverGraduated=false;
+    // Plan 028 Stage 1 + 2a, Legacy only, off by default; each folded into the digest and the manifest
+    // only when true. coverRequests: a leader waiting on, or running, an exposed crossing asks for fire on
+    // its primary; the gun and at most two stationary riflemen already bearing on it answer through a
+    // payload on their order. coverReports: fire deliveries travel on the 0.5 s channel with a direct
+    // reply to the requester, and are remembered per shooter and enemy.
+    bool coverRequests=false,coverReports=false;
+    // Plan 028 Stage 4 (Jordan's "finish the supply side"), Legacy only, off by default; each folded
+    // into the digest and the manifest only when true. coverGunAim: with a covering request live and no
+    // line onto its threat, the gun takes a covered station within 25 m that bears on it, at once.
+    // coverShift: at most two covering riflemen in cover without a line shift up to 8 m to cover that has
+    // one (with coverRequests). coverPlatoon: the platoon commander picks the mover first, then the
+    // support squad by line onto the enemy overlooking the mover's approach; its gun gets that payload.
+    bool coverGunAim=false,coverShift=false,coverPlatoon=false;
+    // Plan 029 M-A1, every controller, off by default: a man caught in the open with no cover found
+    // goes prone, crawls up to 6 m to cover and gets up again (PostureTable). Folded into the digest
+    // and written to the manifest only when true.
+    bool prone=false;
+    // Plan 029 M-B, every controller, off by default: hedges (ARMYMAP 2 `O` concealment) block sight,
+    // not bullets. Off, Simulate clears the flag on the battle's map and a hedge is an ordinary solid.
+    // Folded into the digest and written to the manifest only when true.
+    bool concealment=false;
+    // Plan 029 M-C, every controller, off by default: a man's own paths may go over low walls and
+    // fences (and, strong and nimble, over walls to 2 m) at a stamina cost (VaultTable). Folded into
+    // the digest and written to the manifest only when true.
+    bool vaulting=false;
+    // Plan 029 F-E, every controller, off by default: the covering-fire delivery credit ray starts
+    // at the shooter's muzzle and is solid-only (a hedge the round passed through does not deny it).
+    // Off, Legacy keeps the ray from his feet, which low cover (and a village's earth complement,
+    // whose top is at z 0) always blocks. Folded into the digest and written to the manifest only when true.
+    bool muzzleCredit=true;   // plan 029 F-E, default on since 23 Sep 2026 (Jordan); --no-muzzle-credit restores the feet ray
+    // Plan 030 M-S4, every controller, off by default: a gunner firing an automatic weapon holds his
+    // burst against the recoil walk-up (GunnerCompensationTable). Rifles are unchanged. Folded into the
+    // digest and written to the manifest only when true.
+    bool gunnerCompensation=false;
+    // Plan 030 (SuppressionTable), every controller, off by default; each folded into the digest and written to
+    // the manifest only when on. impactSuppression (S1): a round stopped by the solid a man shelters behind, within
+    // impactRadius of him, suppresses him at impactWeight. nerve (S2): a slow pinned state that holds him down after
+    // the fire stops, and shakes his first shots after it lets him go. stackedSuppression (S3): his suppression does
+    // not decay for stackWindow after each round that reached him, so rounds arriving together stack.
+    bool impactSuppression=false,nerve=false,stackedSuppression=false;
+    // Plan 030 S1b: S1's radius as a run value (--impact-radius), default SuppressionTable::impactRadius (1.5 m). Read only
+    // with impactSuppression on; folded into the digest and written to the manifest only then and only when not 1.5.
+    float impactRadius=1.5f;
+    // Plan 030 M-S5, Legacy only, off by default; each folded into the digest and written to the manifest only
+    // when on. coverQuietRelease (S5): the covering gate releases a crossing when every known threat overlooking
+    // it is quiet (CoverQuietConstants), the credited-delivery test alone being the fallback; a contact then
+    // remembers when its enemy was last seen firing across later sightings and reports. coverStationRadius: the
+    // gun's station search radius when re-aimed at a request's threat (25 = CoverSupplyConstants.gunAimRange,
+    // unchanged). coverUpperStations: that search also takes the upper-floor windows of the squad's own building
+    // on an ARMYMAP 2 map (importedBuildings). coverRifleBase: with no gun station bearing on the threat, the
+    // covering pair is tasked from the cover its men hold if it bears on it (CoverRifleBaseConstants).
+    bool coverQuietRelease=false;float coverStationRadius=25;bool coverUpperStations=false,coverRifleBase=false;
+    // Plan 030 K-1, Legacy only, off by default; folded into the digest and written to the manifest only when on.
+    // retireFallen: a soldier who sees an enemy he has a line on put out of action marks his contact seenDown, and
+    // the report paths carry the mark; a leader's covering-fire requests, commit and bound gates (quiet release,
+    // support wait) and the manoeuvre's danger reads no longer count a track he knows is down (WithoutFallen).
+    bool retireFallen=false;
+    // spawnLanes (24 Sep 2026; battle_cli and the game turn it on, --no-spawn-lanes / -ArmyNoSpawnLanes restore;
+    // Config{} keeps it off for the fixtures): on an imported map a squad's no-contact search lane follows its
+    // team's actual spawn order. The lane code mirrored Ember's lanes, which matches the authored maps (Ember
+    // spawns mirrored) but not the generated ones (both teams spawn in the same order), so every Ember squad
+    // first crossed to the far lane. Authored maps are unchanged; not folded into the digest; in the manifest.
+    bool spawnLanes=false;
+    // Plan 030 M-S6, Legacy only, off by default; folded into the digest and written to the manifest only when on.
+    // noCoveringFire: a squad never waits for covering fire and never asks for it. The commit gate, the running-bound
+    // gate and the internal-bound gate treat every exposed crossing as released (no support_wait, no 20 s override
+    // clock, no covering pause; the fixed 8 s exposed preparation, pressure and refusals are unchanged) and
+    // RaiseCoverRequest is not called. The gun keeps its ordinary fire control; the candidate scores still read
+    // CoveringPath.
+    bool noCoveringFire=false;
+    // Plan 030 M-S7, Jordan's suppression design (PinTable), off by default; each folded into the digest (with its
+    // constants when they differ from the table) and written to the manifest only when on.
+    // gradedPeek (P1, every controller): above his duck threshold a man at his cover is not hard-ducked; each settle
+    // he comes up for one round with chance max(peekFloor, (1 - suppression)^peekCurve).
+    // keepDown (P2, every controller): a round stopping in the cover he shelters behind (S1's detection at 2.2 m) adds
+    // keepDownWeight / composure, only while his suppression is above his duck threshold or was within keepDownGrace s.
+    // pinnedNeighbours (P3, every controller): while a man is above his duck threshold, each squadmate in cover within
+    // 8 m with a line to him holds at least neighbourEffect suppression (never his come-up level); men moving, in the
+    // open or holding a movement order are left alone.
+    // coverSector (P4, Legacy only): a covering request names every known threat overlooking the crossing, loudest
+    // first; the gun works them a burst each, back at once to one that fires; above the gun's capacity the covering
+    // pair takes the nearest; the credited-delivery gate reads the whole set.
+    bool gradedPeek=false;float peekFloor=.15f,peekCurve=2;
+    bool keepDown=false;float keepDownWeight=.15f,keepDownGrace=2;
+    bool pinnedNeighbours=false;float neighbourEffect=.10f;
+    bool coverSector=false;
+    // Plan 031 Stage D, the squad fire-and-movement drill, Legacy only, per team (bit 0 Azure, bit 1 Ember), off by
+    // default; folded into the digest and written to the manifest only when on, its run constants (FireMovementTuning)
+    // only when they differ from the table. While a squad of such a team is in contact, every deliberate move of its rifle
+    // group (flank, advance, running and fire-team bounds, clear-lane, platoon-ordered repositions) is cut into short
+    // cover-to-cover legs, each started only when the squad's gun, set on ground that bears on the known enemies
+    // overlooking the leg, is heard firing on them; its station is kept while it bears; a deadline falls back to Legacy.
+    int fireAndMovement=0;
+    float fmLeg=FireMovementConstants.legLength,fmFireWindow=FireMovementConstants.fireWindow,fmDeadline=FireMovementConstants.deadline;
 
     bool drills=false;
+    // Plan 024: optional Azure squad ranker. Existing controllers stay unchanged.
+    std::shared_ptr<const SquadPolicy> neuralPolicy;
+    int policyCandidates=0;
+    bool externalPolicy=false; // explicit training-only decision callback
+    // Plan 026 P4: 0 = the schema-2/3 interface exactly as before; 4 = 128-column rows with the
+    // go-now timing head. Set by a schema-4 model, --policy-schema 4 or a worker RESET; folded
+    // into the digest only when non-zero.
+    int policySchema=0;
     ScenarioFamily family=ScenarioFamily::None;
     uint32_t genSeed=1;
     Terrain terrain=Terrain::FracturedWorks;
@@ -448,35 +838,46 @@ struct Config {
     Doctrine emberDoctrine = Doctrine::Balanced;
     Approach approach = Approach::Center;
     bool supportWeapon = true;
+    // Jordan, 24 Sep 2026: every squad a machine gunner (each squad's slot 8, both sides; Azure's
+    // guns still follow supportWeapon). battle_cli and the game turn it on (--platoon-mg / -ArmyPlatoonMG
+    // restore one gun per platoon); Config{} keeps the historical one per platoon so unit fixtures and
+    // their recorded digests stay valid. The roster itself carries it into the digest (weapon per man).
+    bool squadMachineGuns = false;
     float maxSeconds = 360;
 };
 inline bool SameConfig(const Config& a,const Config& b) {
+    if(a.externalPolicy!=b.externalPolicy||bool(a.neuralPolicy)!=bool(b.neuralPolicy)||a.policyCandidates!=b.policyCandidates||a.policySchema!=b.policySchema||
+        (a.neuralPolicy&&a.neuralPolicy->digest!=b.neuralPolicy->digest))return false;
     if(bool(a.battlefield)!=bool(b.battlefield)||(a.battlefield&&a.battlefield->digest!=b.battlefield->digest))return false;
     if(a.rosterSeed!=b.rosterSeed||!SameDistribution(a.statProfiles[0],b.statProfiles[0])||!SameDistribution(a.statProfiles[1],b.statProfiles[1]))return false;
     // Only the authored static-defence inputs are compared, and only when a layout
     // is selected: the resolved objective is derived from them and the map.
     if(a.staticDefence.layout!=b.staticDefence.layout)return false;
     if(a.staticDefence.layout!=DefenceLayout::None&&(a.staticDefence.defenders!=b.staticDefence.defenders||a.staticDefence.seed!=b.staticDefence.seed))return false;
-    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.offLanePaths==b.offLanePaths&&a.orderPace==b.orderPace&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
-        a.supportWeapon==b.supportWeapon&&a.maxSeconds==b.maxSeconds;
+    if(a.gunnerCompensation!=b.gunnerCompensation)return false;   // plan 030 M-S4
+    if(a.noCoveringFire!=b.noCoveringFire)return false;   // plan 030 M-S6
+    // Plan 030 M-S7: each rule and, while it is on, its constants.
+    if(a.gradedPeek!=b.gradedPeek||(a.gradedPeek&&(a.peekFloor!=b.peekFloor||a.peekCurve!=b.peekCurve)))return false;
+    if(a.keepDown!=b.keepDown||(a.keepDown&&(a.keepDownWeight!=b.keepDownWeight||a.keepDownGrace!=b.keepDownGrace)))return false;
+    if(a.pinnedNeighbours!=b.pinnedNeighbours||(a.pinnedNeighbours&&a.neighbourEffect!=b.neighbourEffect))return false;
+    if(a.coverSector!=b.coverSector)return false;
+    // Plan 031 D: the drill's teams and, while it is on, its run constants.
+    if(a.fireAndMovement!=b.fireAndMovement||(a.fireAndMovement&&(a.fmLeg!=b.fmLeg||a.fmFireWindow!=b.fmFireWindow||a.fmDeadline!=b.fmDeadline)))return false;
+    return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.offLanePaths==b.offLanePaths&&a.orderPace==b.orderPace&&a.keepAction==b.keepAction&&a.keepKindReset==b.keepKindReset&&a.keepCommitClear==b.keepCommitClear&&a.coverGraduated==b.coverGraduated&&a.coverRequests==b.coverRequests&&a.coverReports==b.coverReports&&a.coverGunAim==b.coverGunAim&&a.coverShift==b.coverShift&&a.coverPlatoon==b.coverPlatoon&&a.prone==b.prone&&a.concealment==b.concealment&&a.vaulting==b.vaulting&&a.muzzleCredit==b.muzzleCredit&&a.impactSuppression==b.impactSuppression&&(!a.impactSuppression||a.impactRadius==b.impactRadius)&&a.nerve==b.nerve&&a.stackedSuppression==b.stackedSuppression&&a.coverQuietRelease==b.coverQuietRelease&&a.coverStationRadius==b.coverStationRadius&&a.coverUpperStations==b.coverUpperStations&&a.coverRifleBase==b.coverRifleBase&&a.retireFallen==b.retireFallen&&a.spawnLanes==b.spawnLanes&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
+        a.supportWeapon==b.supportWeapon&&a.squadMachineGuns==b.squadMachineGuns&&a.maxSeconds==b.maxSeconds;
 }
 inline bool TypedController(const Config& c){return c.cognition||c.drills;}
+// Plan 030 K-1: the switch where it acts, the Legacy command path only.
+inline bool RetireFallen(const Config& c){return c.retireFallen&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
+// Plan 030 M-S6: the switch where it acts, the Legacy command path only.
+inline bool NoCoveringFire(const Config& c){return c.noCoveringFire&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
+// Plan 030 M-S7 P4: the switch where it acts, the Legacy command path only.
+inline bool CoverSector(const Config& c){return c.coverSector&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
+// Plan 031 D: the drill where it acts, the Legacy command path only, for this team (0 Azure, 1 Ember) or for either.
+inline bool FireAndMovement(const Config& c,int team){return team>=0&&team<2&&((c.fireAndMovement>>team)&1)&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
+inline bool FireAndMovementAny(const Config& c){return FireAndMovement(c,0)||FireAndMovement(c,1);}
+const char* FireAndMovementName(int teams); // "azure", "ember", "both" (or "off")
 Map MakeBattleMap(const Config& config);
-struct Contact {
-    bool known = false, visible = false;
-    Vec3 position{};
-    float observedAt = -100;
-    float aimHeight = 1.45f;
-    Vec3 aimOffset{};
-    float detectionDelay=0; // Sensory exposure/distance cost, never used by legacy policy.
-    float registeredAt = -100;
-    int reportSource=-1;
-    int originalObserver=-1; // Preserved across relays; never refreshed by forwarding.
-    bool automaticWeapon=false;
-    float clearedAt=-100, emptySince=-1, passedAt=-1, lastFireAt=-100;
-};
-struct SupportThreat {int enemy=-1;Contact contact;};
-struct FriendlyIntent {int soldier=-1;Vec3 position{},destination{};float observedAt=-100;};
 struct SupportSector {int shooter=-1,requester=-1,stage=0;Vec3 focus{};uint64_t route=0;float observedAt=-100;bool lifted=false;std::vector<SupportThreat> threats;std::vector<FriendlyIntent> friendlies;};
 struct SupportProgress {
     int shooter=-1,stage=0;uint64_t assignment=0,route=0;
@@ -522,6 +923,9 @@ struct SquadSituation {
     bool drillSuperiority=false;bool drillRecovering=false;std::string drillNote;
     float phaseLineAt=-1,completedAssaultLineAt=-1;Vec3 assaultObjective{},assaultOrigin{};
     std::vector<Vec3> drillMemberPositions;
+    // Plan 028 Stage 4 (Config::coverPlatoon, Legacy only): where the squad's men are, as its leader
+    // reports them, so the commander can judge which squad has a line onto a threat.
+    std::vector<Vec3> memberPositions;
 };
 enum class SquadBroadcastKind { Fixing, Assaulting, NeedSupport, PhaseLine, Done };
 struct SquadBroadcast {
@@ -548,6 +952,11 @@ struct PlatoonDirective {
     Vec3 position{}, sector{};
     Contact contact;
     float issuedAt=0, receivedAt=0, activatedAt=0, expiresAt=0;
+    // Plan 028 Stage 4 (Config::coverPlatoon, Legacy only): a Support directive aimed at the enemy
+    // overlooking the mover's approach (enemy/contact above): the mover's leader (-1 none), his approach,
+    // and whether the commander's reports gave the chosen squad a line onto that enemy.
+    int coverMover=-1,coverPrevious=-1;bool coverLine=false; // coverPrevious: the squad the old rule would have picked (evidence)
+    Vec3 coverFrom{},coverTo{};
 };
 // Intent persistence and reported advance progress; no platoon roles or corridor claims.
 struct PlatoonTaskState {
@@ -596,6 +1005,7 @@ struct Soldier {
     float swayPhase = 0, swayPhase2 = 0;   // Sway yaw and pitch phases, from the roster hash.
     float recoilSign = 1;        // Fixed yaw direction of this soldier's recoil kick.
     Vec3 recoil{};               // Accumulated recoil offset: x yaw, y pitch, z unused.
+    float recoilHold = 0;        // Plan 030 M-S4: share of his recoil a gunner holds against (0 unless Config::gunnerCompensation).
     Vec3 position{}, facing{1,0}, goal{};
     float maxHealth = 100;
     float health = 100, suppression = 0;
@@ -625,6 +1035,28 @@ struct Soldier {
     // applied this tick. stamina starts at his capacity; with the feature off nothing moves.
     float stamina = 8;
     bool winded = false, sprinting = false;
+    // Plan 029 M-C (Config::vaulting): going over an obstacle right now, how far through the vault
+    // (0..1) and the height of the top above his feet. The animation layer reads these three.
+    bool vaulting = false;
+    float vaultProgress = 0, vaultHeight = 0;
+    // Plan 029 M-C2: his last vault, as he knows it: where he took off, where it lands him (his position stays
+    // the take-off until then) and when; vaultLandsAt is -1 until his first vault (always with the switch off).
+    Vec3 vaultTakeoff{}, vaultLanding{};
+    float vaultLandsAt = -1;
+    // Plan 030 (only moved with the switches on; 0 / 0 / -100 otherwise). nerve (Config::nerve): 0..1, gained while his
+    // suppression is above his duck threshold and lost slowly after; shakenShots: rounds left to fire with the shaken
+    // cone and settle after nerve released him. lastNearMissAt (Config::stackedSuppression): when a round last reached him.
+    float nerve = 0;
+    int shakenShots = 0;
+    float lastNearMissAt = -100;
+    // Plan 030 M-S7 (Config::keepDown or pinnedNeighbours; -100 otherwise): when his suppression was last above his
+    // duck threshold.
+    float aboveDuckAt = -100;
+    // Plan 031 D (Config::fireAndMovement; -100 otherwise). fmFireAt: the drill's gun's last round fired set at his station
+    // on a threat of his sector. fmHeardAt: when this man last heard his own squad's gun fire such a round (local
+    // perception: every man of the squad hears it at once, no report and no delay). fmWaitSince: since when he has been
+    // holding for the gate (his leader sees his man stay put instead of going where he was sent).
+    float fmFireAt = -100, fmHeardAt = -100, fmWaitSince = -100;
     bool areaFire = false;
     bool holdingFire = false;
     float friendlyRisk = 0;
@@ -653,6 +1085,9 @@ struct Soldier {
     std::vector<SquadBroadcast> squadRadio;
     bool Active() const { return health > 0; }
 };
+// Plan 028 Stage 1: a covering-fire payload a soldier holds and may still act on at this time. Only the
+// Legacy command path writes one (Config::coverRequests), so it is never live anywhere else.
+inline bool FirePayloadLive(const Soldier& s,float time){return !s.cognition&&s.assignment.fireEnemy>=0&&s.assignment.fireEnemy<UnitCount&&time<=s.assignment.fireUntil;}
 inline bool IsPlatoonStaff(const Soldier& s){return s.role==Role::Lieutenant||s.role==Role::PlatoonSergeant;}
 const char* RankTag(Role role);
 const char* PlatoonTaskName(PlatoonTask task);
@@ -665,6 +1100,10 @@ constexpr float AssumedEnemyReach=95.f;
 // Perception boundary: only the sensory producer may inspect an enemy body.
 float SightRange(const Soldier& observer);
 Contact SenseEnemy(const Soldier& observer,const Soldier& target,const Map& map,float time);
+// Plan 030 K-1 (Config::retireFallen): the fall of a man the observer had in sight at his last look. The same
+// sight test as SenseEnemy, made on the body; only when that line is clear is the target's state read. Returns a
+// known, not visible contact marked seenDown at `time`, or an unknown one.
+Contact SenseFall(const Soldier& observer,const Soldier& target,const Map& map,float time);
 enum class Maneuver { Advance, FlankNorth, FlankSouth, PullBack, Reposition, Press };
 enum class SquadProgress { Deploying, Moving, Supporting, UnderFire, Regrouping, Waiting, Recovering, RearGuard };
 enum class SupportState { Deploying, Watching, Effective, Blocked, Stale, WrongAngle, Moving };
@@ -770,6 +1209,68 @@ struct DrillPlan {
     std::array<float,SquadSize> lossTimes{};
 
 };
+// Plan 028 Stage 1 (Config::coverRequests, Legacy only): the leader's call for covering fire on the
+// primary overlooking the crossing he waits on or runs. Written only by his own planning
+// (RaiseCoverRequest) from his own knowledge: the enemy, his track of it, the crossing and until when
+// it lives. Who answers is tasked from it: the gun; at most two riflemen whose own spot already bears
+// on the threat (tasked); the ready BoundCover men of an internal bound (boundCover); the foothold men.
+struct CoverRequest {
+    int enemy=-1,serial=0,requester=-1;
+    Contact contact;
+    Vec3 from{},to{};
+    float startedAt=-100,until=-100,gunNoLineSince=-1;
+    const char* gate="";
+    std::array<bool,SquadSize> tasked{},boundCover{};
+    std::shared_ptr<const std::vector<FriendlyIntent>> friendlies;
+    // Plan 028 Stage 4: the crossing's path from `from` (the gun and a shifted man keep off it); the men
+    // shifted to a place with a line (Config::coverShift; they are tasked too) and where to; whether the
+    // gun search has been reported as finding nothing for this request.
+    std::shared_ptr<const std::vector<Vec3>> crossing;
+    std::array<bool,SquadSize> shift{};
+    std::array<Vec3,SquadSize> shiftTo{};
+    bool gunAimReported=false;
+    // Plan 030 M-S5 (Config::coverRifleBase): the tasked men taken as the rifle base of fire (from the cover
+    // they hold, not their ordered place) because no gun station bore on the threat. Trace only.
+    std::array<bool,SquadSize> rifleBase{};
+    // Plan 030 M-S7 P4 (Config::coverSector; null and -1 otherwise): every known threat overlooking the crossing
+    // (QuietCrossing's set), loudest first (the leader's last sighting or report of his fire), each with the leader's
+    // track; the gun's share of it (the threats no covering rifleman took); and, per slot, the sector threat a tasked
+    // rifleman was given instead of the primary.
+    std::shared_ptr<const std::vector<SupportThreat>> sector,gunSector;
+    std::array<int,SquadSize> sectorEnemy=[]{std::array<int,SquadSize> a{};a.fill(-1);return a;}();
+};
+// Plan 031 Stage D (Config::fireAndMovement): the drill's state of one squad, written only by UpdateFireMovement (the
+// leader's plan) from his knowledge, his squad's own state and what he hears of his gun. kind: what the drill governs now:
+// nothing, a leg of a running route bound, a leg of an advance, or (Hold) the group in contact between legs, when every
+// move of its men waits for the gun just the same. A leg is identified by its serial (a hold spell has one too); its
+// threats are the leader's fresh tracks overlooking it (for a hold spell: watching the group's ground); gated: its men wait
+// for the gun (threats known, a gun able and set up, no fallback). The gun's station and fire payload live here too.
+enum class FmKind { None, Route, Advance, Hold };
+struct FireMovementState {
+    FmKind kind=FmKind::None;
+    int leg=0;                        // serial of the leg in hand (0 before the first)
+    uint64_t route=0;int routeStage=-1,boundStage=-1; // a route leg's identity
+    Vec3 from{},to{};                 // the leg's start and end
+    std::shared_ptr<const std::vector<Vec3>> path; // the leg's path from `from` (the gun keeps his line off it)
+    Vec3 mission{};                   // an advance leg: the mission it was cut from
+    float plannedAt=-1,startedAt=-1;  // when the leg was planned, when the leader first saw a man of it go
+    float closedSince=-1;             // the gate (as the leader hears the gun) has been closed since, -1 while open
+    float fallbackAt=-1;              // when the leg fell back (a hold spell re-arms after deadline, or when the gun is heard)
+    bool gated=false,open=false,fallback=false;
+    const char* fallbackWhy="";
+    std::vector<int> threats;         // the leg threats, loudest first
+    bool governsGun=false;            // the gun's station and order are the drill's
+    int gun=-1;                       // the gun it governs
+    Vec3 station{},stationPeek{};bool hasStation=false,displacing=false;int stationGun=-1;float stationAt=-1,bearsAt=-1;
+    CoverRequest payload;             // the gun's fire payload (gate "drill")
+};
+inline bool CoverRequestLive(const CoverRequest& r,float time){return r.enemy>=0&&r.enemy<UnitCount&&time<=r.until;}
+// Plan 030 M-S7 P4: the enemy, and the leader's track of him, that the man in this slot covers: the sector threat the
+// request gave him (Config::coverSector only), else the request's primary.
+inline int RequestEnemy(const CoverRequest& r,int slot){return r.sectorEnemy[slot]>=0?r.sectorEnemy[slot]:r.enemy;}
+inline const Contact& RequestTrack(const CoverRequest& r,int slot){
+    if(r.sectorEnemy[slot]>=0&&r.sector)for(const auto& t:*r.sector)if(t.enemy==r.sectorEnemy[slot])return t.contact;
+    return r.contact;}
 struct SquadCommand {
     AcceptedPlan accepted;
     DrillState drill;
@@ -787,6 +1288,11 @@ struct SquadCommand {
     int failedMoveCount=0;
     std::string planReason="search assigned sector";
     Vec3 preparedTarget{};
+    Maneuver preparedKind=Maneuver::Advance; // schema-3 pending intent family
+    // Plan 026 P4b: a schema-4 "go now" commit releases this route's bounds from the readiness
+    // gates (covering fire on the crossing, the eight-second preparation) until its deadline.
+    // Cleared by a pause or at the destination; chained segments of the same route keep it.
+    bool policyRelease=false;float policyReleaseUntil=-1;uint64_t policyReleaseRoute=0;
     int trackedEnemy=-1;Vec3 enemyReference{};float enemyReferenceAt=-100,heavyFireAt=-100;
     int leader = -1, support = -1;
     bool advancing = false, supportReady = false;
@@ -830,6 +1336,12 @@ struct SquadCommand {
     float platoonUntil=0, platoonReadySince=-1;
     int preparedPlatoonSerial=0;
     DrillPlan battleDrill;
+    CoverRequest coverRequest; // plan 028 Stage 1, Legacy with Config::coverRequests only
+    // Plan 028 Stage 4 (Config::coverPlatoon): the platoon Support directive's threat, as the payload the
+    // squad's gun carries (gate "platoon"; its requester is the mover's leader). Legacy only.
+    CoverRequest platoonCover;
+    float gunAimAt=-100; // plan 028 Stage 4 (Config::coverGunAim): when the gun was last re-aimed
+    FireMovementState fm; // plan 031 Stage D (Config::fireAndMovement only; untouched otherwise)
 };
 // Fire on the move (plan 019). AttackMovement is the user's WHO rule: an attack
 // movement only, never a move to shelter, a peek, a rally, a pull-back or the rear.
@@ -858,8 +1370,37 @@ float StaminaRecovery(const Soldier& soldier);
 bool CanSprint(const Soldier& soldier);
 float StaminaPenalty(const Soldier& soldier,float factorAtEmpty);
 bool SprintTrigger(const Soldier& soldier,bool revealedAhead,float remaining);
-void StepStamina(Soldier& soldier,bool sprinting,bool displaced,float seconds);
+// spend (plan 029 M-C) is stamina charged at once before the tick, a vault's cost; 0 is the old step.
+void StepStamina(Soldier& soldier,bool sprinting,bool displaced,float seconds,float spend=0);
+// Plan 029 M-C: the vault a man can make now, from his own state (understood health, stamina, stats,
+// organisation role, stance). None when Config::vaulting is off, wounded (<55), prone, or, with
+// stamina on, winded or short of a low vault's cost; High when he is not the gunner, mean(strength,
+// dexterity) >= 102 and (stamina on) he has a wall's cost; otherwise Low.
+VaultClass VaultClassOf(const Soldier& soldier,const Config& config);
+// Seconds one vault takes him: the needed class's seconds divided by his dexterity.
+float VaultSeconds(const Soldier& soldier,VaultClass need);
+// The movement stage's choice for the leg from where he stands to dest, the next point of his path:
+// Walk (a leg he can walk, or one that is no vault: the ordinary step), Vault (over it now) or Replan
+// (a vault that needs more than he has left). need and height describe the vault. Walk when off.
+enum class VaultStep { Walk, Vault, Replan };
+VaultStep VaultStepFor(const Map& map,const Soldier& soldier,Vec3 dest,const Config& config,VaultClass* need=nullptr,float* height=nullptr);
+// Plan 029 M-C2: a path's length as his own-class search costs it: the sum of its legs from `from`, with
+// every vault leg (a leg he cannot walk that is a vault of class cls) its table seconds at dexterity 100
+// as metres at VaultTable::plannerPace. With cls None it is the plain length. The cover searches rank by
+// it when Config::vaulting is on, so cover over a wall costs the vault, not the 2 m it looks.
+float PathTravel(const Map& map,Vec3 from,const std::vector<Vec3>& path,VaultClass cls);
+// The metres PathTravel adds for the one leg a->b: a vault's, or 0 for a leg he walks (or cls None).
+float VaultLegMetres(const Map& map,Vec3 a,Vec3 b,VaultClass cls);
 float AimReady(const Soldier& soldier);
+// Plan 030. DuckThreshold is his doctrine's (0.40 cautious, 0.52 balanced, 0.65 aggressive). NervePinned: with
+// Config::nerve on, his nerve is above pinnedAt and the rise and pop-up rules do not release him. AimSuppression is
+// the suppression his cone and settle are computed at: his own, or shakenSuppression for his first shots after a
+// release (only ever differs with Config::nerve on). StepSuppression is the per-tick decay of suppression (and, with
+// the switches on, the nerve clock and the stacking pause); with every switch off it is the historical decay exactly.
+float DuckThreshold(const Config& c,int team);
+bool NervePinned(const Soldier& s,const Config& c);
+float AimSuppression(const Soldier& s);
+void StepSuppression(Soldier& s,const Config& c,float time,float seconds);
 float AimSeconds(const Soldier& soldier);
 float ShotSpread(const Soldier& soldier);
 float VerticalSpread(const Soldier& soldier);
@@ -870,6 +1411,19 @@ Vec3 SwayOffset(const Soldier& soldier,float time);
 float RecoilKick(const Soldier& soldier);
 void ApplyRecoil(Soldier& soldier);
 void DecayRecoil(Soldier& soldier,float seconds);
+// Plan 030 M-S4 (Config::gunnerCompensation), automatic weapons only. After each shot the gunner pulls
+// the aim back against the recoil he has just felt: RecoilHold is the share he holds, share * StatScale(dex)
+// * (1 - suppressionLoss * suppression), clamped to 0..1, stored on Soldier::recoilHold after ApplyRecoil
+// and applied on his next shot. The physical recoil (Soldier::recoil, its kick and its decay) is unchanged;
+// HeldRecoil is the part of it that still reaches the aim, recoil * (1 - recoilHold). No random draw.
+struct GunnerCompensationTable {
+    float share=0.7f;             // the share of the recoil vector a dexterity-100 gunner holds, unsuppressed
+    float suppressionLoss=0.5f;   // fully suppressed he holds half as much
+};
+inline constexpr GunnerCompensationTable GunnerCompensationValues{};
+inline const GunnerCompensationTable& GunnerCompensation(){return GunnerCompensationValues;}
+float RecoilHold(const Soldier& soldier);
+Vec3 HeldRecoil(const Soldier& soldier);
 // Energy ballistics. Speed decays as v0*exp(-dragK*distance), so the flight time
 // to a point is the integral of that decay; dragK <= 0 falls back to distance/v0.
 float FlightTime(float distance,float muzzleVelocity,float dragK);
@@ -880,9 +1434,25 @@ float HitSeverity(float roll);
 float HitDamage(float impactEnergy,float severity);
 struct FireSolution { int enemy=-1; Vec3 point{}; float observedAt=-100; bool area=false; };
 FireSolution SelectFireSolution(const Soldier& soldier,const Map& map,float time);
+// Plan 030 M-S7 P4 (a sector payload, Config::coverSector): the threat of his sector he saw fire most recently, within
+// PinTable::sectorLoud; -1 when none (or no sector payload).
+int SectorLoud(const Soldier& soldier,float time);
+// Plan 030 M-S7 P1 (Config::gradedPeek): the counter-based draw of one settle, in [0,1); and the chance of a graded peek.
+float SettleDraw(uint32_t seed,int soldier,float time);
+float GradedPeekChance(const Config& c,float suppression);
+// Plan 030 M-S7 P3 (Config::pinnedNeighbours): while a man is above his duck threshold, each squadmate within
+// PinTable::neighbourRadius with a line to him (eye to eye) who is at his cover (atCover), not moving and not holding a
+// movement order (Advance, Rally, Flank, BoundMove, ClearLane, PullBack) is raised to at least Config::neighbourEffect,
+// capped at his duck threshold less PinTable::neighbourMargin; a floor, never added. Returns the men raised.
+int PinnedNeighbours(std::array<Soldier,UnitCount>& soldiers,const Map& map,const Config& c,const std::function<bool(const Soldier&)>& atCover);
+// Plan 030 M-S7 P2 (Config::keepDown): whether a round stopped in his cover counts for him now: his suppression is above
+// his duck threshold, or was within Config::keepDownGrace (Soldier::aboveDuckAt).
+bool KeepDownApplies(const Soldier& s,const Config& c,float time);
 float FriendlyFireRisk(const Soldier& soldier,const Map& map,Vec3 aim,float time);
 bool ShouldHoldFire(const Soldier& soldier,float risk);
-void UpdateAim(Soldier& soldier, int target, Vec3 position, float dt);
+// graded (plan 030 M-S7 P1, Config::gradedPeek): he is up on a graded peek and settles his aim whatever the fire on
+// him (off, suppression 0.8 or more keeps his aim at nothing).
+void UpdateAim(Soldier& soldier, int target, Vec3 position, float dt, bool graded=false);
 struct Frame {
     float time = 0;
     std::array<Soldier, UnitCount> soldiers;
@@ -904,12 +1474,34 @@ struct Tactics {
     Vec3 shelter{}, peek{};
     Vec3 travelPosition{};
     float phaseUntil = -1, expires = 0, lastProgress = 0, lastDistance = 1e9f;
+    // Plan 029 M-A1 (Config::prone): when he went down, -1 when he is not prone. Runtime only, never
+    // digested; the decision wrappers keep it across the resets the cover search makes.
+    float proneSince = -1;
+    // Plan 029 M-A2: the held cover is prone cover (a crater rim): he shelters prone and pops up
+    // crouched to fire. Set only from a CoverPosition with prone, so never while Config::prone is off.
+    bool proneCover = false;
+    // Plan 030 M-S7 P1 (Config::gradedPeek; never set otherwise): he is up on a graded peek taken above his duck
+    // threshold, since gradedAt; it lasts until he fires a round, is hit, or PinTable::peekHold has passed.
+    bool gradedPeek = false;
+    float gradedAt = -100, gradedDrawAt = -100; // gradedDrawAt: when he last drew for one (counted, never read)
+    // Plan 031 D (Config::fireAndMovement; never set otherwise): this is the cover he waits in for his gun's fire before a leg;
+    // fmRushLeg: the leg whose rush he started through the open gate (he finishes it whatever he hears after).
+    // fmHeldAt: the decision time at which he last held for the gate (the decision loop reads it for Soldier::fmWaitSince).
+    bool fmWait = false;
+    int fmRushLeg = 0;
+    float fmHeldAt = -100;
 };
+// The stance he shelters in at his remembered cover, and the one he fires from at its peek.
+inline Stance ShelterStance(const Tactics& t){return t.proneCover?Stance::Prone:t.halfCover?Stance::Crouched:Stance::Standing;}
+inline Stance PeekStance(const Tactics& t){return t.proneCover?Stance::Crouched:Stance::Standing;}
 struct DecisionAlternatives;
 // Plan 020, the one way out of cover while under fire: a position within PathCaution::betterCover
 // that protects him from more of the enemies he knows than the one he holds. Rewrites memory and
 // returns true when it found one. Own knowledge only; never an enemy body.
-bool BetterCoverNearby(const Map& map,const Soldier& soldier,const std::vector<Vec3>& friendlyReservations,Tactics& memory,float time);
+// cls (plan 029 M-C): his own vault class for the reachability test; None is the test as it always was.
+// byPath (plan 029 M-C2, Config::vaulting): candidates rank by PathTravel and its limit applies to it; false is
+// the straight-line ranking as it always was.
+bool BetterCoverNearby(const Map& map,const Soldier& soldier,const std::vector<Vec3>& friendlyReservations,Tactics& memory,float time,VaultClass cls=VaultClass::None,bool byPath=false);
 // Plan 020's measure, for tests and tools: the seconds this walk would leave him with a clear
 // line to ONE enemy he knows, at his own pace; the figure is the worst single enemy.
 // stamina true charges the revealed stretches at the pace he will actually have: he sprints
@@ -918,6 +1510,20 @@ float PathRevealedSeconds(const Map& map,const Soldier& soldier,Vec3 from,const 
 struct Order { Vec3 goal; Action action; Reason reason; Stance stance = Stance::Standing; };
 Order ChooseOrder(const Soldier& self, const Map& map, const Config& config,
     const std::vector<Vec3>& friendlyReservations, Tactics& memory, float time, DecisionAlternatives* alternatives=nullptr);
+// ChooseOrder without the fire-and-movement gate (plan 031 D): what ChooseOrder was before it, and what it still is for
+// every order that is not the drill's (FireMovementOrder::gun < 0, always with Config::fireAndMovement off).
+Order ChooseOrderPlain(const Soldier& self, const Map& map, const Config& config,
+    const std::vector<Vec3>& friendlyReservations, Tactics& memory, float time, DecisionAlternatives* alternatives=nullptr);
+// Plan 029 M-A1. ChooseOrder is ChooseOrderBase followed by ApplyProne when Config::prone is on, and
+// ChooseOrderBase alone when it is off. openGround (may be null) is set when the decision is the
+// open-ground fallback: every cover search failed and he is to back off or hold where he is.
+Order ChooseOrderBase(const Soldier& self, const Map& map, const Config& config,
+    const std::vector<Vec3>& friendlyReservations, Tactics& memory, float time, DecisionAlternatives* alternatives, bool* openGround);
+// The prone rules on top of a decision already made, from his own state and knowledge only.
+Order ApplyProne(const Soldier& self, const Map& map, const Config& config, Tactics& memory, float time, const Order& decided, bool openGround);
+// Whether lying down would help him here: not on stairs, not inside a building, and no enemy he knows
+// of within 60 m looking down on him from more than 2 m above his prone body.
+bool ProneUseful(const Soldier& self, const Map& map, float time);
 struct Event {
     float time = 0;
     EventKind kind = EventKind::Decision;
@@ -938,6 +1544,11 @@ struct Shot {
     struct Victim { int soldier=-1; float time=0, energy=0; };
     std::vector<Victim> victims;    // hit == !victims.empty(); target == victims.front().soldier.
 };
+// The covering-fire delivery credit ray (plan 029 F-E): is the line from where the round was fired
+// to `end` (where it now is) clear? Off (Config::muzzleCredit false) Legacy tests from shot.start, his
+// feet, with the sight ray; the typed controllers from the muzzle. On, every controller tests from the
+// muzzle with the solid-only ray.
+bool DeliveryLineClear(const Map& map,const Config& c,const Shot& shot,const Soldier& shooter,Vec3 end);
 // Returns only the part of the recorded flight reached at this replay time.
 bool ProjectilePosition(const Shot& shot, float time, Vec3& position);
 struct Record;struct Frame;
@@ -945,6 +1556,9 @@ struct Record;struct Frame;
 // first frame stays in the record: a lean consumer (Diagnostics LeanRecorder) folds what
 // it needs and the 1.6 MB frame is dropped. Simulation itself never reads later frames.
 struct DiagnosticOptions { bool enabled=true, detailed=false; int soldier=-1,squad=-1; float from=0,to=600;
+    std::function<void(const SquadDecision&)> squadDecisionSink;
+    std::function<int(const SquadObservation&,int,float)> squadActionCallback;
+    std::function<void(const Frame&)> trainingStateSink; // privileged training truth, separate from actor
     std::function<void(const Record&,const Frame&)> frameSink; bool keepFrames=true; };
 struct Diagnostics;
 struct GeometryEdit { float time=0; uint64_t obstacle=0; bool remove=true; Obstacle replacement; };
@@ -1008,6 +1622,9 @@ struct Record {
     int winner = -1;
     std::string conclusion;
     float duration = 0;
+    int vaults = 0; // plan 029 M-C: vaults begun (Config::vaulting); manifest only when on
+    int keepDownImpacts = 0, gradedPeeks = 0, gradedSettles = 0, neighbourLifts = 0; // plan 030 M-S7 P2 / P1 / P3 counts; manifest only when on
+    int impactSuppressions = 0; // plan 030 S1: (round, soldier) suppressions by a round stopped in his cover; manifest only when on
 };
 // Outcome uses active combatants; location never awards points.
 bool ResolveDeathmatch(Record& record, const Frame& frame, bool projectilesPending, bool timeLimit);

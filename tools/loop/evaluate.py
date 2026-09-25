@@ -28,7 +28,8 @@ def protected_files():
 
 def parity(binary, node_dir, jobs=None, progress=None, controller='drills', reference_binary=None, specs=None):
     """Lineage rule: the controllers this node does not own must reproduce the epoch's digests
-    on the candidate binary, on the static maps, a town map and a static-defence battle."""
+    on the candidate binary, on the static maps and (``config.parity_specs``, score v8) a village and a
+    city2 map and a static-defence battle on each."""
     detail, ok = {}, True
     specs = PARITY_SPECS if specs is None else specs
     for name in config.parity_partners(controller):
@@ -89,7 +90,8 @@ def lineage_for(spec, node, sets, jobs=None, run_missing=True):
         return None
     root = tree.load(root_id)
     root_score = tree.read_score(root_id, spec['version']) or {}
-    ranking = (root_score.get('objective', {}).get('sets') or {}).get(spec['objective']['ranking_set'], {})
+    # The root's own value on the ranked sets (score v8: the mean of its village and city2 validation means).
+    ranking = scoring.ranking_stats(root_score.get('objective', {}))
     controller = node.get('controller', 'drills')
     rows = {name: baselines.rows_for(controller, sets[name], root['binary'], SECONDS, jobs, run_missing)
             for name in spec['objective']['reported_sets'] if name in sets}

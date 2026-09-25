@@ -20,6 +20,8 @@ std::string BuildIdentifier(){
 double DiagnosticSeconds(DiagnosticClock::time_point s){return std::chrono::duration<double>(DiagnosticClock::now()-s).count();}
 void DecisionAlternatives::Add(Vec3 p,float score,const char* reason){choices.push_back({p,score,reason});std::stable_sort(choices.begin(),choices.end(),[](const Alternative&a,const Alternative&b){return a.score<b.score;});if(choices.size()>3)choices.resize(3);}
 bool DetailedFor(const Diagnostics* d,int id,int squad,float t){return d&&d->options.enabled&&d->options.detailed&&(d->options.soldier<0||d->options.soldier==id)&&(d->options.squad<0||d->options.squad==squad)&&t>=d->options.from&&t<=d->options.to;}
+static std::string Q(const std::string& s){std::ostringstream o;o<<'"';for(unsigned char c:s){if(c=='"'||c=='\\')o<<'\\'<<c;else if(c=='\n')o<<"\\n";else if(c<32)o<<"\\u"<<std::hex<<std::setw(4)<<std::setfill('0')<<int(c)<<std::dec;else o<<c;}o<<'"';return o.str();}
+static void V(std::ostream& o,Vec3 v){o<<'['<<v.x<<','<<v.y<<','<<v.z<<']';}
 static const char* Phase(const SquadCommand& c){return SquadPhaseName(c.phase);}
 static void Knowledge(TraceEntry& e,const Soldier& s,float t){const auto k=WithTracks(s,t);for(int i=0;i<UnitCount;++i)if((k.contacts[i].known&&t-k.contacts[i].observedAt<=120)||t-k.contacts[i].clearedAt<10)e.knowledge.push_back({i,s.contacts[i].known&&s.contacts[i].observedAt>=k.contacts[i].observedAt,k.contacts[i]});for(const auto& report:s.movementReports)if(report.soldier>=0&&t-report.observedAt<8)e.movementReports.push_back(report);for(const auto& report:s.deliveries)if(report.shooter>=0&&t-report.observedAt<(report.history.empty()?6.f:10.f))e.deliveries.push_back(report);}
 void TraceSoldier(Diagnostics& d,const Soldier& s,const SquadCommand& c,const Map& m,const Tactics& tactics,float time,const DecisionAlternatives* alternatives){
@@ -71,6 +73,9 @@ void TraceOrder(Diagnostics* d,const Soldier& s,const Assignment& a,float time,c
     e.intent=a.intent;e.taskTarget=a.target;e.geometry=a.geometry;e.taskId=a.id;e.taskStatus=int(a.status);e.taskCause=int(a.cause);e.taskSequence=a.statusSequence;e.taskSubject=s.id;e.taskObservedAt=a.statusAt;
     e.parent=d->issuedOrders.count(a.serial)?d->issuedOrders[a.serial]:d->lastPlan[s.squad];e.planDecision=d->lastPlan[s.squad];
     e.plan=d->activePlanIds[s.squad];e.routeId=a.teamPlan.route?a.teamPlan.route->id:0;e.goal=a.position;e.position=s.position;e.orderIssued=a.issuedAt;e.orderReceived=a.receivedAt;Knowledge(e,s,time);
+    // Plan 028 Stage 1: the covering-fire payload the order carries, if any.
+    if(a.fireEnemy>=0){std::ostringstream o;o<<std::setprecision(6)<<",\"fire_enemy\":"<<a.fireEnemy<<",\"fire_requester\":"<<a.fireRequester<<",\"fire_until\":"<<a.fireUntil
+        <<",\"fire_contact_age\":"<<(time-a.fireContact.observedAt);e.extra=o.str();}
     if(e.kind=="order_issued")d->issuedOrders[a.serial]=e.id;
     if(e.kind=="order_received")d->receivedOrders[a.serial]=e.id;
     d->entries.push_back(std::move(e));
@@ -98,8 +103,163 @@ void TraceCoverRule(Diagnostics* d,const Soldier& s,float time,CoverRule rule,Ve
     e.kind="cover_rule";e.status=CoverRuleName(rule);e.why=TaskName(s.assignment.task);
     d->paths.push_back(std::move(e));
 }
-static std::string Q(const std::string& s){std::ostringstream o;o<<'"';for(unsigned char c:s){if(c=='"'||c=='\\')o<<'\\'<<c;else if(c=='\n')o<<"\\n";else if(c<32)o<<"\\u"<<std::hex<<std::setw(4)<<std::setfill('0')<<int(c)<<std::dec;else o<<c;}o<<'"';return o.str();}
-static void V(std::ostream& o,Vec3 v){o<<'['<<v.x<<','<<v.y<<','<<v.z<<']';}
+// Plan 028 Stage 0: covering-fire measurement rows. Every function below writes Diagnostics only.
+static TraceEntry CoveringRow(Diagnostics& d,const Soldier& s,const SquadCommand& c,float time,const char* kind,const char* reason){
+    TraceEntry e;e.id=d.nextId++;e.parent=d.lastPlan[s.squad];e.soldier=s.id;e.squad=s.squad;e.time=time;
+    e.routeId=c.route?c.route->id:0;e.routeStage=c.routeStage;e.kind=kind;e.reason=reason;e.phase=Phase(c);
+    e.position=s.position;e.goal=c.hasWaypoint?c.waypoint:c.mission;e.plan=c.planId;e.movementBlock=int(c.movementBlock.reason);e.role=int(s.role);e.danger=c.danger;
+    return e;
+}
+void TraceCoveringCheck(Diagnostics* d,const Soldier& s,const SquadCommand& c,float time,const char* gate,const CoveringExplanation& x,const CoveringGateState& g){
+    if(!d||!d->options.enabled)return;
+    TraceEntry e=CoveringRow(*d,s,c,time,"covering_check",gate);
+    std::ostringstream o;o<<std::setprecision(6);
+    o<<",\"gate\":"<<Q(gate)<<",\"pass\":"<<g.pass<<",\"covering\":"<<g.covering<<",\"explain_pass\":"<<x.pass<<",\"path_empty\":"<<x.pathEmpty<<",\"fresh\":"<<x.fresh
+     <<",\"primary\":"<<x.primary<<",\"primary_age\":"<<x.primaryAge<<",\"primary_uncertainty\":"<<x.primaryUncertainty<<",\"primary_mg\":"<<x.primaryMG<<",\"primary_position\":";V(o,x.primaryPosition);
+    o<<",\"overlooking\":"<<x.overlooking<<",\"mg_overlooks\":"<<x.mgOverlooks<<",\"overlooking_fresh\":"<<x.overlookingFresh<<",\"mg_fresh\":"<<x.mgFresh<<",\"rounds\":"<<x.rounds<<",\"late_rounds\":"<<x.lateRounds<<",\"other_rounds\":"<<x.otherRounds<<",\"credit_age\":"<<x.creditAge
+     <<",\"exposure\":"<<g.exposure<<",\"opportunity_since\":"<<g.opportunitySince<<",\"waited\":"<<g.waited<<",\"platoon_firing\":"<<g.platoonFiring
+     <<",\"has_waypoint\":"<<g.hasWaypoint<<",\"route_present\":"<<g.routePresent<<",\"stale_route\":"<<g.staleRoute<<",\"policy_released\":"<<g.policyReleased
+     <<",\"pressure\":"<<g.pressure<<",\"refusals\":"<<g.refusals<<",\"ready\":"<<g.ready<<",\"paused\":"<<g.paused
+     <<",\"cover_graduated\":"<<g.graduated<<",\"graduated_danger\":"<<Q(g.danger)<<",\"graduated_outcome\":"<<Q(g.outcome);
+    if(*g.result)o<<",\"result\":"<<Q(g.result);
+    if(g.release)o<<",\"release\":"<<Q(g.release);
+    e.extra=o.str();
+    d->coveringPending.push_back({d->entries.size(),s.squad,x.primary,x.primaryPosition});
+    d->entries.push_back(std::move(e));
+}
+void TraceCoveringClock(Diagnostics* d,const Soldier& s,const SquadCommand& c,float before,float time,const char* source){
+    if(!d||!d->options.enabled||before<0||c.opportunitySince==before)return;
+    TraceEntry e=CoveringRow(*d,s,c,time,"covering_clock_reset",source);
+    std::ostringstream o;o<<std::setprecision(8);
+    o<<",\"source\":"<<Q(source)<<",\"before\":"<<before<<",\"after\":"<<c.opportunitySince<<",\"restart\":"<<(c.opportunitySince>=0)<<",\"held\":"<<(time-before)<<",\"has_waypoint\":"<<c.hasWaypoint;
+    e.extra=o.str();d->entries.push_back(std::move(e));
+}
+void NoteCoveringPause(Diagnostics* d,int squad,const char* source,bool hadWaypoint,bool gunMove){
+    if(!d||!d->options.enabled||squad<0||squad>=SquadCount)return;
+    d->pauseNotes[squad]={source,hadWaypoint,gunMove};
+}
+void AnnotatePause(Diagnostics* d,int squad){
+    if(!d||!d->options.enabled||d->entries.empty()||squad<0||squad>=SquadCount)return;
+    auto& note=d->pauseNotes[squad];auto& e=d->entries.back();
+    std::ostringstream o;o<<",\"pause_source\":"<<Q(note.source?note.source:"unknown")<<",\"had_waypoint\":"<<note.hadWaypoint<<",\"gun_move\":"<<note.gunMove;
+    e.extra=o.str();note={};
+}
+void TraceCoverRequest(Diagnostics* d,const Soldier& s,const SquadCommand& c,float time,const char* reason){
+    if(!d||!d->options.enabled)return;
+    const auto& r=c.coverRequest;
+    TraceEntry e=CoveringRow(*d,s,c,time,"cover_request",reason);
+    std::ostringstream o;o<<std::setprecision(6);
+    o<<",\"request\":"<<r.serial<<",\"enemy\":"<<r.enemy<<",\"gate\":"<<Q(r.gate)<<",\"started_at\":"<<r.startedAt<<",\"until\":"<<r.until
+     <<",\"contact_age\":"<<(time-r.contact.observedAt)<<",\"uncertainty\":"<<TrackUncertainty(r.contact,time)<<",\"mg\":"<<r.contact.automaticWeapon
+     <<",\"contact\":";V(o,r.contact.position);o<<",\"from\":";V(o,r.from);o<<",\"to\":";V(o,r.to);
+    o<<",\"gun\":"<<c.support<<",\"tasked\":[";bool first=true;
+    for(int slot=0;slot<SquadSize;++slot)if(r.tasked[slot]){if(!first)o<<',';first=false;o<<s.squad*SquadSize+slot;}
+    o<<"],\"movers\":"<<(r.friendlies?r.friendlies->size():0);
+    // Plan 030 M-S5 (Config::coverRifleBase): the tasked men taken as the rifle base, written only when there are any.
+    if(std::any_of(r.rifleBase.begin(),r.rifleBase.end(),[](bool b){return b;})){o<<",\"rifle_base\":[";first=true;
+        for(int slot=0;slot<SquadSize;++slot)if(r.rifleBase[slot]){if(!first)o<<',';first=false;o<<s.squad*SquadSize+slot;}
+        o<<']';}
+    // Plan 030 M-S7 P4 (Config::coverSector): the request's whole set, the gun's share and the riflemen given a threat of it
+    // (named apart from the row's own "sector", the leader's watch direction).
+    if(r.sector){o<<",\"sector_threats\":[";first=true;for(const auto& t:*r.sector){if(!first)o<<',';first=false;o<<t.enemy;}
+        o<<"],\"gun_threats\":[";first=true;if(r.gunSector)for(const auto& t:*r.gunSector){if(!first)o<<',';first=false;o<<t.enemy;}
+        o<<"],\"sector_men\":[";first=true;for(int slot=0;slot<SquadSize;++slot)if(r.tasked[slot]&&r.sectorEnemy[slot]>=0){if(!first)o<<',';first=false;o<<'['<<s.squad*SquadSize+slot<<','<<r.sectorEnemy[slot]<<']';}
+        o<<']';}
+    e.extra=o.str();d->entries.push_back(std::move(e));
+}
+void TraceCoverSupply(Diagnostics* d,const Soldier& s,const SquadCommand& c,float time,const char* kind,const char* reason,const std::string& extra){
+    if(!d||!d->options.enabled)return;
+    TraceEntry e=CoveringRow(*d,s,c,time,kind,reason);e.extra=extra;d->entries.push_back(std::move(e));
+}
+void TraceCoverCredit(Diagnostics* d,const Frame& f,int squad){
+    if(!d||!d->options.enabled||squad<0||squad>=SquadCount)return;
+    const auto& c=f.command[squad];const auto& r=c.coverRequest;const float time=f.time;
+    auto& note=d->coverCredit[squad];
+    const bool live=CoverRequestLive(r,time);
+    // A request that has lapsed, or been replaced by another, closes with its whole live window.
+    if(note.open&&(!live||note.serial!=r.serial)) {
+        TraceEntry e;e.id=d->nextId++;e.parent=d->lastPlan[squad];e.squad=squad;e.soldier=c.leader;e.time=std::min(time,note.until);
+        e.kind="cover_request";e.reason="end";e.phase=Phase(c);
+        std::ostringstream o;o<<std::setprecision(6)<<",\"request\":"<<note.serial<<",\"enemy\":"<<note.enemy<<",\"gate\":"<<Q(note.gate)
+            <<",\"started_at\":"<<note.startedAt<<",\"until\":"<<note.until<<",\"credited\":"<<note.credited<<",\"first_credit\":"<<note.first;
+        e.extra=o.str();d->entries.push_back(std::move(e));note.open=false;
+    }
+    if(!live||c.leader<0||r.requester!=c.leader)return;
+    if(note.serial!=r.serial){note=Diagnostics::CoverCreditNote{};note.serial=r.serial;note.enemy=r.enemy;note.startedAt=r.startedAt;note.gate=r.gate;}
+    note.open=true;note.until=r.until;
+    if(note.credited)return;
+    const auto& leader=f.soldiers[c.leader];
+    // The requesting leader's own credit on the request's threat, counted as CoveringPath counts it.
+    const auto known=WithTracks(leader,time);const Vec3 at=known.contacts[r.enemy].known?known.contacts[r.enemy].position:r.contact.position;
+    int rounds=0;
+    for(const auto& e:leader.deliveries)if(e.shooter>=0&&(e.enemy==r.enemy||Distance(e.target,at)<6)&&time-e.observedAt<=6&&Distance(e.target,at)<10){
+        if(e.times[0]<0)rounds+=e.rounds;else for(float t:e.times)rounds+=time-t<=6;}
+    auto row=[&](const char* reason){
+        TraceEntry e=CoveringRow(*d,leader,c,time,"cover_credit",reason);
+        std::ostringstream o;o<<std::setprecision(6);
+        o<<",\"request\":"<<r.serial<<",\"enemy\":"<<r.enemy<<",\"gate\":"<<Q(r.gate)<<",\"started_at\":"<<r.startedAt<<",\"rounds\":"<<rounds
+         <<",\"request_to_credit_seconds\":"<<(time-r.startedAt);
+        e.extra=o.str();d->entries.push_back(std::move(e));
+    };
+    if(rounds>0&&!note.first){note.first=true;row("first");}
+    if(rounds>=CoverRequestConstants.creditRounds){note.credited=true;row("credited");}
+}
+void TraceCoveringTruth(Diagnostics* d,const Frame& f,const Map& map,int squad,int support){
+    if(!d||!d->options.enabled||d->coveringPending.empty())return;
+    const float time=f.time;
+    // The squad's gun: its designated support if armed, otherwise any active gun of the squad.
+    int gun=-1;
+    if(support>=0&&support<UnitCount&&f.soldiers[support].Active()&&f.soldiers[support].machineGun)gun=support;
+    else for(const auto& s:f.soldiers)if(s.squad==squad&&s.Active()&&s.machineGun&&!IsPlatoonStaff(s)){gun=s.id;break;}
+    for(const auto& pending:d->coveringPending){
+        if(pending.squad!=squad||pending.entry>=d->entries.size())continue;
+        auto& e=d->entries[pending.entry];
+        std::ostringstream o;o<<std::setprecision(6);
+        if(gun>=0){const auto& g=f.soldiers[gun];
+            const bool moving=(g.action==Action::Advance||g.action==Action::Cover||g.action==Action::Retreat)&&Distance(g.position,g.goal)>.75f;
+            o<<",\"obs_gun\":"<<gun<<",\"obs_gun_task\":"<<Q(TaskName(g.assignment.task))<<",\"obs_gun_moving\":"<<moving<<",\"obs_gun_hold\":"<<g.holdingFire<<",\"obs_gun_shot_age\":"<<(time-g.lastShotAt);}
+        else o<<",\"obs_gun\":-1";
+        const int enemy=pending.primary;
+        if(enemy<0||enemy>=UnitCount){o<<",\"obs_primary\":-1";e.extra+=o.str();continue;}
+        const auto& target=f.soldiers[enemy];const bool alive=target.Active();
+        // Lines are judged onto the enemy where he truly is, or onto his track once he is down.
+        const Vec3 aim=alive?target.position:pending.track;
+        o<<",\"obs_primary\":"<<enemy<<",\"obs_alive\":"<<alive<<",\"obs_track_error\":"<<Distance(target.position,pending.track);
+        int bearers[3]={0,0,0},saw=0,firingPrimary=0,firingOther=0,holding=0,reloading=0,suppressed=0,movingBearers=0,visible=0;
+        std::ostringstream list;bool first=true;
+        int rounds=0,roundsEnemy=0,shooters=0;float newest=-1;
+        for(const auto& s:f.soldiers){
+            if(s.team==target.team||!s.Active())continue;
+            if(s.contacts[enemy].visible)++visible;
+            // Rounds delivered near the primary in the last 6 s, from each shooter's own record.
+            int own=0;
+            for(const auto& r:s.deliveries){if(r.shooter!=s.id)continue;
+                const bool near=Distance(r.target,target.position)<10||r.enemy==enemy;
+                if(!near)continue;
+                int n=0;if(r.times[0]<0){if(time-r.observedAt<=6)n=r.rounds;}else for(float t:r.times)n+=time-t<=6;
+                own+=n;if(r.enemy==enemy)roundsEnemy+=n;
+                const float age=time-(r.times[0]<0?r.observedAt:r.times[0]);if(n>0&&(newest<0||age<newest))newest=age;
+            }
+            rounds+=own;shooters+=own>0;
+            if(Distance(s.position,aim)>=100||!ClearLine3D(map,s.position+Vec3{0,0,1.5f},aim+Vec3{0,0,1.3f}))continue;
+            const int group=s.squad!=squad?2:s.machineGun?0:1;++bearers[group];
+            const bool seen=time-s.contacts[enemy].observedAt<=6;
+            const bool shot=time-s.lastShotAt<=3;
+            const bool onPrimary=shot&&s.aimTarget==enemy,onOther=shot&&s.aimTarget!=enemy;
+            const bool reload=s.reloadUntil>time,supp=s.suppression>=.8f;
+            const bool moving=(s.action==Action::Advance||s.action==Action::Cover||s.action==Action::Retreat)&&Distance(s.position,s.goal)>.75f;
+            saw+=seen;firingPrimary+=onPrimary;firingOther+=onOther;holding+=s.holdingFire;reloading+=reload;suppressed+=supp;movingBearers+=moving;
+            if(!first){list<<',';}first=false;
+            list<<'['<<s.id<<','<<group<<','<<seen<<','<<int(s.assignment.task)<<','<<s.holdingFire<<','<<reload<<','<<supp<<','<<moving<<','<<(time-s.lastShotAt)<<','<<s.aimTarget<<','<<Distance(s.position,aim)<<','<<s.contacts[enemy].visible<<','<<SelectFireSolution(s,map,time).enemy<<']';
+        }
+        o<<",\"obs_visible\":"<<visible<<",\"obs_bearers_gun\":"<<bearers[0]<<",\"obs_bearers_rifle\":"<<bearers[1]<<",\"obs_bearers_other\":"<<bearers[2]
+         <<",\"obs_saw\":"<<saw<<",\"obs_firing_primary\":"<<firingPrimary<<",\"obs_firing_other\":"<<firingOther<<",\"obs_holding\":"<<holding<<",\"obs_reloading\":"<<reloading
+         <<",\"obs_suppressed\":"<<suppressed<<",\"obs_moving\":"<<movingBearers<<",\"obs_rounds\":"<<rounds<<",\"obs_rounds_enemy\":"<<roundsEnemy<<",\"obs_shooters\":"<<shooters<<",\"obs_newest_round_age\":"<<newest
+         <<",\"obs_bearer_list\":["<<list.str()<<']';
+        e.extra+=o.str();
+    }
+    d->coveringPending.erase(std::remove_if(d->coveringPending.begin(),d->coveringPending.end(),[&](const Diagnostics::CoveringPending& p){return p.squad==squad;}),d->coveringPending.end());
+}
 std::string TraceJson(const TraceEntry& e){std::ostringstream o;o<<std::setprecision(8);o<<"{\"id\":"<<e.id<<",\"parent\":"<<e.parent<<",\"plan_decision\":"<<e.planDecision<<",\"time\":"<<e.time<<",\"soldier\":"<<e.soldier<<",\"squad\":"<<e.squad<<",\"order\":"<<e.order<<",\"issuer\":"<<e.issuer<<",\"plan\":"<<e.plan<<",\"geometry\":"<<e.geometry<<",\"kind\":"<<Q(e.kind)<<",\"reason\":"<<Q(e.reason)<<",\"phase\":"<<Q(e.phase);
     o<<",\"task_id\":"<<e.taskId<<",\"task_status\":"<<e.taskStatus<<",\"task_cause\":"<<e.taskCause<<",\"task_sequence\":"<<e.taskSequence<<",\"task_subject\":"<<e.taskSubject<<",\"task_target\":"<<e.taskTarget<<",\"task_observed_at\":"<<e.taskObservedAt<<",\"task_remaining\":"<<e.taskRemaining;
     o<<",\"completion\":"<<int(e.execution.completion)<<",\"execution_method\":"<<e.execution.method<<",\"execution_stage\":"<<e.execution.stage<<",\"execution_generation\":"<<e.execution.generation<<",\"execution_deadline\":"<<e.execution.deadline<<",\"execution_paused\":"<<e.execution.paused;
@@ -135,7 +295,7 @@ std::string TraceJson(const TraceEntry& e){std::ostringstream o;o<<std::setpreci
             o<<"{\"x\":"<<r.x<<",\"y\":"<<r.y<<",\"observations\":"<<r.observations<<",\"automatic_weapons\":"<<r.automaticWeapons<<",\"low\":"<<r.low<<",\"high\":"<<r.high<<",\"estimate\":"<<r.estimate<<",\"unseen_allowance\":"<<r.unseen<<",\"uncertainty\":"<<r.uncertainty<<",\"confidence\":"<<r.confidence<<",\"observed_at\":"<<r.observedAt<<'}';
         }o<<']';
     }
-    o<<",\"knowledge\":[";bool first=true;for(const auto& k:e.knowledge){if(!first)o<<',';first=false;o<<"{\"enemy\":"<<k.id<<",\"personal\":"<<k.personal<<",\"observed_at\":"<<k.contact.observedAt<<",\"automatic_weapon\":"<<k.contact.automaticWeapon<<",\"confidence\":"<<TrackConfidence(k.contact,e.time)<<",\"uncertainty\":"<<TrackUncertainty(k.contact,e.time)<<",\"cleared_at\":"<<k.contact.clearedAt<<",\"last_fire_at\":"<<k.contact.lastFireAt<<",\"original_observer\":"<<k.contact.originalObserver<<",\"report_source\":"<<k.contact.reportSource<<",\"received_at\":"<<k.contact.registeredAt<<",\"position\":";V(o,k.contact.position);o<<'}';}o<<"],\"movement_reports\":[";first=true;for(const auto& r:e.movementReports){if(!first)o<<',';first=false;o<<"{\"soldier\":"<<r.soldier<<",\"order\":"<<r.order<<",\"observed_at\":"<<r.observedAt<<",\"destination\":";V(o,r.destination);o<<'}';}o<<"],\"covering_fire\":[";first=true;for(const auto& r:e.deliveries){if(!first)o<<',';first=false;o<<"{\"shooter\":"<<r.shooter<<",\"enemy\":"<<r.enemy<<",\"rounds\":"<<r.rounds<<",\"observed_at\":"<<r.observedAt<<",\"target\":";V(o,r.target);o<<",\"times\":[";for(int i=0;i<8;++i){if(i)o<<',';o<<r.times[i];}o<<"],\"delivered\":[";for(size_t j=0;j<r.history.size();++j){if(j)o<<',';o<<"{\"at\":"<<r.history[j].at<<",\"target\":";V(o,r.history[j].target);o<<'}';}o<<"]}";}o<<"],\"alternatives\":[";first=true;for(const auto& a:e.alternatives){if(!first)o<<',';first=false;o<<"{\"position\":";V(o,a.position);o<<",\"score\":"<<a.score<<",\"reason\":"<<Q(a.reason)<<'}';}o<<"]}";return o.str();}
+    o<<",\"knowledge\":[";bool first=true;for(const auto& k:e.knowledge){if(!first)o<<',';first=false;o<<"{\"enemy\":"<<k.id<<",\"personal\":"<<k.personal<<",\"observed_at\":"<<k.contact.observedAt<<",\"automatic_weapon\":"<<k.contact.automaticWeapon<<",\"confidence\":"<<TrackConfidence(k.contact,e.time)<<",\"uncertainty\":"<<TrackUncertainty(k.contact,e.time)<<",\"cleared_at\":"<<k.contact.clearedAt<<",\"last_fire_at\":"<<k.contact.lastFireAt<<(k.contact.seenDown?",\"seen_down\":true":"")<<",\"original_observer\":"<<k.contact.originalObserver<<",\"report_source\":"<<k.contact.reportSource<<",\"received_at\":"<<k.contact.registeredAt<<",\"position\":";V(o,k.contact.position);o<<'}';}o<<"],\"movement_reports\":[";first=true;for(const auto& r:e.movementReports){if(!first)o<<',';first=false;o<<"{\"soldier\":"<<r.soldier<<",\"order\":"<<r.order<<",\"observed_at\":"<<r.observedAt<<",\"destination\":";V(o,r.destination);o<<'}';}o<<"],\"covering_fire\":[";first=true;for(const auto& r:e.deliveries){if(!first)o<<',';first=false;o<<"{\"shooter\":"<<r.shooter<<",\"enemy\":"<<r.enemy<<",\"rounds\":"<<r.rounds<<",\"observed_at\":"<<r.observedAt<<",\"target\":";V(o,r.target);o<<",\"times\":[";for(int i=0;i<8;++i){if(i)o<<',';o<<r.times[i];}o<<"],\"delivered\":[";for(size_t j=0;j<r.history.size();++j){if(j)o<<',';o<<"{\"at\":"<<r.history[j].at<<",\"target\":";V(o,r.history[j].target);o<<'}';}o<<"]}";}o<<"],\"alternatives\":[";first=true;for(const auto& a:e.alternatives){if(!first)o<<',';first=false;o<<"{\"position\":";V(o,a.position);o<<",\"score\":"<<a.score<<",\"reason\":"<<Q(a.reason)<<'}';}o<<"]"<<e.extra<<"}";return o.str();}
 // One body for both digests. The full digest walks every recorded frame section by
 // section, as it always has. framesOnly hashes the same per-frame fields of the given
 // frames and leaves out what belongs to the whole battle (outcome, roster, shots,
@@ -147,6 +307,62 @@ static uint64_t DigestCore(const Record& r,const Frame* firstFrame,size_t frameC
     // Stats and weapons are unconditional: a legacy battle must never miss a stat change.
     if(!framesOnly)for(const auto& profile:r.config.statProfiles){f(profile.baseShare);f(profile.lowShare);f(profile.highShare);f(profile.baseHalfWidth);f(profile.lowEdge);f(profile.highEdge);f(profile.shape);}
     if(!framesOnly)bytes(&r.config.rosterSeed,sizeof(r.config.rosterSeed));
+    if(!framesOnly&&r.config.externalPolicy){i(2403);i(1);}
+    if(!framesOnly&&r.config.neuralPolicy){const uint64_t model=r.config.neuralPolicy->digest;bytes(&model,sizeof(model));}
+    if(!framesOnly&&r.config.policyCandidates)i(r.config.policyCandidates);
+    // Plan 026 P2 ablation switches: folded only when off, so default battles keep their digest.
+    if(!framesOnly&&!r.config.keepAction){i(2601);i(0);}
+    if(!framesOnly&&!r.config.keepKindReset){i(2602);i(0);}
+    if(!framesOnly&&!r.config.keepCommitClear){i(2603);i(0);}
+    // Plan 028 Stage 3c: the graduated covering gate, folded only when on and only where it can act
+    // (the Legacy command path; drills, cognition and foundations never read it), so off keeps every
+    // digest and the other controllers stay digest-identical with it on.
+    if(!framesOnly&&r.config.coverGraduated&&!r.config.foundations){i(2803);i(1);}
+    // Plan 028 Stage 1 + 2a: the covering request and the fast credit, the same convention (Legacy only).
+    if(!framesOnly&&r.config.coverRequests&&!r.config.foundations&&!r.config.recoveryFixture){i(2804);i(1);}
+    if(!framesOnly&&r.config.coverReports&&!r.config.foundations&&!r.config.recoveryFixture){i(2805);i(1);}
+    // Plan 028 Stage 4: the gun aimed at the threat, the covered rifle shifts and the aimed platoon
+    // support, the same convention (Legacy only; off keeps every digest).
+    if(!framesOnly&&r.config.coverGunAim&&!r.config.foundations&&!r.config.recoveryFixture){i(2806);i(1);}
+    if(!framesOnly&&r.config.coverShift&&!r.config.foundations&&!r.config.recoveryFixture){i(2807);i(1);}
+    if(!framesOnly&&r.config.coverPlatoon&&!r.config.foundations&&!r.config.recoveryFixture){i(2808);i(1);}
+    // Plan 029 M-A1: prone, every controller, folded only when on (off keeps every digest).
+    if(!framesOnly&&r.config.prone){i(2901);i(1);}
+    // Plan 029 M-B: concealment, every controller, the same convention.
+    if(!framesOnly&&r.config.concealment){i(2902);i(1);}
+    // Plan 029 M-C: vaulting, the same convention (the vault state itself is folded per frame below,
+    // only for a man in the middle of one).
+    if(!framesOnly&&r.config.vaulting){i(2903);i(1);}
+    // Plan 029 F-E: the muzzle-origin delivery credit ray, the same convention.
+    if(!framesOnly&&!r.config.muzzleCredit){i(2905);i(0);}
+    // Plan 030 M-S4: gunner compensation, the same convention (the hold itself is folded per frame below).
+    if(!framesOnly&&r.config.gunnerCompensation){i(3004);i(1);}
+    // Plan 030: impact suppression (S1), nerve (S2) and stacked suppression (S3), every controller, folded only when
+    // on (off keeps every digest); the state they move is folded per frame below, also only when on.
+    if(!framesOnly&&r.config.impactSuppression){i(3001);i(1);if(r.config.impactRadius!=SuppressionRules().impactRadius){i(3005);f(r.config.impactRadius);}}
+    if(!framesOnly&&r.config.nerve){i(3002);i(1);}
+    if(!framesOnly&&r.config.stackedSuppression){i(3003);i(1);}
+    // Plan 030 M-S5: the quiet release (S5), the gun's station radius with the upper-floor stations, and the
+    // rifle base of fire, Legacy only, each folded only when on (radius 25 without upper stations is off).
+    if(!framesOnly&&r.config.coverQuietRelease&&!r.config.foundations&&!r.config.recoveryFixture){i(3008);i(1);} // 3005 is S1b's impact radius
+    if(!framesOnly&&(r.config.coverStationRadius!=25.f||r.config.coverUpperStations)&&!r.config.foundations&&!r.config.recoveryFixture){i(3006);f(r.config.coverStationRadius);i(r.config.coverUpperStations);}
+    if(!framesOnly&&r.config.coverRifleBase&&!r.config.foundations&&!r.config.recoveryFixture){i(3007);i(1);}
+    // Plan 030 K-1: retiring the tracks of men seen to fall, Legacy only, folded only when on.
+    if(!framesOnly&&RetireFallen(r.config)){i(3009);i(1);}
+    if(!framesOnly&&NoCoveringFire(r.config)){i(3010);i(1);}   // plan 030 M-S6
+    // Plan 030 M-S7 (PinTable): graded peek, keep-down, pinned neighbours (every controller) and sector covering fire
+    // (Legacy only), each folded only when on, with its run constants only when they differ from the table.
+    if(!framesOnly&&r.config.gradedPeek){i(3011);i(1);if(r.config.peekFloor!=PinRules().peekFloor||r.config.peekCurve!=PinRules().peekCurve){f(r.config.peekFloor);f(r.config.peekCurve);}}
+    if(!framesOnly&&r.config.keepDown){i(3012);i(1);if(r.config.keepDownWeight!=PinRules().keepDownWeight||r.config.keepDownGrace!=PinRules().keepDownGrace){f(r.config.keepDownWeight);f(r.config.keepDownGrace);}}
+    if(!framesOnly&&r.config.pinnedNeighbours){i(3013);i(1);if(r.config.neighbourEffect!=PinRules().neighbourEffect)f(r.config.neighbourEffect);}
+    if(!framesOnly&&CoverSector(r.config)){i(3014);i(1);}
+    // Plan 031 D: the fire-and-movement drill (Legacy only, per team), folded only when on for a team, with its run
+    // constants only when they differ from the table; the heard-fire clock it moves is folded per frame below, also only then.
+    if(!framesOnly&&FireAndMovementAny(r.config)){i(3101);i(r.config.fireAndMovement);
+        const auto& k=FireMovementConstants;
+        if(r.config.fmLeg!=k.legLength||r.config.fmFireWindow!=k.fireWindow||r.config.fmDeadline!=k.deadline){i(3102);f(r.config.fmLeg);f(r.config.fmFireWindow);f(r.config.fmDeadline);}}
+    // Plan 026 P4: the schema-4 interface, folded only when requested (0 keeps every digest).
+    if(!framesOnly&&r.config.policySchema){i(2604);i(r.config.policySchema);}
     if(!framesOnly&&!frames.empty())for(const auto& s:frames.front().soldiers){for(size_t k=0;k<SampledStatCount;++k)f(s.stats.value[k]);if(r.config.stamina)f(s.stats.value[size_t(Stat::Speed)]);f(s.maxHealth);f(s.swayPhase);f(s.swayPhase2);f(s.recoilSign);i(int(s.weapon.def));i(int(s.weapon.modifiers.size()));
         for(const auto& m:s.weapon.modifiers){i(int(m.field));f(m.multiply);f(m.add);}}
     // Over-penetration victims live on the shot, not the frame, so they hash here.
@@ -155,7 +371,9 @@ static uint64_t DigestCore(const Record& r,const Frame* firstFrame,size_t frameC
             // Walking fire changes the aim model, the pace and the reload, so it is hashed.
             // Folded only when it is true, so a battle in which nobody fires on the move
             // keeps its historical digest and --no-moving-fire is a provable off switch.
-            if(s.movingFire||s.reloadDeferred){i(1901);i(s.movingFire);i(s.reloadDeferred);}if(s.coveredPath){i(2001);i(1);}if(r.config.stamina){i(2201);f(s.stamina);i(s.winded);i(s.sprinting);}if(r.config.orderPace&&s.assignment.pace!=1.f){i(2301);f(s.assignment.pace);}f(s.recoil.x);f(s.recoil.y);i(int(s.action));i(int(s.reason));i(int(s.stance));i(s.assignment.teamPlan.route?int(s.assignment.teamPlan.route->id%1000000000ull):0);i(s.assignment.serial);i(int(s.assignment.task));v(s.assignment.position);for(const auto& ct:s.contacts){i(ct.known);i(ct.automaticWeapon);i(ct.visible);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}for(const auto& ct:s.reports){i(ct.known);i(ct.automaticWeapon);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}}}
+            if(s.movingFire||s.reloadDeferred){i(1901);i(s.movingFire);i(s.reloadDeferred);}if(s.coveredPath){i(2001);i(1);}if(r.config.stamina){i(2201);f(s.stamina);i(s.winded);i(s.sprinting);}if(s.vaulting){i(2904);f(s.vaultProgress);f(s.vaultHeight);}if(r.config.nerve){i(3002);f(s.nerve);i(s.shakenShots);}if(r.config.stackedSuppression){i(3003);f(s.lastNearMissAt);}if(r.config.keepDown||r.config.pinnedNeighbours){i(3012);f(s.aboveDuckAt);}if(r.config.orderPace&&s.assignment.pace!=1.f){i(2301);f(s.assignment.pace);}f(s.recoil.x);f(s.recoil.y);i(int(s.action));i(int(s.reason));i(int(s.stance));i(s.assignment.teamPlan.route?int(s.assignment.teamPlan.route->id%1000000000ull):0);i(s.assignment.serial);i(int(s.assignment.task));v(s.assignment.position);for(const auto& ct:s.contacts){i(ct.known);i(ct.automaticWeapon);i(ct.visible);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}for(const auto& ct:s.reports){i(ct.known);i(ct.automaticWeapon);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}}}
+    if(r.config.gunnerCompensation)for(const auto& frame:frames)for(const auto& s:frame.soldiers)f(s.recoilHold);
+    if(FireAndMovementAny(r.config))for(const auto& frame:frames)for(const auto& s:frame.soldiers){i(3103);f(s.fmFireAt);f(s.fmHeardAt);f(s.fmWaitSince);} // plan 031 D
     if(r.config.foundations){
         f(r.config.estimateBias);
         auto intent=[&](const GoalIntent& g){i(g.id);i(g.parent);i(int(g.purpose));v(g.objective);f(g.radius);f(g.expiresAt);};
@@ -260,10 +478,10 @@ static void EvaluationRow(std::ostream& out,const Record& r,const Frame& f) {
             out<<"{\"id\":"<<s.id<<",\"alive\":"<<s.Active()<<",\"position\":";V(out,s.position);
             out<<",\"route\":"<<(s.assignment.teamPlan.route?s.assignment.teamPlan.route->id:0)<<",\"action\":"<<int(s.action)<<",\"task\":"<<int(s.assignment.task)<<",\"rounds\":"<<s.rounds<<",\"solution\":"<<(solution.enemy>=0)<<",\"enemy\":"<<enemy<<",\"distance\":"<<(enemy>=0?nearest:-1)<<",\"track\":";V(out,enemy>=0?knowledge.contacts[enemy].position:Vec3{});
             out<<",\"observer_targets\":[";bool firstTarget=true;
-            for(const auto& observedEnemy:f.soldiers)if(s.Active()&&observedEnemy.Active()&&observedEnemy.team!=s.team&&Distance(s.position,observedEnemy.position)<SightRange(s)&&ClearLine3D(map,s.position+Vec3{0,0,s.stance==Stance::Crouched?.72f:1.5f},observedEnemy.position+Vec3{0,0,BodyHeight(observedEnemy.stance)*.75f})){
+            for(const auto& observedEnemy:f.soldiers)if(s.Active()&&observedEnemy.Active()&&observedEnemy.team!=s.team&&Distance(s.position,observedEnemy.position)<SightRange(s)&&ClearLine3D(map,s.position+Vec3{0,0,Posture(s.stance).muzzle},observedEnemy.position+Vec3{0,0,BodyHeight(observedEnemy.stance)*.75f})){
                 if(!firstTarget)out<<',';
                 firstTarget=false;out<<observedEnemy.id;}
-            bool incoming=false;for(const auto& other:f.soldiers)if(s.Active()&&other.Active()&&other.team!=s.team&&Distance(other.position,s.position)<SightRange(other)&&ClearLine3D(map,other.position+Vec3{0,0,other.stance==Stance::Crouched?.72f:1.5f},s.position+Vec3{0,0,BodyHeight(s.stance)*.75f})){incoming=true;break;}
+            bool incoming=false;for(const auto& other:f.soldiers)if(s.Active()&&other.Active()&&other.team!=s.team&&Distance(other.position,s.position)<SightRange(other)&&ClearLine3D(map,other.position+Vec3{0,0,Posture(other.stance).muzzle},s.position+Vec3{0,0,BodyHeight(s.stance)*.75f})){incoming=true;break;}
             out<<"],\"observer_exposed\":"<<incoming<<",\"support\":"<<(CommandSupport(f.command[s.squad],TypedController(r.config)));
             out<<",\"squad\":"<<s.squad<<",\"team\":"<<s.team<<",\"stance\":"<<int(s.stance)<<",\"health\":"<<s.health<<",\"suppression\":"<<s.suppression;
             out<<",\"sector\":";V(out,s.assignment.sector);
@@ -272,6 +490,8 @@ static void EvaluationRow(std::ostream& out,const Record& r,const Frame& f) {
             out<<",\"machine_gun\":"<<s.machineGun<<",\"role\":"<<int(s.role);
             out<<",\"moving_fire\":"<<s.movingFire<<",\"reload_deferred\":"<<s.reloadDeferred;
             out<<",\"covered_path\":"<<s.coveredPath<<",\"stamina\":"<<s.stamina<<",\"winded\":"<<s.winded<<",\"sprinting\":"<<s.sprinting<<",\"pace\":"<<s.assignment.pace;
+            if(s.vaulting)out<<",\"vaulting\":true,\"vault_progress\":"<<s.vaultProgress<<",\"vault_height\":"<<s.vaultHeight; // plan 029 M-C, only mid-vault
+            if(r.config.nerve)out<<",\"nerve\":"<<s.nerve<<",\"shaken_shots\":"<<s.shakenShots; // plan 030 S2, only with the switch on
             const Vec3 sway=SwayOffset(s,f.time);
             out<<",\"sway_yaw\":"<<sway.x<<",\"sway_pitch\":"<<sway.y<<",\"recoil_yaw\":"<<s.recoil.x<<",\"recoil_pitch\":"<<s.recoil.y;
             out<<",\"weapon\":"<<Q(s.gun.name)<<",\"magazine\":"<<s.magazineRemaining<<",\"max_health\":"<<s.maxHealth<<",\"stats\":[";
@@ -322,7 +542,7 @@ std::string ExportBattle(const Record& r,const std::string& root,const std::stri
     fs::path dir=fs::path(root)/name;fs::create_directory(dir,ec);if(ec)return {};auto write=[&](const char* file){return std::ofstream(dir/file);};
     auto geometry=write("geometry.jsonl");
     auto geometryRow=[&](const Map& map,float time,const std::string& reason){geometry<<"{\"time\":"<<time<<",\"revision\":"<<map.revision<<",\"reason\":"<<Q(reason)<<",\"obstacles\":[";bool first=true;
-        for(const auto& o:map.obstacles){if(!first)geometry<<',';first=false;geometry<<"{\"id\":"<<o.id<<",\"center\":";V(geometry,o.center);geometry<<",\"half\":";V(geometry,o.half);geometry<<",\"height\":"<<ObstacleHeight(o)<<",\"blocks_movement\":"<<o.blocksMovement<<'}';}geometry<<"],\"covers\":[";first=true;for(const auto& c:CoverPositions(map)){if(!first)geometry<<',';first=false;geometry<<"{\"id\":"<<c.id<<",\"source\":"<<c.source<<",\"shelter\":";V(geometry,c.shelter);geometry<<",\"peek\":";V(geometry,c.peek);geometry<<",\"crouch\":"<<c.crouch<<",\"window\":"<<c.window<<'}';}
+        for(const auto& o:map.obstacles){if(!first)geometry<<',';first=false;geometry<<"{\"id\":"<<o.id<<",\"center\":";V(geometry,o.center);geometry<<",\"half\":";V(geometry,o.half);geometry<<",\"height\":"<<ObstacleHeight(o)<<",\"blocks_movement\":"<<o.blocksMovement<<(o.concealment?",\"concealment\":true":"")<<'}';}geometry<<"],\"covers\":[";first=true;for(const auto& c:CoverPositions(map)){if(!first)geometry<<',';first=false;geometry<<"{\"id\":"<<c.id<<",\"source\":"<<c.source<<",\"shelter\":";V(geometry,c.shelter);geometry<<",\"peek\":";V(geometry,c.peek);geometry<<",\"crouch\":"<<c.crouch<<",\"window\":"<<c.window<<(c.prone?",\"prone\":true":"")<<'}';}
         geometry<<"],\"buildings\":[";first=true;for(const auto& b:map.buildings){if(!first)geometry<<',';first=false;geometry<<"{\"center\":";V(geometry,b.center);geometry<<",\"half\":";V(geometry,b.half);geometry<<",\"first_obstacle\":"<<b.firstObstacle<<",\"obstacle_count\":"<<b.obstacleCount<<'}';}geometry<<"],\"surfaces\":[";first=true;for(const auto& s:map.surfaces){if(!first)geometry<<',';first=false;geometry<<"{\"id\":"<<s.id<<",\"center\":";V(geometry,s.center);geometry<<",\"half\":";V(geometry,s.half);geometry<<",\"slope\":";V(geometry,s.slope);geometry<<'}';}
         geometry<<"],\"surface_links\":[";first=true;for(const auto& link:map.surfaceLinks){if(!first)geometry<<',';first=false;geometry<<"{\"id\":"<<link.id<<",\"from\":";V(geometry,link.from);geometry<<",\"to\":";V(geometry,link.to);geometry<<'}';}
         geometry<<"],\"ground_base\":"<<map.groundBase<<",\"half_width\":"<<map.halfWidth<<",\"half_height\":"<<map.halfHeight<<"}\n";};
@@ -360,12 +580,20 @@ std::string ExportBattle(const Record& r,const std::string& root,const std::stri
         scenario<<"],\"obstacles\":[";bool first=true;for(const auto& o:g.map.obstacles){if(!first)scenario<<',';first=false;scenario<<"{\"id\":"<<o.id<<",\"center\":";V(scenario,o.center);scenario<<",\"half\":";V(scenario,o.half);scenario<<",\"height\":"<<o.height<<",\"blocks_movement\":"<<o.blocksMovement<<",\"half_cover\":"<<o.halfCover<<'}';}scenario<<"]}";
     }
     if(r.config.battlefield){auto imported=write("battlefield.army");imported<<r.config.battlefield->source;}
-    auto manifest=write("manifest.json");manifest<<"{\"evaluation_schema\":2,\"shots_schema\":1,\"scenario_family\":"<<Q(ScenarioFamilyName(r.config.family))<<",\"gen_seed\":"<<r.config.genSeed<<",\"schema\":1,\"route_schema\":1,\"geometry_schema\":2,\"build\":"<<Q(build)<<",\"terrain\":"<<int(r.config.terrain)<<",\"cognition_policy\":"<<r.config.cognition<<",\"drills_policy\":"<<r.config.drills<<",\"full_vision\":"<<r.config.fullVision<<",\"report_delay\":"<<r.config.reportDelay<<",\"judgment\":"<<r.config.officer.judgment<<",\"risk\":"<<r.config.officer.risk<<",\"adaptability\":"<<r.config.officer.adaptability<<",\"foundations_policy\":"<<r.config.foundations<<",\"estimate_bias\":"<<r.config.estimateBias<<",\"recovery_policy\":"<<r.config.recoveryFixture<<",\"task_schema\":1,\"encounter\":"<<r.encounter<<",\"seed\":"<<r.config.seed<<",\"doctrine\":"<<int(r.config.doctrine)<<",\"ember_doctrine\":"<<int(r.config.emberDoctrine)<<",\"approach\":"<<int(r.config.approach)<<",\"support_weapon\":"<<r.config.supportWeapon<<",\"moving_fire\":"<<r.config.movingFire<<",\"threat_aware_paths\":"<<r.config.threatAwarePaths<<",\"stamina\":"<<r.config.stamina<<",\"off_lane_paths\":"<<r.config.offLanePaths<<",\"order_pace\":"<<r.config.orderPace<<",\"path_choices\":"<<r.caution.searched<<",\"covered_paths\":"<<r.caution.covered<<",\"covered_path_detour\":"<<(r.caution.covered?r.caution.detour/r.caution.covered:0)<<",\"path_revealed_seconds\":"<<(r.caution.searched?r.caution.shortestRevealed/r.caution.searched:0)<<",\"covered_revealed_seconds\":"<<(r.caution.covered?r.caution.coveredRevealed/r.caution.covered:0)<<",\"duration_limit\":"<<r.config.maxSeconds<<",\"duration\":"<<r.duration<<",\"winner\":"<<r.winner<<",\"shots\":"<<r.shots.size()<<",\"gameplay_digest\":"<<Q(std::to_string(digest))<<",\"digest_kind\":"<<Q(lean?"lean":"full")<<",\"trace_enabled\":"<<(r.diagnostics&&r.diagnostics->options.enabled)<<",\"roster_seed\":"<<r.config.rosterSeed<<",\"stat_profile_azure\":["<<r.config.statProfiles[0].baseShare<<','<<r.config.statProfiles[0].lowShare<<','<<r.config.statProfiles[0].highShare<<','<<r.config.statProfiles[0].baseHalfWidth<<','<<r.config.statProfiles[0].lowEdge<<','<<r.config.statProfiles[0].highEdge<<','<<r.config.statProfiles[0].shape<<']'<<",\"stat_profile_ember\":["<<r.config.statProfiles[1].baseShare<<','<<r.config.statProfiles[1].lowShare<<','<<r.config.statProfiles[1].highShare<<','<<r.config.statProfiles[1].baseHalfWidth<<','<<r.config.statProfiles[1].lowEdge<<','<<r.config.statProfiles[1].highEdge<<','<<r.config.statProfiles[1].shape<<']'<<",\"leader_effects\":"<<r.config.leaderEffects<<",\"equal_troops\":"<<r.config.equalTroops<<",\"platoon_profiles\":[";
+    if(r.config.neuralPolicy){auto weights=write("neural.policy");weights<<r.config.neuralPolicy->source;}
+    auto manifest=write("manifest.json");manifest<<"{\"evaluation_schema\":2,\"shots_schema\":1,\"scenario_family\":"<<Q(ScenarioFamilyName(r.config.family))<<",\"gen_seed\":"<<r.config.genSeed<<",\"schema\":1,\"route_schema\":1,\"geometry_schema\":2,\"build\":"<<Q(build)<<",\"terrain\":"<<int(r.config.terrain)<<",\"cognition_policy\":"<<r.config.cognition<<",\"drills_policy\":"<<r.config.drills<<",\"full_vision\":"<<r.config.fullVision<<",\"report_delay\":"<<r.config.reportDelay<<",\"judgment\":"<<r.config.officer.judgment<<",\"risk\":"<<r.config.officer.risk<<",\"adaptability\":"<<r.config.officer.adaptability<<",\"foundations_policy\":"<<r.config.foundations<<",\"estimate_bias\":"<<r.config.estimateBias<<",\"recovery_policy\":"<<r.config.recoveryFixture<<",\"task_schema\":1,\"encounter\":"<<r.encounter<<",\"seed\":"<<r.config.seed<<",\"doctrine\":"<<int(r.config.doctrine)<<",\"ember_doctrine\":"<<int(r.config.emberDoctrine)<<",\"approach\":"<<int(r.config.approach)<<",\"support_weapon\":"<<r.config.supportWeapon<<",\"squad_machine_guns\":"<<r.config.squadMachineGuns<<",\"moving_fire\":"<<r.config.movingFire<<",\"threat_aware_paths\":"<<r.config.threatAwarePaths<<",\"stamina\":"<<r.config.stamina<<",\"off_lane_paths\":"<<r.config.offLanePaths<<",\"order_pace\":"<<r.config.orderPace<<(r.config.keepAction?"":",\"keep_action\":false")<<(r.config.keepKindReset?"":",\"keep_kind_reset\":false")<<(r.config.keepCommitClear?"":",\"keep_commit_clear\":false")<<(r.config.coverGraduated?",\"cover_graduated\":true":"")<<(r.config.coverRequests?",\"cover_requests\":true":"")<<(r.config.coverReports?",\"cover_reports\":true":"")<<(r.config.coverGunAim?",\"cover_gun_aim\":true":"")<<(r.config.coverShift?",\"cover_shift\":true":"")<<(r.config.coverPlatoon?",\"cover_platoon\":true":"")<<(r.config.prone?",\"prone\":true":",\"prone\":false")<<(r.config.concealment?",\"concealment\":true":",\"concealment\":false")<<(r.config.vaulting?",\"vaulting\":true,\"vaults\":"+std::to_string(r.vaults):std::string(",\"vaulting\":false"))<<(r.config.muzzleCredit?"":",\"muzzle_credit\":false")<<(r.config.gunnerCompensation?",\"gunner_compensation\":true":"")<<(r.config.impactSuppression?",\"impact_suppression\":true,\"impact_suppressions\":"+std::to_string(r.impactSuppressions):"")<<(r.config.impactSuppression&&r.config.impactRadius!=SuppressionRules().impactRadius?",\"impact_radius\":"+[&]{std::ostringstream o;o<<r.config.impactRadius;return o.str();}():"")<<(r.config.nerve?",\"nerve\":true":"")<<(r.config.gradedPeek?",\"graded_peek\":true,\"graded_peeks\":"+std::to_string(r.gradedPeeks)+",\"graded_settles\":"+std::to_string(r.gradedSettles):"")<<(r.config.gradedPeek&&r.config.peekFloor!=PinRules().peekFloor?",\"peek_floor\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.peekFloor):"")<<(r.config.gradedPeek&&r.config.peekCurve!=PinRules().peekCurve?",\"peek_curve\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.peekCurve):"")<<(r.config.keepDown?",\"keep_down\":true,\"keep_down_impacts\":"+std::to_string(r.keepDownImpacts):"")<<(r.config.keepDown&&r.config.keepDownWeight!=PinRules().keepDownWeight?",\"keep_down_weight\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.keepDownWeight):"")<<(r.config.keepDown&&r.config.keepDownGrace!=PinRules().keepDownGrace?",\"keep_down_grace\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.keepDownGrace):"")<<(r.config.pinnedNeighbours?",\"pinned_neighbours\":true,\"neighbour_lifts\":"+std::to_string(r.neighbourLifts):"")<<(r.config.pinnedNeighbours&&r.config.neighbourEffect!=PinRules().neighbourEffect?",\"neighbour_effect\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.neighbourEffect):"")<<(CoverSector(r.config)?",\"cover_sector\":true":"")<<(r.config.stackedSuppression?",\"stacked_suppression\":true":"")<<(r.config.coverQuietRelease?",\"cover_quiet_release\":true":"")<<(r.config.coverStationRadius!=25.f?",\"cover_station_radius\":"+[&]{std::ostringstream o;o<<r.config.coverStationRadius;return o.str();}():"")<<(r.config.coverUpperStations?",\"cover_upper_stations\":true":"")<<(r.config.coverRifleBase?",\"cover_rifle_base\":true":"")<<(r.config.retireFallen?",\"retire_fallen\":true":",\"retire_fallen\":false")<<(r.config.spawnLanes?",\"spawn_lanes\":true":",\"spawn_lanes\":false")<<(r.config.noCoveringFire?",\"no_covering_fire\":true":"")<<(FireAndMovementAny(r.config)?std::string(",\"fire_and_movement\":\"")+FireAndMovementName(r.config.fireAndMovement)+"\""+
+        (r.config.fmLeg!=FireMovementConstants.legLength?",\"fm_leg\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.fmLeg):std::string())+
+        (r.config.fmFireWindow!=FireMovementConstants.fireWindow?",\"fm_fire_window\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.fmFireWindow):std::string())+
+        (r.config.fmDeadline!=FireMovementConstants.deadline?",\"fm_deadline\":"+[&](float v){std::ostringstream o;o<<v;return o.str();}(r.config.fmDeadline):std::string()):std::string())<<",\"path_choices\":"<<r.caution.searched<<",\"covered_paths\":"<<r.caution.covered<<",\"covered_path_detour\":"<<(r.caution.covered?r.caution.detour/r.caution.covered:0)<<",\"path_revealed_seconds\":"<<(r.caution.searched?r.caution.shortestRevealed/r.caution.searched:0)<<",\"covered_revealed_seconds\":"<<(r.caution.covered?r.caution.coveredRevealed/r.caution.covered:0)<<",\"duration_limit\":"<<r.config.maxSeconds<<",\"duration\":"<<r.duration<<",\"winner\":"<<r.winner<<",\"shots\":"<<r.shots.size()<<",\"gameplay_digest\":"<<Q(std::to_string(digest))<<",\"digest_kind\":"<<Q(lean?"lean":"full")<<",\"trace_enabled\":"<<(r.diagnostics&&r.diagnostics->options.enabled)<<",\"roster_seed\":"<<r.config.rosterSeed<<",\"stat_profile_azure\":["<<r.config.statProfiles[0].baseShare<<','<<r.config.statProfiles[0].lowShare<<','<<r.config.statProfiles[0].highShare<<','<<r.config.statProfiles[0].baseHalfWidth<<','<<r.config.statProfiles[0].lowEdge<<','<<r.config.statProfiles[0].highEdge<<','<<r.config.statProfiles[0].shape<<']'<<",\"stat_profile_ember\":["<<r.config.statProfiles[1].baseShare<<','<<r.config.statProfiles[1].lowShare<<','<<r.config.statProfiles[1].highShare<<','<<r.config.statProfiles[1].baseHalfWidth<<','<<r.config.statProfiles[1].lowEdge<<','<<r.config.statProfiles[1].highEdge<<','<<r.config.statProfiles[1].shape<<']'<<",\"leader_effects\":"<<r.config.leaderEffects<<",\"equal_troops\":"<<r.config.equalTroops<<",\"platoon_profiles\":[";
     for(int team=0;team<2;++team){const auto& p=r.config.platoonProfiles[team];if(team)manifest<<",";manifest<<"["<<p.judgment<<","<<p.risk<<","<<p.adaptability<<","<<p.communication<<"]";}manifest<<"]";
     if(r.config.staticDefence.layout==DefenceLayout::None)manifest<<",\"static_defence\":null";
     else {const auto& sd=r.config.staticDefence;manifest<<",\"static_defence\":{\"layout\":"<<Q(DefenceLayoutName(sd.layout))<<",\"defenders\":"<<sd.defenders<<",\"seed\":"<<(sd.seed?sd.seed:r.config.seed)
         <<",\"objective\":["<<sd.objective.x<<','<<sd.objective.y<<','<<sd.objective.z<<"]}";}
     if(r.config.battlefield)manifest<<",\"battlefield_file\":\"battlefield.army\",\"battlefield_digest\":"<<Q(std::to_string(r.config.battlefield->digest));
+    if(r.config.externalPolicy)manifest<<",\"external_policy\":true";
+    if(r.config.neuralPolicy)manifest<<",\"neural_policy\":true,\"neural_team\":0,\"policy_schema\":"<<r.config.neuralPolicy->schema<<",\"policy_file\":\"neural.policy\",\"policy_digest\":"<<Q(std::to_string(r.config.neuralPolicy->digest));
+    if(r.config.policyCandidates)manifest<<",\"policy_candidates\":"<<r.config.policyCandidates;
+    if(r.config.policySchema)manifest<<",\"policy_schema_requested\":"<<r.config.policySchema;
     manifest<<"}";
     auto profile=write("profile.json");if(r.diagnostics){const auto& d=*r.diagnostics;profile<<"{\"total\":"<<d.total<<",\"perception\":"<<d.perception<<",\"commands\":"<<d.commands<<",\"decisions\":"<<d.decisions<<",\"movement\":"<<d.movement<<",\"ballistics\":"<<d.ballistics<<",\"firing\":"<<d.firing<<",\"recording\":"<<d.recording<<",\"trace\":"<<d.trace<<",\"navigation_inclusive\":"<<(r.map.queryProfile?r.map.queryProfile->navigationSeconds:0)<<",\"tactical_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalSeconds:0)<<",\"corridor_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->corridorSeconds:0)<<",\"tactical_queries\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalQueries:0)<<",\"tactical_expanded\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalExpanded:0)<<",\"path_queries\":"<<(r.map.queryProfile?r.map.queryProfile->paths:0)<<",\"sight_queries\":"<<(r.map.queryProfile?r.map.queryProfile->sight:0)<<",\"memo_lookups\":"<<(r.map.queryProfile?r.map.queryProfile->memoLookups:0)<<",\"memo_hits\":"<<(r.map.queryProfile?r.map.queryProfile->memoHits:0)<<",\"collision_queries\":"<<(r.map.queryProfile?r.map.queryProfile->collision:0)<<"}";}
     std::ofstream latest(fs::path(root)/"latest.json");latest<<"{\"run\":"<<Q(name)<<"}";return dir.string();

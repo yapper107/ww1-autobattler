@@ -13,6 +13,12 @@ int main(){
  ReadHandling(soldier,bridge);assert(bridge.reloadStart==5&&bridge.reloadEnd==10);
  struct FutureSoldier:army::Soldier {bool sprinting=true,winded=false;float stamina=3;};
  FutureSoldier future;ReadHandling(future,bridge);assert(bridge.staminaAvailable&&bridge.sprinting&&bridge.stamina==3);
+ // Plan 029 M-C: the vault fields bind when the soldier has them, and are cleared when it does not.
+ soldier.vaulting=true;soldier.vaultProgress=.4f;soldier.vaultHeight=1.15f;ReadHandling(soldier,bridge);
+ assert(bridge.vaulting&&bridge.vaultProgress==.4f&&bridge.vaultHeight==1.15f);
+ VaultBridge<BeforeStamina>::Read({},bridge);assert(!bridge.vaulting&&bridge.vaultProgress==0);
+ {HandlingInput v;v.vaulting=true;v.vaultHeight=1.15f;v.vaultProgress=.5f;v.lastShot=10;assert(Handling(v,10.001,1,false).upper==0);
+  assert(std::abs(VaultLift(v)-130)<1e-3f);v.vaultProgress=0;assert(VaultLift(v)==0);v.vaulting=false;v.vaultProgress=.5f;assert(VaultLift(v)==0);}
  HandlingInput rifle;rifle.lastShot=10;
  assert(Handling(rifle,9,0,false).gun.y==0);
  assert(Handling(rifle,10.001,1,false).gun.y< -2);
@@ -30,5 +36,11 @@ int main(){
  }
  State s;s.forward=4;s.handling.sprinting=true;
  for(const auto& x:Samples(s,1))assert(std::string(Clips[x.clip].name).find("sprint")!=std::string::npos);
- std::cout<<"PASS recoil, bolt/automatic distinction, reload priority/end, death, sprint, 2000 seeks\n";
+ // A vault plays the jump clips in turn by its progress, weights summing to one.
+ for(int i=0;i<=20;++i){State v;v.forward=3;v.handling.vaulting=true;v.handling.vaultProgress=i/20.f;double weight=0;
+  for(const auto& x:Samples(v,1)){assert(std::string(Clips[x.clip].name).find("A_jump_")==0&&x.time>=0&&x.time<=Clips[x.clip].duration);weight+=x.weight;}
+  assert(std::abs(weight-1)<1e-5);}
+ {State v;v.handling.vaulting=true;v.handling.vaultProgress=.1f;assert(Samples(v,1).size()==1&&Samples(v,1)[0].clip==Find("A_jump_up"));
+  v.handling.vaultProgress=.5f;assert(Samples(v,1)[0].clip==Find("A_jump_loop"));v.handling.vaultProgress=.9f;assert(Samples(v,1)[0].clip==Find("A_jump_down"));}
+ std::cout<<"PASS recoil, bolt/automatic distinction, reload priority/end, death, sprint, vault, 2000 seeks\n";
 }

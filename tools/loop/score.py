@@ -21,6 +21,47 @@ def _summarize(samples):
     return summarize(samples)
 
 
+def _summarize_strata(strata, resamples=2000):
+    """Equally weighted mean of several sets' means with a cluster bootstrap that resamples each set's clusters
+    (maps) within that set only (score v8: one half village, one half city2). With a single set it draws exactly
+    what ``report_family.summarize`` draws (same seed, same order), so a one-set objective keeps its values."""
+    import random, statistics
+    from collections import defaultdict
+    from report_family import percentile
+    groups_per, means_per = [], []
+    for samples in strata:
+        clusters = defaultdict(list)
+        for key, value in samples:
+            if value is not None and math.isfinite(value):
+                clusters[key].append(value)
+        if not clusters:
+            return dict(count=0, clusters=0, mean=None, median=None, ci95=None, set_means=None)
+        groups = [clusters[k] for k in sorted(clusters)]
+        groups_per.append(groups)
+        means_per.append(statistics.mean(v for g in groups for v in g))
+    rng, means = random.Random(1729), []
+    for _ in range(resamples):
+        total = 0.0
+        for groups in groups_per:
+            total += statistics.mean([v for _ in groups for v in groups[rng.randrange(len(groups))]])
+        means.append(total/len(groups_per))
+    return dict(count=sum(len(g) for groups in groups_per for g in groups), clusters=sum(len(g) for g in groups_per),
+                mean=sum(means_per)/len(means_per), ci95=[percentile(means, .025), percentile(means, .975)], set_means=means_per)
+
+
+def ranking_sets(obj):
+    """The objective's ranked sets: v8 ranks two (``ranking_sets``), v1-v7 one (``ranking_set``)."""
+    return list(obj.get('ranking_sets') or [obj['ranking_set']])
+
+
+def ranking_stats(objective):
+    """What a node ranks on, from a stored objective result of any version: v8 writes the combined ``ranking``;
+    older results name one set."""
+    if objective.get('ranking'):
+        return objective['ranking']
+    return (objective.get('sets') or {}).get(objective.get('ranking_set'), {}) if objective.get('ranking_set') else {}
+
+
 def _paired(cand_rows, base_rows, value):
     """Paired candidate-minus-baseline samples keyed for the cluster bootstrap."""
     base = {pair_key(r): r for r in base_rows if r and r.get('status') == 'complete'}
@@ -165,12 +206,33 @@ def evaluate_attack_objective(obj, rows_by_set, lineage=None):
             paired = _summarize(samples)
             paired.update(unpaired=unpaired, better=sum(1 for _, d in samples if d > 0.01), worse=sum(1 for _, d in samples if d < -0.01))
             out[set_name]['paired_vs_root'] = paired
-    ranking = out.get(obj['ranking_set'], {})
-    value = ranking.get('mean')
+    names = ranking_sets(obj)
+    ranked = [out.get(name, {}) for name in names]
+    ranking = dict(sets=names, mean=None, lower=None)
+    if ranked and all(r.get('mean') is not None for r in ranked):
+        done = {name: [r for r in rows_by_set.get(name, []) if r.get('status') == 'complete' and r['metrics'].get('attack_score') is not None]
+                for name in names}
+        combined = _summarize_strata([[(cluster_key(r), r['metrics']['attack_score']) for r in done[name]] for name in names])
+        mean = lambda key: sum(r[key] for r in ranked)/len(ranked)
+        ranking.update(attack_score=combined, mean=combined['mean'], lower=combined['ci95'][0],
+                       mean_of_lowers=mean('lower'), cleared_share=mean('cleared_share'), defender_loss=mean('defender_loss'),
+                       attacker_loss=mean('attacker_loss'))
+    value = ranking['mean']
     if lineage:
-        paired = ranking.get('paired_vs_root')
-        value = lineage['anchor'] + paired['ci95'][0] if paired and paired['count'] and lineage.get('anchor') is not None else None
-    return dict(kind='attack', sets=out, ranking_set=obj['ranking_set'], value=value,
+        value = None
+        root_rows = lineage.get('root_rows') or {}
+        if all(root_rows.get(name) for name in names):
+            strata = [_paired([r for r in rows_by_set.get(name, []) if r.get('status') == 'complete' and r['metrics'].get('attack_score') is not None],
+                              root_rows[name], _metric('attack_score'))[0] for name in names]
+            paired = _summarize_strata(strata)
+            parts = [out.get(name, {}).get('paired_vs_root') or {} for name in names]
+            paired.update(unpaired=sum(p.get('unpaired', 0) for p in parts), better=sum(p.get('better', 0) for p in parts),
+                          worse=sum(p.get('worse', 0) for p in parts),
+                          mean_of_lowers=(sum(p['ci95'][0] for p in parts)/len(parts)) if all(p.get('count') for p in parts) else None)
+            ranking['paired_vs_root'] = paired
+            if paired['count'] and lineage.get('anchor') is not None:
+                value = lineage['anchor'] + paired['ci95'][0]
+    return dict(kind='attack', sets=out, ranking_set=obj.get('ranking_set'), ranking_sets=names, ranking=ranking, value=value,
                 anchor=lineage.get('anchor') if lineage else None, root=lineage.get('root') if lineage else None)
 
 

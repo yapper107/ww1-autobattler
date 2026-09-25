@@ -70,6 +70,17 @@ A soldier carries a `WeaponItem` (a table id plus a list of modifiers) and cache
 Muzzle velocity is `referenceVelocity * (barrelLength / referenceBarrel) ^ 0.2`. Modifiers apply
 `value * multiply + add` to one field each; attachments and enchantments are lists of them.
 
+### Machine guns in the platoon (Jordan, 24 September 2026)
+
+Every squad carries a machine gun: each squad's eighth man is its gunner (role `MachineGunner`), on
+both sides, four guns a platoon. `Config::squadMachineGuns` switches it; `battle_cli` and the game set
+it (`--platoon-mg` / `-ArmyPlatoonMG` restore the historical one gun per platoon, the first squad's
+eighth man), while `Config{}` keeps one per platoon so unit fixtures and their recorded digests stay
+valid. The game's equipment button cycles "1 machine gun / squad" (default), "1 machine gun / platoon"
+and "All rifles" (Azure only; Ember keeps its guns, as before). A static defence seats each seated
+squad's gun early: 12 defenders field two guns instead of one. Legacy's squad logic already treated
+the eighth man as the squad's support and read `machineGun` per squad, so no command code changed.
+
 ## Fire control
 
 - Settle: `0.45 s / (ergonomics * StatScale(dex)) * (1 + 3 * suppression) * (health < 55 ? 1.3 : 1)`.

@@ -2,6 +2,8 @@
 
 ## Current status and execution order
 
+**22 September 2026:** the playable default is Legacy Plan 023 Stage E ([plan 023](023-the-rifle-group-moves-as-one.md)); [plan 025](025-stronger-learning-run.md) is a live neural run and [plan 026](026-ai-findings-fixes.md) is in progress. Current state, standing rulings and the full plan index are in [AGENTS.md](../AGENTS.md) (identical to `CLAUDE.md`); dated history is in [docs/PROJECT_LOG.md](../docs/PROJECT_LOG.md). Older plans that say "prepend to AGENTS.md/CLAUDE.md" now mean that log. The paragraphs and table below are the earlier cognition-era status, kept as history.
+
 **16 September 2026:** the main build is candidate90 (`d0e577abab5319b6`, 28/30 historical, 8/9 original) and the user has approved [plan 014](014-battle-drill-controller.md), which supersedes the strict-gate promotion law for the new battle-drill controller. The paragraph below describes the earlier cognition status.
 
 Source `8a5b385e04c22185` passes the original matrix **9/9 on Linux and Windows**.

@@ -9,7 +9,7 @@ the source fingerprint in its plan.
 
 - **Three squad AIs** in one deterministic C++17 simulator (`Unreal/Source/ArmyPrototype/Sim/`): **legacy** (the
   playable default and the one this process improved), cognition (candidate90, preserved) and drills (plan 014/015,
-  preserved). Shared soldier-level code (movement, cover, fire, paths, stamina) is common to all three.
+  preserved). Shared soldier-level code (movemeqqnt, cover, fire, paths, stamina) is common to all three.
 - **The improvement loop** (`tools/loop/`, guide `docs/IMPROVEMENT_LOOP.md`, design plan 016): a discovery tree of
   nodes, each a frozen source snapshot and binary with its battles' rows and scores. `python3 -m tools.loop evaluate`
   scores the current source as a node; `tree`, `view` (an HTML page of the tree), `select` (the exploration policy),
@@ -57,7 +57,7 @@ the source fingerprint in its plan.
 5. **Survivors.** A node that passes every guard and beats its parent's value is shown to the user as videos on the
    maps he has commented on; his verdict becomes the next measures, guards and briefs. Nothing is promoted to the
    playable default without his replay approval.
-6. **Records.** Every generation is written at the end of plan 018 and summarised in `CLAUDE.md`/`AGENTS.md`; the tree
+6. **Records.** Every generation is written at the end of plan 018 and summarised in `docs/PROJECT_LOG.md`; the tree
    page is republished; commits are local until the user asks for a push.
 
 ## 3. Plan-sized changes
@@ -98,7 +98,7 @@ into the plan when they are measured:
 
 ## 5. Picking it up again
 
-1. `git log` on `plan-018-static-defence`; read `CLAUDE.md` (the running summary), then the end of plan 018 and the
+1. `git log` on `plan-018-static-defence`; read `docs/PROJECT_LOG.md` (the running summary), then the end of plan 018 and the
    whole of plan 023.
 2. Rebuild: `scripts/battle-lab.sh --version`; `python3 tools/source_id.py` gives the source fingerprint; check it
    against the last fingerprint recorded in the plan (`45da1e25dd1aa9e7` at this writing: plan 023 stage E plus one
@@ -110,3 +110,11 @@ into the plan when they are measured:
    soldiers away from enemies they know about: shelter, goals, paths) is at the end of plan 018 and waits for a re-root
    of all three controllers.
 5. Show the user videos, not tables, when it is time for a verdict.
+
+
+## Neural AI and performance resume checkpoint — 22 September 2026
+
+The completed Plan024 training, fresh-map findings, exact performance improvements,
+short videos, current model access and proposed execution audit are consolidated
+in [the session handoff](AI_SESSION_HANDOFF_2026-09-22.md). Jordan asked to save and
+resume later. No next training run or soldier-controller replacement has started.

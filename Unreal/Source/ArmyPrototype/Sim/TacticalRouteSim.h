@@ -2,6 +2,7 @@
 #include "BattleSim.h"
 #include <functional>
 #include <unordered_map>
+#include <limits>
 namespace army {
 enum class RouteStatus { Complete, Unreachable, BudgetExhausted, UnsupportedSurface, IncompleteTopology };
 const char* RouteStatusName(RouteStatus status);
@@ -16,15 +17,46 @@ struct TacticalRoute {
     Stance stance=Stance::Standing;RouteStatus status=RouteStatus::Unreachable;
     RouteCost cost;std::vector<Vec3> points;std::vector<RouteStage> stages;
 };
-struct ManeuverOption {Vec3 p;Maneuver kind;float score=0,exposure=0;bool support=false;std::shared_ptr<TacticalRoute> route;};
+struct ManeuverOption {Vec3 p;Maneuver kind;float score=0,exposure=0;bool support=false;std::shared_ptr<TacticalRoute> route;
+    SquadFeatures policyFeatures{}; // features at assessment time, matching cached candidate costs
+    bool quiet=false;}; // plan 030 M-S5 (Config::coverQuietRelease): its crossing's overlooking threats are quiet (QuietCrossing)
 struct ManeuverAssessment {uint64_t geometry=0,knowledge=0;float at=0;Vec3 origin{};std::vector<ManeuverOption> options;};
 // Per-assessment field: actor knowledge and evaluation time cannot outlive this query batch.
 class TacticalRoutePlanner {
     const Map& map;Soldier actor;float time,speed,caution;Stance stance;
-    std::unordered_map<int64_t,RouteCost> samples;
+    // Exact per-assessment sample memo: open addressing with linear probing on the
+    // full 64-bit cell key. Only find/insert are used; no iteration order exists.
+    struct SampleTable {
+        struct Slot {int64_t key;RouteCost cost;};
+        static constexpr int64_t Empty=std::numeric_limits<int64_t>::min();
+        std::vector<Slot> slots;size_t mask=0,count=0;bool hasEmptyKey=false;RouteCost emptyKeyCost{};
+        explicit SampleTable(size_t capacity=8192):slots(capacity,Slot{Empty,{}}),mask(capacity-1){}
+        static size_t Hash(int64_t key){return size_t((uint64_t(key)*0x9e3779b97f4a7c15ull)>>32);}
+        const RouteCost* Find(int64_t key) const {
+            if(key==Empty)return hasEmptyKey?&emptyKeyCost:nullptr;
+            for(size_t i=Hash(key)&mask;;i=(i+1)&mask){const Slot& s=slots[i];if(s.key==key)return &s.cost;if(s.key==Empty)return nullptr;}
+        }
+        void Insert(int64_t key,const RouteCost& cost){ // key is absent
+            if(key==Empty){hasEmptyKey=true;emptyKeyCost=cost;return;}
+            if((count+1)*2>slots.size()){std::vector<Slot> old(slots.size()*2,Slot{Empty,{}});old.swap(slots);mask=slots.size()-1;
+                for(const Slot& s:old)if(s.key!=Empty){size_t i=Hash(s.key)&mask;while(slots[i].key!=Empty)i=(i+1)&mask;slots[i]=s;}}
+            size_t i=Hash(key)&mask;while(slots[i].key!=Empty)i=(i+1)&mask;slots[i]={key,cost};++count;
+        }
+    } samples;
     std::unordered_map<uint64_t,float> regionalCosts;
     uint64_t costRevision=0;float costFloor=0;
-    std::vector<Contact> threats;std::vector<FireLane> lanes;std::vector<Vec3> friends;
+    struct SightPoint {Vec3 position;uint64_t packed;};
+    struct ThreatSample {
+        Vec3 position;float confidence,uncertainty;bool automaticWeapon;
+        std::array<SightPoint,3> eyes{};bool eyesReady=false;
+    };
+    struct ExposureQuery {uint32_t threat=0;uint8_t visible=0,unknownCount=0,unknown[3]={};size_t slots[3]={};};
+    std::vector<ExposureQuery> exposureScratch;
+    std::vector<ThreatSample> threats;std::vector<FireLane> lanes;std::vector<Vec3> friends;
+    SightPoint observerEye{};bool observerEyeReady=false;
+    static SightPoint SnapSightPoint(Vec3 position);
+    bool EstimatedVisible(const SightPoint& from,const SightPoint& to) const;
+    bool EstimatedVisible(const SightPoint& from,const SightPoint& to,size_t slot) const;
     std::vector<Vec3> RegionalPath(Vec3 from,Vec3 to,int budget,int& expanded,RouteStatus& status);
 public:
     TacticalRoutePlanner(const Map& geometry,const Soldier& knowledge,float at,Doctrine doctrine=Doctrine::Balanced,Stance posture=Stance::Standing);
@@ -32,7 +64,8 @@ public:
     TacticalRoute Evaluate(Vec3 from,Vec3 to,int budget=256);
     RouteCost Measure(Vec3 from,const std::vector<Vec3>& path,float* exposedSeconds=nullptr);
 };
-std::vector<Vec3> FindCostPath(const Map& map,Vec3 from,Vec3 to,const std::function<float(Vec3)>& cost,int budget,int& expanded,RouteStatus& status);
+// cls (plan 029 M-C): the vault class the search may use; None is the search as it always was.
+std::vector<Vec3> FindCostPath(const Map& map,Vec3 from,Vec3 to,const std::function<float(Vec3)>& cost,int budget,int& expanded,RouteStatus& status,VaultClass cls=VaultClass::None);
 float CorridorDistance(const TacticalRoute& route,Vec3 p);
 // Shared policy/execution area: route buffer union objective disc; rectangle only without a route.
 inline bool InOperationArea(Vec3 p,Vec3 lo,Vec3 hi,const std::shared_ptr<const TacticalRoute>& route,float width,Vec3 objective,float radius){

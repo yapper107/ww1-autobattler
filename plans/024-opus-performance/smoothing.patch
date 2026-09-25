@@ -1,0 +1,18 @@
+--- a/Unreal/Source/ArmyPrototype/Sim/EnvironmentSim.cpp
++++ b/Unreal/Source/ArmyPrototype/Sim/EnvironmentSim.cpp
+@@ -307,10 +307,14 @@
+         return compact;
+     }
+     // String pulling retains swept clearance around obstacle corners.
++    // The forward scan kept the last clear candidate, so scanning back from the end
++    // and stopping at the first clear one picks the same index with fewer clearance
++    // queries. With nothing clear beyond i the choice is i either way, so candidate
++    // i itself is never worth testing.
+     std::vector<Vec3> smooth; Vec3 p=from;
+     for(size_t i=0;i<path.size();) {
+         size_t furthest=i;
+-        for(size_t j=i;j<path.size();++j) if(ClearLine(m,p,path[j],0.48f)) furthest=j;
++        for(size_t j=path.size()-1;j>i;--j) if(ClearLine(m,p,path[j],0.48f)) {furthest=j;break;}
+         smooth.push_back(path[furthest]); p=path[furthest]; i=furthest+1;
+     }
+     return smooth;

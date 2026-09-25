@@ -33,7 +33,8 @@ def cmd_tree(a):
         print(json.dumps(node, indent=1, sort_keys=True))
         s = tree.read_score(a.id, a.version)
         if s:
-            print(json.dumps(dict(guards={k: v['passed'] for k, v in s['guards'].items()}, objective=s['objective']['sets'].get(s['objective']['ranking_set'], {}).get('lower'),
+            from tools.loop.score import ranking_stats
+            print(json.dumps(dict(guards={k: v['passed'] for k, v in s['guards'].items()}, objective=ranking_stats(s['objective']).get('lower'),
                                   value=s['value'], information=s['information']), indent=1))
         return
     print(f"{'id':32} {'parent':32} {'proposer':12} {'guards':6} {'value':>9} verdict")
@@ -65,7 +66,7 @@ def cmd_pairs(a):
 
 def cmd_diagnose(a):
     from tools.loop.diagnose import diagnose
-    print(json.dumps(diagnose(a.id, a.set, a.count)['static_seconds_by_stated_reason'], indent=1))
+    print(json.dumps(diagnose(a.id, a.set.split(',') if a.set else None, a.count)['static_seconds_by_stated_reason'], indent=1))
 
 
 def cmd_brief(a):
@@ -99,9 +100,9 @@ def cmd_static(a):
 def main(argv=None):
     p = argparse.ArgumentParser(prog='python3 -m tools.loop', description=__doc__)
     sub = p.add_subparsers(dest='command', required=True)
-    from tools.loop.score import load_guards
+    from tools.loop.score import load_guards, ranking_sets
     current = load_guards()['version']
-    current_ranking = load_guards()['objective']['ranking_set']
+    current_ranking = ranking_sets(load_guards()['objective'])[0]
 
     e = sub.add_parser('evaluate', help='evaluate the current source as a tree node')
     e.add_argument('--parent'); e.add_argument('--proposer', default='human', choices=['human', 'param-search', 'llm', 'baseline'])
@@ -138,7 +139,8 @@ def main(argv=None):
     rm.add_argument('nodes', nargs='*'); rm.add_argument('--jobs', type=int); rm.add_argument('--no-baselines', action='store_true')
     rm.add_argument('--respec', action='store_true', help='draw the scenario sets again from the current config'); rm.set_defaults(fn=cmd_remeasure)
     dg = sub.add_parser('diagnose', help="trace a node's worst attack battles: static windows and cancelled orders")
-    dg.add_argument('id'); dg.add_argument('--set', default='town-attack-dev'); dg.add_argument('--count', type=int, default=3); dg.set_defaults(fn=cmd_diagnose)
+    dg.add_argument('id'); dg.add_argument('--set', help="comma list of attack sets (default: the score's development attack sets)")
+    dg.add_argument('--count', type=int, default=3, help='worst battles traced per set'); dg.set_defaults(fn=cmd_diagnose)
     br = sub.add_parser('brief', help='write the proposer brief for a node'); br.add_argument('id'); br.set_defaults(fn=cmd_brief)
 
     sub.add_parser('view', help='write the tree as one HTML page (.local/loop/tree.html)').set_defaults(fn=cmd_view)
