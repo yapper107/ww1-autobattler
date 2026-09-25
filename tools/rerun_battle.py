@@ -50,6 +50,20 @@ if m.get('cover_station_radius') is not None:cmd+=['--cover-station-radius',str(
 if m.get('fire_and_movement'):cmd+=['--fire-and-movement',m['fire_and_movement']]
 for key,flag in [('fm_leg','--fm-leg'),('fm_fire_window','--fm-fire-window'),('fm_deadline','--fm-deadline')]:
     if m.get(key) is not None:cmd+=[flag,str(m[key])]
+# Plan 031 G: the support gun's and the bipod's teams (written only when on) and their run constants (only when not the table's).
+for key,flag in [('gun_support','--gun-support'),('gun_bipod','--gun-bipod')]:
+    if m.get(key):cmd+=[flag,m[key]]
+# Stage G is the battle_cli default since 25 Sep 2026 and its keys are written only when on: a manifest without them
+# (older, or run with --no-gun-*) was fought without them.
+if not m.get('gun_support'):cmd+=['--no-gun-support']
+if not m.get('gun_bipod'):cmd+=['--no-gun-bipod']
+# Jordan's suppression design (plan 030 M-S7) is the battle_cli default since 25 Sep 2026 and its keys are written
+# only when on: without them the battle was fought without it.
+for key,flag in [('graded_peek','--no-graded-peek'),('keep_down','--no-keep-down'),('pinned_neighbours','--no-pinned-neighbours')]:
+    if not m.get(key):cmd.append(flag)
+for key,flag in [('gun_burst','--gun-burst'),('gun_beat','--gun-beat'),('gun_rotate','--gun-rotate'),('gun_threat_bonus','--gun-threat-bonus'),
+                  ('gun_mover_weight','--gun-mover-weight'),('gun_bipod_factor','--gun-bipod-factor')]:
+    if m.get(key) is not None:cmd+=[flag,str(m[key])]
 if m.get('roster_seed'):cmd+=['--roster-seed',str(m['roster_seed'])]
 if m.get('foundations_policy'):cmd+=['--foundations','--estimate-bias',str(m.get('estimate_bias',0))]
 if m.get('cognition_policy') or m.get('drills_policy'):

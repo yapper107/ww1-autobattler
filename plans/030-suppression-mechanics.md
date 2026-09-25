@@ -391,3 +391,8 @@ interval mattered (4 s beat 12 s) and burst length did not, random spread beat s
 rounds per casualty, time to bring a light gun into action, platoon reaction time, any study of attacks
 with and without small-arms covering fire. Engagements: 80% of effective WWII small-arms fire under 200 yd,
 90% under 300 yd; the game's all inside 100 m (70 m rifle sight).
+
+**25 September 2026.** Jordan made P1–P3 (graded peek, keep-down, pinned neighbours) the default, on top of plan 031
+Stage G. In the overseer's prototype his design made a side's covering fire worth +1.43 men and +0.068 exchange per
+meeting battle; the real-build check did not replicate it (plan 031). S1–S3, S5 and the covering-request switches
+stay off.

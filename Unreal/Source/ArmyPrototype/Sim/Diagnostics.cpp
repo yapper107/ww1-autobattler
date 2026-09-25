@@ -361,6 +361,13 @@ static uint64_t DigestCore(const Record& r,const Frame* firstFrame,size_t frameC
     if(!framesOnly&&FireAndMovementAny(r.config)){i(3101);i(r.config.fireAndMovement);
         const auto& k=FireMovementConstants;
         if(r.config.fmLeg!=k.legLength||r.config.fmFireWindow!=k.fireWindow||r.config.fmDeadline!=k.deadline){i(3102);f(r.config.fmLeg);f(r.config.fmFireWindow);f(r.config.fmDeadline);}}
+    // Plan 031 G: the support gun and the bipod (Legacy only, per team), each folded only when on for a team, with its run
+    // constants only when they differ from the table (GunSupportTuning).
+    if(!framesOnly&&GunSupportAny(r.config)){i(3111);i(r.config.gunSupport);
+        const auto& k=GunSupportConstants;
+        if(r.config.gunBurst!=k.burst||r.config.gunBeat!=k.beat||r.config.gunRotate!=k.rotate||r.config.gunThreatBonus!=k.threatBonus||r.config.gunMoverWeight!=k.moverWeight){
+            i(3112);i(r.config.gunBurst);f(r.config.gunBeat);f(r.config.gunRotate);f(r.config.gunThreatBonus);f(r.config.gunMoverWeight);}}
+    if(!framesOnly&&GunBipodAny(r.config)){i(3113);i(r.config.gunBipod);if(r.config.gunBipodFactor!=GunSupportConstants.bipodFactor){i(3114);f(r.config.gunBipodFactor);}}
     // Plan 026 P4: the schema-4 interface, folded only when requested (0 keeps every digest).
     if(!framesOnly&&r.config.policySchema){i(2604);i(r.config.policySchema);}
     if(!framesOnly&&!frames.empty())for(const auto& s:frames.front().soldiers){for(size_t k=0;k<SampledStatCount;++k)f(s.stats.value[k]);if(r.config.stamina)f(s.stats.value[size_t(Stat::Speed)]);f(s.maxHealth);f(s.swayPhase);f(s.swayPhase2);f(s.recoilSign);i(int(s.weapon.def));i(int(s.weapon.modifiers.size()));
@@ -594,6 +601,16 @@ std::string ExportBattle(const Record& r,const std::string& root,const std::stri
     if(r.config.neuralPolicy)manifest<<",\"neural_policy\":true,\"neural_team\":0,\"policy_schema\":"<<r.config.neuralPolicy->schema<<",\"policy_file\":\"neural.policy\",\"policy_digest\":"<<Q(std::to_string(r.config.neuralPolicy->digest));
     if(r.config.policyCandidates)manifest<<",\"policy_candidates\":"<<r.config.policyCandidates;
     if(r.config.policySchema)manifest<<",\"policy_schema_requested\":"<<r.config.policySchema;
+    // Plan 031 G: each switch's teams and evidence count only when on for a team, its run constants only when not the table's.
+    {const auto& k=GunSupportConstants;
+     if(GunSupportAny(r.config)){manifest<<",\"gun_support\":"<<Q(FireAndMovementName(r.config.gunSupport))<<",\"gun_support_bursts\":"<<r.gunSupportBursts;
+        if(r.config.gunBurst!=k.burst)manifest<<",\"gun_burst\":"<<r.config.gunBurst;
+        if(r.config.gunBeat!=k.beat)manifest<<",\"gun_beat\":"<<r.config.gunBeat;
+        if(r.config.gunRotate!=k.rotate)manifest<<",\"gun_rotate\":"<<r.config.gunRotate;
+        if(r.config.gunThreatBonus!=k.threatBonus)manifest<<",\"gun_threat_bonus\":"<<r.config.gunThreatBonus;
+        if(r.config.gunMoverWeight!=k.moverWeight)manifest<<",\"gun_mover_weight\":"<<r.config.gunMoverWeight;}
+     if(GunBipodAny(r.config)){manifest<<",\"gun_bipod\":"<<Q(FireAndMovementName(r.config.gunBipod))<<",\"gun_bipod_rounds\":"<<r.gunBipodRounds;
+        if(r.config.gunBipodFactor!=k.bipodFactor)manifest<<",\"gun_bipod_factor\":"<<r.config.gunBipodFactor;}}
     manifest<<"}";
     auto profile=write("profile.json");if(r.diagnostics){const auto& d=*r.diagnostics;profile<<"{\"total\":"<<d.total<<",\"perception\":"<<d.perception<<",\"commands\":"<<d.commands<<",\"decisions\":"<<d.decisions<<",\"movement\":"<<d.movement<<",\"ballistics\":"<<d.ballistics<<",\"firing\":"<<d.firing<<",\"recording\":"<<d.recording<<",\"trace\":"<<d.trace<<",\"navigation_inclusive\":"<<(r.map.queryProfile?r.map.queryProfile->navigationSeconds:0)<<",\"tactical_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalSeconds:0)<<",\"corridor_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->corridorSeconds:0)<<",\"tactical_queries\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalQueries:0)<<",\"tactical_expanded\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalExpanded:0)<<",\"path_queries\":"<<(r.map.queryProfile?r.map.queryProfile->paths:0)<<",\"sight_queries\":"<<(r.map.queryProfile?r.map.queryProfile->sight:0)<<",\"memo_lookups\":"<<(r.map.queryProfile?r.map.queryProfile->memoLookups:0)<<",\"memo_hits\":"<<(r.map.queryProfile?r.map.queryProfile->memoHits:0)<<",\"collision_queries\":"<<(r.map.queryProfile?r.map.queryProfile->collision:0)<<"}";}
     std::ofstream latest(fs::path(root)/"latest.json");latest<<"{\"run\":"<<Q(name)<<"}";return dir.string();

@@ -1,0 +1,38 @@
+{
+ "rule": "first 10 k=0.. of sha256(f'plan031|confirm|{family}|{k}') -> 1231 + int % 900000; skip E-6 seeds, seeds with a directory in .local/loop/maps/, 2001-2010 and repeats; battle seeds 111,112",
+ "drawn_at": "2026-09-24 23:10 -0700 (before any overnight result)",
+ "families": {
+  "village": {
+   "seeds": [
+    473617,
+    407520,
+    73537,
+    198380,
+    583459,
+    571774,
+    243165,
+    349192,
+    867952,
+    135892
+   ],
+   "skipped": [],
+   "k_used": 10
+  },
+  "city2": {
+   "seeds": [
+    286385,
+    436484,
+    415318,
+    119252,
+    145761,
+    630353,
+    578430,
+    577306,
+    17162,
+    643613
+   ],
+   "skipped": [],
+   "k_used": 10
+  }
+ }
+}

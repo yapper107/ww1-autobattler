@@ -1,7 +1,8 @@
 """Paired outcome analysis for plan 031 (rows from outcome.py). Meeting: the drilled side (A: Azure, E: Ember)
 against the same map and seed without the drill (N): its exchange ((enemy lost - own lost)/32) and win share
 (win 1, draw 0.5), pooled over both orientations. Static: SA against SN: attacker wins, lost per side, duration.
-95% intervals by map-cluster bootstrap. Usage: python3 analyse.py [PREFIX]  (PREFIX picks arm names, e.g. '' or 'x')"""
+95% intervals by map-cluster bootstrap. Usage: python3 analyse.py [PREFIX [CONTROL]]  (PREFIX picks arm names, e.g. '' or 'x';
+CONTROL, default PREFIX, picks the N and SN arms the treated A, E and SA arms are paired with)"""
 import glob, json, random, sys
 from pathlib import Path
 ROWS = Path(__file__).resolve().parents[2]/'.local/covering/outcome/rows'
@@ -19,7 +20,8 @@ def boot(pairs, fn, B=2000):
     out.sort(); return out[int(.025*B)], out[int(.975*B)-1]
 mean = lambda xs: sum(xs)/len(xs)
 def win(r, side): return 1.0 if r['winner'] == side else .5 if r['winner'] == -1 else 0.0
-N, A, E = load(P+'N'), load(P+'A'), load(P+'E')
+C = sys.argv[2] if len(sys.argv) > 2 else P
+N, A, E = load(C+'N'), load(P+'A'), load(P+'E')
 if N and (A or E):
     pairs = []
     for arm, side in ((A, 0), (E, 1)):
@@ -34,7 +36,7 @@ if N and (A or E):
         dx = mean([v['dx'] for _, v in ps]); lo, hi = boot(ps, lambda s: mean([v['dx'] for v in s]))
         dw = mean([v['dw'] for _, v in ps]); lo2, hi2 = boot(ps, lambda s: mean([v['dw'] for v in s]))
         print(f'meeting, {lab} ({len(ps)} pairs): drilled side exchange {dx:+.3f} [{lo:+.3f}, {hi:+.3f}], win share {dw:+.3f} [{lo2:+.3f}, {hi2:+.3f}], own lost {mean([v["own"] for _,v in ps]):+.2f}, enemy lost {mean([v["enemy"] for _,v in ps]):+.2f}')
-SN, SA = load(P+'SN'), load(P+'SA')
+SN, SA = load(C+'SN'), load(P+'SA')
 if SN and SA:
     ps = [(k, (SA[k], SN[k])) for k in SA if k in SN]
     for lab, f in (('attacker wins', lambda a, b: win(a, 0)-win(b, 0)), ('attackers lost', lambda a, b: a['lost'][0]-b['lost'][0]),

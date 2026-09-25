@@ -337,6 +337,28 @@ struct FireMovementTuning {
                              // deadline not reach him: a squad between leaders)
 };
 inline constexpr FireMovementTuning FireMovementConstants{};
+// Plan 031 Stage G, the gun as a support weapon (Config::gunSupport and Config::gunBipod, Legacy only, per team). burst,
+// beat, rotate, threatBonus, moverWeight and bipodFactor are also run values (Config::gunBurst, gunBeat, gunRotate,
+// gunThreatBonus, gunMoverWeight, gunBipodFactor; CLI --gun-burst, --gun-beat, --gun-rotate, --gun-threat-bonus,
+// --gun-mover-weight, --gun-bipod-factor) for sweeps. Values of the overseer's prototype (25 Sep 2026); to be
+// calibrated by measurement.
+struct GunSupportTuning {
+    int burst=5;              // rounds: set, a support gun fires bursts of this many ...
+    float beat=.5f;           // s: ... pauses this long after each, and takes a new target (the burst's own is dropped)
+    float rotate=3;           // s: an enemy he fired a round on within this ...
+    float rotatePenalty=60;   // m of target score: ... is this much less preferred, so the threats are worked in turn
+    float threatBonus=15;     // m of target score taken off an enemy per squadmate his known position overlooks
+    float moverWeight=1;      // a squadmate seen moving counts 1 + this
+    float rescore=.5f;        // s: those overlooks are counted again at most this often
+    float trackAge=6;         // s: an enemy overlooks the squad only through the gunner's own track of him, seen within this
+    float mateAge=3;          // s: a squadmate counts where the gunner himself saw him within this (the gunner where he is)
+    float moverAge=1.5f;      // s: ... and as a mover if seen within this ...
+    float moverSpeed=.8f;     // m/s: ... moving at least this fast (his own sighting's velocity)
+    float reach=95;           // m: an enemy overlooks a squadmate within this (AssumedEnemyReach)
+    float chest=1.3f;         // m: the line runs from the track's eye to this height over the squadmate's feet
+    float bipodFactor=.5f;    // a set gun's shot spread (the yaw cone ShotSpread feeds) times this
+};
+inline constexpr GunSupportTuning GunSupportConstants{};
 // Plan 031 D: what an order of the drill carries. gun: the squad's gun whose fire opens the leg (-1: no drill, every
 // field inert); leg: the leader's leg (or hold spell) serial; displace: the gun's own order sends him to a new station
 // (he may sprint). On the group's orders (the leader's, the NCO's and those the relay sends) it names the group's leg;
@@ -819,6 +841,20 @@ struct Config {
     // overlooking the leg, is heard firing on them; its station is kept while it bears; a deadline falls back to Legacy.
     int fireAndMovement=0;
     float fmLeg=FireMovementConstants.legLength,fmFireWindow=FireMovementConstants.fireWindow,fmDeadline=FireMovementConstants.deadline;
+    // Plan 031 Stage G, the gun as a support weapon, Legacy only, per team (bit 0 Azure, bit 1 Ember), each off by default;
+    // folded into the digest and written to the manifest only when on, its run constants (GunSupportTuning) only when they
+    // differ from the table. gunSupport: a machine gunner of such a team is a support shooter for every enemy he knows (his
+    // own tracks and received reports, under the support shooters' usable and area-aim rules); set (not walking) he fires
+    // bursts of gunBurst rounds with a pause of gunBeat after each, and prefers the threats he fired on least recently
+    // (gunRotate) and those whose known position overlooks the most of his squad (gunThreatBonus per squadmate, a moving
+    // one counting 1 + gunMoverWeight). Knowledge: his own tracks and the reports he has received, his own sightings of his
+    // squadmates, his own rounds and the map; never observer truth. gunBipod: a machine gunner of such a team firing set has
+    // his shot spread times gunBipodFactor; physics only.
+    int gunSupport=0;
+    int gunBurst=GunSupportConstants.burst;
+    float gunBeat=GunSupportConstants.beat,gunRotate=GunSupportConstants.rotate,gunThreatBonus=GunSupportConstants.threatBonus,gunMoverWeight=GunSupportConstants.moverWeight;
+    int gunBipod=0;
+    float gunBipodFactor=GunSupportConstants.bipodFactor;
 
     bool drills=false;
     // Plan 024: optional Azure squad ranker. Existing controllers stay unchanged.
@@ -863,6 +899,9 @@ inline bool SameConfig(const Config& a,const Config& b) {
     if(a.coverSector!=b.coverSector)return false;
     // Plan 031 D: the drill's teams and, while it is on, its run constants.
     if(a.fireAndMovement!=b.fireAndMovement||(a.fireAndMovement&&(a.fmLeg!=b.fmLeg||a.fmFireWindow!=b.fmFireWindow||a.fmDeadline!=b.fmDeadline)))return false;
+    // Plan 031 G: each switch's teams and, while it is on, its run constants.
+    if(a.gunSupport!=b.gunSupport||(a.gunSupport&&(a.gunBurst!=b.gunBurst||a.gunBeat!=b.gunBeat||a.gunRotate!=b.gunRotate||a.gunThreatBonus!=b.gunThreatBonus||a.gunMoverWeight!=b.gunMoverWeight)))return false;
+    if(a.gunBipod!=b.gunBipod||(a.gunBipod&&a.gunBipodFactor!=b.gunBipodFactor))return false;
     return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.offLanePaths==b.offLanePaths&&a.orderPace==b.orderPace&&a.keepAction==b.keepAction&&a.keepKindReset==b.keepKindReset&&a.keepCommitClear==b.keepCommitClear&&a.coverGraduated==b.coverGraduated&&a.coverRequests==b.coverRequests&&a.coverReports==b.coverReports&&a.coverGunAim==b.coverGunAim&&a.coverShift==b.coverShift&&a.coverPlatoon==b.coverPlatoon&&a.prone==b.prone&&a.concealment==b.concealment&&a.vaulting==b.vaulting&&a.muzzleCredit==b.muzzleCredit&&a.impactSuppression==b.impactSuppression&&(!a.impactSuppression||a.impactRadius==b.impactRadius)&&a.nerve==b.nerve&&a.stackedSuppression==b.stackedSuppression&&a.coverQuietRelease==b.coverQuietRelease&&a.coverStationRadius==b.coverStationRadius&&a.coverUpperStations==b.coverUpperStations&&a.coverRifleBase==b.coverRifleBase&&a.retireFallen==b.retireFallen&&a.spawnLanes==b.spawnLanes&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.squadMachineGuns==b.squadMachineGuns&&a.maxSeconds==b.maxSeconds;
 }
@@ -877,6 +916,11 @@ inline bool CoverSector(const Config& c){return c.coverSector&&!c.foundations&&!
 inline bool FireAndMovement(const Config& c,int team){return team>=0&&team<2&&((c.fireAndMovement>>team)&1)&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
 inline bool FireAndMovementAny(const Config& c){return FireAndMovement(c,0)||FireAndMovement(c,1);}
 const char* FireAndMovementName(int teams); // "azure", "ember", "both" (or "off")
+// Plan 031 G: each switch where it acts, the Legacy command path only, for this team (0 Azure, 1 Ember) or for either.
+inline bool GunSupport(const Config& c,int team){return team>=0&&team<2&&((c.gunSupport>>team)&1)&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
+inline bool GunSupportAny(const Config& c){return GunSupport(c,0)||GunSupport(c,1);}
+inline bool GunBipod(const Config& c,int team){return team>=0&&team<2&&((c.gunBipod>>team)&1)&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
+inline bool GunBipodAny(const Config& c){return GunBipod(c,0)||GunBipod(c,1);}
 Map MakeBattleMap(const Config& config);
 struct SupportSector {int shooter=-1,requester=-1,stage=0;Vec3 focus{};uint64_t route=0;float observedAt=-100;bool lifted=false;std::vector<SupportThreat> threats;std::vector<FriendlyIntent> friendlies;};
 struct SupportProgress {
@@ -1057,6 +1101,9 @@ struct Soldier {
     // perception: every man of the squad hears it at once, no report and no delay). fmWaitSince: since when he has been
     // holding for the gate (his leader sees his man stay put instead of going where he was sent).
     float fmFireAt = -100, fmHeardAt = -100, fmWaitSince = -100;
+    // Plan 031 G (Config::gunSupport for his team, Legacy only; set by Simulate before the first tick, false otherwise): his
+    // team fights its machine guns as support weapons. Read together with machineGun (SelectFireSolution, the firing stage).
+    bool supportGun = false;
     bool areaFire = false;
     bool holdingFire = false;
     float friendlyRisk = 0;
@@ -1403,6 +1450,11 @@ float AimSuppression(const Soldier& s);
 void StepSuppression(Soldier& s,const Config& c,float time,float seconds);
 float AimSeconds(const Soldier& soldier);
 float ShotSpread(const Soldier& soldier);
+// Plan 031 G (Config::gunBipod, Legacy only): a machine gunner of such a team firing set (not walking) is on his bipod.
+inline bool GunBipodSet(const Soldier& s,const Config& c,bool walking){return s.machineGun&&!walking&&GunBipod(c,s.team);}
+// The yaw cone of the round the firing stage fires now: ShotSpread, a rifle's allowance for area fire, and (plan 031 G) a
+// machine gun on its bipod times Config::gunBipodFactor. The vertical spread is unchanged.
+float FiredSpread(const Soldier& soldier,const Config& c,bool walking,bool area);
 float VerticalSpread(const Soldier& soldier);
 // Sway and recoil are aim offsets in radians: x is yaw, y is pitch, z is unused.
 // SwayOffset is a pure function of recorded state so the viewer can draw it.
@@ -1433,7 +1485,33 @@ float DepositedEnergy(float impactEnergy);
 float HitSeverity(float roll);
 float HitDamage(float impactEnergy,float severity);
 struct FireSolution { int enemy=-1; Vec3 point{}; float observedAt=-100; bool area=false; };
-FireSolution SelectFireSolution(const Soldier& soldier,const Map& map,float time);
+// Plan 031 Stage G (Config::gunSupport): a support gun's fire-control memory, one per gunner per battle, kept by the firing
+// stage (never static, never on the soldier or his copies). firedAt: when he last fired a round on each enemy (-100:
+// never). overlooks: for each enemy, the squadmates his own track of that enemy overlooks (ScoreGunThreats), counted at
+// scoredAt (0: never). lastTarget: his last burst's target, for the evidence rows only.
+struct GunSupportMemory {
+    std::array<float,UnitCount> firedAt{},overlooks{};
+    float scoredAt=0;
+    int lastTarget=-1;
+    GunSupportMemory(){firedAt.fill(-100.f);}
+};
+// What the firing stage hands SelectFireSolution for a support gun: his memory and the run values; back come the chosen
+// candidate's score, its two support terms and the number of candidates scored (the evidence rows). Only the firing stage
+// passes one: every other caller asks only whether he has a solution at all, which these terms never decide (they move a
+// candidate's score; they never admit or refuse one).
+struct GunSupportControl {
+    const GunSupportMemory* memory=nullptr;
+    float rotate=GunSupportConstants.rotate,threatBonus=GunSupportConstants.threatBonus;
+    float value=0,threatTerm=0,rotationTerm=0;
+    int candidates=0;
+};
+// control: Plan 031 G, the firing stage's support-gun terms (null everywhere else, and always with Config::gunSupport off).
+FireSolution SelectFireSolution(const Soldier& soldier,const Map& map,float time,GunSupportControl* control=nullptr);
+// Plan 031 G: counts, at most every GunSupportTuning::rescore seconds, how many of his squadmates each enemy he tracks
+// overlooks: a clear line from his own track's eye (seen within trackAge) to a mate's chest within reach, the mate where he
+// himself saw him within mateAge (himself where he stands), one who was moving counting 1 + moverWeight. Knowledge: his
+// own tracks, his own sightings of his squadmates, the map; never observer truth.
+void ScoreGunThreats(const Soldier& gunner,const Map& map,float time,float moverWeight,GunSupportMemory& memory);
 // Plan 030 M-S7 P4 (a sector payload, Config::coverSector): the threat of his sector he saw fire most recently, within
 // PinTable::sectorLoud; -1 when none (or no sector payload).
 int SectorLoud(const Soldier& soldier,float time);
@@ -1625,6 +1703,7 @@ struct Record {
     int vaults = 0; // plan 029 M-C: vaults begun (Config::vaulting); manifest only when on
     int keepDownImpacts = 0, gradedPeeks = 0, gradedSettles = 0, neighbourLifts = 0; // plan 030 M-S7 P2 / P1 / P3 counts; manifest only when on
     int impactSuppressions = 0; // plan 030 S1: (round, soldier) suppressions by a round stopped in his cover; manifest only when on
+    int gunSupportBursts = 0, gunBipodRounds = 0; // plan 031 G: support-gun bursts begun, rounds fired on the bipod; manifest only when on
 };
 // Outcome uses active combatants; location never awards points.
 bool ResolveDeathmatch(Record& record, const Frame& frame, bool projectilesPending, bool timeLimit);

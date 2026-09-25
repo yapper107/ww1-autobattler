@@ -81,6 +81,34 @@ and "All rifles" (Azure only; Ember keeps its guns, as before). A static defence
 squad's gun early: 12 defenders field two guns instead of one. Legacy's squad logic already treated
 the eighth man as the squad's support and read `machineGun` per squad, so no command code changed.
 
+### The gun as a support weapon (plan 031 Stage G, Jordan, 25 September 2026)
+
+Two per-team switches, Legacy only, both on for both teams in `battle_cli` and the game
+(`--no-gun-support`, `--no-gun-bipod`, `-ArmyNoGunSupport`, `-ArmyNoGunBipod` restore; `Config{}` keeps
+them off for the unit fixtures):
+
+- `Config::gunBipod` (`--gun-bipod`, factor `--gun-bipod-factor` 0.5): a machine gun firing set (not
+  walking) has his horizontal cone times the factor. Fire on the move keeps the full cone.
+- `Config::gunSupport` (`--gun-support`): the gunner is a support shooter for every enemy he knows (his
+  tracks and received reports, the existing area-aim rules), so he fires at known places without a fresh
+  sighting. Set, he fires `--gun-burst` 5 rounds, waits `--gun-beat` 0.5 s and chooses again. His target
+  score adds 60 m on an enemy he fired on within `--gun-rotate` 3 s (the threats take turns) and takes
+  `--gun-threat-bonus` 15 m off for each squadmate the enemy's known position overlooks (a mate he saw
+  moving within 1.5 s counts `1 + --gun-mover-weight`), recomputed at most every 0.5 s. Knowledge: his own
+  tracks and reports, his own sightings of his mates, his own rounds and the map.
+
+Measured (plan 031): one side with it wins meeting battles by +0.085 exchange and loses 1.7 fewer attackers
+in attacks; the men it saves are saved by its suppression. The gun needs 76 rounds per enemy hit instead of
+103: still a support weapon that needs its riflemen, not a nine-rifle equivalent.
+
+### Jordan's suppression design (plan 030 M-S7, the default since 25 September 2026)
+
+Graded peek (a pinned man still comes up for a round now and then), keep-down (once he is above his duck
+threshold, rounds striking his cover keep him there) and pinned neighbours (a pinned man holds a small floor of
+suppression on the squadmates at cover beside him) are on for both sides in `battle_cli` and the game
+(`--no-graded-peek`, `--no-keep-down`, `--no-pinned-neighbours`, `-ArmyNoGradedPeek`, `-ArmyNoKeepDown`,
+`-ArmyNoPinnedNeighbours` restore; `Config{}` keeps them off). Constants and their sweeps: plan 030, M-S7.
+
 ## Fire control
 
 - Settle: `0.45 s / (ergonomics * StatScale(dex)) * (1 + 3 * suppression) * (health < 55 ? 1.3 : 1)`.
@@ -90,7 +118,8 @@ the eighth man as the squad's support and read `machineGun` per squad, so no com
 - Bolt cadence: `cycleSeconds / StatScale(dex) + suppression * 0.5`; aim resets to 0.2.
 - Automatic cadence: `cyclicSeconds`, never stat-modified. Sustained fire keeps 18 rounds then a 1 s
   pause. Aimed fire is three-round bursts followed by a re-lay pause of
-  `0.6 s / (ergonomics * StatScale(dex))`.
+  `0.6 s / (ergonomics * StatScale(dex))`. With Stage G (the default since 25 Sep 2026) a set gun instead
+  fires 5-round bursts on a 0.5 s beat, the threats in turn, with the bipod cone (above).
 - Magazine: each shot decrements `magazineRemaining`; at zero the reload lasts
   `reloadSeconds / StatScale(dex)` and the magazine refills when it ends. A reload is only ever
   started by an empty magazine.

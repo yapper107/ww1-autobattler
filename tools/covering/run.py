@@ -8,6 +8,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from chain import analyse
 REPO = Path(__file__).resolve().parents[2]; PKG = REPO/'.local/covering'   # rows and scratch live outside Git
+import os
+# Each invocation works in its own scratch folder, so concurrent calls never delete each other's battles.
+RUN = os.environ.setdefault('COVER_RUN_ID', str(os.getpid())); WORK = PKG/'work'/RUN
 BIN = REPO/'.local/lab/battle-lab'
 LAYOUTS = ('building', 'spread', 'clusters')
 draw = json.loads((Path(__file__).parent/'e6_draw.json').read_text())   # maps: make_maps.py
@@ -27,7 +30,7 @@ def one(job):
     dest = PKG/'rows'/arm/f"{s['name']}.json"
     if dest.exists():
         return 'cached'
-    work = PKG/'work'/f"{arm}-{s['name']}"
+    work = WORK/f"{arm}-{s['name']}"
     shutil.rmtree(work, ignore_errors=True); work.mkdir(parents=True)
     cmd = [binary, '--legacy-ai', '--map', s['map'], '--seed', str(s['seed']), '--seconds', str(s['seconds']), '--lean', '--evaluate', '--out', str(work)]
     if 'defence' in s:
@@ -50,4 +53,4 @@ if __name__ == '__main__':
     with ProcessPoolExecutor(jobs) as pool:
         res = list(pool.map(one, work))
     print({r: res.count(r) for r in set(res)})
-    shutil.rmtree(PKG/'work', ignore_errors=True)
+    shutil.rmtree(WORK, ignore_errors=True)

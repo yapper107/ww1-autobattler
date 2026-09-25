@@ -77,7 +77,7 @@ bool GroupStation(const Soldier& officer,const Soldier& s,StationKind kind,Vec3 
         // A halt and a hold demand real cover; a bound only scores it. The line is needed by a hold
         // and the gun (a firing position or nothing) and by a bound's score, never by a halt or staff.
         bool covered=true;
-        if(kind!=StationKind::Bound&&!(covered=ProtectedAt(map,c.shelter,threat,posture)))continue;
+        if(kind!=StationKind::Bound){covered=ProtectedAt(map,c.shelter,threat,posture);if(!covered)continue;}
         const bool bears=(hold||gun||kind==StationKind::Bound)&&target&&
             Distance(c.peek,target->position)<=(hold?GroupConstants.holdRange:GroupConstants.stationRange)&&
             ClearLine3D(map,c.peek+Vec3{0,0,1.5f},{target->position.x,target->position.y,target->aimHeight});

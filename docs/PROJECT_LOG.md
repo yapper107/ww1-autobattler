@@ -18,6 +18,7 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
+| 25 Sep 2026 | Covering fire made useful: Stage G is the default — 25 September 2026 | [plan 031](../plans/031-fire-and-movement.md), [tools/covering](../tools/covering/README.md) |
 | 24 Sep 2026 | Plan 031 stage D measured, merged off; D2 approved; work pushed for the move — 24 September 2026 | [plan 031](../plans/031-fire-and-movement.md), [tools/covering](../tools/covering/README.md) |
 | 24 Sep 2026 | Plan 031 fire and movement started — 24 September 2026 | [plan 031](../plans/031-fire-and-movement.md) |
 | 24 Sep 2026 | Why covering fire does not work (W-1) — 24 September 2026 | [plan 030](../plans/030-suppression-mechanics.md) |
@@ -64,6 +65,43 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 | 16 Sep 2026 | Current playable default — user replay decision, 16 September 2026 | [AI_MAIN_BUILD](AI_MAIN_BUILD.md), plan 014 phase reviews |
 | by 16 Sep 2026 | Previous main-build decisions (history, superseded by the replay decision above) | [AI_MAIN_BUILD](AI_MAIN_BUILD.md) |
 | undated | Early project instructions — undated, before 16 September 2026 | [plans/README](../plans/README.md), [AI_RELIABILITY_RESULTS](AI_RELIABILITY_RESULTS.md) |
+
+## Covering fire made useful: Stage G is the default — 25 September 2026
+
+Jordan (24 Sep, night, leaving the session to run): "continue until cover fire actually is useful. Make any changes
+you like to the codebase ... At the end, covering fire actually helps." The PC slept from 00:15 to 08:03; the work
+resumed on his "continue". Full record: [plan 031](../plans/031-fire-and-movement.md), "Overnight 24–25 September".
+
+- **What it is worth.** Scratch upper bounds (observer truth, diagnostics only): pinning every enemy who can see our
+  moving men is worth +0.41 exchange in meeting battles and −7.1 attackers lost in attacks; making our movers
+  unhittable +0.31. Of that, what a still squadmate could reach is +0.27; the squad's gun alone +0.05.
+- **Why it did not work.** Fire below the pin line does nothing (a near miss is gone in ~1.5 s; two rifles cannot
+  pin), a pin takes seconds while a rush lasts ~2 s, and a pin hides the pinned man too. Every rifle or drill design
+  was neutral or worse: D2 (no gain; get down worse than running), D3 (prepare −0.145, halves −0.155), watcher and
+  threat targeting, stacked/keep-down/flinch/crossfire/5 m-radius worlds. D2 and D3 are not merged.
+- **What works: Stage G, the gun as a support weapon.** A bipod when set (spread ×0.5) and covering bursts (5 rounds,
+  0.5 s beat, every known enemy position in turn, those overlooking the squad first). Real build, one side: meeting
+  +0.085 [+0.054, +0.117] (120 pairs), attack −1.73 attackers lost [−2.88, −0.53] and −23 s; pre-registered
+  confirmation on 20 fresh maps +0.093 [+0.037, +0.150]. The men it saves are saved by its suppression (with its
+  rounds suppressing nobody its side's losses no longer fall). Both sides with it: a side's gun suppression saves
+  +0.88 [+0.20, +1.56] men per battle pooled (today nothing), noisy by orientation (Azure −0.03, Ember +1.78). Side-by-side videos sent (meeting and attack, nearest-to-mean
+  pairs).
+- **Jordan's ruling (25 Sep ~10:00): "Lets keep G as default."** Stage G on for both teams in battle_cli and the game
+  (`--no-gun-support`, `--no-gun-bipod`, `-ArmyNoGunSupport`, `-ArmyNoGunBipod` restore; `Config{}` off); source
+  54550b22de8bb68b; 40 lean references re-baselined (40/40; candidate90 unchanged).
+- **His suppression design on Stage G** (prototype): battles barely change, but the gun's covering fire becomes worth
+  +1.43 men and +0.068 exchange per meeting battle (significant). **Jordan (25 Sep ~10:40): "Make suppression the
+  default."** Graded peek, keep-down and pinned neighbours are on in battle_cli and the game (`--no-graded-peek`,
+  `--no-keep-down`, `--no-pinned-neighbours`, `-ArmyNoGradedPeek`, `-ArmyNoKeepDown`, `-ArmyNoPinnedNeighbours`
+  restore; `Config{}` off); the 40 references re-baselined again (archive `plan031-suppression`).
+  The real-build check did not replicate the prototype's gain (Azure side, 60 pairs: +0.15 vs −0.03 men, both n.s.).
+- **Tools** (`tools/covering/`): `NAME@BASE` arms, `analyse.py PREFIX CONTROL`, `pair.py`, the pre-registered
+  confirmation draw (`COVER_DRAW=confirm`), per-invocation work folders (concurrent runs used to delete each other's
+  battles); `battle_video.py` marks pinned men. Controls against the old gun now need `--no-gun-support --no-gun-bipod`.
+- **Jordan (25 Sep): "too many tests ... extremely tedious"; "i like the changes to testing".** Lean feature testing is
+  the rule (the gates in AGENTS.md): screen on meeting battles, one orientation, 30 maps × 1 seed, stop if flat;
+  only a finalist gets both orientations, attacks, a mechanism check and the confirmation set; traces only to
+  diagnose; agents build and gate, the overseer measures once; the full suite only before a commit.
 
 ## Plan 031 stage D measured, merged off; D2 approved; work pushed for the move — 24 September 2026
 

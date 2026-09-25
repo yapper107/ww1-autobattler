@@ -56,14 +56,13 @@ by foundations checks. Preserve knowledge boundaries and strict tactical gates.
 
 ## Current state
 
-As of 24 September 2026:
+As of 25 September 2026:
 
-- **Playable default:** Legacy Plan 023 Stage E (sim `45da1e25dd1aa9e7`, loop node `80dfe8feb994faf2`).
-  Drills, cognition (candidate90) and the neural squad policy are opt-in only.
-- **Source:** working simulator source `c945628c9538efbe`: a gun in every squad, muzzle credit,
-  concealment, prone, vaulting, retire-fallen and spawn lanes by default; plan 028/030/031 switches off.
-  Pushed on branch `covering-fire-2026-09-24` (24 Sep); `.local/` is not in Git: rebuild the lab with
-  `scripts/battle-lab.sh`, the E-6 maps with `tools/covering/make_maps.py`.
+- **Playable default:** Legacy with the 24–25 Sep defaults, on `main` (Stage E sim `45da1e25dd1aa9e7`, loop
+  node `80dfe8feb994faf2`, frozen). Drills, cognition and the neural policy are opt-in only.
+- **Source:** `0874018c441ad8c7`: a gun in every squad, muzzle credit, concealment, prone, vaulting,
+  retire-fallen, spawn lanes, Stage G and the suppression design by default; other plan 028/030/031
+  switches off. `.local/` is not in Git: rebuild the lab (`scripts/battle-lab.sh`), E-6 maps (`make_maps.py`).
 - **Binaries:** `.local/lab/battle-lab` (lab); `.local/lab/battle-lab-train` (PGO+LTO,
   `scripts/build-train-lab.sh`, neural pipeline default); frozen training binary
   `.local/plan024/long-rl/bin/battle-lab` `d73667841df73faa` (sha256
@@ -72,18 +71,17 @@ As of 24 September 2026:
   `.local/plan029/baseline/battle-lab` `321600b6d945e49c` (village/city2 neural evaluation).
 - **Neural runs:** plans [025](plans/025-stronger-learning-run.md) and [027](plans/027-schema4-training-run.md)
   finished with no reliable gain; neural training is paused. [Plan 028](plans/028-covering-fire.md)
-  (covering-fire repair) stopped by Jordan's stop rule: no switch combination beats Legacy; all off. Capacity file `.local/neural/max_jobs`.
-- **In progress:** [plan 031](plans/031-fire-and-movement.md): drill D measured (no gain), merged off; D2 next
-  (rush fire, sheltered gun, get-down switch); tools in [tools/covering](tools/covering/README.md).
+  (covering-fire repair) stopped by Jordan's stop rule (no combination beat Legacy); all off. Capacity file `.local/neural/max_jobs`.
+- **Plan 031:** Stage G default; D, D2, D3 no gain (D merged off); [tools/covering](tools/covering/README.md).
 - **Models:** `models/squad/` (`plan024-imitation-v1`, `plan024-legacy-rl-v1`,
   `plan024-legacy-rl-duration-v1`); none promoted.
 - **Maps:** four generated families in `Unreal/Config/GeneratedMaps/` (`city`, `trenches`, `village`,
-  `city2`; village and city2 seed 17 accepted by Jordan 23 Sep 2026, golden-byte tested). Training
+  `city2`; village and city2 seed 17 accepted 23 Sep 2026, golden-byte tested). Training
   701–760; development 901–930 (opened); 1001–1015 and 1101–1125 inspected; village/city2 development
   1201–1220, validation ≥ 1231 by salt.
-- **Guards:** v8 (`tools/loop/guards.json`; village and city2 sets, thresholds unchanged; v7 preserved).
-  Loop roots `2730fe73fadce803-legacy-v8` (+0.809) and `-drills-v8` **predate the 24 Sep defaults: re-root
-  before the next loop generation.** The neural worker still fights one gun per platoon (`Config{}`).
+- **Guards:** v8 (`tools/loop/guards.json`; village and city2 sets; v7 preserved).
+  Loop roots `2730fe73fadce803-legacy-v8` (+0.809) and `-drills-v8` **predate the 24–25 Sep defaults:
+  re-root before the next loop generation.** The neural worker still fights one gun per platoon (`Config{}`).
 
 ## Standing rulings
 
@@ -122,6 +120,9 @@ Jordan's rulings in force, dated and linked to their source (`L:` = [docs/PROJEC
   on** ("switch the switches to baseline"): the game and `battle_cli` default; `--platoon-mg`,
   `--no-concealment`, `--no-prone`, `--no-vaulting`, `--no-retire-fallen` restore; `Config{}` keeps the
   old values for unit fixtures. [L](docs/PROJECT_LOG.md)
+- (25 Sep 2026) **Stage G and the suppression design (graded peek, keep-down, pinned neighbours) are the
+  default**; `--no-gun-*`, `--no-graded-peek`/`-keep-down`/`-pinned-neighbours`, `-ArmyNo*` restore;
+  `Config{}` off. [plan 031](plans/031-fire-and-movement.md)
 - (24 Sep 2026, [plan 029](plans/029-village-verticality.md)) **Towns are out of the runs**: measurements,
   loop sets and training use the village and city2 families; the old town family stays only for the 40
   historical references and history.
@@ -145,11 +146,12 @@ Jordan's rulings in force, dated and linked to their source (`L:` = [docs/PROJEC
 
 ## Verification gates
 
-A feature test takes **5–10 minutes end to end** (Jordan, 24 Sep 2026): only the checks the change
-needs (switch off by default → 40/40 + its own groups; exact optimization → 40/40 + replays; default
-change → re-baseline + touched groups + Unreal build if the game changed); one question per measurement,
-about 200 battles at most on a fixed map set, untraced unless needed, stopped once the answer is clear; the
-full suite only before a commit. Report what ran; code tests are not tactical or visual acceptance.
+A feature test takes **5–10 minutes end to end** (Jordan, 24–25 Sep 2026): only the checks the change
+needs (prototype → one digest check; switch off by default → 40/40 + its groups; exact optimization →
+40/40 + replays; default change → re-baseline + touched groups + Unreal build if the game changed). Screen:
+meeting battles, one orientation, 30 maps × 1 seed; stop if flat. Finalists only: both orientations,
+attacks, a mechanism check, the confirmation set. Traces only to diagnose; agents build and gate, the
+overseer measures. Full suite only before a commit. Code tests are not acceptance.
 
 - `scripts/test-sim.sh` — full Linux suite, including `--neural`.
 - `python3 -m unittest discover -s tests` — Python tests (includes `tests/test_project_docs.py`).
@@ -171,21 +173,18 @@ full suite only before a commit. Report what ran; code tests are not tactical or
 
 Plans, current first:
 
-- [031](plans/031-fire-and-movement.md) fire and movement — D merged off, D2 next.
+- [031](plans/031-fire-and-movement.md) fire and movement — Stage G default.
 - [030](plans/030-suppression-mechanics.md) suppression and covering fire, W-1 — switches off.
 - [029](plans/029-village-verticality.md) villages, verticality, city2 — landed.
 - [026](plans/026-ai-findings-fixes.md) AI findings.
 - [025](plans/025-stronger-learning-run.md) stronger-learning neural run — finished.
-- [024](plans/024-neural-squad-layer.md) neural squad layer (reviews, longer RL, execution audit,
-  performance work under `plans/024-*`).
-- [023](plans/023-the-rifle-group-moves-as-one.md) rifle group moves as one — landed; the default.
-- [022](plans/022-stamina-and-sprint.md) stamina and sprint — landed.
-- [021](plans/021-legacy-attack-by-bounds.md) Legacy attack by bounds — inside 023.
-- [020](plans/020-threat-aware-paths-and-rejoin.md) threat-aware paths — landed.
-- [019](plans/019-fire-on-the-move.md) fire on the move — landed.
-- [018](plans/018-static-defence-and-loop-roots.md) static defence and the loop — every generation at its end.
-- [017](plans/017-stat-system.md) stats and weapons — complete on Linux.
-- [016](plans/016-improvement-loop.md) improvement loop, with map generator reviews.
+- [024](plans/024-neural-squad-layer.md) neural squad layer (reviews, RL, audits, performance: `plans/024-*`).
+- [023](plans/023-the-rifle-group-moves-as-one.md) rifle group moves as one — the default.
+- Landed: [022](plans/022-stamina-and-sprint.md) stamina, [021](plans/021-legacy-attack-by-bounds.md) bounds
+  (in 023), [020](plans/020-threat-aware-paths-and-rejoin.md) threat paths, [019](plans/019-fire-on-the-move.md) moving fire.
+- [018](plans/018-static-defence-and-loop-roots.md) static defence and the loop.
+- [017](plans/017-stat-system.md) stats and weapons — complete.
+- [016](plans/016-improvement-loop.md) improvement loop, map generator reviews.
 - [015](plans/015-squad-initiative-amendment.md) squad initiative — stopped at Step E.
 - [014](plans/014-battle-drill-controller.md) battle-drill controller — experimental.
 - [006](plans/006-modular-character-production.md) modular characters — proposal.

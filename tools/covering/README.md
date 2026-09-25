@@ -47,5 +47,25 @@ static attack (600 s, 12 defenders, E-6 layouts). Examples of `run.py` flags: `-
 - `python3 tools/covering/run.py M,S 12` (the chain baseline, about 75 s);
 - `python3 tools/covering/outcome.py .local/lab/battle-lab N,SN 107,108 12`.
 
+Since 25 Sep 2026 the lab default includes Stage G (the gun as a support weapon) and Jordan's suppression design
+(graded peek, keep-down, pinned neighbours). The recorded W-1 and plan 031 D/D2/D3 baselines were measured without
+them: add `--no-gun-support --no-gun-bipod --no-graded-peek --no-keep-down --no-pinned-neighbours` to compare.
+
+**Harness conveniences (25 Sep 2026).**
+- `outcome.py` arms may be written `NAME@BASE` (rows under NAME, the battle set up as BASE, e.g. `xA@A`, `oA@N`);
+  extra flags and the environment apply to every arm of the call.
+- `analyse.py PREFIX CONTROL` pairs the treated arms `PREFIX+A/E/SA` with the controls `CONTROL+N/SN`.
+- `pair.py TREATED CONTROL [SIDE]` compares any two arms (win share, own and enemy lost, exchange, duration).
+- `COVER_DRAW=confirm` switches `make_maps.py` and `outcome.py` to the pre-registered confirmation set
+  (`confirm_draw.json`: 10 village + 10 city2 fresh maps, drawn before any result on 24 Sep; battle seeds 111,112;
+  hashes in `confirm_maps.sha256`). Give its arms their own names.
+- Every `outcome.py` / `run.py` call works in its own scratch folder (`COVER_RUN_ID`), so concurrent calls no longer
+  delete each other's battles.
+
+**Feature testing, lean (Jordan's ruling, 25 Sep 2026).** Screen an idea on meeting battles only, one
+orientation, 30 maps × one seed (`outcome.py BIN xA@A 107 8 --flag` against `N`), and stop there if it is flat.
+Only a finalist gets both orientations, the attack arm, a mechanism check and the confirmation set; traced chains
+only to diagnose.
+
 Findings are recorded in `plans/030-suppression-mechanics.md` (W-1) and
 `plans/031-fire-and-movement.md`.

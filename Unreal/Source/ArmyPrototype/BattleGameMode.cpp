@@ -70,6 +70,15 @@ void ABattleGameMode::BeginPlay() {
     Settings.vaulting=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoVaulting"));
     Settings.retireFallen=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoRetireFallen"));
     Settings.spawnLanes=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoSpawnLanes"));
+    // Jordan, 25 Sep 2026 ("Lets keep G as default"): plan 031 Stage G, the gun as a support weapon (covering bursts and
+    // a bipod when set), for both teams; -ArmyNoGunSupport, -ArmyNoGunBipod turn them off.
+    Settings.gunSupport=FParse::Param(FCommandLine::Get(),TEXT("ArmyNoGunSupport"))?0:3;
+    Settings.gunBipod=FParse::Param(FCommandLine::Get(),TEXT("ArmyNoGunBipod"))?0:3;
+    // Jordan, 25 Sep 2026 ("Make suppression the default"): his suppression design (plan 030 M-S7: graded peek,
+    // keep-down, pinned neighbours); -ArmyNoGradedPeek, -ArmyNoKeepDown, -ArmyNoPinnedNeighbours turn it off.
+    Settings.gradedPeek=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoGradedPeek"));
+    Settings.keepDown=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoKeepDown"));
+    Settings.pinnedNeighbours=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoPinnedNeighbours"));
     if(army::TypedController(Settings)){Settings.foundations=true;FParse::Value(FCommandLine::Get(),TEXT("ArmyScenario="),CognitiveScenario);CognitiveScenario=FMath::Clamp(CognitiveScenario,0,Settings.drills?7:43);}
     FString GeneratedFamily; if(FParse::Value(FCommandLine::Get(),TEXT("ArmyGenerated="),GeneratedFamily)&&GeneratedFamily==TEXT("F1")){Settings.family=army::ScenarioFamily::F1;CognitiveScenario=0;Settings.terrain=army::Terrain::FracturedWorks;}
     FParse::Value(FCommandLine::Get(),TEXT("ArmyGenSeed="),Settings.genSeed);

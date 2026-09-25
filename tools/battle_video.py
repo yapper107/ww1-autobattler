@@ -8,7 +8,9 @@ enemy has a clear line of sight on the man in that frame (observer truth, the sa
 fights_from_cover guard counts). Defenders are orange squares. Walls are dark, low cover is tan.
 A corporal holding a Flank order is joined to its goal by a line. Rounds fired on the move (plan 019)
 are thick green lines; a green ring marks a man walking a covered detour instead of the shortest path;
-a bold amber ring with a streak behind him marks a sprinting man, and the focus squad's mean stamina is read out in the header (plan 022). Needs Pillow and ffmpeg.
+a bold amber ring with a streak behind him marks a sprinting man, and the focus squad's mean stamina is read out in the header (plan 022).
+A thick grey ring marks a man held down by fire (suppression above 0.5, about his duck threshold), on either side,
+and each panel counts both sides' pinned man-seconds (plan 031). Needs Pillow and ffmpeg.
 """
 from __future__ import annotations
 import argparse, json, subprocess, sys, shutil
@@ -20,7 +22,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 FLANK = 7
 SQUAD_BLUES = [(30, 90, 200), (0, 150, 190), (90, 70, 200), (20, 130, 120)]
-HEADER = 96
+HEADER = 116
+PINNED = 0.5
 
 
 def font(size):
@@ -38,7 +41,7 @@ def load(run, start, end, stride):
             continue
         if frame['time'] > end:
             break
-        frames.append((frame['time'], [(s['id'], s['team'], s['squad'], bool(s['alive']), s['position'][0], s['position'][1], bool(s['observer_exposed']), s['task'], s['goal'][0], s['goal'][1], bool(s.get('covered_path')), bool(s.get('sprinting')), float(s.get('stamina') or 0), bool(s.get('winded'))) for s in frame['soldiers']]))
+        frames.append((frame['time'], [(s['id'], s['team'], s['squad'], bool(s['alive']), s['position'][0], s['position'][1], bool(s['observer_exposed']), s['task'], s['goal'][0], s['goal'][1], bool(s.get('covered_path')), bool(s.get('sprinting')), float(s.get('stamina') or 0), bool(s.get('winded')), float(s.get('suppression') or 0)) for s in frame['soldiers']]))
     shots = [json.loads(line) for line in open(run/'shots.jsonl') if line.strip()]
     boxes = []
     for line in open(run/'battlefield.army'):
@@ -103,6 +106,7 @@ def main():
     moving_rounds = [0]*len(runs)
     covered_seconds = [0.0]*len(runs)
     sprint_seconds = [0.0]*len(runs)
+    pinned_seconds = [[0.0, 0.0] for _ in runs]
     streaks = [{} for _ in runs]
     focus_stamina = [[] for _ in runs]
     focus_winded = [0]*len(runs)
@@ -128,7 +132,7 @@ def main():
                 if s['hit']:
                     draw.ellipse([b[0] - 5, b[1] - 5, b[0] + 5, b[1] + 5], outline=(200, 0, 0, 255), width=2)
             attackers = defenders = 0
-            for sid, team, squad, alive, x, y, exposed, task, gx, gy, covered, sprinting, stamina, winded in soldiers:
+            for sid, team, squad, alive, x, y, exposed, task, gx, gy, covered, sprinting, stamina, winded, suppression in soldiers:
                 c = px(x, y, off)
                 if not (off <= c[0] < off + args.panel):
                     attackers += int(alive and team == 0); defenders += int(alive and team == 1)
@@ -136,6 +140,10 @@ def main():
                 if not alive:
                     draw.line([c[0] - 3, c[1] - 3, c[0] + 3, c[1] + 3], fill=(120, 120, 120, 255)); draw.line([c[0] - 3, c[1] + 3, c[0] + 3, c[1] - 3], fill=(120, 120, 120, 255))
                     continue
+                pinned = suppression > PINNED
+                if pinned:
+                    pinned_seconds[r][team] += stride*step
+                    draw.ellipse([c[0] - 10, c[1] - 10, c[0] + 10, c[1] + 10], outline=(90, 90, 90, 255), width=3)
                 if team == 1:
                     defenders += 1
                     draw.rectangle([c[0] - 5, c[1] - 5, c[0] + 5, c[1] + 5], fill=(235, 120, 20, 255), outline=(90, 40, 0, 255))
@@ -184,7 +192,8 @@ def main():
             # Keep the established diagnostics visible inside each comparison panel.
             lines = [f't = {t:5.0f} s    {args.opponent_label} left {defenders}    Azure left {attackers}',
                      f'{who} seen: {exposed_seconds[r]:.0f} soldier-seconds    fired on the move: {moving_rounds[r]}',
-                     f'covered detours: {covered_seconds[r]:.0f} s    sprinting: {sprint_seconds[r]:.0f} s' + stamina_note]
+                     f'covered detours: {covered_seconds[r]:.0f} s    sprinting: {sprint_seconds[r]:.0f} s' + stamina_note,
+                     f'pinned (grey ring): {args.opponent_label} {pinned_seconds[r][1]:.0f} soldier-seconds    Azure {pinned_seconds[r][0]:.0f}']
             for line_number, line in enumerate(lines):
                 draw.text((off + 12, 34 + 19*line_number), line, font=small, fill=(40, 40, 40, 255))
             if r:

@@ -489,6 +489,10 @@ float ShotSpread(const Soldier& s) {
     const float m=SpreadWalk(s);
     return s.gun.baseDeviation+0.040f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+AimSuppression(s)*0.10f*m;
 }
+float FiredSpread(const Soldier& s,const Config& c,bool walking,bool area){
+    const bool automatic=s.gun.action==WeaponAction::Automatic;
+    return (ShotSpread(s)+(!automatic&&area?.015f:0.f))*(GunBipodSet(s,c,walking)?c.gunBipodFactor:1.f);
+}
 float VerticalSpread(const Soldier& s) {
     const float m=SpreadWalk(s);
     return 0.014f/(s.gun.sightQuality*StatScale(s.stats.Get(Stat::Perception)))*m+AimSuppression(s)*0.024f*m;
@@ -603,10 +607,31 @@ int SectorLoud(const Soldier& s,float time){
         if(time-fired<=PinRules().sectorLoud&&fired<=time&&fired>at){at=fired;loud=t.enemy;}}
     return loud;
 }
-FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
+void ScoreGunThreats(const Soldier& s,const Map& map,float time,float moverWeight,GunSupportMemory& memory){
+    const auto& k=GunSupportConstants;
+    if(memory.scoredAt!=0&&time>=memory.scoredAt&&time-memory.scoredAt<k.rescore)return;
+    memory.scoredAt=std::max(time,1e-3f);memory.overlooks.fill(0);
+    for(int e=0;e<UnitCount;++e){
+        const Contact& track=s.contacts[e];if(!track.known||time-track.observedAt>k.trackAge)continue;
+        const Vec3 eye{track.position.x,track.position.y,track.aimHeight};
+        for(int m=s.squad*SquadSize;m<(s.squad+1)*SquadSize;++m){
+            Vec3 at;bool moving=false;
+            if(m==s.id)at=s.position;
+            else{const Contact& mate=s.allies[m];if(!mate.known||time-mate.observedAt>k.mateAge)continue;
+                at=mate.position;moving=Length(s.allyVelocity[m])>=k.moverSpeed&&time-mate.observedAt<=k.moverAge;}
+            if(Distance(at,track.position)>k.reach)continue;
+            if(ClearLine3D(map,eye,at+Vec3{0,0,k.chest}))memory.overlooks[size_t(e)]+=moving?1+moverWeight:1.f;
+        }
+    }
+}
+FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time,GunSupportControl* control) {
     FireSolution best;float score=1e9f;
     if(s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)return best;
-    const bool baseSupport=s.assignment.task==Task::Overwatch||s.assignment.task==Task::BoundCover||(s.machineGun&&s.assignment.task==Task::RearGuard);
+    // Plan 031 G (Soldier::supportGun: Config::gunSupport for his team, Legacy only): his team's machine gunner is a support
+    // shooter for every enemy he knows, whatever his task: his own tracks and the reports he has received, under the
+    // support shooters' usable and area-aim rules below (a fresh sighting is not needed; an unknown enemy is never fired on).
+    const bool baseSupport=s.assignment.task==Task::Overwatch||s.assignment.task==Task::BoundCover||(s.machineGun&&s.assignment.task==Task::RearGuard)||
+        (s.supportGun&&s.machineGun);
     const Vec3 muzzle{s.position.x,s.position.y,s.position.z+Posture(s.stance).muzzle};
     const bool sectorCurrent=s.assignment.id&&time>=s.supportSector.observedAt&&time-s.supportSector.observedAt<=8;
     // Plan 028 Stage 1d: a live Legacy covering payload makes him a support shooter for its enemy only.
@@ -699,11 +724,20 @@ FireSolution SelectFireSolution(const Soldier& s,const Map& map,float time) {
             if(!ClearLine3D(map,muzzle,{muzzle.x+direction.x*2,muzzle.y+direction.y*2,muzzle.z}))continue;
         }
         float value=distance+(ct.visible?0.f:12.f)+(i==s.aimTarget?-10.f:0.f);
+        // Plan 031 G (the firing stage's support gun only): the enemy whose known position overlooks more of his squad is
+        // preferred, and one he fired on within the rotation window is passed over for the others (the threats in turn).
+        float overlookTerm=0;bool rotated=false;
+        if(control){
+            overlookTerm=control->threatBonus*control->memory->overlooks[size_t(i)];value-=overlookTerm;
+            rotated=time-control->memory->firedAt[size_t(i)]<control->rotate;if(rotated)value+=GunSupportConstants.rotatePenalty;
+            ++control->candidates;
+        }
         if(std::find(priorities.begin(),priorities.end(),i)!=priorities.end())value-=80;
         if(i==preferred)value-=30;
         if(!worked.empty()&&i==preferred)value-=170; // P4: the sector's turn decides, not the distance
         if(ShouldHoldFire(s,FriendlyFireRisk(s,map,target,time)))value+=1000;
-        if(value<score) {score=value;best={i,target,ct.observedAt,supportHere||!ct.visible};}
+        if(value<score) {score=value;best={i,target,ct.observedAt,supportHere||!ct.visible};
+            if(control){control->value=value;control->threatTerm=-overlookTerm;control->rotationTerm=rotated?GunSupportConstants.rotatePenalty:0.f;}}
     }
     // Reuse requested bounded area fire (fixture 27), but the authority here is
     // an explicit drills assault-support contract rather than a fresh sighting.
@@ -1531,6 +1565,21 @@ bool DeliveryLineClear(const Map& map,const Config& c,const Shot& shot,const Sol
     const Vec3 from=!shot.flight.empty()?shot.flight.front().position:shot.start+Vec3{0,0,Posture(shooter.stance).muzzle};
     return ClearLine3DSolid(map,from,end+(from-end)*.001f);
 }
+// Plan 031 G evidence (kind gun_support, reason burst; traced runs only, never read back): a support gun begins a burst.
+// target; seen: his own track of that man is in sight (otherwise he fires on a known place); track_age: of the position
+// fired on; distance: to it on the ground; overlooks: the squadmates that enemy's known position overlooks by the gunner's
+// count, and threat_term: what it took off the score (-gunThreatBonus each); last_fired: seconds since his last round on
+// it (-1: none this battle), rotation_term: the penalty for a round within gunRotate; score: the chosen candidate's whole
+// score (the lowest is chosen); candidates: the enemies scored; previous: his last burst's target (-1: none).
+static void TraceGunBurst(Diagnostics* d,const Soldier& s,const SquadCommand& cmd,float time,const FireSolution& target,const GunSupportControl& control,const GunSupportMemory& memory){
+    if(!d||!d->options.enabled||target.enemy<0||target.enemy>=UnitCount)return;
+    const size_t e=size_t(target.enemy);const float fired=memory.firedAt[e];
+    std::ostringstream o;o<<std::setprecision(6)<<",\"target\":"<<target.enemy<<",\"seen\":"<<s.contacts[e].visible<<",\"track_age\":"<<(time-target.observedAt)
+        <<",\"distance\":"<<Length({target.point.x-s.position.x,target.point.y-s.position.y,0})<<",\"overlooks\":"<<memory.overlooks[e]
+        <<",\"threat_term\":"<<control.threatTerm<<",\"last_fired\":"<<(fired>=0?time-fired:-1.f)<<",\"rotation_term\":"<<control.rotationTerm
+        <<",\"score\":"<<control.value<<",\"candidates\":"<<control.candidates<<",\"previous\":"<<memory.lastTarget<<",\"rounds\":"<<s.rounds;
+    TraceCoverSupply(d,s,cmd,time,"gun_support","burst",o.str());
+}
 Record Simulate(const Config& input,const DiagnosticOptions& options,const std::vector<GeometryEdit>& edits,int encounter) {
     if((input.neuralPolicy||input.policyCandidates||input.externalPolicy||input.policySchema)&&
         (input.cognition||input.drills||input.foundations||input.recoveryFixture))
@@ -1618,6 +1667,10 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     if(options.keepFrames)r.frames.reserve(size_t(c.maxSeconds/FrameSeconds)+2);
     auto recordFrame=[&](const Frame& frame){if(options.frameSink)options.frameSink(r,frame);if(options.keepFrames||r.frames.empty())r.frames.push_back(frame);};
     CheckWeaponConsistency(f);
+    // Plan 031 G (Config::gunSupport, Legacy only): the teams whose guns fight as support weapons, and one fire-control memory
+    // per soldier for this battle (only a machine gunner's is ever used). Nothing is allocated or set with the switch off.
+    std::unique_ptr<std::array<GunSupportMemory,UnitCount>> gunMemories;
+    if(GunSupportAny(c)){gunMemories=std::make_unique<std::array<GunSupportMemory,UnitCount>>();for(auto& s:f.soldiers)s.supportGun=GunSupport(c,s.team);}
     recordFrame(f);Random rng(c.seed);
     std::array<Runtime,UnitCount> run;
     std::vector<Projectile> bullets;TrafficRuntime traffic;auto passages=BuildingPassages(r.map);
@@ -2153,12 +2206,21 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             const Vec3 muzzle{s.position.x,s.position.y,s.position.z+Posture(s.stance).muzzle};
             const bool automatic=s.gun.action==WeaponAction::Automatic;
             const float dexterity=StatScale(s.stats.Get(Stat::Dexterity));
-            const bool sustained=automatic&&(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard||(s.assignment.drillInstance>0&&s.assignment.teamPlan.assaultAreaFire&&s.assignment.task==Task::BoundCover));
+            // Plan 031 G (Config::gunSupport for his team; Soldier::supportGun is never set otherwise): a support gun keeps his
+            // fire-control memory here, and set (not walking) he fires the support pattern: sustained bursts of gunBurst rounds,
+            // a pause of gunBeat after each, the next burst's target chosen afresh.
+            GunSupportMemory* gunMemory=gunMemories&&s.supportGun&&s.machineGun?&(*gunMemories)[size_t(s.id)]:nullptr;
+            const bool supportPattern=gunMemory&&!walking;
+            const bool sustained=supportPattern||(automatic&&(s.assignment.task==Task::Overwatch||s.assignment.task==Task::RearGuard||(s.assignment.drillInstance>0&&s.assignment.teamPlan.assaultAreaFire&&s.assignment.task==Task::BoundCover)));
             if((s.assignment.drillInstance>0&&s.assignment.teamPlan.liftFire)||f.time-a.burst.observedAt>6||(s.assignment.id&&s.assignment.teamPlan.liftFire&&Distance(a.burst.point,s.assignment.teamPlan.liftedSector)<12))a.burst={};
             // Plan 030 M-S7 P4 (a sector payload, Config::coverSector only): a threat of the sector he saw fire just now
             // takes the next burst at once, so the burst he is holding on another is broken off.
             if(sustained&&a.burst.enemy>=0&&s.assignment.fireSector){const int loud=SectorLoud(s,f.time);if(loud>=0&&loud!=a.burst.enemy)a.burst={};}
-            FireSolution solution=SelectFireSolution(s,r.map,f.time);
+            // Plan 031 G: a support gun's target score reads how many of his squadmates each enemy he tracks overlooks (counted
+            // again at most every GunSupportTuning::rescore) and when he last fired on each.
+            GunSupportControl gunControl;
+            if(gunMemory){ScoreGunThreats(s,r.map,f.time,c.gunMoverWeight,*gunMemory);gunControl.memory=gunMemory;gunControl.rotate=c.gunRotate;gunControl.threatBonus=c.gunThreatBonus;}
+            FireSolution solution=SelectFireSolution(s,r.map,f.time,gunMemory?&gunControl:nullptr);
             if(sustained&&a.burst.enemy>=0&&f.time-a.burst.observedAt<=6)solution=a.burst;
             if(solution.enemy<0) {UpdateAim(s,-1,{},TickSeconds);a.burst={};s.areaFire=false;s.holdingFire=false;s.friendlyRisk=0;s.movingFire=false;continue;}
             // Walking fire goes at a man he sees or saw duck in the last two seconds (the same
@@ -2175,14 +2237,18 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 s.holdingFire=true;UpdateAim(s,-1,{},TickSeconds);a.burst={};s.movingFire=false;continue;
             }
             s.holdingFire=false;
-            if(sustained&&a.burst.enemy<0)a.burst=solution;
+            if(sustained&&a.burst.enemy<0){a.burst=solution;
+                // Plan 031 G: a support gun begins a burst (evidence: the count, and a row with the target's terms when traced).
+                if(supportPattern){++r.gunSupportBursts;TraceGunBurst(r.diagnostics.get(),s,f.command[s.squad],f.time,solution,gunControl,*gunMemory);gunMemory->lastTarget=solution.enemy;}}
             s.areaFire=solution.area;
             int target=solution.enemy;
             Vec3 aim{solution.point.x,solution.point.y,solution.point.z-1.5f};
             float best=Length({aim.x-s.position.x,aim.y-s.position.y,0});
             UpdateAim(s,target,aim,TickSeconds,gradedShot);
             if(a.cooldown>0||s.aim<AimReady(s))continue;
-            const float spread=ShotSpread(s)+(!automatic&&solution.area?.015f:0.f);
+            // Plan 031 G (Config::gunBipod for his team, Legacy only): a machine gun fired set is on its bipod (FiredSpread).
+            const float spread=FiredSpread(s,c,walking,solution.area);
+            if(GunBipodSet(s,c,walking))++r.gunBipodRounds;
             // Plan 030 M-S4: an automatic gunner holds against the recoil he felt on his last round.
             const bool compensate=c.gunnerCompensation&&automatic;
             const Vec3 off=SwayOffset(s,f.time)+(compensate?HeldRecoil(s):s.recoil);
@@ -2203,7 +2269,10 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             // Cyclic rate is mechanical and never stat-modified; burst structure is behaviour.
             a.cooldown=automatic||s.gun.action==WeaponAction::SemiAuto?s.gun.cyclicSeconds:
                 s.gun.cycleSeconds/dexterity*(walking?MovePenalty(s.gun.moving.cadence,dexterity):1.f)+s.suppression*0.5f;
-            if(sustained&&s.rounds%18==0){a.cooldown=1.f;a.burst={};}
+            // Plan 031 G: a support gun remembers the round on its target; after gunBurst rounds he pauses gunBeat and drops the
+            // burst's target (the next is chosen afresh, the one just fired on now passed over for gunRotate).
+            if(supportPattern){if(solution.enemy>=0)gunMemory->firedAt[size_t(solution.enemy)]=f.time;if(s.rounds%std::max(1,c.gunBurst)==0){a.cooldown=c.gunBeat;a.burst={};}}
+            else if(sustained&&s.rounds%18==0){a.cooldown=1.f;a.burst={};}
             if(automatic&&!sustained) {
                 // Hip bursts of burstMin..burstMax rounds with the usual pause. The length is a
                 // deterministic function of the shooter and his burst count: no new random draw.
