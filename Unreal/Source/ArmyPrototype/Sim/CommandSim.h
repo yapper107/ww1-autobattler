@@ -29,7 +29,9 @@ struct CommandMessage {
 };
 struct CommandRuntime {
     float reportDelay=MessageDelay;
-    const std::array<Map,UnitCount>* geometryViews=nullptr;
+    // Each soldier's own geometry as he knows it (the array is null while no change has happened). Pointers (plan 033):
+    // men who know the same changes share one map object and its caches.
+    const std::array<const Map*,UnitCount>* geometryViews=nullptr;
     Diagnostics* diagnostics=nullptr;
     ReactionRuntime reactions;
     PlatoonRuntime platoon;

@@ -10,7 +10,8 @@
 namespace army {
 float ReactionSeconds(const Soldier& s,ReactionKind kind) {
     float factor=kind==ReactionKind::UnderFire?0.5f:(kind==ReactionKind::Order||kind==ReactionKind::PlatoonOrder)?1.25f:kind==ReactionKind::Sight?1.f:1.1f;
-    return s.reactionBase*factor*(1+s.suppression*1.5f)*(s.health<55?1.3f:1.f);
+    // Plan 032: a deafened man (Config::grenades) reacts reactionScale times slower; it is exactly 1 otherwise.
+    return s.reactionBase*factor*(1+s.suppression*1.5f)*(s.health<55?1.3f:1.f)*s.reactionScale;
 }
 const char* ReactionName(ReactionKind k) {
     const char* names[]={"SIGHTING","ORDER","REPORT","READINESS","UNDER FIRE","INJURY REPORT","FIRE REPORT","FRIENDLY","BLOCKED LANE","SQUAD REPORT","PLATOON ORDER","MOVEMENT BLOCKED","COVERING FIRE REPORT","TASK STATUS","SUPPORT SECTOR","AREA OBSERVATION","SUPPORT DEPLOYMENT","SQUAD RADIO"};return names[int(k)];

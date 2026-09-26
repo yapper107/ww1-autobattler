@@ -212,6 +212,51 @@ Map MakeSkirmishMap() {
     for(Vec3 p:std::vector<Vec3>{{-22,4},{-58,-10},{-88,8},{-44,86},{-18,-72}})coverPair(p,{1.0f,0.65f},true);
     PrepareGeometry(m);return m;
 }
+// The cover one obstacle offers, appended to `out` (CoverPositions' per-obstacle step; plan 033 re-derives the catalogue
+// one obstacle at a time with it). Linked (imported) maps sample its physical faces with the soldiers' walkability and
+// protection checks; authored maps take fixed spots around it.
+static void LinkedObstacleCover(const Map& m,const Obstacle& o,std::vector<CoverPosition>& positions){
+    if(!((o.blocksMovement||o.halfCover)&&!o.concealment))return;
+    uint64_t slot=0;
+    for(int axis=0;axis<2;++axis)for(float sign:{-1.f,1.f}){
+        const float extent=axis?o.half.x:o.half.y,across=axis?o.half.y:o.half.x;
+        const int count=std::max(1,int(std::ceil(extent*2/3.f)));
+        Vec3 normal=axis?Vec3{0,sign,0}:Vec3{sign,0,0};
+        for(int i=0;i<count;++i){
+            const uint64_t id=2000000+o.id*2048+(slot++);
+            const float along=-extent+(i+.5f)*extent*2/count;
+            Vec3 p=o.center+normal*(across+.65f)+(axis?Vec3{along,0,0}:Vec3{0,along,0});
+            if(!Walkable(m,p))continue;
+            const Vec3 threat=p-normal*4;
+            bool crouch=o.height<1.86f,prone=false;
+            if(!ProtectedAt(m,p,threat,crouch?Stance::Crouched:Stance::Standing)){
+                // Plan 029 M-A2 (Config::prone only, through the battle's map copy; ARMYMAP 2 maps only):
+                // behind an obstacle too low to shelter a crouched man (a crater rim), prone cover if it
+                // protects him lying down.
+                if(crouch&&m.proneCover&&m.formatVersion>=2&&o.height<.9f&&ProtectedAt(m,p,threat,Stance::Prone))prone=true;
+                else if(crouch||!ProtectedAt(m,p,threat,Stance::Crouched))continue;
+                crouch=true;
+            }
+            Vec3 peek=p;
+            if(!o.halfCover){
+                const float corner=(along>=0?1.f:-1.f)*(extent+.65f);
+                Vec3 candidate=o.center+normal*(across+.65f)+(axis?Vec3{corner,0,0}:Vec3{0,corner,0});
+                if(Walkable(m,candidate)&&ClearLine(m,p,candidate,.48f))peek=candidate;
+            }
+            positions.push_back({p,peek,crouch,false,id,o.id,prone});
+        }
+    }
+}
+static void AuthoredObstacleCover(const Obstacle& o,std::vector<CoverPosition>& positions){
+    if(!(!o.building&&!o.concealment&&(o.blocksMovement||(o.halfCover&&o.center.z<0))))return;
+    if(o.halfCover)for(float side:{-1.f,1.f})for(float along:{-0.55f,0.f,0.55f}) {
+        Vec3 p=o.center+(o.half.y>o.half.x?Vec3{side*(o.half.x+0.6f),along*o.half.y}:Vec3{along*o.half.x,side*(o.half.y+0.6f)});
+        positions.push_back({p,p,true,false,o.id*16+uint64_t((side>0?3:0)+(along<0?0:along>0?2:1))+1,o.id});
+    } else for(float side:{-1.f,1.f})for(float edge:{-1.f,1.f}) {
+        positions.push_back({o.center+Vec3{side*(o.half.x+0.6f),edge*std::max(0.f,o.half.y-1)},o.center+Vec3{side*(o.half.x+0.6f),edge*(o.half.y+2)},false,false,o.id*16+uint64_t((side>0?4:0)+(edge>0?2:0))+1,o.id});
+        positions.push_back({o.center+Vec3{edge*std::max(0.f,o.half.x-1),side*(o.half.y+0.6f)},o.center+Vec3{edge*(o.half.x+2),side*(o.half.y+0.6f)},false,false,o.id*16+uint64_t((side>0?4:0)+(edge>0?2:0))+2,o.id});
+    }
+}
 const std::vector<CoverPosition>& CoverPositions(const Map& m) {
     const uint64_t key=m.prepared?m.revision:GeometryKey(m);
     if(m.coverCatalog&&m.coverRevision==key)return *m.coverCatalog;
@@ -222,48 +267,10 @@ const std::vector<CoverPosition>& CoverPositions(const Map& m) {
         // Internal earth seams and inaccessible wall faces fail the same walkability
         // and six-body-ray protection checks used by soldiers. Cache once/revision.
         // A hedge (concealment, plan 029) is never a cover source.
-        for(const auto& o:m.obstacles)if((o.blocksMovement||o.halfCover)&&!o.concealment){
-            uint64_t slot=0;
-            for(int axis=0;axis<2;++axis)for(float sign:{-1.f,1.f}){
-                const float extent=axis?o.half.x:o.half.y,across=axis?o.half.y:o.half.x;
-                const int count=std::max(1,int(std::ceil(extent*2/3.f)));
-                Vec3 normal=axis?Vec3{0,sign,0}:Vec3{sign,0,0};
-                for(int i=0;i<count;++i){
-                    const uint64_t id=2000000+o.id*2048+(slot++);
-                    const float along=-extent+(i+.5f)*extent*2/count;
-                    Vec3 p=o.center+normal*(across+.65f)+(axis?Vec3{along,0,0}:Vec3{0,along,0});
-                    if(!Walkable(m,p))continue;
-                    const Vec3 threat=p-normal*4;
-                    bool crouch=o.height<1.86f,prone=false;
-                    if(!ProtectedAt(m,p,threat,crouch?Stance::Crouched:Stance::Standing)){
-                        // Plan 029 M-A2 (Config::prone only, through the battle's map copy; ARMYMAP 2 maps only):
-                        // behind an obstacle too low to shelter a crouched man (a crater rim), prone cover if it
-                        // protects him lying down.
-                        if(crouch&&m.proneCover&&m.formatVersion>=2&&o.height<.9f&&ProtectedAt(m,p,threat,Stance::Prone))prone=true;
-                        else if(crouch||!ProtectedAt(m,p,threat,Stance::Crouched))continue;
-                        crouch=true;
-                    }
-                    Vec3 peek=p;
-                    if(!o.halfCover){
-                        const float corner=(along>=0?1.f:-1.f)*(extent+.65f);
-                        Vec3 candidate=o.center+normal*(across+.65f)+(axis?Vec3{corner,0,0}:Vec3{0,corner,0});
-                        if(Walkable(m,candidate)&&ClearLine(m,p,candidate,.48f))peek=candidate;
-                    }
-                    positions.push_back({p,peek,crouch,false,id,o.id,prone});
-                }
-            }
-        }
+        for(const auto& o:m.obstacles)LinkedObstacleCover(m,o,positions);
         m.coverRevision=key;m.coverCatalog=std::make_shared<const std::vector<CoverPosition>>(std::move(positions));return *m.coverCatalog;
     }
-    for(const auto& o:m.obstacles)if(!o.building&&!o.concealment&&(o.blocksMovement||(o.halfCover&&o.center.z<0))) {
-        if(o.halfCover)for(float side:{-1.f,1.f})for(float along:{-0.55f,0.f,0.55f}) {
-            Vec3 p=o.center+(o.half.y>o.half.x?Vec3{side*(o.half.x+0.6f),along*o.half.y}:Vec3{along*o.half.x,side*(o.half.y+0.6f)});
-            positions.push_back({p,p,true,false,o.id*16+uint64_t((side>0?3:0)+(along<0?0:along>0?2:1))+1,o.id});
-        } else for(float side:{-1.f,1.f})for(float edge:{-1.f,1.f}) {
-            positions.push_back({o.center+Vec3{side*(o.half.x+0.6f),edge*std::max(0.f,o.half.y-1)},o.center+Vec3{side*(o.half.x+0.6f),edge*(o.half.y+2)},false,false,o.id*16+uint64_t((side>0?4:0)+(edge>0?2:0))+1,o.id});
-            positions.push_back({o.center+Vec3{edge*std::max(0.f,o.half.x-1),side*(o.half.y+0.6f)},o.center+Vec3{edge*(o.half.x+2),side*(o.half.y+0.6f)},false,false,o.id*16+uint64_t((side>0?4:0)+(edge>0?2:0))+2,o.id});
-        }
-    }
+    for(const auto& o:m.obstacles)AuthoredObstacleCover(o,positions);
     m.coverRevision=key;m.coverCatalog=std::make_shared<const std::vector<CoverPosition>>(std::move(positions));return *m.coverCatalog;
 }
 // Plan 026 4c: static map-view channels (blocked fraction, obstacle height, cover positions) of
@@ -901,5 +908,106 @@ std::vector<Vec3> FindPath(const Map& m,Vec3 from,Vec3 to,VaultClass cls) {
         path.insert(path.end(),part.begin(),part.end());
     }
     return path;
+}
+
+// ---- Plan 033: the batched mutation and the incremental caches ------------------------------------------------------
+namespace {
+using ChangeBoxes=std::vector<std::array<float,4>>; // x0, y0, x1, y1 of every changed obstacle, before and after
+void AddChangeBox(ChangeBoxes& boxes,const Obstacle& o){boxes.push_back({o.center.x-o.half.x,o.center.y-o.half.y,o.center.x+o.half.x,o.center.y+o.half.y});}
+bool NearChange(const ChangeBoxes& boxes,const Obstacle& o,float margin){
+    for(const auto& b:boxes)if(o.center.x-o.half.x<=b[2]+margin&&o.center.x+o.half.x>=b[0]-margin&&o.center.y-o.half.y<=b[3]+margin&&o.center.y+o.half.y>=b[1]-margin)return true;
+    return false;
+}
+void EraseSourcedCover(Map& m,uint64_t id){m.windows.erase(std::remove_if(m.windows.begin(),m.windows.end(),[&](const CoverPosition& w){return w.source==id;}),m.windows.end());}
+// The catalogue of a linked map after a local change, from the catalogue before it. An obstacle's own candidates depend
+// only on the obstacle and on the geometry within 6 m of it (the spots stand 0.65 m off its faces, each tests the man's
+// clearance (0.48 m), his cover against a threat 4 m through the obstacle (body rays reaching 3 m, 0.4 m to either side)
+// and the corner peek along its face), and on the surfaces, which a local change keeps. So an obstacle farther than 6 m
+// from every changed box keeps its old run; the others, and every added one, are sampled again. The result is the full
+// sample's, in its order (the map's windows, then each obstacle's candidates in obstacle order).
+std::shared_ptr<const std::vector<CoverPosition>> DeriveCover(const Map& m,const std::vector<CoverPosition>& old,size_t oldWindows,const ChangeBoxes& boxes){
+    std::unordered_map<uint64_t,std::pair<size_t,size_t>> runs;
+    for(size_t i=std::min(oldWindows,old.size());i<old.size();){size_t j=i;while(j<old.size()&&old[j].source==old[i].source)++j;runs.emplace(old[i].source,std::make_pair(i,j));i=j;}
+    auto positions=m.windows;
+    for(auto& w:positions)w.id=w.id? w.id:0;
+    for(const auto& o:m.obstacles){
+        if(NearChange(boxes,o,6.f)){LinkedObstacleCover(m,o,positions);continue;}
+        const auto run=runs.find(o.id);
+        if(run!=runs.end())positions.insert(positions.end(),old.begin()+std::ptrdiff_t(run->second.first),old.begin()+std::ptrdiff_t(run->second.second));
+    }
+    return std::make_shared<const std::vector<CoverPosition>>(std::move(positions));
+}
+// The navigation cache after a local change, from the one before it. Surface bins, flat components, link ends and the
+// stair index depend on surfaces, links and buildings only (kept: a local change edits none). The 1 m walkable grid (a
+// node reads obstacles within 0.48 m of it), its 8-neighbour edges (a line of 1.42 m padded 0.48 m) and the vault legs
+// (at most three cells, 4.25 m, with their 0.3 m pad and headroom) are kept outside 1, 2.5 and 5.5 m of the change and
+// unknown (-1, re-tested on demand) inside. Every path, route, endpoint field and link path is dropped: a new opening
+// can shorten any of them.
+void DeriveNavigation(const Map& m,const NavigationCache& old,const ChangeBoxes& boxes){
+    auto nav=std::make_shared<NavigationCache>();nav->key=m.revision;
+    nav->surfaceBins=old.surfaceBins;nav->flatComponents=old.flatComponents;
+    nav->linkEndsReady=old.linkEndsReady;nav->linkEnds=old.linkEnds;nav->linkEndStorey=old.linkEndStorey;
+    nav->stairsReady=old.stairsReady;std::copy(old.stairCounts,old.stairCounts+3,nav->stairCounts);nav->stairStart=old.stairStart;nav->stairItems=old.stairItems;
+    const int X=int(std::ceil(m.halfWidth)),Y=int(std::ceil(m.halfHeight)),W=X*2+1,H=Y*2+1;
+    auto unknown=[&](std::vector<int8_t>& grid,size_t stride,float margin){
+        for(const auto& b:boxes){
+            const int x0=std::max(0,int(std::floor(b[0]-margin))+X),x1=std::min(W-1,int(std::ceil(b[2]+margin))+X);
+            const int y0=std::max(0,int(std::floor(b[1]-margin))+Y),y1=std::min(H-1,int(std::ceil(b[3]+margin))+Y);
+            for(int y=y0;y<=y1;++y)for(int x=x0;x<=x1;++x){const size_t node=size_t(y)*size_t(W)+size_t(x);
+                for(size_t k=0;k<stride&&node*stride+k<grid.size();++k)grid[node*stride+k]=-1;}
+        }
+    };
+    for(const auto& entry:old.nodes){auto grid=entry.second;unknown(grid,1,1.f);nav->nodes.emplace(entry.first,std::move(grid));}
+    for(const auto& entry:old.edges){auto grid=entry.second;unknown(grid,9,2.5f);nav->edges.emplace(entry.first,std::move(grid));}
+    for(int c=0;c<2;++c)for(const auto& entry:old.vaultEdges[c]){auto grid=entry.second;unknown(grid,18,5.5f);nav->vaultEdges[c].emplace(entry.first,std::move(grid));}
+    m.navigation=nav;
+}
+}
+uint64_t AddObstacle(Map& m,Obstacle obstacle){
+    GeometryBatch batch;GeometryOp op;op.kind=GeometryOp::Kind::Add;obstacle.id=m.nextGeometryId;op.id=obstacle.id;op.obstacle=obstacle;batch.ops.push_back(op);
+    ApplyGeometryBatch(m,batch);return obstacle.id;
+}
+void ApplyGeometryBatch(Map& m,const GeometryBatch& batch,uint64_t revision,bool incremental){
+    const size_t oldWindows=m.windows.size();
+    const auto oldCover=m.prepared&&m.coverCatalog&&m.coverRevision==m.revision?m.coverCatalog:nullptr;
+    const auto oldNavigation=m.prepared&&m.navigation&&m.navigation->key==m.revision?m.navigation:nullptr;
+    const auto oldGraph=m.prepared?CurrentRouteGraph(m):nullptr;
+    ChangeBoxes boxes;bool structural=false;
+    auto find=[&](uint64_t id){return std::find_if(m.obstacles.begin(),m.obstacles.end(),[&](const Obstacle& o){return o.id==id;});};
+    for(const auto& op:batch.ops){
+        if(op.kind==GeometryOp::Kind::Remove){
+            const auto it=find(op.id);if(it==m.obstacles.end())continue;
+            AddChangeBox(boxes,*it);const size_t at=size_t(it-m.obstacles.begin());m.obstacles.erase(it);
+            for(auto& b:m.buildings){if(at<b.firstObstacle)--b.firstObstacle;else if(at<b.firstObstacle+b.obstacleCount)--b.obstacleCount;}
+            EraseSourcedCover(m,op.id);
+        }else if(op.kind==GeometryOp::Kind::Replace){
+            const auto it=find(op.id);if(it==m.obstacles.end())continue;
+            AddChangeBox(boxes,*it);Obstacle replacement=op.obstacle;replacement.id=op.id;*it=replacement;AddChangeBox(boxes,replacement);
+            EraseSourcedCover(m,op.id);
+        }else if(op.kind==GeometryOp::Kind::Add){
+            Obstacle added=op.obstacle;if(!added.id)added.id=op.id?op.id:m.nextGeometryId;
+            // Canonical order: after the last obstacle with a smaller id (every original obstacle precedes every added one).
+            size_t at=m.obstacles.size();while(at>0&&m.obstacles[at-1].id>added.id)--at;
+            m.obstacles.insert(m.obstacles.begin()+std::ptrdiff_t(at),added);
+            for(auto& b:m.buildings){if(b.obstacleCount&&at<=b.firstObstacle)++b.firstObstacle;else if(at>b.firstObstacle&&at<b.firstObstacle+b.obstacleCount)++b.obstacleCount;}
+            m.nextGeometryId=std::max(m.nextGeometryId,added.id+1);AddChangeBox(boxes,added);
+        }else if(op.kind==GeometryOp::Kind::RemoveSurface){
+            const size_t before=m.surfaces.size();
+            m.surfaces.erase(std::remove_if(m.surfaces.begin(),m.surfaces.end(),[&](const GroundSurface& s){return s.id==op.id;}),m.surfaces.end());
+            m.surfaceLinks.erase(std::remove_if(m.surfaceLinks.begin(),m.surfaceLinks.end(),[&](const SurfaceLink& l){return l.id==op.id;}),m.surfaceLinks.end());
+            structural=structural||m.surfaces.size()!=before;
+        }else if(op.kind==GeometryOp::Kind::Floors&&op.building<m.buildings.size()){
+            auto& b=m.buildings[op.building];
+            if(b.authoredStairs){if(op.floors<2){b.authoredStairs=false;b.floors=std::max(1,op.floors);structural=true;}}
+            else if(op.floors<b.floors){b.floors=std::max(1,op.floors);structural=true;}
+        }
+    }
+    m.revision=revision?revision:m.revision+1;
+    m.tacticalVisibility.reset();m.routeGraph.reset();m.spatial.reset();m.segments.reset();m.navigation.reset();m.coverCatalog.reset();m.coverRevision=0;m.rasterStatic.reset();
+    PrepareGeometry(m);
+    if(!incremental||structural||boxes.empty())return;
+    if(oldNavigation)DeriveNavigation(m,*oldNavigation,boxes);
+    if(oldGraph)DeriveRouteGraph(m,*oldGraph,boxes);
+    if(oldCover&&m.linkedSurfaceRouting){m.coverCatalog=DeriveCover(m,*oldCover,oldWindows,boxes);m.coverRevision=m.revision;}
 }
 }

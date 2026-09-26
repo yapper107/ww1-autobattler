@@ -63,6 +63,10 @@ struct Map {
     std::shared_ptr<QueryProfile> queryProfile;
     uint64_t revision=1,nextGeometryId=1;
     bool prepared=false;
+    // Plan 033: the line-query memo and the planner's ray table of each revision are 2^cacheScale times smaller (0, the
+    // default: their full size). Both are direct-mapped caches, so this changes speed and memory, never an answer; the
+    // men's knowledge states of destruction use it (a few men query each).
+    uint8_t cacheScale=0;
     mutable uint64_t coverRevision=0;
     mutable std::shared_ptr<const SpatialIndex> spatial;
     mutable std::shared_ptr<SegmentMemo> segments;
@@ -107,6 +111,23 @@ void PrepareGeometry(Map& map);
 void InvalidateGeometry(Map& map);
 bool RemoveObstacle(Map& map,uint64_t id);
 bool ReplaceObstacle(Map& map,uint64_t id,Obstacle replacement);
+// Plan 033: the mutation interface's add and its batch (one revision for many changes). An obstacle added to a map keeps
+// the map's canonical order: every original obstacle in its place, then the added ones by id, so two maps that applied
+// the same changes hold the same obstacles in the same order whatever order they applied them in. AddObstacle gives
+// the obstacle the next free id (one revision) and returns it.
+uint64_t AddObstacle(Map& map,Obstacle obstacle);
+// One batched change, applied in order. Remove and Replace name an obstacle by id (the cover records it sources go with
+// it, as in RemoveObstacle); Add carries its id already; RemoveSurface drops a surface and its links by id; Floors keeps a
+// building (by index) to at most `floors` storeys (an authored house held to one loses its stair and upper floor).
+struct GeometryOp { enum class Kind : uint8_t { Remove, Replace, Add, RemoveSurface, Floors };
+    Kind kind=Kind::Remove; uint64_t id=0; Obstacle obstacle{}; size_t building=0; int floors=0; };
+struct GeometryBatch { std::vector<GeometryOp> ops; };
+// Applies a batch as one revision: `revision` becomes the map's (0: the next). incremental: every cache that is provably
+// unchanged outside the change is kept (the cover catalogue re-samples only the obstacles near it, the walkable grid and
+// its edges are re-derived only there, the route graph re-tests only its nodes there); everything else is rebuilt on
+// demand. Surface or building edits rebuild navigation in full. incremental false: InvalidateGeometry's full rebuild.
+// The answers are the same either way.
+void ApplyGeometryBatch(Map& map,const GeometryBatch& batch,uint64_t revision=0,bool incremental=true);
 bool CoverExists(const Map& map,uint64_t id);
 // Returns first segment contact in [0,1]; negative means no intersection.
 float SegmentBox(Vec3 a, Vec3 b, const Obstacle& box, float padding = 0);
@@ -359,6 +380,150 @@ struct GunSupportTuning {
     float bipodFactor=.5f;    // a set gun's shot spread (the yaw cone ShotSpread feeds) times this
 };
 inline constexpr GunSupportTuning GunSupportConstants{};
+// Plan 032, grenades and using the pin (Config::grenades, Legacy only, per team). Every number the grenades use lives
+// here, in one table; each is also a run value (Config::grenade, CLI --grenade-param NAME=VALUE, the names in
+// GrenadeParams()) so Jordan can workshop the tuning. Values of the plan's sections 2 and 3 and of Jordan's rulings of
+// 25 Sep 2026 (plan 032 section 8); the entries marked "assumption" are implementation choices, not rulings. All floats
+// (counts included) so the one table can be listed, compared, digested and overridden by name.
+struct GrenadeTuning {
+    // The two grenades (plan 2.3). Fragmentation ("defensive": US Mk 2, Soviet F-1, British No. 36M) and concussion
+    // ("offensive": US Mk 3, German M24, British No. 69). Charge in kg of TNT equivalent, casing in kg.
+    float fragCharge=.070f, fragCasing=.550f;
+    float fragReact=12;           // m: men who see one land this close react (dive, run clear beyond it, throw it back) (Jordan, 25 Sep 2026)
+    float fragRoll=2;             // m: it rolls on 0..this along the throw after landing
+    float concCharge=.170f, concCasing=.100f;
+    // The concussion grenade's body. 0 fibre: the US Mk 3 "offensive" grenade, a pressed-fibre body that throws no metal
+    // fragments (the default: a blast, stun, eardrum and knockback weapon). 1 steel: the German M24's thin 100 g can
+    // (concCasing), broken up as Mott's population with concMott (the documented alternative; CLI concBody=steel).
+    float concBody=0;
+    float concDanger=4, concRoll=2; // concDanger m: both its radii: the friend check (the thrower too) and the reaction
+    // Blast (revision 2): the Kingery-Bulmash hemispherical surface-burst fits as published by Swisdak (1994) give the
+    // incident overpressure, the positive-phase duration and the incident and normally reflected impulses of the scaled
+    // distance Z = R / W^(1/3) (the fits are fixed data in GrenadeSim.cpp, not run values). R: to the nearest point of his
+    // body. Below Z 0.2 the contact value; beyond a fit's range its last value.
+    float airBurst=.5556f;        // assumption: a burst off the ground (in a hand, in the air) is the surface fit at this share of W (1/1.8)
+    float blastReach=40;          // m: every soldier this close to a burst is evaluated (fragments fly as far as they fly)
+    float coverFactor=.4f;        // pressure and impulses times this when no clear solid line runs from the burst to any of his 9 body points
+    float roomFactor=2.5f;        // pressure times this in the burst's room: the same building footprint and the same floor
+    float roomDuration=3;         // positive-phase duration times this in the room (reflections prolong the pulse; Jordan, 25 Sep 2026)
+    // Primary blast lethality: Bowen (1968), as written up by McMichael, LLNL-TR-468242 (2011). Pressures in psi, t in ms.
+    // T = t (70/m)^(1/3) (14.7/p_atm)^(1/2); p50 = bowenP50 (1 + bowenScale T^bowenExponent); probit Z = 5 - ln(p_eq/p50) /
+    // bowenSlope; survival = Phi(Z - 5). Closer is never safer: his probit is the least over every range from his out
+    // (BlastOn's envelope; the fitted duration shortens so fast inside Z 1 that Bowen alone would spare a closer man). p_eq: standing or crouched p_i + q, q = 2.5 p_i^2 / (7 p_atm + p_i); prone p_i; a
+    // solid obstacle within wallBehind behind him along the wave: the reflected p_r = 2 p_i (7 p_atm + 4 p_i) / (7 p_atm + p_i)
+    // (Glasstone). A death is out of action (killed); a survivor below lungInjuryProbit takes lungInjuryHealth (Zl - Z)/(Zl - 5).
+    float bowenMass=70, atmosphere=14.7f;
+    float bowenP50=61.5f, bowenScale=6.76f, bowenExponent=-1.064f, bowenSlope=.1788f;
+    float lungInjuryProbit=7.33f, lungInjuryHealth=100;
+    float wallBehind=1;           // m
+    // Eardrum (Hirsch 1968): rupture probit Phi(ln(P / eardrumKpa) / eardrumSigma); a rupture deafens him for the battle.
+    float eardrumKpa=103, eardrumSigma=.45f;
+    float stunKpa=50, stunSeconds=2, stunExtraSeconds=6, stunSpanKpa=150; // (2 + 6 min(1, (dP-50)/150)) / Composure s
+    float deafKpa=35, deafSeconds=30, deafReaction=1.5f; // deafened this long: his reaction times times deafReaction
+    float frightKpa=5, frightScaleKpa=40;                // suppression + min(1, dP / 40)
+    float woundedShare=.55f;      // out of action: wounded with this chance, killed otherwise (the bullet rule)
+    // Knockback (tertiary blast, revision 2): the net impulse J = A (i_r - i) (x coverFactor behind cover), N s, along the
+    // line from the burst to his centre of mass; dv = J / knockMass. Above `airborne` upward he flies (ballistic) until his
+    // feet are back on his floor, then slides to rest with friction (d = v^2 / (2 mu g)); an obstacle stops him, and at more
+    // than impactSpeed it is tertiary injury, impactInjury (v - impactSpeed)^2 health. Knocked down (to the ground, then
+    // knockRise s before he can get up) above knockStanding (knockCrouched) of horizontal dv. He cannot act while he moves.
+    float areaStanding=.60f, areaCrouched=.40f, areaProne=.15f;   // m^2 facing the burst
+    float comStanding=1, comCrouched=.6f, comProne=.2f;           // m: his centre of mass above his feet
+    float knockMass=85;           // kg: a 70 kg man and 15 kg of kit
+    float airborne=.15f, friction=.6f, impactSpeed=3, impactInjury=20, knockStanding=.6f, knockCrouched=.9f, knockRise=1;
+    float knockMinimum=.1f;       // m/s: a smaller push moves nobody (assumption)
+    // Fragments (ruling 2): ballistic projectiles of the bullet machinery. The population is Mott's (1947), mass conserved:
+    // N(>m) = N0 exp(-sqrt(m/mu)), N0 = casing / (2 mu), each mass drawn as mu (ln 1/u)^2; lighter than dustMass is dust
+    // and not flown. Speed at the burst from Gurney's sphere, v0 = gurney / sqrt(casing/charge + gurneyShape); drag
+    // dragK = 1/lambda, lambda = dragScale m^(1/3) (m in kg).
+    float fragMott=.00025f, concMott=.0001f, dustMass=.00005f;    // kg
+    float gurney=2440, gurneyShape=.6f, dragScale=338;
+    float fragmentStopEnergy=5;   // J: a fragment stops below this ...
+    float fragmentSeconds=1.5f;   // s: ... or after this long in flight
+    float burstHeight=.05f;       // m: the burst is this far above the floor the grenade lies on
+    float fragmentHitSuppression=.3f; // assumption: a fragment that strikes a man suppresses him as a bullet hit does (/ Composure)
+    float fragmentNearMiss=0;     // assumption: fragments add no near-miss suppression (the blast's fright is the explosion's fear);
+                                  // above 0, a fragment passing within 2.2 m of any man adds this / Composure once (the bullets' rule)
+    // Fragment wounds (revision 2; fragments only: bullets keep their own damage model). A hit penetrates when E/A reaches
+    // skinThreshold J/mm^2, A = fragmentShape (m/rho)^(2/3) its presented area. It strikes a region drawn by the shares of his
+    // stance's presented area (head, thorax, abdomen; the limbs the rest); a penetrating hit incapacitates (out of action,
+    // the bullet rule's wounded/killed) with P = k_region (1 - exp(-E / woundEnergy)). Every hit also does HitDamage.
+    float fragmentDensity=7850, fragmentShape=1.5f, skinThreshold=.1f;
+    float headStanding=.09f, thoraxStanding=.22f, abdomenStanding=.13f;
+    float headCrouched=.12f, thoraxCrouched=.26f, abdomenCrouched=.12f;
+    float headProne=.25f, thoraxProne=.30f, abdomenProne=.10f;    // prone, facing the burst
+    float kHead=1, kThorax=1, kAbdomen=.5f, kLimbs=.1f;
+    float woundEnergy=137.9f;     // J, E_v: calibrated so a standing man in the open, 5 m from a fragmentation grenade, is out
+                                  // of action with probability 0.5 (CalibrateWoundEnergy: 137.89 J; Jordan's 5 m lethal radius)
+    // Throwing (plan 2.4). Ranges are times StatScale(Strength).
+    float rangeStanding=30, rangeKneeling=24, rangeProne=12;
+    float releaseStanding=1.9f, releaseKneeling=1.2f, releaseProne=.4f; // m: the hand at release (assumption)
+    float arcFirst=40, arcSecond=55, arcThird=70, arcFourth=25; // degrees: the lob, then the alternative arcs, in order (0: none)
+    float arcStep=1;              // m of flight between the obstacle checks of an arc
+    float arcMargin=1;            // assumption: a throw is taken only if its arc also clears for aims this many scatter sigmas to
+                                  // either side, beyond and short (0: the nominal arc alone)
+    float scatterBase=.5f, scatterPerMetre=.08f; // sigma = (base + perMetre * distance) / Dexterity * (1 + suppression)
+    float fuseSeconds=4.5f, fuseSpread=.5f;       // fuse from the release of the lever, uniform in 4.5 +/- 0.5 s
+    float cookMax=1.5f, cookLowComposure=.8f, cookHighComposure=1.4f; // cook 0..1.5 s, linear in StatScale(Composure) between these
+    float throwSeconds=1.5f;      // s: pin, rise, throw: he is exposed and silent this long (the cook is inside it)
+    // Reactions (ruling 5).
+    float assumedFuse=2.5f;       // assumption (the knowledge boundary): the seconds a man assumes are left on a grenade he
+                                  // sees land (the plan's 2-3 s); he cannot read its fuse
+    float throwBackReach=2.5f, throwBackSpeed=3, throwBackMargin=1; // within reach; time left >= distance/speed + margin
+    float throwBackRelease=.5f;   // s from his hand on it to the release (assumption)
+    float pickupReach=1;          // m: he takes it up within this of where he stands (assumption; he stands at least 0.46 m off a wall)
+    float skillSlope=.5f, skillOffset=.1f, skillMin=.05f, skillMax=.8f; // p = clamp(slope * skill - offset, min, max)
+    float runMargin=.3f;          // s: a run to cover must end this long before the fuse he assumes
+    float runSearch=14;           // m: cover this far beyond the danger radius is considered for a run
+    // Throw decisions (plan 3).
+    float throwCheck=1.5f;        // s between a man's throw decisions (assumption)
+    float throwCooldown=6;        // s after a throw before his next (assumption)
+    float targetAge=8;            // s: a known enemy is a target while his track is this fresh (assumption)
+    float bunchCount=3, bunchRadius=4; // a bunch: this many known enemies within this of the aim
+    float closingRange=15;        // m: a man holding his position throws at a known enemy this close (defenders)
+    float fragFriendRange=15;     // m: he prefers fragmentation (from cover) with no other friend this close to the target, else
+                                  // concussion (the throw decision's and the close-in's choice)
+    // Fragmentation safety (Jordan, 25 Sep 2026: "make it safer"): a fragmentation throw only with no friend but himself
+    // within fragFriendClear of the aim, and himself at least fragSelfOpen from it in the open, or fragSelfCover when solid
+    // geometry shields him (down behind his cover) from a burst at the aim and anywhere within two sigma of his scatter.
+    float fragFriendClear=15, fragSelfOpen=20, fragSelfCover=8;
+    float friendMargin=0;         // m added to the friend radii near the aim (assumption: none)
+    float friendAge=2;            // s: a friend counts where the thrower saw him within this
+    // Using the pin: the close-in (plan 3).
+    float closeInCheck=2;         // s between a rifle-group leader's close-in decisions
+    float closeInRetry=8;         // s after a close-in that found no pair or no covered route
+    float pinnedQuiet=3;          // s: pinned, as his side can know it: not seen firing for this long ...
+    float pinnedFireWindow=4;     // s: ... while our men saw their own rounds strike his place within this ...
+    float pinnedFireRadius=5;     // m: ... this close to his known place
+    float pinnedTrackAge=20;      // s: and his track this fresh
+    float closeInReach=70;        // m: from the rifle group to the pinned enemy
+    float spotNear=15, spotFar=20; // m: the throwing spot's distance from the enemy's place
+    float coveredRoute=3;         // s: a route revealing more than this to a known enemy is no covered route
+    float closeInMax=45;          // s: a close-in ends after this whatever happens
+    float burstWait=7;            // s: the pair waits this long at most for the burst
+    float partnerWait=6;          // s: at his spot the thrower waits this long at most for his partner to reach his (assumption)
+    float rushSeconds=8;          // s: a rush not ended within this ends where it is (assumption)
+    float rushShort=4;            // m: the rush ends this short of the enemy's place
+    float closeFireSeconds=4;     // s of fire at close range after the rush
+};
+enum class GrenadeType : uint8_t { Fragmentation, Concussion };
+// Plan 032: a grenade in the world as the frame records it for the renderer (Config::grenades; empty otherwise). state:
+// Held (in a hand, lever released), Flying, Resting. fuseAt: when it goes off.
+enum class GrenadeStage : uint8_t { Held, Flying, Resting };
+struct GrenadeState { int id=0, owner=-1, team=-1; GrenadeType type=GrenadeType::Fragmentation; GrenadeStage stage=GrenadeStage::Held;
+    Vec3 position{}, velocity{}; float fuseAt=0, releasedAt=0; };
+// Plan 032: one explosion, recorded for the renderer and the tools (the Explosion event carries the same moment).
+struct GrenadeExplosion { int id=0, owner=-1, team=-1; GrenadeType type=GrenadeType::Fragmentation; float time=0; Vec3 position{};
+    int fragments=0; bool ground=true; };
+// Plan 032 battle totals (manifest only when on).
+struct GrenadeTotals {
+    int issued=0, throws=0, explosions=0, fragmentsFlown=0, fragmentHits=0, stuns=0, deafened=0;
+    int blastCasualties=0, fragmentCasualties=0, friendlyCasualties=0, blastInjuries=0;
+    int blastDeaths=0, eardrums=0, knockbacks=0, knockdowns=0, knockImpacts=0, penetrating=0, incapacitating=0;
+    int reactions=0, dives=0, runs=0, throwBackAttempts=0, throwBacks=0, fumbles=0, dropped=0;
+    int bounced=0, short_=0;   // throws that struck a wall or a roof; throws that came to rest within their danger radius of the hand
+    int closeIns=0, closeInThrows=0, closeInRushes=0, closeInBreaks=0;
+};
 // Plan 031 D: what an order of the drill carries. gun: the squad's gun whose fire opens the leg (-1: no drill, every
 // field inert); leg: the leader's leg (or hold spell) serial; displace: the gun's own order sends him to a new station
 // (he may sprint). On the group's orders (the leader's, the NCO's and those the relay sends) it names the group's leg;
@@ -512,9 +677,11 @@ struct Assignment {
 };
 enum class ReactionKind { Sight, Order, Report, Ready, UnderFire, WoundReport, FireReport, FriendlySight, LaneReport, PlatoonReport, PlatoonOrder, MovementReport, DeliveryReport, TaskReport, SupportSector, Coverage, SupportProgress, SquadRadio };
 enum class Action { Advance, Cover, Fire, Retreat, Hold, Wounded, Killed };
+// Plan 032 (Config::grenades only): Stunned, GrenadeThrow, GrenadeEscape, GrenadeDive, GrenadeThrowBack, CloseIn, Knocked.
 enum class Reason { Search, Contact, Suppressed, Injury, ClearShot, Watching, LostContact, Down,
-    Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition, Prone, Vault };
-enum class EventKind { Contact, Decision, Shot, Hit, Casualty, Result, OrderIssued, OrderReceived, Report, Succession, Reaction };
+    Settle, Peek, CoverFire, Relocate, Flanked, Duck, PopUp, Overwatch, OrderedAdvance, AwaitOrders, Regroup, SuppressiveFire, RearPosition, RearFire, SquadFlank, SquadPullBack, ClearLane, EmergencyCover, ProtectedHold, AtWaypoint, PassageWait, BoundAdvance, BoundSupport, WindowPosition, Prone, Vault,
+    Stunned, GrenadeThrow, GrenadeEscape, GrenadeDive, GrenadeThrowBack, CloseIn, Knocked };
+enum class EventKind { Contact, Decision, Shot, Hit, Casualty, Result, OrderIssued, OrderReceived, Report, Succession, Reaction, Explosion };
 enum class Terrain { FracturedWorks, Trenches };
 struct OfficerProfile { float judgment=.7f, risk=.5f, adaptability=.7f, communication=.7f; };
 inline bool SameProfile(const OfficerProfile& a,const OfficerProfile& b){return a.judgment==b.judgment&&a.risk==b.risk&&a.adaptability==b.adaptability&&a.communication==b.communication;}
@@ -689,6 +856,82 @@ enum class ScenarioFamily { None, F1, F2, F3 };
 // manoeuvres, so an attacking controller has a fixed problem to solve.
 enum class DefenceLayout { None, Building, Spread, Clusters };
 const char* DefenceLayoutName(DefenceLayout layout);
+// Plan 033: one explosion in the world's queue: when, where (the burst point) and its TNT equivalent (kg). Test charges
+// (Config::testCharges, --test-charge) enter it at the start; the grenades' detonations (plan 032) join it as they go off.
+struct Explosion { float time=0; Vec3 position{}; float tnt=0; };
+inline bool SameExplosions(const std::vector<Explosion>& a,const std::vector<Explosion>& b){
+    if(a.size()!=b.size())return false;
+    for(size_t i=0;i<a.size();++i)if(a[i].time!=b[i].time||a[i].tnt!=b[i].tnt||a[i].position.x!=b[i].position.x||a[i].position.y!=b[i].position.y||a[i].position.z!=b[i].position.z)return false;
+    return true;
+}
+// Plan 033, building destruction from blast force (Config::destruction). Every number the structural model uses lives
+// here, in one table; each is a run value (CLI --destruction-param NAME=VALUE, the names in DestructionParams()), folded
+// into the digest and written to the manifest only when it differs from these defaults. Sources per entry; "assumption"
+// marks an implementation choice, not a published value. All floats, so the table can be listed, compared and digested.
+struct DestructionTuning {
+    // Loading (plan 033 section 3; the Kingery-Bulmash surface-burst fits in BlastSim).
+    float cellSize=.5f;          // m: a panel face is loaded in cells about this big (the plan's ~0.5 m)
+    float reach=20;              // m/kg^(1/3): a panel or pane is loaded when its nearest point lies within this scaled distance
+    float roomPressure=2.5f;     // pressure times this on a face in the burst's room (same footprint and storey; Jordan's
+    float roomDuration=3;        // ruling for the grenades) and its positive phase times this (reflections prolong the pulse)
+    // Masonry (mean dynamic values). Stone: rubble in lime mortar (village); brick: solid clay brick in lime-cement mortar
+    // (city2 and the authored maps). Density: 2000-2300 and 1800-2000 kg/m^3. Tensile: flexural (bond) strength with the
+    // plane of failure parallel to the bed joints, which cracks a wall spanning between floor and roof (EN 1996-1-1 Table
+    // 3.6 gives characteristic 0.05-0.10 MPa; mean and strain-rate values are higher). Modulus: about 1000 f_k (EN 1996-1-1
+    // 3.7.2). Compressive: the mean masonry strength f_m that the arching resistance uses.
+    float stoneDensity=2200, stoneTensile=.10f, stoneModulus=2, stoneCompressive=2.5f;   // kg/m^3, MPa, GPa, MPa
+    float brickDensity=1900, brickTensile=.20f, brickModulus=4, brickCompressive=6;
+    // Timber boarding (sheds): a 20 mm softwood board nailed to the frame's rails, timberSpans spans up the wall (three rails:
+    // two); density 450-500 kg/m^3; modulus of rupture of weathered, knotty boards (clear softwood 60-80 MPa, EN 338 C16 mean
+    // about 25); modulus C16-C24 (8-11 GPa).
+    float timberBoard=.02f, timberDensity=480, timberRupture=30, timberModulus=9, timberSpans=2;  // m, kg/m^3, MPa, GPa
+    // Rigid arching (McDowell, McKee and Sevin 1956; UFC 3-340-02 section 7): a wall wedged between rigid supports resists
+    // about 0.72 f_m (t/L)^2 until it deflects its own thickness. arching: the share applied to walls spanning floor to floor
+    // under a storey; 0 by default: the houses have timber floors and no concrete (Jordan's ruling), so nothing confines a
+    // wall rigidly top and bottom. spandrelArching: the share for masonry spanning horizontally between the piers either
+    // side of an opening (a lintel, a sill, the wall over or under a hole), wedged between them (assumption: half the rigid
+    // value).
+    float arching=0, spandrelArching=.5f;
+    // Response limits (the PDC-TR 06-08 / ASCE 59-11 form: ductility, then support rotation in degrees). Masonry cracks at
+    // ductility 1 (the tensile bond gone; cosmetic, and a cracked panel keeps no bond for the next blast); it is breached
+    // (a hole where it was pushed through) from masonryHeavy and blown out from masonryBlowout, or when a cracked strip's
+    // deflection reaches its thickness (it rocks over). Timber boards: cracked, broken through, blown in, by ductility.
+    float masonryHeavy=2, masonryBlowout=8;                 // degrees
+    float timberCrack=.7f, timberBreach=1, timberBlowout=2; // ductility
+    // Local breach (US Army FM 5-250, 1992, breaching charges): P = R^3 K C, P in lb of TNT, R the breaching radius in feet
+    // (to the far face of the wall), K the material factor (0.23 poor masonry and good timber, 0.35 good masonry), C the
+    // placement (tamping) factor, 3.6 for an untamped charge against the wall. The charge's own R, (P / (K C))^(1/3), sizes
+    // the hole: it breaches a wall when R reaches the far face; the hole is the breaching sphere's section at the near face.
+    float breachStone=.23f, breachBrick=.35f, breachTimber=.23f, breachPlacement=3.6f;
+    // Glass (window panes; not obstacles): a pane shatters when the load on it (reflected, reduced for obliquity, x room)
+    // reaches glassBreak (about 1 psi; typical annealed windows fail at 3.5-7 kPa, Glasstone and Dolan 1977).
+    float glassBreak=7, glassThickness=.003f, glassDensity=2500;                         // kPa, m, kg/m^3
+    // Collapse (Jordan: "collapse floors and walls"). A storey's floor or roof falls when the walls under it have lost more
+    // than collapseShare of their length, with everything above it; masonry above a hole narrower than archSpan stands (it
+    // arches over), wider and the wall above falls. Men on a falling level: fallDamage health per storey fallen (x 0.5-1.5);
+    // men under it inside the footprint: crushed with crushChance, crushDamage (x 0.5-1.5). Assumptions.
+    float collapseShare=.5f, archSpan=1.2f, fallDamage=30, crushChance=.5f, crushDamage=60;
+    // Debris (assumptions). A breached or blown-out piece throws debrisShare of its mass as chunks of about chunkMass kg (at
+    // most maxChunks a piece) at its own response velocity (x 1 +/- speedSpread), in a cone of chunkCone radians about the
+    // direction the blast pushed it; the rest falls as rubble at its foot (bulked by rubbleBulking, rubbleMin-rubbleMax m
+    // high, rubbleSpread m either side). A shattered pane throws maxShards shards of shardMass kg in a cone of shardCone.
+    float debrisShare=.25f, chunkMass=.4f, maxChunks=24, speedSpread=.3f, chunkCone=.35f;
+    float maxShards=12, shardMass=.004f, shardCone=.6f, maxDebrisSpeed=120;
+    float rubbleBulking=1.4f, rubbleMin=.25f, rubbleMax=1.2f, rubbleSpread=.8f;
+    // Flying debris: the bullets' flight (drag, gravity, first contact with the map or a man), drag coefficient
+    // dragCoefficient over the area 1.2 (m / density)^(2/3); it stops after flightSeconds or below stopSpeed m/s. A hit does
+    // the bullets' HitDamage by its energy and suppresses the man by hitSuppression / Composure (the bullet hit's 0.3).
+    float dragCoefficient=1, flightSeconds=2.5f, stopSpeed=2, hitSuppression=.3f;
+    // Knowledge: a man looks for changes he has not seen every observeEvery s (the legacy edits look every tick).
+    float observeEvery=.2f;
+};
+bool SameDestructionTuning(const DestructionTuning& a,const DestructionTuning& b);
+// Plan 033 battle totals (manifest only when on). Seconds are wall clock (not digested).
+struct DestructionTotals {
+    int explosions=0, revisions=0, cracked=0, breached=0, destroyed=0, fallen=0, collapses=0, panes=0, rubble=0;
+    int fragments=0, fragmentHits=0, falls=0, crushed=0, casualties=0, units=0, viewStates=0, viewUpdates=0, liveStates=0;
+    double physicsSeconds=0, geometrySeconds=0, viewSeconds=0, observeSeconds=0, debrisSeconds=0;
+};
 struct Config {
     bool cognition=false, fullVision=false;
     float reportDelay=.75f;
@@ -855,6 +1098,16 @@ struct Config {
     float gunBeat=GunSupportConstants.beat,gunRotate=GunSupportConstants.rotate,gunThreatBonus=GunSupportConstants.threatBonus,gunMoverWeight=GunSupportConstants.moverWeight;
     int gunBipod=0;
     float gunBipodFactor=GunSupportConstants.bipodFactor;
+    // Plan 032, grenades and using the pin, Legacy only, per team (bit 0 Azure, bit 1 Ember), off by default; folded into
+    // the digest and written to the manifest only when on, its table (GrenadeTuning) only when it differs from the
+    // defaults. Issue: every man of such a team but the gunners carries 1 or 2 grenades, each fragmentation or concussion
+    // (from the roster seed). Physics: thrown, flying, landing, rolling and going off; the blast by overpressure, the
+    // fragments as bullets. Reactions: a man who sees one land near him throws it back (a skill check), runs or dives.
+    // Tactics: throws at known enemies he cannot shoot, at bunches and (holding) at men closing in; the rifle group's
+    // close-in on an enemy pinned as the squad can know it. Knowledge: tracks, reports, own sightings, own and squadmates'
+    // fire, the map; a grenade is seen by line of sight; the explosion is physics and reads true positions, as bullets do.
+    int grenades=0;
+    GrenadeTuning grenade;
 
     bool drills=false;
     // Plan 024: optional Azure squad ranker. Existing controllers stay unchanged.
@@ -880,8 +1133,25 @@ struct Config {
     // their recorded digests stay valid. The roster itself carries it into the digest (weapon per man).
     bool squadMachineGuns = false;
     float maxSeconds = 360;
+    // Plan 033, building destruction from blast force: world physics for every controller and both sides, off by default;
+    // folded into the digest and written to the manifest only when on (its test charges with it, its table only where it
+    // differs from DestructionTuning's defaults). Explosions (the test charges; the grenades' detonations, plan 032, with
+    // grenades on) load the walls, sheds and window panes near them; walls crack, are breached or blown out, sheds are broken,
+    // glass shatters, walls above a failed section and storeys whose walls have gone fall; debris and glass fly as
+    // projectiles; each explosion's changes are one geometry revision, and every man learns of them by seeing them.
+    // Test charges act on structures only: they injure nobody by blast (the grenade module owns blast on men).
+    bool destruction=false;
+    std::vector<Explosion> testCharges;
+    DestructionTuning destructionTable;
+    // Plan 033, a measurement switch: every explosion's change rebuilds the geometry caches in full instead of re-deriving
+    // them near the change. The answers are the same (a fixture checks the digests), so it is not digested; manifest only.
+    bool destructionFullRebuild=false;
 };
+// Plan 032: every entry of the two tables equal (GrenadeParams, GrenadeSim.cpp).
+bool SameGrenadeTuning(const GrenadeTuning& a,const GrenadeTuning& b);
 inline bool SameConfig(const Config& a,const Config& b) {
+    // Plan 032: the grenade teams and, while on, the table.
+    if(a.grenades!=b.grenades||(a.grenades&&!SameGrenadeTuning(a.grenade,b.grenade)))return false;
     if(a.externalPolicy!=b.externalPolicy||bool(a.neuralPolicy)!=bool(b.neuralPolicy)||a.policyCandidates!=b.policyCandidates||a.policySchema!=b.policySchema||
         (a.neuralPolicy&&a.neuralPolicy->digest!=b.neuralPolicy->digest))return false;
     if(bool(a.battlefield)!=bool(b.battlefield)||(a.battlefield&&a.battlefield->digest!=b.battlefield->digest))return false;
@@ -902,6 +1172,8 @@ inline bool SameConfig(const Config& a,const Config& b) {
     // Plan 031 G: each switch's teams and, while it is on, its run constants.
     if(a.gunSupport!=b.gunSupport||(a.gunSupport&&(a.gunBurst!=b.gunBurst||a.gunBeat!=b.gunBeat||a.gunRotate!=b.gunRotate||a.gunThreatBonus!=b.gunThreatBonus||a.gunMoverWeight!=b.gunMoverWeight)))return false;
     if(a.gunBipod!=b.gunBipod||(a.gunBipod&&a.gunBipodFactor!=b.gunBipodFactor))return false;
+    // Plan 033: destruction and, while it is on, its test charges and its table.
+    if(a.destruction!=b.destruction||(a.destruction&&(!SameExplosions(a.testCharges,b.testCharges)||!SameDestructionTuning(a.destructionTable,b.destructionTable))))return false;
     return a.movingFire==b.movingFire&&a.threatAwarePaths==b.threatAwarePaths&&a.stamina==b.stamina&&a.offLanePaths==b.offLanePaths&&a.orderPace==b.orderPace&&a.keepAction==b.keepAction&&a.keepKindReset==b.keepKindReset&&a.keepCommitClear==b.keepCommitClear&&a.coverGraduated==b.coverGraduated&&a.coverRequests==b.coverRequests&&a.coverReports==b.coverReports&&a.coverGunAim==b.coverGunAim&&a.coverShift==b.coverShift&&a.coverPlatoon==b.coverPlatoon&&a.prone==b.prone&&a.concealment==b.concealment&&a.vaulting==b.vaulting&&a.muzzleCredit==b.muzzleCredit&&a.impactSuppression==b.impactSuppression&&(!a.impactSuppression||a.impactRadius==b.impactRadius)&&a.nerve==b.nerve&&a.stackedSuppression==b.stackedSuppression&&a.coverQuietRelease==b.coverQuietRelease&&a.coverStationRadius==b.coverStationRadius&&a.coverUpperStations==b.coverUpperStations&&a.coverRifleBase==b.coverRifleBase&&a.retireFallen==b.retireFallen&&a.spawnLanes==b.spawnLanes&&a.leaderEffects==b.leaderEffects&&a.equalTroops==b.equalTroops&&SameProfile(a.platoonProfiles[0],b.platoonProfiles[0])&&SameProfile(a.platoonProfiles[1],b.platoonProfiles[1])&&a.officer.communication==b.officer.communication&&a.drills==b.drills&&a.family==b.family&&a.genSeed==b.genSeed&&a.cognition==b.cognition&&a.fullVision==b.fullVision&&a.reportDelay==b.reportDelay&&a.officer.judgment==b.officer.judgment&&a.officer.risk==b.officer.risk&&a.officer.adaptability==b.officer.adaptability&&a.foundations==b.foundations&&a.estimateBias==b.estimateBias&&a.recoveryFixture==b.recoveryFixture&&a.terrain==b.terrain&&a.seed==b.seed&&a.doctrine==b.doctrine&&a.emberDoctrine==b.emberDoctrine&&a.approach==b.approach&&
         a.supportWeapon==b.supportWeapon&&a.squadMachineGuns==b.squadMachineGuns&&a.maxSeconds==b.maxSeconds;
 }
@@ -921,6 +1193,9 @@ inline bool GunSupport(const Config& c,int team){return team>=0&&team<2&&((c.gun
 inline bool GunSupportAny(const Config& c){return GunSupport(c,0)||GunSupport(c,1);}
 inline bool GunBipod(const Config& c,int team){return team>=0&&team<2&&((c.gunBipod>>team)&1)&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
 inline bool GunBipodAny(const Config& c){return GunBipod(c,0)||GunBipod(c,1);}
+// Plan 032: grenades where they act, the Legacy command path only, for this team (0 Azure, 1 Ember) or for either.
+inline bool Grenades(const Config& c,int team){return team>=0&&team<2&&((c.grenades>>team)&1)&&!c.foundations&&!c.recoveryFixture&&!TypedController(c);}
+inline bool GrenadesAny(const Config& c){return Grenades(c,0)||Grenades(c,1);}
 Map MakeBattleMap(const Config& config);
 struct SupportSector {int shooter=-1,requester=-1,stage=0;Vec3 focus{};uint64_t route=0;float observedAt=-100;bool lifted=false;std::vector<SupportThreat> threats;std::vector<FriendlyIntent> friendlies;};
 struct SupportProgress {
@@ -1104,6 +1379,15 @@ struct Soldier {
     // Plan 031 G (Config::gunSupport for his team, Legacy only; set by Simulate before the first tick, false otherwise): his
     // team fights its machine guns as support weapons. Read together with machineGun (SelectFireSolution, the firing stage).
     bool supportGun = false;
+    // Plan 032 (Config::grenades for his team, Legacy only; never set otherwise). grenades: those he carries, by type
+    // (GrenadeType), issued before the first tick from the roster seed, never to a gunner. stunUntil / deafUntil: a
+    // blast's effects on him; stunned (no fire, no new move, down) and deafened are those clocks as the tick began, and
+    // reactionScale is GrenadeTuning::deafReaction while he is deafened (ReactionSeconds multiplies by it; 1 otherwise).
+    // grenadeRush: he is on a close-in's rush and sprints.
+    std::array<uint8_t,2> grenades{};
+    float stunUntil = -100, deafUntil = -100, reactionScale = 1;
+    bool stunned = false, deafened = false, grenadeRush = false;
+    float knockHeight = 0;       // plan 032 R2: how high a blast has thrown him (m above his floor; 0 on the ground), for the renderer
     bool areaFire = false;
     bool holdingFire = false;
     float friendlyRisk = 0;
@@ -1536,6 +1820,8 @@ struct Frame {
     std::array<Soldier, UnitCount> soldiers;
     std::array<SquadCommand, SquadCount> command{};
     std::array<PlatoonCommand,2> platoon{};
+    // Plan 032 (Config::grenades; empty otherwise): the grenades in the world as the frame was recorded (for the renderer).
+    std::vector<GrenadeState> grenades;
 };
 // Encounter fixtures set every soldier to stats 100 and max health 100.
 void NeutraliseStats(Frame& frame);
@@ -1641,6 +1927,17 @@ struct DiagnosticOptions { bool enabled=true, detailed=false; int soldier=-1,squ
 struct Diagnostics;
 struct GeometryEdit { float time=0; uint64_t obstacle=0; bool remove=true; Obstacle replacement; };
 struct GeometryVersion { float time=0; Map map; std::string reason; };
+enum class DestructionKind { Cracked, Breached, Destroyed, Collapsed, GlassShattered, Rubble };
+struct DestructionEvent {
+    float time = 0; DestructionKind kind = DestructionKind::Cracked;
+    uint64_t obstacle = 0;   // the obstacle id affected (0 for glass panes and new rubble)
+    Vec3 center{}, half{};   // the affected piece as a box (for a breach: the hole)
+    Vec3 velocity{};         // mean velocity of its debris, m/s (from the panel response)
+    int material = 0;        // 0 stone, 1 brick, 2 timber, 3 glass
+    float mass = 0;          // kg of debris thrown
+};
+// Record::destruction (std::vector<DestructionEvent>), in time order; the geometry itself stays in
+// Record::geometryVersions (GeometryAt(time)).
 struct GeneratedScenario {
     ScenarioFamily family=ScenarioFamily::None;
     uint32_t genSeed=1;
@@ -1685,11 +1982,15 @@ void ApplyStaticDefence(const DefencePlan& plan,const Config& config,Frame& fram
 // Threat-aware path totals of one battle, so the covered-path rate and the detour are
 // readable from a trace-free export (the per-choice rows need the trace).
 struct PathCautionTotals { int searched=0,covered=0; double detour=0,shortestRevealed=0,coveredRevealed=0; };
+// Plan 033: a window's glass as the battle began (Record::glassPanes, with destruction on): its id (the obstacle field of
+// its GlassShattered event; never an obstacle's id) and its box (centre at mid-height, half extents).
+struct GlassPane { uint64_t id=0; Vec3 center{}, half{}; };
 struct Record {
     PathCautionTotals caution;
     std::shared_ptr<const DefencePlan> defence;
     std::shared_ptr<const GeneratedScenario> generated;
     std::vector<GeometryVersion> geometryVersions;
+    std::vector<DestructionEvent> destruction;
     std::shared_ptr<Diagnostics> diagnostics;
     Config config;
     int encounter=0;
@@ -1701,9 +2002,14 @@ struct Record {
     std::string conclusion;
     float duration = 0;
     int vaults = 0; // plan 029 M-C: vaults begun (Config::vaulting); manifest only when on
+    DestructionTotals destructionTotals; // plan 033 (Config::destruction; zero otherwise): manifest only when on
+    std::vector<GlassPane> glassPanes;   // plan 033: every window pane at the start (Config::destruction; empty otherwise)
     int keepDownImpacts = 0, gradedPeeks = 0, gradedSettles = 0, neighbourLifts = 0; // plan 030 M-S7 P2 / P1 / P3 counts; manifest only when on
     int impactSuppressions = 0; // plan 030 S1: (round, soldier) suppressions by a round stopped in his cover; manifest only when on
     int gunSupportBursts = 0, gunBipodRounds = 0; // plan 031 G: support-gun bursts begun, rounds fired on the bipod; manifest only when on
+    // Plan 032 (Config::grenades; zero and empty otherwise): the battle's grenade totals and every explosion.
+    GrenadeTotals grenadeTotals;
+    std::vector<GrenadeExplosion> explosions;
 };
 // Outcome uses active combatants; location never awards points.
 bool ResolveDeathmatch(Record& record, const Frame& frame, bool projectilesPending, bool timeLimit);

@@ -823,7 +823,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         const bool retainedTask=recovery&&rt.lastSent[recipient].intent.id==intent.id&&rt.lastSent[recipient].execution.method==execution.method&&rt.lastSent[recipient].execution.stage==execution.stage&&rt.lastSent[recipient].execution.generation==execution.generation&&rt.lastSent[recipient].execution.completion==execution.completion&&rt.lastSent[recipient].execution.unavailable==execution.unavailable&&rt.lastSent[recipient].execution.rifleSupport==execution.rifleSupport&&rt.lastSent[recipient].execution.supportThreat==execution.supportThreat&&EquivalentTask(rt.lastSent[recipient],task,position,sector,plan.targetEnemy)&&rt.lastSent[recipient].teamPlan.liftFire==plan.liftFire&&rt.lastSent[recipient].teamPlan.assaultAreaFire==plan.assaultAreaFire&&(drillPauseAmendment||(rt.lastSent[recipient].hasSlot==(slot!=nullptr)&&
             (!slot||(rt.lastSent[recipient].slot.id==slot->id&&Distance(rt.lastSent[recipient].slot.shelter,slot->shelter)<.05f&&Distance(rt.lastSent[recipient].slot.peek,slot->peek)<.05f))));
         if(retainedTask&&rt.lastSent[recipient].execution.paused==execution.paused&&rt.lastSent[recipient].execution.arrivalCheck==execution.arrivalCheck)return;
-        const Map& orderMap=recovery&&rt.geometryViews?(*rt.geometryViews)[sender]:map;
+        const Map& orderMap=recovery&&rt.geometryViews?*(*rt.geometryViews)[sender]:map;
         if(!ResolveOrderPosition(orderMap,f.soldiers[recipient].position,requested,position)) {
             log(EventKind::Decision,sender,recipient,std::string(Name(sender))+": no reachable waypoint for "+Name(recipient));return;
         }
@@ -1063,7 +1063,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         auto& cmd=f.command[team];
         cmd.supportReady=cmd.leader>=0&&f.time-f.soldiers[cmd.leader].supportReadyAt<4;
         if(cmd.leader<0)continue;
-        const Map& knownMap=rt.geometryViews?(*rt.geometryViews)[cmd.leader]:map;
+        const Map& knownMap=rt.geometryViews?*(*rt.geometryViews)[cmd.leader]:map;
         if(team/SquadsPerTeam!=rt.fixedDefender&&!cmd.advancing&&(cmd.supportReady||f.time-rt.startedAt[team]>28)) {
             cmd.advancing=true;rt.nextPlan[team]=0;
             log(EventKind::OrderIssued,cmd.leader,-1,std::string(Name(cmd.leader))+(cmd.supportReady?": overwatch ready, rifle group advance":": support delayed, rifle group advance cautiously"));
@@ -1254,7 +1254,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
                     const int slot=i%SquadSize;const auto& man=f.soldiers[i];
                     if(i==cmd.support||i==nco||!man.Active()||IsPlatoonStaff(man)||KnowsWounded(woundRef,man))continue;
                     if(!st.held[slot]||Distance(man.position,st.station[slot])>BoundConstants.slotArrival)continue;
-                    if(!StationBears(sergeant,(rt.geometryViews?(*rt.geometryViews)[nco]:map),man.position,f.time))continue;
+                    if(!StationBears(sergeant,(rt.geometryViews?*(*rt.geometryViews)[nco]:map),man.position,f.time))continue;
                     float nearest=1e9f;const auto known=WithTracks(sergeant,f.time);
                     for(const auto& ct:known.contacts)if(ct.known&&Distance(ct.position,man.position)<nearest){nearest=Distance(ct.position,man.position);st.coverSector[slot]=ct.position;}
                     rank[slot]=nearest;
@@ -1273,7 +1273,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
         const float standOff=std::max(GroupConstants.standOff,st.standOffFloor);
         for(int i=team*SquadSize+2;i<(team+1)*SquadSize;++i)if(i!=cmd.support&&i!=nco&&f.soldiers[i].Active()&&!IsPlatoonStaff(f.soldiers[i])) {
             if(KnowsWounded(woundRef,f.soldiers[i])) {
-                Vec3 rearPlace=RearPosition(woundRef,f.soldiers[i],squad,rt.geometryViews?(*rt.geometryViews)[nco]:map,f.time,rearReservations);rearReservations.push_back(rearPlace);
+                Vec3 rearPlace=RearPosition(woundRef,f.soldiers[i],squad,rt.geometryViews?*(*rt.geometryViews)[nco]:map,f.time,rearReservations);rearReservations.push_back(rearPlace);
                 // Plan 031 D: a man going to the rear waits for the gun too (the leader's marker; none when off).
                 send(nco,i,Task::RearGuard,rearPlace,sergeant.assignment.sector,TeamPlan{},nullptr,ExecutionContract{},1.f,nullptr,false,FmGroupMarker(cmd));continue;
             }
@@ -1281,7 +1281,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
             if(InWindowTeam(directive,i)||directive.bounding) {
                 auto order=TeamOrder(f.soldiers[i],directive,sergeant.assignment.sector);
                 Task childTask=InWindowTeam(directive,i)?Task::Window:order.action==Action::Advance?Task::BoundMove:Task::BoundCover;
-                Vec3 clear=ClearReportedFireLane(sergeant,f.soldiers[i],order.goal,rt.geometryViews?(*rt.geometryViews)[nco]:map,f.time);
+                Vec3 clear=ClearReportedFireLane(sergeant,f.soldiers[i],order.goal,rt.geometryViews?*(*rt.geometryViews)[nco]:map,f.time);
                 const Task sent=Distance(clear,order.goal)>0.5f?Task::ClearLane:childTask;
                 // Plan 028 Stage 1: a ready BoundCover man, or a tasked one holding a window, answers the request.
                 const int slot=i%SquadSize;
@@ -1291,7 +1291,7 @@ void UpdateCommands(Frame& f,const Map& map,const Config& config,CommandRuntime&
                 const FireMovementOrder leg=FmGatedTask(childTask)?FmGroupMarker(cmd):FireMovementOrder{};
                 send(nco,i,sent,clear,sergeant.assignment.sector,directive,nullptr,ExecutionContract{},1.f,fires?&request:nullptr,fires&&payloadDue(i,request),leg);continue;
             }
-            const Map& relayMap=rt.geometryViews?(*rt.geometryViews)[nco]:map;
+            const Map& relayMap=rt.geometryViews?*(*rt.geometryViews)[nco]:map;
             const auto& man=f.soldiers[i];const int slot=i%SquadSize;
             // Plan 023 B (3.2/3.3): where he stands along the group's axis, and whether he has
             // anything to do. Idle is the plan's: no shot of his own, no fire solution, not under

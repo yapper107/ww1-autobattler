@@ -1,7 +1,9 @@
 #include "Diagnostics.h"
 #include "DrillSim.h"
+#include "DestructionSim.h"
 #include "CommandSim.h"
 #include "TacticalRouteSim.h"
+#include "GrenadeSim.h"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -368,8 +370,20 @@ static uint64_t DigestCore(const Record& r,const Frame* firstFrame,size_t frameC
         if(r.config.gunBurst!=k.burst||r.config.gunBeat!=k.beat||r.config.gunRotate!=k.rotate||r.config.gunThreatBonus!=k.threatBonus||r.config.gunMoverWeight!=k.moverWeight){
             i(3112);i(r.config.gunBurst);f(r.config.gunBeat);f(r.config.gunRotate);f(r.config.gunThreatBonus);f(r.config.gunMoverWeight);}}
     if(!framesOnly&&GunBipodAny(r.config)){i(3113);i(r.config.gunBipod);if(r.config.gunBipodFactor!=GunSupportConstants.bipodFactor){i(3114);f(r.config.gunBipodFactor);}}
+    // Plan 032: grenades (Legacy only, per team), folded only when on for a team, with the table only when it differs from
+    // the defaults (GrenadeTuning); every explosion here, and the kits, blast clocks, knock heights and grenades in the world
+    // per frame below, also only then.
+    if(!framesOnly&&GrenadesAny(r.config)){i(3201);i(r.config.grenades);
+        if(!SameGrenadeTuning(r.config.grenade,GrenadeTuning{})){i(3202);for(const auto& param:GrenadeParams())f(r.config.grenade.*param.member);}
+        for(const auto& e:r.explosions){i(3204);i(e.id);i(e.owner);i(e.team);i(int(e.type));f(e.time);v(e.position);i(e.fragments);i(e.ground);}}
     // Plan 026 P4: the schema-4 interface, folded only when requested (0 keeps every digest).
     if(!framesOnly&&r.config.policySchema){i(2604);i(r.config.policySchema);}
+    // Plan 033: destruction (every controller), folded only when on: its test charges, its table only where it differs from
+    // the defaults, and every destruction event (the geometry itself reaches the digest through the frames and the geometry
+    // revision events).
+    if(!framesOnly&&r.config.destruction){i(3301);i(int(r.config.testCharges.size()));for(const auto& e:r.config.testCharges){f(e.time);v(e.position);f(e.tnt);}
+        if(!SameDestructionTuning(r.config.destructionTable,DestructionTuning{})){i(3302);for(const auto& p:DestructionParams())f(r.config.destructionTable.*(p.member));}
+        i(int(r.destruction.size()));for(const auto& e:r.destruction){f(e.time);i(int(e.kind));bytes(&e.obstacle,sizeof(e.obstacle));v(e.center);v(e.half);v(e.velocity);i(e.material);f(e.mass);}}
     if(!framesOnly&&!frames.empty())for(const auto& s:frames.front().soldiers){for(size_t k=0;k<SampledStatCount;++k)f(s.stats.value[k]);if(r.config.stamina)f(s.stats.value[size_t(Stat::Speed)]);f(s.maxHealth);f(s.swayPhase);f(s.swayPhase2);f(s.recoilSign);i(int(s.weapon.def));i(int(s.weapon.modifiers.size()));
         for(const auto& m:s.weapon.modifiers){i(int(m.field));f(m.multiply);f(m.add);}}
     // Over-penetration victims live on the shot, not the frame, so they hash here.
@@ -381,6 +395,9 @@ static uint64_t DigestCore(const Record& r,const Frame* firstFrame,size_t frameC
             if(s.movingFire||s.reloadDeferred){i(1901);i(s.movingFire);i(s.reloadDeferred);}if(s.coveredPath){i(2001);i(1);}if(r.config.stamina){i(2201);f(s.stamina);i(s.winded);i(s.sprinting);}if(s.vaulting){i(2904);f(s.vaultProgress);f(s.vaultHeight);}if(r.config.nerve){i(3002);f(s.nerve);i(s.shakenShots);}if(r.config.stackedSuppression){i(3003);f(s.lastNearMissAt);}if(r.config.keepDown||r.config.pinnedNeighbours){i(3012);f(s.aboveDuckAt);}if(r.config.orderPace&&s.assignment.pace!=1.f){i(2301);f(s.assignment.pace);}f(s.recoil.x);f(s.recoil.y);i(int(s.action));i(int(s.reason));i(int(s.stance));i(s.assignment.teamPlan.route?int(s.assignment.teamPlan.route->id%1000000000ull):0);i(s.assignment.serial);i(int(s.assignment.task));v(s.assignment.position);for(const auto& ct:s.contacts){i(ct.known);i(ct.automaticWeapon);i(ct.visible);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}for(const auto& ct:s.reports){i(ct.known);i(ct.automaticWeapon);v(ct.position);f(ct.observedAt);f(ct.clearedAt);f(ct.emptySince);f(ct.passedAt);f(ct.lastFireAt);}}}
     if(r.config.gunnerCompensation)for(const auto& frame:frames)for(const auto& s:frame.soldiers)f(s.recoilHold);
     if(FireAndMovementAny(r.config))for(const auto& frame:frames)for(const auto& s:frame.soldiers){i(3103);f(s.fmFireAt);f(s.fmHeardAt);f(s.fmWaitSince);} // plan 031 D
+    if(GrenadesAny(r.config))for(const auto& frame:frames){i(3203); // plan 032
+        for(const auto& s:frame.soldiers){i(s.grenades[0]);i(s.grenades[1]);f(s.stunUntil);f(s.deafUntil);i(s.grenadeRush);f(s.knockHeight);}
+        i(int(frame.grenades.size()));for(const auto& g:frame.grenades){i(g.id);i(g.owner);i(g.team);i(int(g.type));i(int(g.stage));v(g.position);v(g.velocity);f(g.fuseAt);f(g.releasedAt);}}
     if(r.config.foundations){
         f(r.config.estimateBias);
         auto intent=[&](const GoalIntent& g){i(g.id);i(g.parent);i(int(g.purpose));v(g.objective);f(g.radius);f(g.expiresAt);};
@@ -601,6 +618,16 @@ std::string ExportBattle(const Record& r,const std::string& root,const std::stri
     if(r.config.neuralPolicy)manifest<<",\"neural_policy\":true,\"neural_team\":0,\"policy_schema\":"<<r.config.neuralPolicy->schema<<",\"policy_file\":\"neural.policy\",\"policy_digest\":"<<Q(std::to_string(r.config.neuralPolicy->digest));
     if(r.config.policyCandidates)manifest<<",\"policy_candidates\":"<<r.config.policyCandidates;
     if(r.config.policySchema)manifest<<",\"policy_schema_requested\":"<<r.config.policySchema;
+    // Plan 033: destruction only when on: the test charges, the table's entries that differ from the defaults, the totals.
+    if(r.config.destruction){const auto& t=r.destructionTotals;
+        manifest<<",\"destruction\":true"<<(r.config.destructionFullRebuild?",\"destruction_full_rebuild\":true":"")<<",\"test_charges\":[";
+        for(size_t n=0;n<r.config.testCharges.size();++n){const auto& e=r.config.testCharges[n];manifest<<(n?",":"")<<"["<<e.position.x<<","<<e.position.y<<","<<e.position.z<<","<<e.tnt<<","<<e.time<<"]";}
+        manifest<<"],\"destruction_params\":{";bool first=true;const DestructionTuning defaults;
+        for(const auto& p:DestructionParams())if(r.config.destructionTable.*(p.member)!=defaults.*(p.member)){manifest<<(first?"":",")<<Q(p.name)<<":"<<r.config.destructionTable.*(p.member);first=false;}
+        manifest<<"},\"destruction_totals\":{\"explosions\":"<<t.explosions<<",\"revisions\":"<<t.revisions<<",\"cracked\":"<<t.cracked<<",\"breached\":"<<t.breached<<",\"destroyed\":"<<t.destroyed
+            <<",\"fallen\":"<<t.fallen<<",\"collapses\":"<<t.collapses<<",\"panes\":"<<t.panes<<",\"rubble\":"<<t.rubble<<",\"fragments\":"<<t.fragments<<",\"fragment_hits\":"<<t.fragmentHits
+            <<",\"falls\":"<<t.falls<<",\"crushed\":"<<t.crushed<<",\"casualties\":"<<t.casualties<<",\"units\":"<<t.units<<",\"view_states\":"<<t.viewStates<<",\"live_states\":"<<t.liveStates<<",\"view_updates\":"<<t.viewUpdates
+            <<",\"physics_seconds\":"<<t.physicsSeconds<<",\"geometry_seconds\":"<<t.geometrySeconds<<",\"view_seconds\":"<<t.viewSeconds<<",\"observe_seconds\":"<<t.observeSeconds<<",\"debris_seconds\":"<<t.debrisSeconds<<"}";}
     // Plan 031 G: each switch's teams and evidence count only when on for a team, its run constants only when not the table's.
     {const auto& k=GunSupportConstants;
      if(GunSupportAny(r.config)){manifest<<",\"gun_support\":"<<Q(FireAndMovementName(r.config.gunSupport))<<",\"gun_support_bursts\":"<<r.gunSupportBursts;
@@ -611,7 +638,27 @@ std::string ExportBattle(const Record& r,const std::string& root,const std::stri
         if(r.config.gunMoverWeight!=k.moverWeight)manifest<<",\"gun_mover_weight\":"<<r.config.gunMoverWeight;}
      if(GunBipodAny(r.config)){manifest<<",\"gun_bipod\":"<<Q(FireAndMovementName(r.config.gunBipod))<<",\"gun_bipod_rounds\":"<<r.gunBipodRounds;
         if(r.config.gunBipodFactor!=k.bipodFactor)manifest<<",\"gun_bipod_factor\":"<<r.config.gunBipodFactor;}}
+    // Plan 032: the grenade teams, the battle's totals and the table's entries that differ from the defaults, only when on.
+    if(GrenadesAny(r.config)){const auto& t=r.grenadeTotals;
+        manifest<<",\"grenades\":"<<Q(FireAndMovementName(r.config.grenades))<<",\"grenades_issued\":"<<t.issued<<",\"grenade_throws\":"<<t.throws
+            <<",\"grenade_explosions\":"<<t.explosions<<",\"grenade_fragments\":"<<t.fragmentsFlown<<",\"grenade_fragment_hits\":"<<t.fragmentHits
+            <<",\"grenade_stuns\":"<<t.stuns<<",\"grenade_deafened\":"<<t.deafened<<",\"grenade_eardrums\":"<<t.eardrums<<",\"grenade_blast_injuries\":"<<t.blastInjuries
+            <<",\"grenade_blast_deaths\":"<<t.blastDeaths<<",\"grenade_knockbacks\":"<<t.knockbacks<<",\"grenade_knockdowns\":"<<t.knockdowns<<",\"grenade_knock_impacts\":"<<t.knockImpacts
+            <<",\"grenade_fragments_penetrating\":"<<t.penetrating<<",\"grenade_fragments_incapacitating\":"<<t.incapacitating
+            <<",\"grenade_casualties_blast\":"<<t.blastCasualties<<",\"grenade_casualties_fragments\":"<<t.fragmentCasualties<<",\"grenade_casualties_friendly\":"<<t.friendlyCasualties
+            <<",\"grenade_reactions\":"<<t.reactions<<",\"grenade_dives\":"<<t.dives<<",\"grenade_runs\":"<<t.runs<<",\"grenade_throw_back_attempts\":"<<t.throwBackAttempts
+            <<",\"grenade_throw_backs\":"<<t.throwBacks<<",\"grenade_fumbles\":"<<t.fumbles<<",\"grenade_dropped\":"<<t.dropped
+            <<",\"grenade_bounced\":"<<t.bounced<<",\"grenade_short\":"<<t.short_
+            <<",\"grenade_close_ins\":"<<t.closeIns<<",\"grenade_close_in_throws\":"<<t.closeInThrows<<",\"grenade_close_in_rushes\":"<<t.closeInRushes<<",\"grenade_close_in_breaks\":"<<t.closeInBreaks;
+        std::ostringstream params;params<<std::setprecision(9);const GrenadeTuning defaults;bool first=true;
+        for(const auto& param:GrenadeParams())if(r.config.grenade.*param.member!=defaults.*param.member){params<<(first?"":",")<<Q(param.name)<<':'<<r.config.grenade.*param.member;first=false;}
+        manifest<<",\"grenade_params\":{"<<params.str()<<'}';}
     manifest<<"}";
+    // Plan 033: every destruction event, for the tools (written only when destruction is on).
+    if(r.config.destruction){auto destruction=write("destruction.jsonl");const char* kinds[]={"cracked","breached","destroyed","collapsed","glass_shattered","rubble"};
+        for(const auto& pane:r.glassPanes){destruction<<"{\"time\":0,\"kind\":\"pane\",\"obstacle\":"<<pane.id<<",\"center\":";V(destruction,pane.center);destruction<<",\"half\":";V(destruction,pane.half);destruction<<"}\n";}
+        for(const auto& e:r.destruction){destruction<<"{\"time\":"<<e.time<<",\"kind\":"<<Q(kinds[int(e.kind)])<<",\"obstacle\":"<<e.obstacle<<",\"center\":";V(destruction,e.center);
+            destruction<<",\"half\":";V(destruction,e.half);destruction<<",\"velocity\":";V(destruction,e.velocity);destruction<<",\"material\":"<<e.material<<",\"mass\":"<<e.mass<<"}\n";}}
     auto profile=write("profile.json");if(r.diagnostics){const auto& d=*r.diagnostics;profile<<"{\"total\":"<<d.total<<",\"perception\":"<<d.perception<<",\"commands\":"<<d.commands<<",\"decisions\":"<<d.decisions<<",\"movement\":"<<d.movement<<",\"ballistics\":"<<d.ballistics<<",\"firing\":"<<d.firing<<",\"recording\":"<<d.recording<<",\"trace\":"<<d.trace<<",\"navigation_inclusive\":"<<(r.map.queryProfile?r.map.queryProfile->navigationSeconds:0)<<",\"tactical_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalSeconds:0)<<",\"corridor_seconds\":"<<(r.map.queryProfile?r.map.queryProfile->corridorSeconds:0)<<",\"tactical_queries\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalQueries:0)<<",\"tactical_expanded\":"<<(r.map.queryProfile?r.map.queryProfile->tacticalExpanded:0)<<",\"path_queries\":"<<(r.map.queryProfile?r.map.queryProfile->paths:0)<<",\"sight_queries\":"<<(r.map.queryProfile?r.map.queryProfile->sight:0)<<",\"memo_lookups\":"<<(r.map.queryProfile?r.map.queryProfile->memoLookups:0)<<",\"memo_hits\":"<<(r.map.queryProfile?r.map.queryProfile->memoHits:0)<<",\"collision_queries\":"<<(r.map.queryProfile?r.map.queryProfile->collision:0)<<"}";}
     std::ofstream latest(fs::path(root)/"latest.json");latest<<"{\"run\":"<<Q(name)<<"}";return dir.string();
 }

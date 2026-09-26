@@ -218,10 +218,12 @@ struct SegmentMemo {
     // Sight lines (kind 0) and movement lines (kind 1) have separate tables: a
     // sight line is cheap to recompute, a movement line samples the floor. Solid-only
     // lines (kind 2, plan 029, only on maps with concealment) share the second table.
-    uint64_t revision=0; Table sight{size_t(1)<<SIGHT_MEMO_BITS}, other{size_t(1)<<SEGMENT_MEMO_BITS};
+    uint64_t revision=0; Table sight, other;
+    // scale (Map::cacheScale, plan 033): both tables 2^scale times smaller (never below 2^8 entries).
+    explicit SegmentMemo(int scale=0):sight{size_t(1)<<std::max(8,SIGHT_MEMO_BITS-scale)},other{size_t(1)<<std::max(8,SEGMENT_MEMO_BITS-scale)}{}
 };
 bool MemoisedSegment(const Map& m,Vec3 a,Vec3 b,float pad,int kind,bool (*compute)(const Map&,Vec3,Vec3,float)){
-    if(!m.segments||m.segments->revision!=m.revision){m.segments=std::make_shared<SegmentMemo>();m.segments->revision=m.revision;}
+    if(!m.segments||m.segments->revision!=m.revision){m.segments=std::make_shared<SegmentMemo>(m.cacheScale);m.segments->revision=m.revision;}
     uint32_t key[7];const float words[7]={a.x,a.y,a.z,b.x,b.y,b.z,pad};std::memcpy(key,words,sizeof key);
     uint64_t h=1469598103934665603ull;for(uint32_t k:key)h=(h^k)*1099511628211ull;h=(h^uint64_t(kind))*1099511628211ull;
     h^=h>>32;h*=0x9e3779b97f4a7c15ull;h^=h>>29;

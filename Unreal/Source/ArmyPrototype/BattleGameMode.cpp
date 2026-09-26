@@ -1,6 +1,7 @@
 #include "BattleGameMode.h"
 #include "SoldierVisual.h"
 #include "ArcaneProjectileVisual.h"
+#include "DestructionVisual.h"
 #include "PresentationState.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Sim/ReactionSim.h"
@@ -31,6 +32,7 @@
 #include "DrawDebugHelpers.h"
 #include "Sim/TacticalRouteSim.h"
 #include "HighResScreenshot.h"
+#include "ShaderCompiler.h"
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -49,6 +51,8 @@ const FLinearColor Ember(0.98f,0.39f,0.22f,1);
 const FLinearColor Gold(0.90f,0.75f,0.39f,1);
 FVector World(army::Vec3 P,float Z=0) {return FVector(P.x*100,P.y*100,P.z*100+Z);}
 FString TimeLabel(float T) {int S=FMath::FloorToInt(T);return FString::Printf(TEXT("%02d:%02d"),S/60,S%60);}
+// An obstacle's box: centre.z is its foot, the engine cube is one metre.
+FTransform ObstacleTransform(const army::Obstacle& O) {const float Height=army::ObstacleHeight(O);return FTransform(FQuat::Identity,World(O.center,Height*50),FVector(O.half.x*2,O.half.y*2,Height));}
 }
 ABattleGameMode::ABattleGameMode() {
     PrimaryActorTick.bCanEverTick=true;
@@ -79,6 +83,12 @@ void ABattleGameMode::BeginPlay() {
     Settings.gradedPeek=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoGradedPeek"));
     Settings.keepDown=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoKeepDown"));
     Settings.pinnedNeighbours=!FParse::Param(FCommandLine::Get(),TEXT("ArmyNoPinnedNeighbours"));
+    // Plan 032 (opt-in, Legacy only): grenades for -ArmyGrenades=azure, ember or both (-ArmyGrenades alone: both).
+    // Plan 033 (opt-in): building destruction from blast force, -ArmyDestruction (the grenades' bursts load the walls).
+    FString GrenadeTeams;
+    if(FParse::Value(FCommandLine::Get(),TEXT("ArmyGrenades="),GrenadeTeams))Settings.grenades=GrenadeTeams==TEXT("azure")?1:GrenadeTeams==TEXT("ember")?2:3;
+    else if(FParse::Param(FCommandLine::Get(),TEXT("ArmyGrenades")))Settings.grenades=3;
+    Settings.destruction=FParse::Param(FCommandLine::Get(),TEXT("ArmyDestruction"));
     if(army::TypedController(Settings)){Settings.foundations=true;FParse::Value(FCommandLine::Get(),TEXT("ArmyScenario="),CognitiveScenario);CognitiveScenario=FMath::Clamp(CognitiveScenario,0,Settings.drills?7:43);}
     FString GeneratedFamily; if(FParse::Value(FCommandLine::Get(),TEXT("ArmyGenerated="),GeneratedFamily)&&GeneratedFamily==TEXT("F1")){Settings.family=army::ScenarioFamily::F1;CognitiveScenario=0;Settings.terrain=army::Terrain::FracturedWorks;}
     FParse::Value(FCommandLine::Get(),TEXT("ArmyGenSeed="),Settings.genSeed);
@@ -117,6 +127,8 @@ void ABattleGameMode::BeginPlay() {
     if(Settings.family!=army::ScenarioFamily::None)army::ApplyScenario(army::GenerateScenario(Settings.family,Settings.genSeed),Settings,Battle.map,*Preparation);
     bSmoke=FParse::Param(FCommandLine::Get(),TEXT("ArmySmokeTest"));
     bCapture=FParse::Param(FCommandLine::Get(),TEXT("ArmyCapture"));
+    // Plan 033 debug switch: fabricated destruction on one building of each new battle (see armydestruction::FabricateTest).
+    bTestDestruction=FParse::Param(FCommandLine::Get(),TEXT("ArmyTestDestruction"));
     BuildScene();
     auto* PC=GetWorld()->GetFirstPlayerController();
     PC->bShowMouseCursor=true;PC->bEnableClickEvents=true;
@@ -125,6 +137,7 @@ void ABattleGameMode::BeginPlay() {
     Input.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);PC->SetInputMode(Input);
     ShowUnits();
     ProjectileVisual=GetWorld()->SpawnActor<AArcaneProjectileVisual>();
+    DestructionVisual=GetWorld()->SpawnActor<ADestructionVisual>();DestructionVisual->ShowUpper(bShowUpperFloor);
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyProjectileTest"))) {
         const FString Report=ProjectileVisual->ValidatePresentation();
         FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("projectile-validation.txt")));
@@ -188,6 +201,9 @@ bool ABattleGameMode::SelectMap(int Index){
 }
 void ABattleGameMode::BuildScene() {
     for(auto Actor:SceneActors)if(Actor)Actor->Destroy();SceneActors.Empty();Units.Empty();UpperStructure.Empty();
+    ObstacleVisuals.Reset();ObstacleBatches.Reset();ObstacleBatchKeys.Reset();DecorationVisuals.Reset();
+    if(DestructionVisual)DestructionVisual->Clear();
+    IndexDestruction();
     BaseMaterial=LoadObject<UMaterialInterface>(nullptr,TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
     const TCHAR* Cube=TEXT("/Engine/BasicShapes/Cube.Cube");
     const TCHAR* Cylinder=TEXT("/Engine/BasicShapes/Cylinder.Cylinder");
@@ -200,42 +216,20 @@ void ABattleGameMode::BuildScene() {
     for(int X=-int(Battle.map.halfWidth)+5;X<int(Battle.map.halfWidth);X+=10) Shape(Cube,FVector(X*100,0,2),FVector(0.018f,Battle.map.halfHeight*2-2,0.012f),FLinearColor(0.20f,0.25f,0.20f));
     for(int Y=-int(Battle.map.halfHeight)+5;Y<int(Battle.map.halfHeight);Y+=10) Shape(Cube,FVector(0,Y*100,2),FVector(Battle.map.halfWidth*2-2,0.018f,0.012f),FLinearColor(0.20f,0.25f,0.20f));
     }
-    TMap<FString,UInstancedStaticMeshComponent*> Batches;
-    auto BatchCube=[&](FVector Location,FVector Scale,FLinearColor Color,bool Roof=false){
-        const FString Key=FString::Printf(TEXT("%.3f/%.3f/%.3f/%d"),Color.R,Color.G,Color.B,int(Roof));
-        UInstancedStaticMeshComponent* Mesh=nullptr;
-        if(auto* Found=Batches.Find(Key))Mesh=*Found;
-        else {
-            auto* Actor=GetWorld()->SpawnActor<AActor>();SceneActors.Add(Actor);if(Roof)UpperStructure.Add(Actor);
-            Mesh=NewObject<UInstancedStaticMeshComponent>(Actor);Actor->SetRootComponent(Mesh);Actor->AddInstanceComponent(Mesh);
-            Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,Cube));Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-            Mesh->SetMobility(EComponentMobility::Movable);Mesh->RegisterComponent();
-            auto* Mat=UMaterialInstanceDynamic::Create(BaseMaterial,Actor);Mat->SetVectorParameterValue(TEXT("Color"),Color);Mesh->SetMaterial(0,Mat);Batches.Add(Key,Mesh);
-        }
-        Mesh->AddInstance(FTransform(FQuat::Identity,Location,Scale));
-    };
-    // A village's earth complement (below grade, top at grade) is the fields' surface, so it takes the ground colour;
-    // trench maps keep their earth.
-    const bool Village=Settings.battlefield&&Settings.battlefield->kind=="village";
-    const bool V2=Battle.map.formatVersion>=2; // timber slabs/treads only on ARMYMAP 2, so v1 town lintels keep their stone colour
-    for(const auto& O:Battle.map.obstacles) {
-        float Height=army::ObstacleHeight(O);
-        if(Settings.battlefield){
-            // Plan 029: a hedge (the authored concealment bit) is green whether or not the battle runs with concealment on;
-            // a crater rim (flags bit1) is churned earth; floor slabs, stair treads and lintels (building, not blocking) are timber.
-            const FLinearColor Color=(O.concealment||(O.flags&1u))?FLinearColor(.20f,.33f,.14f):(O.flags&2u)?FLinearColor(.27f,.20f,.12f):
-                O.center.z<0?(Village?FLinearColor(.16f,.205f,.17f):FLinearColor(.31f,.30f,.21f)):V2&&O.building&&!O.blocksMovement?FLinearColor(.30f,.24f,.16f):O.halfCover?FLinearColor(.49f,.39f,.24f):FLinearColor(.47f,.46f,.39f);
-            // Everything from the upper slab up (slab 3.0, upper walls/sills 3.2, lintels) opens with the F cutaway.
-            BatchCube(World(O.center,Height*50),FVector(O.half.x*2,O.half.y*2,Height),Color,O.center.z>2.9f);continue;
-        }
-        auto* Piece=Shape(Cube,World(O.center,Height*50),FVector(O.half.x*2,O.half.y*2,Height),
-            O.building?(O.blocksMovement?FLinearColor(0.32f,0.35f,0.33f):FLinearColor(0.30f,0.24f,0.16f)):
-            O.halfCover?FLinearColor(0.48f,0.39f,0.21f):Height>=5?FLinearColor(0.23f,0.27f,0.25f):FLinearColor(0.34f,0.38f,0.37f));
-        if(O.building&&O.center.z>2.9f)UpperStructure.Add(Piece);
-    }
+    // Plan 033: every obstacle is an instance in a colour batch, kept by its id so playback can hide, move or add any one
+    // of them. The authored works share the imported maps' batches (their colours are unchanged). Record::map is the
+    // final geometry once a battle has run: the scene always starts from the battle's first.
+    for(const auto& O:InitialGeometry().obstacles)PlaceObstacle(O);
     if(Settings.battlefield){
         const FLinearColor Colors[]={FLinearColor(.36f,.37f,.33f),FLinearColor(.31f,.35f,.23f),FLinearColor(.57f,.50f,.36f),FLinearColor(.28f,.39f,.39f),FLinearColor(.41f,.33f,.25f)};
-        for(const auto& D:Settings.battlefield->decorations)BatchCube(World(D.center),FVector(D.half.x*2,D.half.y*2,D.half.z*2),Colors[D.kind],D.kind==3);
+        for(const auto& D:Settings.battlefield->decorations){
+            armydestruction::FDecorationVisual Decoration;Decoration.Kind=D.kind;Decoration.Center=D.center;
+            Decoration.Transform=FTransform(FQuat::Identity,World(D.center),FVector(D.half.x*2,D.half.y*2,D.half.z*2));
+            Decoration.Batch=ObstacleBatch(Colors[D.kind],D.kind==3);
+            Decoration.Instance=ObstacleBatches[Decoration.Batch]->AddInstance(Decoration.Transform);
+            Decoration.HiddenFrom=armydestruction::DecorationHiddenFrom(Collapses,Decoration);
+            DecorationVisuals.Add(Decoration);
+        }
     }
     for(auto& A:UpperStructure)A->SetActorHiddenInGame(!bShowUpperFloor);
     const bool Characters=!FParse::Param(FCommandLine::Get(),TEXT("ArmyGreybox"))&&ASoldierVisual::AssetsAvailable();
@@ -285,6 +279,254 @@ void ABattleGameMode::BuildScene() {
     Camera->GetCameraComponent()->ProjectionMode=ECameraProjectionMode::Orthographic;
     Camera->GetCameraComponent()->bConstrainAspectRatio=false;
     Camera->SetActorRotation(FRotator(-60,-90,0));
+}
+const army::Map& ABattleGameMode::InitialGeometry() const {
+    const auto& Versions=Battle.geometryVersions;
+    return !Versions.empty()&&Versions.front().time<=0?Versions.front().map:Battle.map;
+}
+const army::Map& ABattleGameMode::ShownGeometry() const {
+    return ShownVersion>=0&&ShownVersion<int32(Battle.geometryVersions.size())?Battle.geometryVersions[size_t(ShownVersion)].map:InitialGeometry();
+}
+int32 ABattleGameMode::GeometryIndexAt(float Time) const {
+    const auto& Versions=Battle.geometryVersions;
+    return int32(std::upper_bound(Versions.begin(),Versions.end(),Time,[](float At,const army::GeometryVersion& Version){return At<Version.time;})-Versions.begin())-1;
+}
+// The colour and cutaway group BuildScene has always given an obstacle, plus plan 033's rubble (the colour of the
+// material it fell from) and cracked walls (a darker shade from the moment they crack).
+FLinearColor ABattleGameMode::ObstacleColor(const army::Obstacle& O,float Time,bool& Roof) const {
+    const float Height=army::ObstacleHeight(O);
+    FLinearColor Color;
+    if(Settings.battlefield){
+        // A village's earth complement (below grade, top at grade) is the fields' surface, so it takes the ground colour;
+        // trench maps keep their earth. Timber slabs/treads only on ARMYMAP 2, so v1 town lintels keep their stone colour.
+        const bool Village=Settings.battlefield->kind=="village";
+        const bool V2=Battle.map.formatVersion>=2;
+        // Plan 029: a hedge (the authored concealment bit) is green whether or not the battle runs with concealment on;
+        // a crater rim (flags bit1) is churned earth; floor slabs, stair treads and lintels (building, not blocking) are timber.
+        Color=(O.concealment||(O.flags&1u))?FLinearColor(.20f,.33f,.14f):(O.flags&2u)?FLinearColor(.27f,.20f,.12f):
+            O.center.z<0?(Village?FLinearColor(.16f,.205f,.17f):FLinearColor(.31f,.30f,.21f)):V2&&O.building&&!O.blocksMovement?FLinearColor(.30f,.24f,.16f):O.halfCover?FLinearColor(.49f,.39f,.24f):FLinearColor(.47f,.46f,.39f);
+        // Everything from the upper slab up (slab 3.0, upper walls/sills 3.2, lintels) opens with the F cutaway.
+        Roof=O.center.z>2.9f;
+    }else{
+        Color=O.building?(O.blocksMovement?FLinearColor(0.32f,0.35f,0.33f):FLinearColor(0.30f,0.24f,0.16f)):
+            O.halfCover?FLinearColor(0.48f,0.39f,0.21f):Height>=5?FLinearColor(0.23f,0.27f,0.25f):FLinearColor(0.34f,0.38f,0.37f);
+        Roof=O.building&&O.center.z>2.9f;
+    }
+    if(const int32* Material=RubbleMaterials.Find(O.id))Color=armydestruction::RubbleColor(*Material);
+    else if(const float* At=CrackedAt.Find(O.id)){if(*At<=Time)Color=armydestruction::CrackedColor(Color);}
+    return Color;
+}
+int32 ABattleGameMode::ObstacleBatch(const FLinearColor& Color,bool Roof) {
+    const FString Key=FString::Printf(TEXT("%.3f/%.3f/%.3f/%d"),Color.R,Color.G,Color.B,int(Roof));
+    if(const int32* Found=ObstacleBatchKeys.Find(Key))return *Found;
+    auto* Actor=GetWorld()->SpawnActor<AActor>();SceneActors.Add(Actor);
+    if(Roof){UpperStructure.Add(Actor);Actor->SetActorHiddenInGame(!bShowUpperFloor);}
+    auto* Mesh=NewObject<UInstancedStaticMeshComponent>(Actor);Actor->SetRootComponent(Mesh);Actor->AddInstanceComponent(Mesh);
+    Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Cube.Cube")));Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Mesh->SetMobility(EComponentMobility::Movable);Mesh->RegisterComponent();
+    auto* Mat=UMaterialInstanceDynamic::Create(BaseMaterial,Actor);Mat->SetVectorParameterValue(TEXT("Color"),Color);Mesh->SetMaterial(0,Mat);
+    const int32 Index=ObstacleBatches.Add(Mesh);ObstacleBatchKeys.Add(Key,Index);
+    return Index;
+}
+void ABattleGameMode::PlaceObstacle(const army::Obstacle& O) {
+    bool Roof=false;const FLinearColor Color=ObstacleColor(O,-1.f,Roof);
+    const int32 Batch=ObstacleBatch(Color,Roof);
+    const int32 Instance=ObstacleBatches[Batch]->AddInstance(ObstacleTransform(O));
+    if(!O.id)return;   // an unprepared map's boxes never change
+    auto& Visual=ObstacleVisuals.FindOrAdd(O.id);
+    Visual.Slots.Reset();Visual.Slots.Add({Batch,Instance});Visual.Active=0;Visual.Shown=O;
+}
+// Applies the geometry of the replay time (the first geometry in preparation) by obstacle id: hides what has gone,
+// moves what was replaced, adds what is new (rubble, the pieces left around a breach). Only when the version, or a
+// crack or collapse between versions, changes; otherwise it returns at once.
+void ABattleGameMode::ShowGeometry() {
+    const float Time=bPreparation?-1.f:ReplayTime;
+    const int32 Version=bPreparation?(Battle.geometryVersions.empty()?-1:0):GeometryIndexAt(Time);
+    const int32 Style=int32(std::upper_bound(StyleTimes.begin(),StyleTimes.end(),Time)-StyleTimes.begin());
+    if(Version==ShownVersion&&Style==ShownStyle)return;
+    const army::Map& Target=Version>=0?Battle.geometryVersions[size_t(Version)].map:InitialGeometry();
+    TSet<int32> Dirty;
+    auto Hide=[this,&Dirty](const armydestruction::FObstacleSlot& Slot){
+        auto* Batch=ObstacleBatches[Slot.Batch].Get();FTransform Placed;Batch->GetInstanceTransform(Slot.Instance,Placed);
+        Placed.SetScale3D(FVector::ZeroVector);Batch->UpdateInstanceTransform(Slot.Instance,Placed,false,false,true);Dirty.Add(Slot.Batch);};
+    ++GeometryPass;
+    for(const army::Obstacle& O:Target.obstacles){
+        if(!O.id)continue;
+        bool Roof=false;const FLinearColor Color=ObstacleColor(O,Time,Roof);
+        const int32 Batch=ObstacleBatch(Color,Roof);
+        auto& Visual=ObstacleVisuals.FindOrAdd(O.id);Visual.Pass=GeometryPass;
+        if(Visual.Active!=INDEX_NONE&&Visual.Slots[Visual.Active].Batch==Batch&&armydestruction::SameBox(Visual.Shown,O))continue;
+        if(Visual.Active!=INDEX_NONE&&Visual.Slots[Visual.Active].Batch!=Batch){Hide(Visual.Slots[Visual.Active]);Visual.Active=INDEX_NONE;}
+        int32 Slot=Visual.Slots.IndexOfByPredicate([Batch](const armydestruction::FObstacleSlot& Each){return Each.Batch==Batch;});
+        if(Slot==INDEX_NONE){const int32 Instance=ObstacleBatches[Batch]->AddInstance(ObstacleTransform(O));Slot=Visual.Slots.Add({Batch,Instance});}
+        else{ObstacleBatches[Batch]->UpdateInstanceTransform(Visual.Slots[Slot].Instance,ObstacleTransform(O),false,false,true);Dirty.Add(Batch);}
+        Visual.Active=Slot;Visual.Shown=O;
+    }
+    for(auto& Pair:ObstacleVisuals)if(Pair.Value.Pass!=GeometryPass&&Pair.Value.Active!=INDEX_NONE){Hide(Pair.Value.Slots[Pair.Value.Active]);Pair.Value.Active=INDEX_NONE;}
+    for(auto& Decoration:DecorationVisuals){
+        const bool Gone=Decoration.HiddenFrom<=Time;
+        if(Gone==Decoration.Hidden)continue;
+        FTransform Placed=Decoration.Transform;if(Gone)Placed.SetScale3D(FVector::ZeroVector);
+        ObstacleBatches[Decoration.Batch]->UpdateInstanceTransform(Decoration.Instance,Placed,false,false,true);Dirty.Add(Decoration.Batch);Decoration.Hidden=Gone;
+    }
+    for(const int32 Changed:Dirty)ObstacleBatches[Changed]->MarkRenderInstancesDirty();
+    ShownVersion=Version;ShownStyle=Style;
+}
+// Reads the record's destruction for the scene: which added obstacles are rubble (and of what), which walls crack
+// when, and which storeys collapse (their roofs and upper floors go with them).
+void ABattleGameMode::IndexDestruction() {
+    RubbleMaterials.Reset();CrackedAt.Reset();Collapses.clear();StyleTimes.clear();
+    const auto& Versions=Battle.geometryVersions;
+    TMap<int32,TSet<uint64>> Earlier;   // obstacle ids before version V
+    for(const auto& Change:Battle.destruction){
+        if(Change.kind==army::DestructionKind::Cracked&&Change.obstacle){
+            if(float* At=CrackedAt.Find(Change.obstacle))*At=FMath::Min(*At,Change.time);else CrackedAt.Add(Change.obstacle,Change.time);
+            StyleTimes.push_back(Change.time);
+        }
+        if(Change.kind==army::DestructionKind::Collapsed){armydestruction::FCollapse Fall;Fall.Time=Change.time;Fall.Center=Change.center;Fall.Half=Change.half;Collapses.push_back(Fall);StyleTimes.push_back(Change.time);}
+        if(Change.kind!=army::DestructionKind::Rubble)continue;
+        if(Change.obstacle){RubbleMaterials.Add(Change.obstacle,Change.material);continue;}
+        // New rubble carries no id: it is the obstacle its version added nearest the event's box.
+        const int32 Version=GeometryIndexAt(Change.time);
+        if(Version<=0)continue;
+        if(!Earlier.Contains(Version)){TSet<uint64>& Ids=Earlier.Add(Version);for(const auto& O:Versions[size_t(Version-1)].map.obstacles)Ids.Add(O.id);}
+        const TSet<uint64>& Before=Earlier[Version];
+        const army::Obstacle* Best=nullptr;float Nearest=1.5f;
+        for(const auto& O:Versions[size_t(Version)].map.obstacles)if(O.id&&!Before.Contains(O.id)&&!RubbleMaterials.Contains(O.id)){
+            const float Gap=FMath::Abs(O.center.x-Change.center.x)+FMath::Abs(O.center.y-Change.center.y)+FMath::Abs(O.half.x-Change.half.x)+FMath::Abs(O.half.y-Change.half.y);
+            if(Gap<Nearest){Nearest=Gap;Best=&O;}
+        }
+        if(Best)RubbleMaterials.Add(Best->id,Change.material);
+    }
+    std::sort(StyleTimes.begin(),StyleTimes.end());
+    std::stable_sort(Collapses.begin(),Collapses.end(),[](const armydestruction::FCollapse& A,const armydestruction::FCollapse& B){return A.Time<B.Time;});
+    for(auto& Decoration:DecorationVisuals)Decoration.HiddenFrom=armydestruction::DecorationHiddenFrom(Collapses,Decoration);
+    ShownVersion=-2;ShownStyle=-1;
+}
+void ABattleGameMode::ConfigureDestruction() {
+    const double Began=FPlatformTime::Seconds();
+    IndexDestruction();
+    if(DestructionVisual)DestructionVisual->Configure(Battle);
+    if(!Battle.destruction.empty()||Battle.geometryVersions.size()>1||!Battle.explosions.empty()||!Battle.glassPanes.empty())
+        UE_LOG(LogTemp,Display,TEXT("ARMY_DESTRUCTION: %d events, %d geometry versions, %d debris chunks, %d dust puffs, %d rubble pieces, %d panes, %d grenades, %d explosions, prepared in %.3fs"),
+            int(Battle.destruction.size()),int(Battle.geometryVersions.size()),DestructionVisual?DestructionVisual->TotalChunks:0,DestructionVisual?DestructionVisual->TotalPuffs:0,
+            RubbleMaterials.Num(),DestructionVisual?DestructionVisual->TotalPanes:0,DestructionVisual?DestructionVisual->TotalGrenades:0,int(Battle.explosions.size()),
+            FPlatformTime::Seconds()-Began);
+}
+void ABattleGameMode::PresentDestruction() {
+    ShowGeometry();
+    if(!DestructionVisual)return;
+    if(bPreparation)DestructionVisual->Clear();else DestructionVisual->Present(ReplayTime);
+}
+// -ArmyTestDestruction -ArmyDestructionCapture: a 40 s battle, the checks below, then stills of the fabricated
+// destruction (before, breach from outside with the upper floor open, a wall destroyed, glass, collapse, settled).
+FString ABattleGameMode::CheckDestruction() {
+    const auto& Test=TestDestruction;
+    // The scene shows exactly one geometry: every obstacle by id and box, nothing else.
+    auto Shows=[this](const army::Map& Geometry){
+        int32 Want=0,Showing=0;bool Same=true;
+        for(const auto& O:Geometry.obstacles){if(!O.id)continue;++Want;const auto* Visual=ObstacleVisuals.Find(O.id);
+            Same=Same&&Visual&&Visual->Active!=INDEX_NONE&&armydestruction::SameBox(Visual->Shown,O);}
+        for(const auto& Pair:ObstacleVisuals)Showing+=Pair.Value.Active!=INDEX_NONE;
+        return Same&&Want==Showing;};
+    bool EachVersion=true;
+    for(const auto& Version:Battle.geometryVersions){Seek(Version.time+.001f);EachVersion=EachVersion&&Shows(Version.map);}
+    Seek(Battle.duration);const bool Final=Shows(Battle.map);
+    Seek(0);const bool Initial=Shows(InitialGeometry());
+    // Debris is sampled from recorded time: the same instant shows the same chunks after seeking elsewhere.
+    Seek(Test.Breach+.3f);const TArray<FTransform> First=DestructionVisual->Snapshot();
+    Seek(Test.Collapse+2);Seek(Test.Breach+.3f);const TArray<FTransform> Again=DestructionVisual->Snapshot();
+    bool Replayed=First.Num()>0&&First.Num()==Again.Num();
+    for(int32 I=0;I<First.Num()&&Replayed;++I)Replayed=First[I].Equals(Again[I],.001);
+    // Every event throws debris (and dust when the engine material is there); all of it is gone twelve seconds later.
+    FString Moments;bool Thrown=true;
+    for(const float At:{Test.Crack,Test.Breach,Test.Destroyed,Test.Glass,Test.Collapse})if(At>=0){
+        Seek(At+.2f);
+        Thrown=Thrown&&DestructionVisual->VisibleChunks>0&&(DestructionVisual->VisiblePuffs>0||!DestructionVisual->DustAvailable());
+        Moments+=FString::Printf(TEXT(" t%.2f:%d chunks/%d dust"),At+.2f,DestructionVisual->VisibleChunks,DestructionVisual->VisiblePuffs);
+    }
+    Seek(Test.Collapse+12);const bool Settled=DestructionVisual->VisibleChunks==0&&DestructionVisual->VisiblePuffs==0;
+    Seek(0);
+    const bool Passed=EachVersion&&Final&&Initial&&Replayed&&Thrown&&Settled;
+    return FString::Printf(TEXT("%s versions=%d each_version_shown=%d final_is_record_map=%d initial_after_seek_back=%d debris_replay_equal=%d (%d transforms) every_event_throws=%d settled_after_12s=%d dust_material=%d events=%d chunks=%d puffs=%d rubble=%d\n%s\n%s\n"),
+        Passed?TEXT("PASS"):TEXT("FAIL"),int(Battle.geometryVersions.size()),EachVersion,Final,Initial,Replayed,First.Num(),Thrown,Settled,DestructionVisual->DustAvailable(),
+        int(Battle.destruction.size()),DestructionVisual->TotalChunks,DestructionVisual->TotalPuffs,RubbleMaterials.Num(),*Moments,*Test.Summary);
+}
+void ABattleGameMode::DestructionCapture() {
+    const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots/Destruction");IFileManager::Get().MakeDirectory(*Dir,true);
+    const auto& Test=TestDestruction;
+    // Looks at a wall's outer face from outside and above, a little from the side; the overview from above the building.
+    auto Face=[this,&Test](const FVector& Outward){CameraPan=Test.Focus+Outward*200+FVector(0,0,200);CameraYaw=FMath::RadiansToDegrees(FMath::Atan2(-Outward.Y,-Outward.X))+28;CameraPitch=34;Zoom=.042f;};
+    auto Overview=[this,&Test](){CameraPan=Test.Focus+FVector(0,0,150);CameraYaw=-62;CameraPitch=46;Zoom=.05f;};
+    // A still waits for any shader still compiling (the dust material's first use), so nothing shows a placeholder.
+    auto Still=[&Dir](const TCHAR* Name){
+        if(GShaderCompilingManager)GShaderCompilingManager->FinishAllCompilation();
+        FScreenshotRequest::RequestScreenshot(Dir/Name,true,false);UE_LOG(LogTemp,Display,TEXT("ARMY_DESTRUCTION_STILL %s"),Name);};
+    if(SmokeStage==0&&RealSeconds>2){
+        Settings.maxSeconds=40;RunBattle();bPaused=true;bCleanView=true;++SmokeStage;
+        if(!Test.Ready){UE_LOG(LogTemp,Error,TEXT("ARMY_DESTRUCTION_TEST nothing fabricated: %s"),*Test.Summary);FGenericPlatformMisc::RequestExit(false);return;}
+        const FString Report=CheckDestruction();
+        FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("destruction-test.txt")));
+        UE_LOG(LogTemp,Display,TEXT("ARMY_DESTRUCTION_TEST_RESULT %s"),*Report);
+        Overview();Seek(FMath::Max(0.f,Test.Breach-1.5f));
+    }
+    else if(SmokeStage==1&&RealSeconds>4){Still(TEXT("destruction-0-before.png"));++SmokeStage;}
+    else if(SmokeStage==2&&RealSeconds>5){Face(Test.BreachOut);if(bShowUpperFloor)Command(TEXT("floors"));Seek(Test.Breach+.3f);++SmokeStage;}
+    else if(SmokeStage==3&&RealSeconds>6.5){Still(TEXT("destruction-1-breach.png"));++SmokeStage;}
+    else if(SmokeStage==4&&RealSeconds>7.5){Seek(Test.Breach+2.6f);++SmokeStage;}
+    else if(SmokeStage==5&&RealSeconds>9){Still(TEXT("destruction-1b-breach-settled.png"));++SmokeStage;}
+    else if(SmokeStage==6&&RealSeconds>10){if(!bShowUpperFloor)Command(TEXT("floors"));Face(Test.DestroyedOut);Seek(Test.Destroyed+.45f);++SmokeStage;}
+    else if(SmokeStage==7&&RealSeconds>11.5){Still(TEXT("destruction-2-destroyed.png"));++SmokeStage;}
+    else if(SmokeStage==8&&RealSeconds>12.5){Face(Test.GlassOut);Seek(Test.Glass+.35f);++SmokeStage;}
+    else if(SmokeStage==9&&RealSeconds>14){Still(TEXT("destruction-3-glass.png"));++SmokeStage;}
+    else if(SmokeStage==10&&RealSeconds>15){Overview();Seek(Test.Collapse+.8f);++SmokeStage;}
+    else if(SmokeStage==11&&RealSeconds>16.5){Still(TEXT("destruction-4-collapse.png"));++SmokeStage;}
+    else if(SmokeStage==12&&RealSeconds>17.5){Seek(Test.Collapse+14);++SmokeStage;}
+    else if(SmokeStage==13&&RealSeconds>19){Still(TEXT("destruction-5-after.png"));++SmokeStage;}
+    else if(SmokeStage==14&&RealSeconds>20.5){FGenericPlatformMisc::RequestExit(false);++SmokeStage;}
+}
+// -ArmyBlastCapture (with -ArmyGrenades and -ArmyDestruction): a real battle, then stills of the grenade burst that broke
+// the most (a grenade in flight, the flash, glass and debris flying, the smoke and damage after) under Saved/Screenshots/Blast.
+void ABattleGameMode::BlastCapture() {
+    const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots/Blast");IFileManager::Get().MakeDirectory(*Dir,true);
+    auto Still=[&Dir](const TCHAR* Name){
+        if(GShaderCompilingManager)GShaderCompilingManager->FinishAllCompilation();
+        FScreenshotRequest::RequestScreenshot(Dir/Name,true,false);UE_LOG(LogTemp,Display,TEXT("ARMY_BLAST_STILL %s"),Name);};
+    if(SmokeStage==0&&RealSeconds>2){
+        RunBattle();bPaused=true;bCleanView=true;++SmokeStage;
+        // The burst whose next quarter second broke the most within 15 m (walls count more than glass, glass than cracks).
+        int32 Best=-1;float BestScore=-1;FVector Toward=FVector::ZeroVector;
+        for(int32 I=0;I<int32(Battle.explosions.size());++I){
+            const auto& E=Battle.explosions[size_t(I)];float Score=0;FVector Sum=FVector::ZeroVector;
+            for(const auto& Change:Battle.destruction){
+                if(Change.time<E.time||Change.time>E.time+.25f||std::hypot(Change.center.x-E.position.x,Change.center.y-E.position.y)>15)continue;
+                const float Weight=Change.kind==army::DestructionKind::Breached||Change.kind==army::DestructionKind::Destroyed||Change.kind==army::DestructionKind::Collapsed?5.f:
+                    Change.kind==army::DestructionKind::GlassShattered?2.f:Change.kind==army::DestructionKind::Cracked?1.f:.5f;
+                Score+=Weight;Sum+=FVector(Change.center.x-E.position.x,Change.center.y-E.position.y,0)*Weight;
+            }
+            if(Score>BestScore){BestScore=Score;Best=I;Toward=Sum;}
+        }
+        const FString Report=FString::Printf(TEXT("%d explosions, %d destruction events, %d geometry versions, %d panes; shown: explosion %d at %.2fs (score %.1f)"),
+            int(Battle.explosions.size()),int(Battle.destruction.size()),int(Battle.geometryVersions.size()),int(Battle.glassPanes.size()),Best,
+            Best>=0?Battle.explosions[size_t(Best)].time:-1.f,BestScore);
+        FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("blast-capture.txt")));
+        UE_LOG(LogTemp,Display,TEXT("ARMY_BLAST_CAPTURE %s"),*Report);
+        if(Best<0){FGenericPlatformMisc::RequestExit(false);return;}
+        BlastShown=Battle.explosions[size_t(Best)].time;
+        // From the burst's side, looking toward what it broke.
+        const FVector Along=Toward.IsNearlyZero()?FVector(1,0,0):Toward.GetSafeNormal();
+        CameraPan=World(Battle.explosions[size_t(Best)].position)+Along*120+FVector(0,0,120);
+        CameraYaw=FMath::RadiansToDegrees(FMath::Atan2(Along.Y,Along.X))+24;CameraPitch=36;Zoom=.05f;
+        Seek(FMath::Max(0.f,BlastShown-.3f));
+    }
+    else if(SmokeStage==1&&RealSeconds>4){Still(TEXT("blast-0-flight.png"));++SmokeStage;}
+    else if(SmokeStage==2&&RealSeconds>5){Seek(BlastShown+.05f);++SmokeStage;}
+    else if(SmokeStage==3&&RealSeconds>6.5){Still(TEXT("blast-1-flash.png"));++SmokeStage;}
+    else if(SmokeStage==4&&RealSeconds>7.5){Seek(BlastShown+.45f);++SmokeStage;}
+    else if(SmokeStage==5&&RealSeconds>9){Still(TEXT("blast-2-debris.png"));++SmokeStage;}
+    else if(SmokeStage==6&&RealSeconds>10){Seek(BlastShown+4.f);++SmokeStage;}
+    else if(SmokeStage==7&&RealSeconds>11.5){Still(TEXT("blast-3-after.png"));++SmokeStage;}
+    else if(SmokeStage==8&&RealSeconds>12.5){FGenericPlatformMisc::RequestExit(false);++SmokeStage;}
 }
 const army::Frame& ABattleGameMode::Frame() const {
     if(bPreparation||Battle.frames.empty()) return *Preparation;
@@ -390,20 +632,34 @@ void ABattleGameMode::RefreshPreparation() {
 void ABattleGameMode::RunBattle() {
     const double Start=FPlatformTime::Seconds();
     const bool Reused=!Battle.frames.empty()&&army::SameConfig(Battle.config,Settings);
-    if(!Reused)Battle=army::Simulate(Settings,{}, {},army::TypedController(Settings)?CognitiveScenario:0);
+    // Plan 033: the simulator returns Record::map as the final geometry; keep the geometry this battle starts from.
+    TUniquePtr<army::Map> Before;
+    if(!Reused){Before=MakeUnique<army::Map>(InitialGeometry());Battle=army::Simulate(Settings,{}, {},army::TypedController(Settings)?CognitiveScenario:0);}
     BuildVisualTimeline();
     ReplayTime=0;bPaused=false;bPreparation=false;
     ReplaySpeed=1;Selected=0;Notice=TEXT("");
-    if(Reused){UE_LOG(LogTemp,Display,TEXT("ARMY_REPLAY_REUSED: identical seed and settings, no simulation needed"));return;}
+    if(Reused){UE_LOG(LogTemp,Display,TEXT("ARMY_REPLAY_REUSED: identical seed and settings, no simulation needed"));ConfigureDestruction();return;}
     UE_LOG(LogTemp,Display,TEXT("ARMY_SIM: seed=%u duration=%.2f frames=%d shots=%d winner=%d compute=%.3fs"),
         Settings.seed,Battle.duration,int(Battle.frames.size()),int(Battle.shots.size()),Battle.winner,FPlatformTime::Seconds()-Start);
     FString Dir=FPaths::ProjectSavedDir()/TEXT("BattleReports");IFileManager::Get().MakeDirectory(*Dir,true);
     const double ExportStart=FPlatformTime::Seconds();
     const std::string Run=army::ExportBattle(Battle,TCHAR_TO_UTF8(*Dir),army::BuildIdentifier());
     UE_LOG(LogTemp,Display,TEXT("ARMY_REPORT: %s / export %.3fs / run-to-ready %.3fs"),UTF8_TO_TCHAR(Run.c_str()),FPlatformTime::Seconds()-ExportStart,FPlatformTime::Seconds()-Start);
-
+    // A record whose first geometry version is later than zero would show its final map before it (GeometryAt).
+    if(!Battle.geometryVersions.empty()&&Battle.geometryVersions.front().time>0){
+        Battle.geometryVersions.insert(Battle.geometryVersions.begin(),army::GeometryVersion{0.f,*Before,"initial"});
+        UE_LOG(LogTemp,Warning,TEXT("ARMY_DESTRUCTION: the record has no initial geometry version; the scene starts from the map before the battle"));
+    }
+    if(bTestDestruction){
+        const std::string Kind=Settings.battlefield?Settings.battlefield->kind:std::string();
+        // Plan 033 section 9.2: village stone, city2 brick, timber; the authored works are brick.
+        armydestruction::FabricateTest(Battle,Kind=="village"?0:Kind=="trenches"?2:1,TestDestruction);
+        UE_LOG(LogTemp,Display,TEXT("ARMY_DESTRUCTION_TEST: %s"),*TestDestruction.Summary);
+        if(TestDestruction.Ready&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyDestructionCapture"))){CameraPan=TestDestruction.Focus;CameraYaw=-62;CameraPitch=46;Zoom=.06f;}
+    }
+    ConfigureDestruction();
 }
-void ABattleGameMode::Seek(float T) {ReplayTime=FMath::Clamp(T,0.f,Battle.duration);ShowUnits();}
+void ABattleGameMode::Seek(float T) {ReplayTime=FMath::Clamp(T,0.f,Battle.duration);ShowUnits();PresentDestruction();}
 void ABattleGameMode::SetBattleDuration(float Seconds){
     if(!bPreparation)return;
     Settings.maxSeconds=FMath::Clamp(FMath::RoundToFloat(Seconds/30.f)*30.f,60.f,600.f);
@@ -432,7 +688,8 @@ void ABattleGameMode::Command(FName Id) {
     else if(Id==TEXT("zoomout")) Zoom=FMath::Min(1.65f,Zoom*1.18f);
     else if(Id==TEXT("focus")) CameraPan=UnitPosition(Selected);
     else if(Id==TEXT("center")) {CameraPan=FVector::ZeroVector;Zoom=Settings.battlefield?.70f:1.f;CameraYaw=-90;CameraPitch=60;}
-    else if(Id==TEXT("floors")) {bShowUpperFloor=!bShowUpperFloor;for(auto& A:UpperStructure)A->SetActorHiddenInGame(!bShowUpperFloor);}
+    else if(Id==TEXT("floors")) {bShowUpperFloor=!bShowUpperFloor;for(auto& A:UpperStructure)A->SetActorHiddenInGame(!bShowUpperFloor);
+        if(DestructionVisual){DestructionVisual->ShowUpper(bShowUpperFloor);PresentDestruction();}}
     else if(Id==TEXT("quit")) GetWorld()->GetFirstPlayerController()->ConsoleCommand(TEXT("quit"));
 }
 void ABattleGameMode::Tick(float Dt) {
@@ -481,7 +738,7 @@ void ABattleGameMode::Tick(float Dt) {
         if(PC->IsInputKeyDown(EKeys::W))CameraPan+=Forward*PanSpeed;
         if(PC->IsInputKeyDown(EKeys::S))CameraPan-=Forward*PanSpeed;
     }
-    int W,H;PC->GetViewportSize(W,H);float Frac=FMath::Min(0.35f,320.f/FMath::Max(800,W));
+    int W,H;PC->GetViewportSize(W,H);float Frac=bCleanView?0.f:FMath::Min(0.35f,320.f/FMath::Max(800,W));
     const float FitWidth=Battle.map.halfWidth*240/(1-Frac);
     const float FitHeight=Battle.map.halfHeight*240*FMath::Sin(FMath::DegreesToRadians(CameraPitch))*W/FMath::Max(320,H-280);
     float Width=FMath::Max(FitWidth,FitHeight)*Zoom;
@@ -495,6 +752,7 @@ void ABattleGameMode::Tick(float Dt) {
         if(bPreparation)ProjectileVisual->Clear();
         else ProjectileVisual->Present(Battle,ReplayTime,[this](const army::Shot& Shot){return ShotMuzzle(Shot);});
     }
+    PresentDestruction();
     const auto& F=Frame();
     if(Selected>=0&&Selected<army::UnitCount) {
         if(bRoutes){const auto& Cmd=F.command[F.soldiers[Selected].squad];if(Cmd.route){army::Vec3 Prev=Cmd.route->start;
@@ -615,6 +873,8 @@ FString ABattleGameMode::AnimationDebugText() const {
     return FString::Printf(TEXT("%.2f m/s | crouch %.0f%% | wrist gap %.2f cm | %s"),std::hypot(V->LastState.forward,V->LastState.right),V->LastState.crouch*100,V->GripError(),*V->PoseDescription());
 }
 void ABattleGameMode::SmokeTest(float Dt) {
+    if(bTestDestruction&&FParse::Param(FCommandLine::Get(),TEXT("ArmyDestructionCapture"))){DestructionCapture();return;}
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyBlastCapture"))){BlastCapture();return;}
     // Capture actual recorded rounds through the normal battle camera and renderer.
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyProjectileCapture"))) {
         float StillTime=0;int Team=-1;
@@ -1004,6 +1264,7 @@ float ABattleHUD::Wrapped(const FString& Text,float X,float Y,int Columns) {
 void ABattleHUD::DrawHUD() {
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview")))return;
     Super::DrawHUD();auto* G=Cast<ABattleGameMode>(GetWorld()->GetAuthGameMode());if(!G||!Canvas)return;
+    if(G->bCleanView)return;
     if(G->IsMagicShowcase()) {
         DrawRect(FLinearColor(.018f,.025f,.032f,.94f),0,0,Canvas->SizeX,88);
         DrawText(TEXT("ARCANE ROUNDS  /  AZURE + EMBER"),FLinearColor(.88f,.94f,1),32,18,GEngine->GetLargeFont(),1.4f);
@@ -1104,7 +1365,7 @@ void ABattleHUD::DrawHUD() {
         FString RoleLabel= UTF8_TO_TCHAR(army::RoleName(S.role));
         if(F.platoon[S.team].leader==S.id&&S.role!=army::Role::Lieutenant)RoleLabel=FString(UTF8_TO_TCHAR(army::RankTag(S.role)))+TEXT(" / ACTING PLATOON LEADER");
         else if(F.command[S.squad].leader==S.id&&S.role!=army::Role::Sergeant)RoleLabel+=TEXT(" / ACTING COMMANDER");
-        RoleLabel+=army::OnStairs(G->Battle.map,S.position)?TEXT(" / STAIRS"):S.position.z>1?TEXT(" / 2ND FLOOR"):S.position.z<-.1f?(G->Settings.battlefield&&G->Settings.battlefield->kind=="village"?TEXT(" / LANE"):TEXT(" / TRENCH")):TEXT(" / GROUND");
+        RoleLabel+=army::OnStairs(G->ShownGeometry(),S.position)?TEXT(" / STAIRS"):S.position.z>1?TEXT(" / 2ND FLOOR"):S.position.z<-.1f?(G->Settings.battlefield&&G->Settings.battlefield->kind=="village"?TEXT(" / LANE"):TEXT(" / TRENCH")):TEXT(" / GROUND");
         Label(RoleLabel,34,199,Muted,0.80f);
         Label(FString::Printf(TEXT("SIGHT %.0fm / %s"),army::SightRange(S),S.directionalSight?TEXT("140 DEGREE FIELD"):TEXT("ALL DIRECTIONS")),34,213,Muted,0.70f);
         Label(FString(TEXT("ORDER: "))+UTF8_TO_TCHAR(army::TaskName(S.assignment.task)),34,225,Gold,0.95f);
@@ -1140,7 +1401,7 @@ void ABattleHUD::DrawHUD() {
         if(Count==0)Label(TEXT("No received contact reports."),34,Y,Muted,0.85f);
         Button(TEXT("setup"),TEXT("<  RETURN TO PREPARATION"),34,H-211,260,34);
     }
-    for(const auto& Cover:G->Battle.map.obstacles) if(Cover.halfCover&&!G->IsWideView()) {
+    for(const auto& Cover:G->ShownGeometry().obstacles) if(Cover.halfCover&&!G->IsWideView()) {
         FVector P=Project(World(Cover.center,army::ObstacleHeight(Cover)*100+30));
         if(P.X/UiScale>335&&P.Y/UiScale>120&&P.Y/UiScale<H-170)
             Label(TEXT("LOW"),P.X/UiScale-12,P.Y/UiScale-7,Gold,0.72f);

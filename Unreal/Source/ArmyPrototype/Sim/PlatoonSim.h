@@ -14,7 +14,7 @@ struct PlatoonMessage {
         :order(o),sender(s),recipient(r),arrives(at),situation(std::move(situation_)),directive(std::move(directive_)){}
 };
 struct PlatoonRuntime {
-    const std::array<Map,UnitCount>* geometryViews=nullptr;
+    const std::array<const Map*,UnitCount>* geometryViews=nullptr;
     int fixedDefender=-1; // the static defenders keep their own orders; plan 021 C never reaches them
     std::vector<PlatoonMessage> messages;
     std::array<float,SquadCount> nextReport{};

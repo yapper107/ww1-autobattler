@@ -75,4 +75,10 @@ std::vector<Vec3> FollowCorridor(const Map& map,const TacticalRoute& route,Vec3 
 // Final occupation may leave the lane only in the bounded destination area.
 // Planning and physical execution use this same clearance and search contract.
 std::vector<Vec3> FollowFinalApproach(const Map& map,const TacticalRoute& route,Vec3 from,Vec3 to);
+// Plan 033 (ApplyGeometryBatch): the map's route graph if it belongs to its current revision (else null), and the graph of
+// a new revision after a local change (the 2D boxes x0, y0, x1, y1): the old graph's nodes, each re-tested only within 4 m of
+// a change (a node is its 8 m grid point or the first walkable of eight offsets within 2.83 m), its edges and stored paths
+// rebuilt on demand. Installed as map.routeGraph.
+std::shared_ptr<RouteGraph> CurrentRouteGraph(const Map& map);
+void DeriveRouteGraph(const Map& map,const RouteGraph& previous,const std::vector<std::array<float,4>>& changed);
 }

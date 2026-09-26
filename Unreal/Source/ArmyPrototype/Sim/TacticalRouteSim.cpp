@@ -14,7 +14,10 @@ struct TacticalVisibilityCache {
     // Coordinates occupy 48 bits. Store the answer in the spare high bit rather
     // than paying an eight-byte alignment pad per entry.
     struct Ray {uint64_t from=0,toAndVisible=0;};
-    uint64_t revision=0;std::vector<Ray> rays=std::vector<Ray>(8388608);
+    // mask: the table's size less one (8388607 at full size; Map::cacheScale shrinks it, plan 033). A slot is Slot()'s
+    // 23-bit hash masked by it: the same slots at full size, and every entry still keys the exact ray.
+    uint64_t revision=0;size_t mask=8388607;std::vector<Ray> rays;
+    explicit TacticalVisibilityCache(int scale=0):mask((size_t(8388608)>>std::min(16,scale))-1),rays(mask+1){}
     static size_t Slot(uint64_t a,uint64_t b){
         uint64_t hash=a*1099511628211ull+b;hash=(hash^(hash>>30))*0xbf58476d1ce4e5b9ull;hash=(hash^(hash>>27))*0x94d049bb133111ebull;hash^=hash>>31;
         return size_t(hash&8388607);
@@ -42,9 +45,9 @@ bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPo
     return EstimatedVisible(from,to,TacticalVisibilityCache::Slot(from.packed,to.packed));
 }
 bool TacticalRoutePlanner::EstimatedVisible(const SightPoint& from,const SightPoint& to,size_t slot) const {
-    if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>();map.tacticalVisibility->revision=map.revision;}
+    if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>(map.cacheScale);map.tacticalVisibility->revision=map.revision;}
     const uint64_t a=from.packed,b=to.packed;
-    auto& entry=map.tacticalVisibility->rays[slot];if(entry.from==a&&(entry.toAndVisible&0xffffffffffffull)==b)return (entry.toAndVisible>>63)!=0;
+    auto& entry=map.tacticalVisibility->rays[slot&map.tacticalVisibility->mask];if(entry.from==a&&(entry.toAndVisible&0xffffffffffffull)==b)return (entry.toAndVisible>>63)!=0;
     // This ray table already caches the exact snapped query. On prepared maps
     // query the obstacle index directly instead of probing a second memo table.
     // Preserve the sight counter and the ordinary unprepared-map fallback.
@@ -114,16 +117,16 @@ RouteCost TacticalRoutePlanner::Sample(Vec3 p){
         pending.push_back(q);
     }
     if(!pending.empty()){
-        if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>();map.tacticalVisibility->revision=map.revision;}
-        const auto* rays=map.tacticalVisibility->rays.data();
+        if(!map.tacticalVisibility||map.tacticalVisibility->revision!=map.revision){map.tacticalVisibility=std::make_shared<TacticalVisibilityCache>(map.cacheScale);map.tacticalVisibility->revision=map.revision;}
+        const auto* rays=map.tacticalVisibility->rays.data();const size_t mask=map.tacticalVisibility->mask;
         // Independent table loads for every report start together.
-        for(const auto& q:pending)for(size_t slot:q.slots)TacticalVisibilityCache::Prefetch(rays+slot);
+        for(const auto& q:pending)for(size_t slot:q.slots)TacticalVisibilityCache::Prefetch(rays+(slot&mask));
         size_t unresolved=0;
         for(auto& q:pending){const auto& ct=threats[q.threat];
             const float weight=ct.automaticWeapon?1.f:.7f;
             if(seen>=ct.confidence*weight)continue;
             int visibleRays=0,unknown=0;
-            for(int i=0;i<3;++i){const auto& entry=rays[q.slots[i]];
+            for(int i=0;i<3;++i){const auto& entry=rays[q.slots[i]&mask];
                 if(entry.from==ct.eyes[i].packed&&(entry.toAndVisible&0xffffffffffffull)==body.packed)visibleRays+=int(entry.toAndVisible>>63);
                 else q.unknown[unknown++]=uint8_t(i);}
             if(!unknown){seen=std::max(seen,counted[visibleRays]*ct.confidence*weight);continue;}
@@ -173,6 +176,25 @@ struct RouteGraph {
     struct PathKeyHash {size_t operator()(const PathKey& k) const {uint64_t h=1469598103934665603ull;for(uint32_t w:k.bits)h=(h^w)*1099511628211ull;return size_t(h^(h>>29));}};
     std::unordered_map<PathKey,std::vector<Vec3>,PathKeyHash> paths;
 };
+// A route graph node: its 8 m grid point on the floor, or the first walkable of eight offsets around it.
+static bool RouteNode(const Map& map,int x,int y,float floor,Vec3& p){
+    p={-map.halfWidth+x*8,-map.halfHeight+y*8,floor};bool valid=Walkable(map,p);
+    if(!valid)for(Vec3 offset:std::vector<Vec3>{{2,0},{-2,0},{0,2},{0,-2},{2,2},{-2,2},{2,-2},{-2,-2}})if(Walkable(map,p+offset)){p=p+offset;valid=true;break;}
+    return valid;
+}
+std::shared_ptr<RouteGraph> CurrentRouteGraph(const Map& map){return map.routeGraph&&map.routeGraph->revision==map.revision?map.routeGraph:nullptr;}
+void DeriveRouteGraph(const Map& map,const RouteGraph& previous,const std::vector<std::array<float,4>>& changed){
+    auto graph=std::make_shared<RouteGraph>();graph->revision=map.revision;graph->floor=previous.floor;graph->width=previous.width;graph->height=previous.height;
+    graph->nodes=previous.nodes;graph->valid=previous.valid;
+    for(int y=0;y<graph->height;++y)for(int x=0;x<graph->width;++x){
+        const float gx=-map.halfWidth+float(x*8),gy=-map.halfHeight+float(y*8);bool touched=false;
+        for(const auto& b:changed)if(gx>=b[0]-4&&gx<=b[2]+4&&gy>=b[1]-4&&gy<=b[3]+4){touched=true;break;}
+        if(!touched)continue;
+        const size_t i=size_t(y)*size_t(graph->width)+size_t(x);Vec3 p{};const bool valid=RouteNode(map,x,y,previous.floor,p);
+        if(i<graph->nodes.size()){graph->nodes[i]=p;graph->valid[i]=valid;}
+    }
+    graph->edges.resize(graph->nodes.size());graph->built.resize(graph->nodes.size());map.routeGraph=graph;
+}
 // Same result as FindPath(map,from,to). The reference stays valid until the graph is replaced.
 static const std::vector<Vec3>& GraphPath(const Map& map,RouteGraph& g,Vec3 from,Vec3 to,std::vector<Vec3>& scratch){
     RouteGraph::PathKey key;const float f[6]={from.x,from.y,from.z,to.x,to.y,to.z};std::memcpy(key.bits,f,sizeof key.bits);
@@ -184,8 +206,7 @@ std::vector<Vec3> TacticalRoutePlanner::RegionalPath(Vec3 from,Vec3 to,int budge
     if(!map.routeGraph||map.routeGraph->revision!=map.revision||map.routeGraph->floor!=from.z){
         auto graph=std::make_shared<RouteGraph>();graph->revision=map.revision;graph->floor=from.z;
         graph->width=int(std::ceil(map.halfWidth*2/8))+1;graph->height=int(std::ceil(map.halfHeight*2/8))+1;
-        for(int y=0;y<graph->height;++y)for(int x=0;x<graph->width;++x){Vec3 p{-map.halfWidth+x*8,-map.halfHeight+y*8,from.z};bool valid=Walkable(map,p);
-            if(!valid)for(Vec3 offset:std::vector<Vec3>{{2,0},{-2,0},{0,2},{0,-2},{2,2},{-2,2},{2,-2},{-2,-2}})if(Walkable(map,p+offset)){p=p+offset;valid=true;break;}
+        for(int y=0;y<graph->height;++y)for(int x=0;x<graph->width;++x){Vec3 p{};const bool valid=RouteNode(map,x,y,from.z,p);
             graph->nodes.push_back(p);graph->valid.push_back(valid);
         }
         graph->edges.resize(graph->nodes.size());graph->built.resize(graph->nodes.size());map.routeGraph=graph;

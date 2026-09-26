@@ -793,7 +793,9 @@ static void CoordinationTests() {
 #include "squad_guns_tests.h"
 #include "spawn_lanes_tests.h"
 #include "fire_movement_tests.h"
+#include "destruction_tests.h"
 #include "gun_support_tests.h"
+#include "grenade_tests.h"
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -824,6 +826,7 @@ int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--spawn-lanes"){SpawnLanesTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--fire-movement"){FireMovementTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--gun-support"){GunSupportTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--grenades"){GrenadeTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--gunner"){GunnerTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--suppression"){SuppressionTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--group"){GroupTests();return 0;}
@@ -845,6 +848,7 @@ int main(int argc,char** argv) {
     if(argc>1&&std::string(argv[1])=="--knowledge"){KnowledgeTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--no-covering"){NoCoveringTests();return 0;}
     if(argc>1&&std::string(argv[1])=="--jordan-suppression"){JordanSuppressionTests();return 0;}
+    if(argc>1&&std::string(argv[1])=="--destruction"){DestructionTests();return 0;}
     NeuralTests();RouteTests();
     std::cout.setf(std::ios::unitbuf);
     auto begin=std::chrono::steady_clock::now();
@@ -856,8 +860,9 @@ int main(int argc,char** argv) {
         switch(field){case 0:++changed.seed;break;case 1:changed.doctrine=Doctrine::Cautious;break;case 2:changed.approach=Approach::North;break;case 3:changed.supportWeapon=false;break;case 4:changed.maxSeconds=60;break;case 5:changed.terrain=Terrain::Trenches;break;}
         assert(!SameConfig(original,changed));
     }
-    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();CoveringTraceTests();GraduatedCoverTests();CoverRequestTests();CoverSupplyTests();StaticDefenceTests();ImportedV2Tests();MovingFireTests();PathsTests();StaminaTests();GroupTests();ProneTests();ConcealmentTests();VaultTests();CreditTests();SuppressionTests();GunnerTests();CoverUsefulTests();KnowledgeTests();JordanSuppressionTests();NoCoveringTests();SquadGunsTests();SpawnLanesTests();FireMovementTests();GunSupportTests();
+    BallisticsTests();SightAndValleyTests();DeathmatchTests();PlatoonTests();BuildingTests();TacticsTests();LowCoverTests();CommandAndAimTests();ReactionAndMachineGunTests();WoundedRearGuardTests();ManeuverAndFireLaneTests();MovementRecoveryAndShelterTests();SquadProgressTests();CoordinationTests();DigInTests();ReassessmentTests();LabTests();CoveringTraceTests();GraduatedCoverTests();CoverRequestTests();CoverSupplyTests();StaticDefenceTests();ImportedV2Tests();MovingFireTests();PathsTests();StaminaTests();GroupTests();ProneTests();ConcealmentTests();VaultTests();CreditTests();SuppressionTests();GunnerTests();CoverUsefulTests();KnowledgeTests();JordanSuppressionTests();NoCoveringTests();SquadGunsTests();SpawnLanesTests();FireMovementTests();GunSupportTests();GrenadeTests();
     if(argc>1){std::cout<<"Focused simulation checks passed\n";return 0;}
+    DestructionTests();   // plan 033
     MGEncounterTests();
     Map m; m.obstacles={{{0,0},{2,5},true}};
     assert(!ClearLine(m,{-8,0},{8,0}));

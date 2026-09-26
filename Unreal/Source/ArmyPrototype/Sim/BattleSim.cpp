@@ -11,7 +11,9 @@
 #include "CommandSim.h"
 #include "CoordinationSim.h"
 #include "TrafficSim.h"
+#include "DestructionSim.h"
 #include "FireMovementSim.h"
+#include "GrenadeSim.h"
 #include <algorithm>
 #include <cstring>
 #include <cmath>
@@ -243,7 +245,10 @@ const char* ReasonText(Reason r) {
         "Following a quieter flank under squad orders.","No safe flank reported. Pulling back to regroup.","Moving aside to clear a reported friendly firing lane.",
         "Exposed to fire. Seeking nearby shelter before resuming orders.","Holding protected cover. A firing angle can wait.","At the assigned waypoint. Waiting for the next squad order.","Yielding at a doorway or stairs. Keeping the passage clear.","Moving while the other fireteam covers.","Covering the other fireteam. Holding this firing position.","Assigned window team. Supporting the squad from the building.",
         "Caught in the open under fire. Lying flat and firing where a clear line allows.",
-        "Vaulting an obstacle on the way. Cannot fire until landed."};
+        "Vaulting an obstacle on the way. Cannot fire until landed.",
+        "Stunned by a blast. Down and unable to act.","Throwing a grenade.","A grenade landed close. Running clear of it.",
+        "A grenade landed close. Diving flat.","Throwing an enemy grenade back.","Closing in on a pinned enemy with grenades.",
+        "Knocked back by a blast. Unable to act until he recovers."};
     return labels[int(r)];
 }
 const char* DoctrineName(Doctrine d) { return d==Doctrine::Cautious?"Cautious":d==Doctrine::Aggressive?"Aggressive":"Balanced"; }
@@ -451,10 +456,12 @@ bool SprintTrigger(const Soldier& s,bool revealedAhead,float remaining) {
     if(s.assignment.fm.displace&&s.assignment.fm.gun==s.id)return true;  // plan 031 D: the drill's gun displacing to a new station
     if(s.assignment.task==Task::PullBack||s.action==Action::Retreat)return true;  // a squad retreat
     if(s.assignment.execution.rushSeconds>0)return true;                 // the bounded rush of a typed assault
+    if(s.grenadeRush)return true;                                        // plan 032: a close-in's rush (never set when off)
     if(s.action!=Action::Cover)return false;
     if(s.suppression>Caution().underFireSuppression)return true;         // under fire, on his way to cover
     return s.reason==Reason::EmergencyCover||s.reason==Reason::Contact||s.reason==Reason::Suppressed||
-        s.reason==Reason::Flanked||s.reason==Reason::Relocate;           // his reaction move into cover
+        s.reason==Reason::Flanked||s.reason==Reason::Relocate||          // his reaction move into cover
+        s.reason==Reason::GrenadeEscape;                                 // plan 032: running clear of a grenade
 }
 float WalkingFireRange(const Soldier& s) {return s.gun.moving.range;}
 float MovePenalty(float factor,float scale) {return 1+(factor-1)/std::max(0.01f,scale);}
@@ -1607,6 +1614,11 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     if(input.foundations&&((encounter!=8&&!(input.cognition&&(encounter==0||(encounter>=5&&encounter<=43)))&&!input.drills)||input.recoveryFixture))throw std::invalid_argument("Foundations policy requires encounter 8 and cannot combine with recovery");
     if(encounter>=9&&encounter<=43&&!input.cognition)throw std::invalid_argument("Cognitive scenarios require --cognition");
     if(encounter==8&&!input.foundations)throw std::invalid_argument("Encounter 8 requires --foundations");
+    // Plan 033: explosions change the geometry through their own batches; scripted edits (encounter 10) stay on their own path.
+    if(input.destruction&&(!edits.empty()||encounter==10))throw std::invalid_argument("Destruction cannot combine with scripted geometry edits");
+    if(!input.destruction&&!input.testCharges.empty())throw std::invalid_argument("Test charges require destruction");
+    for(const auto& charge:input.testCharges)if(!std::isfinite(charge.time)||charge.time<0||!std::isfinite(charge.tnt)||charge.tnt<=0||charge.tnt>1000||
+        !std::isfinite(charge.position.x)||!std::isfinite(charge.position.y)||!std::isfinite(charge.position.z))throw std::invalid_argument("Test charges need a time >= 0, a finite position and 0 < kg <= 1000");
     if(!std::isfinite(input.estimateBias)||std::abs(input.estimateBias)>1)throw std::invalid_argument("Estimate bias must be between -1 and 1");
     for(const auto& profile:input.statProfiles){
         for(float value:{profile.baseShare,profile.lowShare,profile.highShare,profile.baseHalfWidth,profile.lowEdge,profile.highEdge,profile.shape})if(!std::isfinite(value)||value<0)throw std::invalid_argument("Stat distribution values must be finite and non-negative");
@@ -1671,6 +1683,10 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     // per soldier for this battle (only a machine gunner's is ever used). Nothing is allocated or set with the switch off.
     std::unique_ptr<std::array<GunSupportMemory,UnitCount>> gunMemories;
     if(GunSupportAny(c)){gunMemories=std::make_unique<std::array<GunSupportMemory,UnitCount>>();for(auto& s:f.soldiers)s.supportGun=GunSupport(c,s.team);}
+    // Plan 032 (Config::grenades, Legacy only): the battle's grenades, with every kit issued before the first frame. Nothing
+    // is allocated, issued or read with the switch off (`grenades` stays null).
+    std::unique_ptr<GrenadeRuntime> grenades;
+    if(GrenadesAny(c)){grenades=std::make_unique<GrenadeRuntime>();IssueGrenades(*grenades,c,r.map,f,r);}
     recordFrame(f);Random rng(c.seed);
     std::array<Runtime,UnitCount> run;
     std::vector<Projectile> bullets;TrafficRuntime traffic;auto passages=BuildingPassages(r.map);
@@ -1705,11 +1721,21 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
     if(!geometry.empty())r.geometryVersions.push_back({0,r.map,"initial"});
     std::vector<bool> applied(geometry.size(),false);
     std::unique_ptr<std::array<Map,UnitCount>> geometryViews;
+    std::array<const Map*,UnitCount> viewPointers{};   // what each man knows of the geometry (command.geometryViews)
     std::array<std::vector<float>,UnitCount> geometryReceipt;
     std::vector<Obstacle> changedObstacles(geometry.size());
     if(!geometry.empty()){geometryViews=std::make_unique<std::array<Map,UnitCount>>();for(auto& view:*geometryViews)view=r.map;
+        for(int i=0;i<UnitCount;++i)viewPointers[size_t(i)]=&(*geometryViews)[size_t(i)];
         for(auto& receipts:geometryReceipt)receipts.assign(geometry.size(),-1);
-        command.geometryViews=geometryViews.get();}
+        command.geometryViews=&viewPointers;}
+    // Plan 033 (Config::destruction): the world's explosions and what they break. Nothing is allocated or read with the
+    // switch off (`destruction` stays null). Its views replace command.geometryViews from the first change on.
+    std::unique_ptr<DestructionRuntime> destruction;DestructionHooks destructionHooks;
+    if(c.destruction){destruction=std::make_unique<DestructionRuntime>();StartDestruction(*destruction,c,r.map);
+        for(const auto& pane:destruction->panes)r.glassPanes.push_back({pane.id,pane.center,pane.half});
+        destructionHooks.diagnostics=r.diagnostics.get();
+        destructionHooks.downed=[&](int id){run[size_t(id)].tactics.assigned=false;};
+        destructionHooks.displaced=[&](int id){auto& a=run[size_t(id)];a.destination={999,999};a.path.clear();a.cursor=0;a.tactics={};};}
 
     auto event=[&](EventKind kind,int id,int target,const std::string& text) {r.events.push_back({f.time,kind,id,target,text});};
     const int maxTicks=int(c.maxSeconds/TickSeconds);
@@ -1749,7 +1775,22 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 if(options.enabled){TraceEntry e;e.id=r.diagnostics->nextId++;e.time=f.time;e.soldier=s.id;e.squad=s.squad;e.geometry=r.map.revision;e.kind="geometry_observed";e.reason="local geometry change recognized after observation delay";r.diagnostics->entries.push_back(e);}
             }
         }
+        // Plan 033: the explosions due now break what they break (one revision each), then each man's look at the changes.
+        if(destruction){
+            if(StepExplosions(*destruction,f,r,f.time,destructionHooks)){
+                passages=BuildingPassages(r.map);command.geometryViews=DestructionViews(*destruction);
+                for(const auto& unit:f.soldiers){auto& a=run[unit.id];
+                    // As after a scripted edit: only a locally encountered loss drops cover at once; a blocked leg is replanned.
+                    if(a.tactics.assigned&&Distance(unit.position,a.tactics.shelter)<2&&!CoverExists(r.map,a.tactics.coverId))a.tactics={};
+                    if(a.cursor<a.path.size()&&!ClearLine(r.map,unit.position,a.path[a.cursor],0.46f)&&
+                        !(c.vaulting&&VaultCrossing(r.map,unit.position,a.path[a.cursor],VaultClassOf(unit,c))!=VaultClass::None)){a.destination={999,999};a.path.clear();a.cursor=0;}
+                }
+            }
+            ObserveChanges(*destruction,f,r.map,f.time,tick,r.diagnostics.get());
+        }
         for(auto& s:f.soldiers) {StepSuppression(s,c,f.time,TickSeconds);DecayRecoil(s,TickSeconds);}
+        // Plan 032: the stun and deafness clocks (a stun that has run out leaves him pinned).
+        if(grenades)GrenadeTickStart(*grenades,f,f.time);
         // Plan 030 M-S7 P3 (Config::pinnedNeighbours, Jordan's rule 3): while a man is above his duck threshold, each
         // squadmate within neighbourRadius, at his cover and going nowhere, not holding a movement order, with a line to
         // him, holds at least neighbourEffect suppression: a floor, the same for one pinned man or several, never
@@ -1812,10 +1853,38 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         if(c.foundations&&tick%100==0)for(const auto& observer:f.soldiers)if(observer.Active())TraceBeliefs(r.diagnostics.get(),observer,f.time);
         if(options.trainingStateSink)options.trainingStateSink(f);
         UpdateCommands(f,r.map,c,command,r.events);
+        // Plan 032: each rifle group leader's close-in on an enemy pinned as his squad can know it.
+        if(grenades)GrenadeCloseIns(*grenades,f,r.map,c,f.time,r.diagnostics.get());
         r.diagnostics->commands+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         {
             // A man in the middle of a vault does not think until he has landed (plan 029 M-C; never set when off).
-            for(auto& s:f.soldiers) if(s.Active()&&!s.vaulting&&(tick%12==0||tick==1||run[s.id].tactics.assigned||s.assignment.serial!=run[s.id].lastOrder.serial)) {
+            for(auto& s:f.soldiers) {
+                if(!s.Active()||s.vaulting)continue;
+                // Plan 032 (`grenades` is null with Config::grenades off): while a grenade holds him (stunned, throwing,
+                // reacting to one, on a close-in) his order comes from there and he does not think; the tick that hold
+                // ends he thinks at once.
+                bool grenadeReleased=false;
+                if(grenades){
+                    const GrenadeOrder held=GrenadeOverride(*grenades,f,s,r.map,c,f.time,r.diagnostics.get(),defence&&defence->Defends(s.id));
+                    if(held.hold){
+                        const Order& grenadeOrder=held.order;auto& state=run[s.id];
+                        if(s.action!=grenadeOrder.action||s.reason!=grenadeOrder.reason)event(EventKind::Decision,s.id,-1,std::string(Name(s.id))+": "+ReasonText(grenadeOrder.reason));
+                        const bool wasProne=s.stance==Stance::Prone;
+                        s.action=grenadeOrder.action;s.reason=grenadeOrder.reason;s.goal=grenadeOrder.goal;s.stance=grenadeOrder.stance;
+                        if(c.prone&&wasProne&&s.stance!=Stance::Prone)state.riseUntil=f.time+Postures().riseSeconds/StatScale(s.stats.Get(Stat::Dexterity));
+                        // A hold needs no path; a run for it is the straight walk (a man in reach of a grenade walks at it
+                        // even where the planner has no path); a close-in's approach is his covered path, not the squad's lane.
+                        if(Distance(state.destination,grenadeOrder.goal)>0.04f){
+                            state.destination=grenadeOrder.goal;state.cursor=0;
+                            if(grenadeOrder.action==Action::Hold||grenadeOrder.action==Action::Fire)state.path.clear();
+                            else if(held.direct){state.path=FindPath(r.map,s.position,grenadeOrder.goal,VaultClassOf(s,c));if(state.path.empty())state.path={grenadeOrder.goal};}
+                            else{Soldier walker=s;walker.assignment.teamPlan.route=nullptr;state.path=TaskExecutionPath(r.map,walker,grenadeOrder.goal,state.tactics,c,f.time);}
+                        }
+                        continue;
+                    }
+                    grenadeReleased=held.released;
+                }
+                if(!(grenadeReleased||tick%12==0||tick==1||run[s.id].tactics.assigned||s.assignment.serial!=run[s.id].lastOrder.serial))continue;
                 std::vector<Vec3> allies;
                 for(const auto& friendUnit:f.soldiers) if(friendUnit.id!=s.id&&friendUnit.team==s.team&&friendUnit.Active()) {
                     allies.push_back(friendUnit.position);
@@ -1849,7 +1918,8 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 DecisionAlternatives alternatives;
                 auto* detail=DetailedFor(r.diagnostics.get(),s.id,s.squad,f.time)?&alternatives:nullptr;
                 if(s.assignment.id)PrepareTaskExecution(understood,state.tactics,f.time,c.threatAwarePaths);
-                Order d=s.assignment.id?ExecuteTask(understood,geometryViews?(*geometryViews)[s.id]:r.map,c,allies,state.tactics,f.time,detail):ChooseOrder(understood,geometryViews?(*geometryViews)[s.id]:r.map,c,allies,state.tactics,f.time,detail);
+                const Map& known=command.geometryViews?*(*command.geometryViews)[s.id]:r.map;
+                Order d=s.assignment.id?ExecuteTask(understood,known,c,allies,state.tactics,f.time,detail):ChooseOrder(understood,known,c,allies,state.tactics,f.time,detail);
                 if(c.gradedPeek){r.gradedSettles+=state.tactics.gradedDrawAt==f.time;r.gradedPeeks+=state.tactics.gradedPeek&&state.tactics.gradedAt==f.time;} // plan 030 M-S7 P1
                 // Plan 031 D (the marker is only ever set with Config::fireAndMovement): since when he holds for the gate.
                 if(s.assignment.fm.gun>=0&&s.assignment.fm.gun!=s.id){if(state.tactics.fmHeldAt==f.time){if(s.fmWaitSince<0)s.fmWaitSince=f.time;}else s.fmWaitSince=-100;}
@@ -1882,6 +1952,8 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                         memory.expires=c.maxSeconds+60;
                     }
                 }
+                // Plan 032: after his own decision, whether he throws a grenade now (it then holds him for the throw).
+                if(grenades)GrenadeThrowChoice(*grenades,f,s,understood,r.map,c,f.time,d,r.diagnostics.get(),defence&&defence->Defends(s.id));
                 if(state.tactics.assigned&&(state.tactics.coverId==0||state.tactics.geometryRevision!=r.map.revision)) {
                     state.tactics.coverId=0;state.tactics.geometryRevision=r.map.revision;
                     if(s.assignment.hasSlot&&CoverExists(r.map,s.assignment.slot.id)&&Distance(state.tactics.shelter,s.assignment.slot.shelter)<.1f)state.tactics.coverId=s.assignment.slot.id;
@@ -1927,10 +1999,11 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             for(const auto& s:f.soldiers)if(s.Active()&&s.team==team){const auto& a=run[s.id];
                 if(defence&&defence->Defends(s.id))continue; // A held position never yields a passage.
                 if(s.vaulting)continue; // nor does a man going over a wall (plan 029 M-C)
+                if(grenades&&GrenadeHeld(*grenades,s))continue; // nor one held where he is by a grenade (plan 032: stunned, throwing, down)
                 Vec3 next=a.cursor<a.path.size()?a.path[a.cursor]:s.goal;
                 requests.push_back({&s,next,(s.action!=Action::Fire&&s.action!=Action::Hold)||a.trafficWaiting});}
             auto decisions=CoordinatePassages(r.map,passages,requests,traffic,f.time);
-            for(auto& s:f.soldiers)if(s.Active()&&s.team==team&&!s.vaulting){auto& a=run[s.id];const auto& d=decisions[s.id];
+            for(auto& s:f.soldiers)if(s.Active()&&s.team==team&&!s.vaulting&&!(grenades&&GrenadeHeld(*grenades,s))){auto& a=run[s.id];const auto& d=decisions[s.id];
                 if(d.waiting) {
                     if(!a.trafficWaiting)event(EventKind::Decision,s.id,-1,std::string(Name(s.id))+": yields passage and seeks a holding position");
                     a.trafficWaiting=true;s.waitingPassage=d.passage;s.passageWaitSeconds=f.time-traffic.since[s.id];
@@ -2056,6 +2129,12 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
             if(c.stamina)StepStamina(s,s.sprinting,s.vaulting||Distance(stood,s.position)>1e-4f,TickSeconds,spend);
         }
         r.diagnostics->movement+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
+        // Plan 033: debris and glass in flight through this interval (the men swept from where they stood before this
+        // tick's movement), as the bullets below.
+        if(destruction&&DebrisFlying(*destruction)){
+            std::array<Vec3,UnitCount> stood{};for(const auto& moved:beforeMovement)stood[size_t(moved.id)]=moved.position;
+            StepDebris(*destruction,f,r,tick,stood,destructionHooks);
+        }
         // Swept 3D ballistics at 200 Hz. A round born at this tick boundary starts
         // travelling in the next interval, so a hit can never precede its flight.
         constexpr int Substeps=10;
@@ -2182,6 +2261,17 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
                 flying=false;
             }
         }
+        // Plan 032: grenades released, flying, landing and seen, taken up, going off; their fragments through this tick's
+        // substeps as the bullets above (the men swept from where they stood before this tick's movement).
+        if(grenades){
+            std::array<Vec3,UnitCount> stood{};for(const auto& moved:beforeMovement)stood[size_t(moved.id)]=moved.position;
+            const size_t burstsBefore=r.explosions.size();
+            StepGrenades(*grenades,f,r,r.map,c,tick,stood,[&](int id){run[size_t(id)].tactics.assigned=false;});
+            // Plan 033: each grenade that went off this tick joins the world's explosion queue; what it breaks changes at
+            // the next tick's start (the map changes only at tick boundaries). Its blast on men stays the grenade module's.
+            if(destruction)for(size_t n=burstsBefore;n<r.explosions.size();++n){const auto& e=r.explosions[n];
+                QueueExplosion(*destruction,{e.time,e.position,GrenadeCharge(grenades->k,e.type)});}
+        }
         r.diagnostics->ballistics+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         // Fire at the end of the interval, after resolving incoming rounds.
         for(auto& s:f.soldiers) if(s.Active()) {
@@ -2290,13 +2380,14 @@ Record Simulate(const Config& input,const DiagnosticOptions& options,const std::
         r.diagnostics->firing+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
         if(options.enabled)for(const auto& s:f.soldiers)TraceSoldier(*r.diagnostics,s,f.command[s.squad],r.map,run[s.id].tactics,f.time);
         r.diagnostics->trace+=DiagnosticSeconds(stageStart);stageStart=DiagnosticClock::now();
-        const bool done=ResolveDeathmatch(r,f,!bullets.empty(),tick==maxTicks);
+        const bool done=ResolveDeathmatch(r,f,!bullets.empty()||(destruction&&DebrisFlying(*destruction)),tick==maxTicks);
         if((c.recoveryFixture||c.foundations)&&(done||tick==maxTicks))for(auto& s:f.soldiers)SetTaskStatus(s,TaskStatus::Failed,s.Active()?TaskCause::BattleEnded:TaskCause::Casualty,f.time,command.diagnostics);
-        if(tick%4==0||done||tick==maxTicks) recordFrame(f);
+        if(tick%4==0||done||tick==maxTicks){if(grenades)SnapshotGrenades(*grenades,f);recordFrame(f);}
         r.diagnostics->recording+=DiagnosticSeconds(stageStart);
         if(done) break;
     }
     r.duration=f.time;
+    if(destruction)r.destructionTotals=destruction->totals;   // plan 033: the last tick's observation and debris counts too
     if(r.conclusion.empty()) ResolveDeathmatch(r,f,false,true);
     event(EventKind::Result,-1,-1,r.conclusion);
     std::stable_sort(r.events.begin(),r.events.end(),[](const Event& a,const Event& b){return a.time<b.time;});

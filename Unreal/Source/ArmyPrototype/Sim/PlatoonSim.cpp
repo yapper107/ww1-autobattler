@@ -367,7 +367,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
         // The squad leader reports how long no rifleman of his has had a line onto an enemy he
         // knows. The static defenders are never given jobs and never report this.
         if(!config.foundations&&!config.recoveryFixture&&squad/SquadsPerTeam!=rt.fixedDefender){
-            const Map& view=rt.geometryViews?(*rt.geometryViews)[leader]:map;
+            const Map& view=rt.geometryViews?*(*rt.geometryViews)[leader]:map;
             bool line=false,enemyKnown=false;
             for(int id=0;id<UnitCount&&!line;++id){const auto& ct=knowledge.contacts[id];if(!ct.known)continue;enemyKnown=true;
                 for(const auto& s:f.soldiers)if(s.squad==squad&&s.Active()&&!IsPlatoonStaff(s)&&!s.machineGun&&
@@ -426,7 +426,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
                 }
         }
         if(config.drills){
-            auto orders=PlanPlatoonTasks(f.soldiers[cmd.leader],rt.geometryViews?(*rt.geometryViews)[cmd.leader]:map,config,cmd.tasks,reactions.diagnostics,f.time);
+            auto orders=PlanPlatoonTasks(f.soldiers[cmd.leader],rt.geometryViews?*(*rt.geometryViews)[cmd.leader]:map,config,cmd.tasks,reactions.diagnostics,f.time);
             for(auto& order:orders){
                 auto& directive=order.directive;directive.serial=rt.nextSerial++;
                 if(!directive.intent.id)directive.intent.id=directive.serial;
@@ -500,7 +500,7 @@ void UpdatePlatoon(Frame& f,const Map& map,const Config& config,PlatoonRuntime& 
         if(f.time<cmd.nextPlanAt&&!changed)continue;
         rt.lastSituation[team]=situation;rt.lastPlan[team]=f.time;
         cmd.nextPlanAt=f.time+5;
-        auto orders=PlanPlatoon(f.soldiers[cmd.leader],rt.geometryViews?(*rt.geometryViews)[cmd.leader]:map,config,f.time,
+        auto orders=PlanPlatoon(f.soldiers[cmd.leader],rt.geometryViews?*(*rt.geometryViews)[cmd.leader]:map,config,f.time,
             !config.foundations&&!config.recoveryFixture&&team!=rt.fixedDefender);
         if(orders.empty())continue;
         cmd.nextPlanAt=f.time+55;++cmd.plans;cmd.sector=orders[0].directive.sector;

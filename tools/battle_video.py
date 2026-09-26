@@ -10,10 +10,13 @@ A corporal holding a Flank order is joined to its goal by a line. Rounds fired o
 are thick green lines; a green ring marks a man walking a covered detour instead of the shortest path;
 a bold amber ring with a streak behind him marks a sprinting man, and the focus squad's mean stamina is read out in the header (plan 022).
 A thick grey ring marks a man held down by fire (suppression above 0.5, about his duck threshold), on either side,
-and each panel counts both sides' pinned man-seconds (plan 031). Needs Pillow and ffmpeg.
+and each panel counts both sides' pinned man-seconds (plan 031). With destruction on (plan 033) the walls are drawn as the
+battle's geometry stood at that moment (geometry.jsonl): a wall that goes is gone, rubble (grey-brown) appears; whole
+ground-floor window panes are pale blue strokes until they shatter (a spray of blue specks); a cracked wall keeps a dark
+zigzag; a breached, destroyed or collapsed piece flashes orange as it goes; the header counts them. Needs Pillow and ffmpeg.
 """
 from __future__ import annotations
-import argparse, json, subprocess, sys, shutil
+import argparse, json, math, subprocess, sys, shutil
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -48,7 +51,133 @@ def load(run, start, end, stride):
         p = line.split()
         if p and p[0] == 'O' and float(p[4]) == 0:
             boxes.append((float(p[2]), float(p[3]), float(p[5]), float(p[6]), float(p[7]) >= 2.0))
-    return dict(frames=frames, shots=shots, boxes=boxes)
+    return dict(frames=frames, shots=shots, boxes=boxes, grenades=load_grenades(run), destruction=load_destruction(run))
+
+
+def load_destruction(run):
+    """Plan 033: the geometry versions (ground-level boxes of each; rubble = low pieces added after the start) and the
+    destruction events with the window panes, when the run had destruction on."""
+    out = dict(versions=[], panes={}, events=[])
+    if not (run/'destruction.jsonl').exists():
+        return out
+    first = None
+    for line in open(run/'geometry.jsonl'):
+        v = json.loads(line)
+        ids = {o['id'] for o in v['obstacles']}
+        first = ids if first is None else first
+        boxes = [(o['center'][0], o['center'][1], o['half'][0], o['half'][1], o['height'] >= 2.0, o['id'] not in first and o['height'] < 1.2)
+                 for o in v['obstacles'] if abs(o['center'][2]) < 0.05]
+        out['versions'].append((v['time'], boxes))
+    for line in open(run/'destruction.jsonl'):
+        e = json.loads(line)
+        if e['kind'] == 'pane':
+            out['panes'][e['obstacle']] = dict(center=e['center'], half=e['half'], broken=None)
+            continue
+        out['events'].append(e)
+        pane = out['panes'].get(e['obstacle']) if e['kind'] == 'glass_shattered' else None
+        if pane is not None and pane['broken'] is None:
+            pane['broken'] = e['time']
+    return out
+
+
+def draw_destruction(draw, d, t, to_px, scale, tally):
+    """Plan 033 overlay (see the module note); tally counts the events up to t by kind."""
+    for pane in d['panes'].values():
+        c, h = pane['center'], pane['half']
+        if c[2] > 2.9 or (pane['broken'] is not None and pane['broken'] <= t):
+            continue
+        a, b = to_px(c[0] - h[0], c[1] - h[1]), to_px(c[0] + h[0], c[1] + h[1])
+        draw.rectangle([a[0] - 1, a[1] - 1, max(b[0], a[0] + 1) + 1, max(b[1], a[1] + 1) + 1], fill=(90, 170, 235, 255))
+    tally.clear()
+    for e in d['events']:
+        age = t - e['time']
+        if age < 0:
+            break
+        kind, c, h = e['kind'], e['center'], e['half']
+        tally[kind] = tally.get(kind, 0) + 1
+        a, b = to_px(c[0] - h[0], c[1] - h[1]), to_px(c[0] + h[0], c[1] + h[1])
+        if kind == 'cracked':
+            steps = 7; long = (b[0] - a[0]) >= (b[1] - a[1])
+            points = [((a[0] + (b[0] - a[0])*i/steps, (a[1] + b[1])/2 + (3 if i % 2 else -3)) if long else
+                       ((a[0] + b[0])/2 + (3 if i % 2 else -3), a[1] + (b[1] - a[1])*i/steps)) for i in range(steps + 1)]
+            draw.line(points, fill=(150, 20, 10, 255), width=2)
+        elif kind == 'glass_shattered' and age < 1.2:
+            v = e['velocity']; speed = max(1.5, math.hypot(v[0], v[1]))
+            ux, uy = (v[0]/speed, v[1]/speed) if math.hypot(v[0], v[1]) > 0.1 else (0.0, 0.0)
+            for i in range(14):
+                spread = ((i*53) % 17)/17 - 0.5; reach = age*(2.5 + 6*((i*29) % 13)/13)
+                dx, dy = ux + spread*(uy if uy else 1), uy - spread*(ux if ux else 1)
+                q = to_px(c[0] + dx*reach, c[1] + dy*reach)
+                draw.ellipse([q[0] - 2, q[1] - 2, q[0] + 2, q[1] + 2], fill=(60, 150, 235, int(255*(1 - age/1.2))))
+        elif kind in ('breached', 'destroyed', 'collapsed') and age < 1.5:
+            fade = int(255*(1 - age/1.5))
+            draw.rectangle([a[0] - 3, a[1] - 3, b[0] + 3, b[1] + 3], outline=(240, 110, 0, fade), width=4)
+
+
+def load_grenades(run):
+    """Plan 032: grenades from a traced run's evidence rows (throws, bursts, fragment hits, stuns, reactions)."""
+    trace = run/'trace.jsonl'
+    out = dict(throws={}, hits=[], stuns=[], labels=[])
+    if not trace.exists():
+        return out
+    words = {('grenade_reaction', 'dive'): 'dive', ('grenade_reaction', 'run'): 'run', ('grenade_reaction', 'throw_back'): 'throw back',
+             ('grenade_pickup', 'fumbled'): 'fumbled!', ('grenade_close_in', 'start'): 'close in', ('grenade_close_in', 'rush'): 'rush'}
+    for line in open(trace):
+        if '"grenade' not in line:
+            continue
+        e = json.loads(line); kind, reason, t = e.get('kind', ''), e.get('reason'), e.get('time', 0)
+        if kind == 'grenade_release' and e.get('grenade') is not None:
+            out['throws'][e['grenade']] = dict(t=t, start=e['position'], aim=e.get('aim_at') or e['position'], type=e.get('type', ''), burst=None, tb=None, soldier=e['soldier'])
+            out['labels'].append((t, e['soldier'], 'throws ' + ('frag' if e.get('type', '').startswith('frag') else 'conc')))
+        elif kind == 'grenade_effect' and e.get('burst') is not None:
+            g = out['throws'].get(e.get('grenade'))
+            if g is not None and g['tb'] is None:
+                g['tb'], g['burst'] = t, e['burst']
+            if reason == 'hit':
+                out['hits'].append((t, e['burst'], e['soldier']))
+            elif reason == 'stunned':
+                out['stuns'].append((t, e['soldier']))
+        elif (kind, reason) in words:
+            out['labels'].append((t, e['soldier'], words[(kind, reason)]))
+    return out
+
+
+GRENADE_COLOURS = {'fragmentation': (200, 60, 20), 'concussion': (40, 80, 200)}
+
+
+def draw_grenades(draw, g, t, pos, to_px, scale, small):
+    """Plan 032 overlay: a thrown grenade flies (1.5 s) to where it bursts and lies there until the fuse ends; the burst is a
+    ring of its stun radius and a spray of fragments; red lines go to the men its fragments hit; yellow rings mark men
+    stunned; short labels mark throws, dives, runs, throw-backs, fumbles, close-ins and rushes."""
+    for gr in g['throws'].values():
+        colour = GRENADE_COLOURS.get(gr['type'], (60, 60, 60))
+        end = gr['burst'] or gr['aim']; tb = gr['tb'] if gr['tb'] is not None else gr['t'] + 4.0
+        if gr['t'] <= t < tb:
+            k = min(1.0, (t - gr['t']) / 1.5)
+            x = gr['start'][0] + (end[0] - gr['start'][0])*k; y = gr['start'][1] + (end[1] - gr['start'][1])*k
+            c = to_px(x, y); r = 4 if k < 1 else 3 + 2*(int(t*4) % 2)
+            if k < 1:
+                draw.line([to_px(gr['start'][0], gr['start'][1]), c], fill=colour + (90,), width=1)
+            draw.ellipse([c[0] - r, c[1] - r, c[0] + r, c[1] + r], fill=(30, 30, 30, 255), outline=colour + (255,), width=2)
+        if tb <= t < tb + 0.8:
+            c = to_px(end[0], end[1]); fade = int(200*(1 - (t - tb)/0.8))
+            radius = (2.0 if gr['type'].startswith('frag') else 3.0)*scale
+            draw.ellipse([c[0] - radius, c[1] - radius, c[0] + radius, c[1] + radius], fill=(255, 190, 40, fade//2), outline=(255, 120, 0, fade), width=3)
+            spokes, reach = (28, 9.0) if gr['type'].startswith('frag') else (10, 3.0)
+            for i in range(spokes):
+                a = 6.2831853*i/spokes + 0.37*(hash((round(tb, 2), i)) % 7)
+                d = reach*(0.5 + 0.5*((i*37) % 11)/10)
+                q = to_px(end[0] + d*math.cos(a), end[1] + d*math.sin(a))
+                draw.line([c, q], fill=(120, 120, 120, fade), width=1)
+    for tb, burst, sid in g['hits']:
+        if tb <= t < tb + 1.2 and sid in pos:
+            draw.line([to_px(burst[0], burst[1]), to_px(*pos[sid])], fill=(220, 0, 0, 230), width=2)
+    for ts, sid in g['stuns']:
+        if ts <= t < ts + 4 and sid in pos:
+            c = to_px(*pos[sid]); draw.ellipse([c[0] - 12, c[1] - 12, c[0] + 12, c[1] + 12], outline=(240, 200, 0, 255), width=3)
+    for tl, sid, word in g['labels']:
+        if tl <= t < tl + 2.0 and sid in pos:
+            c = to_px(*pos[sid]); draw.text((c[0] + 9, c[1] + 4), word, font=small, fill=(0, 0, 0, 255))
 
 
 def main():
@@ -62,6 +191,7 @@ def main():
     ap.add_argument('--panel', type=int, default=900)
     ap.add_argument('--ffmpeg', help='Optional explicit encoder executable')
     ap.add_argument('--opponent-label',default='defenders',help='Use Legacy for ordinary moving-opponent battles')
+    ap.add_argument('--window', help='x0,x1,y0,y1 in metres: crop to this area instead of fitting the soldiers')
     args = ap.parse_args()
     fps, step = 25, 0.2
     stride = max(1, round(args.speed/fps/step))
@@ -77,22 +207,30 @@ def main():
                     xs.append(s[4]); ys.append(s[5])
     pad = 12
     x0, x1, y0, y1 = min(xs) - pad, max(xs) + pad, min(ys) - pad, max(ys) + pad
+    if args.window:
+        x0, x1, y0, y1 = (float(v) for v in args.window.split(','))
+    global HEADER
+    if any(run['destruction']['versions'] for _, run in runs):
+        HEADER = 136   # room for the destruction line
     scale = args.panel/(x1 - x0)
     height = int((y1 - y0)*scale)
     height += height % 2
     width = args.panel*len(runs)
     px = lambda x, y, off: (off + (x - x0)*scale, HEADER + (y - y0)*scale)
 
-    backgrounds = []
-    for _, run in runs:
+    def background(boxes):
         image = Image.new('RGB', (args.panel, height), (236, 234, 224))
         draw = ImageDraw.Draw(image)
         for tall in (False, True):
-            for cx, cy, hx, hy, is_tall in run['boxes']:
+            for cx, cy, hx, hy, is_tall, *rubble in boxes:
                 if is_tall == tall and x0 - 5 < cx < x1 + 5 and y0 - 5 < cy < y1 + 5:
                     a, b = px(cx - hx, cy - hy, 0), px(cx + hx, cy + hy, 0)
-                    draw.rectangle([a[0], a[1] - HEADER, max(b[0], a[0] + 1), max(b[1] - HEADER, a[1] - HEADER + 1)], fill=(70, 66, 60) if tall else (176, 150, 105))
-        backgrounds.append(image)
+                    fill = (70, 66, 60) if tall else (128, 112, 98) if rubble and rubble[0] else (176, 150, 105)
+                    draw.rectangle([a[0], a[1] - HEADER, max(b[0], a[0] + 1), max(b[1] - HEADER, a[1] - HEADER + 1)], fill=fill)
+        return image
+    # Plan 033: one background per geometry version when the run has them (the walls as they stood), else the map's.
+    backgrounds = [[(v[0], background(v[1])) for v in run['destruction']['versions']] or [(0.0, background(run['boxes']))] for _, run in runs]
+    tallies = [dict() for _ in runs]
 
     big, small = font(22), font(15)
     encoder=args.ffmpeg or shutil.which('ffmpeg')
@@ -117,8 +255,10 @@ def main():
         draw = ImageDraw.Draw(canvas, 'RGBA')
         for r, (label, run) in enumerate(runs):
             off = r*args.panel
-            canvas.paste(backgrounds[r], (off, HEADER))
             t, soldiers = run['frames'][i]
+            canvas.paste([image for at, image in backgrounds[r] if at <= t + 1e-6][-1] if backgrounds[r][0][0] <= t + 1e-6 else backgrounds[r][0][1], (off, HEADER))
+            if run['destruction']['events'] or run['destruction']['panes']:
+                draw_destruction(draw, run['destruction'], t, lambda x, y: px(x, y, off), scale, tallies[r])
             shots = run['shots']
             while cursor[r] < len(shots) and shots[cursor[r]]['time'] < t - stride*step:
                 cursor[r] += 1
@@ -132,6 +272,8 @@ def main():
                 if s['hit']:
                     draw.ellipse([b[0] - 5, b[1] - 5, b[0] + 5, b[1] + 5], outline=(200, 0, 0, 255), width=2)
             attackers = defenders = 0
+            pos = {sid: (x, y) for sid, team, squad, alive, x, y, *rest in soldiers}
+            draw_grenades(draw, run['grenades'], t, pos, lambda x, y: px(x, y, off), scale, small)
             for sid, team, squad, alive, x, y, exposed, task, gx, gy, covered, sprinting, stamina, winded, suppression in soldiers:
                 c = px(x, y, off)
                 if not (off <= c[0] < off + args.panel):
@@ -194,6 +336,10 @@ def main():
                      f'{who} seen: {exposed_seconds[r]:.0f} soldier-seconds    fired on the move: {moving_rounds[r]}',
                      f'covered detours: {covered_seconds[r]:.0f} s    sprinting: {sprint_seconds[r]:.0f} s' + stamina_note,
                      f'pinned (grey ring): {args.opponent_label} {pinned_seconds[r][1]:.0f} soldier-seconds    Azure {pinned_seconds[r][0]:.0f}']
+            if run['destruction']['versions']:
+                d = tallies[r]
+                lines.append(f"destruction: {d.get('glass_shattered', 0)} panes shattered, {d.get('cracked', 0)} walls cracked, {d.get('breached', 0)} breached, "
+                             f"{d.get('destroyed', 0)} destroyed, {d.get('collapsed', 0)} collapsed")
             for line_number, line in enumerate(lines):
                 draw.text((off + 12, 34 + 19*line_number), line, font=small, fill=(40, 40, 40, 255))
             if r:

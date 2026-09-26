@@ -60,9 +60,9 @@ As of 25 September 2026:
 
 - **Playable default:** Legacy with the 24–25 Sep defaults, on `main` (Stage E sim `45da1e25dd1aa9e7`, loop
   node `80dfe8feb994faf2`, frozen). Drills, cognition and the neural policy are opt-in only.
-- **Source:** `0874018c441ad8c7`: a gun in every squad, muzzle credit, concealment, prone, vaulting,
+- **Source:** `090b6da63e131f07`: a gun in every squad, muzzle credit, concealment, prone, vaulting,
   retire-fallen, spawn lanes, Stage G and the suppression design by default; other plan 028/030/031
-  switches off. `.local/` is not in Git: rebuild the lab (`scripts/battle-lab.sh`), E-6 maps (`make_maps.py`).
+  switches off; grenades (`--grenades`) and destruction (`--destruction`) opt-in. `.local/` is not in Git: rebuild the lab (`scripts/battle-lab.sh`), E-6 maps (`make_maps.py`).
 - **Binaries:** `.local/lab/battle-lab` (lab); `.local/lab/battle-lab-train` (PGO+LTO,
   `scripts/build-train-lab.sh`, neural pipeline default); frozen training binary
   `.local/plan024/long-rl/bin/battle-lab` `d73667841df73faa` (sha256
@@ -71,10 +71,9 @@ As of 25 September 2026:
   `.local/plan029/baseline/battle-lab` `321600b6d945e49c` (village/city2 neural evaluation).
 - **Neural runs:** plans [025](plans/025-stronger-learning-run.md) and [027](plans/027-schema4-training-run.md)
   finished with no reliable gain; neural training is paused. [Plan 028](plans/028-covering-fire.md)
-  (covering-fire repair) stopped by Jordan's stop rule (no combination beat Legacy); all off. Capacity file `.local/neural/max_jobs`.
+  (covering-fire repair) stopped by the stop rule; all off. Capacity file `.local/neural/max_jobs`.
 - **Plan 031:** Stage G default; D, D2, D3 no gain (D merged off); [tools/covering](tools/covering/README.md).
-- **Models:** `models/squad/` (`plan024-imitation-v1`, `plan024-legacy-rl-v1`,
-  `plan024-legacy-rl-duration-v1`); none promoted.
+- **Models:** `models/squad/` (the three plan 024 squad models); none promoted.
 - **Maps:** four generated families in `Unreal/Config/GeneratedMaps/` (`city`, `trenches`, `village`,
   `city2`; village and city2 seed 17 accepted 23 Sep 2026, golden-byte tested). Training
   701–760; development 901–930 (opened); 1001–1015 and 1101–1125 inspected; village/city2 development
@@ -134,13 +133,10 @@ Jordan's rulings in force, dated and linked to their source (`L:` = [docs/PROJEC
   session oversees and integrates.** Parallel benchmark agents **stay under the thread count**;
   final timing is central, on a quiet machine. **Friendly-fire repairs may change Legacy
   directly**, followed by a re-baseline.
-
 - (23 Sep 2026) **Village damage is uneven** (battered approach, quieter rear, map-wide crater
   budget); rim and coverage gates unchanged. [L](docs/PROJECT_LOG.md#village-uneven-damage-across-parcel-boundaries--23-september-2026)
-
 - (23 Sep 2026) Village supportability checks **2–4 objectives, every team against every objective**;
   ≥0.70 unchanged; validator only. [L](docs/PROJECT_LOG.md#village-validation-across-multiple-objectives--23-september-2026)
-
 - (23 Sep 2026) **Curve village roads and add more curved sunken lanes**, retaining the existing
   physical contract and objective coverage gates. [L](docs/PROJECT_LOG.md#curved-village-roads-and-sunken-lanes--23-september-2026)
 
@@ -173,6 +169,8 @@ overseer measures. Full suite only before a commit. Code tests are not acceptanc
 
 Plans, current first:
 
+- [033](plans/033-building-destruction.md) building destruction, [032](plans/032-grenades-and-using-the-pin.md)
+  grenades and the pin — merged, off; tactics unmeasured.
 - [031](plans/031-fire-and-movement.md) fire and movement — Stage G default.
 - [030](plans/030-suppression-mechanics.md) suppression and covering fire, W-1 — switches off.
 - [029](plans/029-village-verticality.md) villages, verticality, city2 — landed.
@@ -182,12 +180,10 @@ Plans, current first:
 - [023](plans/023-the-rifle-group-moves-as-one.md) rifle group moves as one — the default.
 - Landed: [022](plans/022-stamina-and-sprint.md) stamina, [021](plans/021-legacy-attack-by-bounds.md) bounds
   (in 023), [020](plans/020-threat-aware-paths-and-rejoin.md) threat paths, [019](plans/019-fire-on-the-move.md) moving fire.
-- [018](plans/018-static-defence-and-loop-roots.md) static defence and the loop.
-- [017](plans/017-stat-system.md) stats and weapons — complete.
-- [016](plans/016-improvement-loop.md) improvement loop, map generator reviews.
-- [015](plans/015-squad-initiative-amendment.md) squad initiative — stopped at Step E.
-- [014](plans/014-battle-drill-controller.md) battle-drill controller — experimental.
-- [006](plans/006-modular-character-production.md) modular characters — proposal.
+- [018](plans/018-static-defence-and-loop-roots.md) static defence and the loop; [017](plans/017-stat-system.md)
+  stats — complete; [016](plans/016-improvement-loop.md) improvement loop, map generator reviews.
+- [015](plans/015-squad-initiative-amendment.md) squad initiative — stopped at E;
+  [014](plans/014-battle-drill-controller.md) drills — experimental; [006](plans/006-modular-character-production.md) characters — proposal.
 - 001–013 cognition roadmap, reviews and repairs — see [plans/README.md](plans/README.md).
 - [MotionBricks review](plans/motionbricks-viability-fable-review.md) — research only.
 
@@ -195,16 +191,15 @@ Docs:
 
 - Process: [AI_PROCESS](docs/AI_PROCESS.md), [IMPROVEMENT_LOOP](docs/IMPROVEMENT_LOOP.md),
   [BATTLE_LAB](docs/BATTLE_LAB.md), [DEVELOPMENT](docs/DEVELOPMENT.md),
-  [DESIGN_VISION](docs/DESIGN_VISION.md), [morning summary 24 Sep](docs/AI_SESSION_HANDOFF_2026-09-24.md),
-  [handoff 22 Sep](docs/AI_SESSION_HANDOFF_2026-09-22.md).
+  [DESIGN_VISION](docs/DESIGN_VISION.md).
 - Neural: `docs/NEURAL_SQUAD_PILOT.md`, `NEURAL_LEGACY_RL_PILOT.md`, `NEURAL_LEGACY_RL_DURATION.md`,
   `tools/neural/README.md`.
 - Performance: `docs/NEURAL_TRAINING_*.md` (latest ROUND4), `BATTLE_PERFORMANCE.md`, `TACTICAL_ROUTES.md`.
 - Maps: `docs/MAP_GENERATOR.md`, `MAP_GENERATOR_INTEGRATION.md`. Simulation:
   `docs/STATS_AND_WEAPONS.md`, `AI_MAIN_BUILD.md`.
 - Art: `docs/ART_INTEGRATION_023.md`, `CHARACTER_ANIMATIONS.md`, `MOTIONBRICKS_VIABILITY.md`.
-- History: [docs/PROJECT_LOG.md](docs/PROJECT_LOG.md), every dated entry verbatim; older
-  cognition, recovery and tactical-AI docs are reached from it.
+- History: [docs/PROJECT_LOG.md](docs/PROJECT_LOG.md), every dated entry verbatim; the handoffs and
+  older cognition, recovery and tactical-AI docs are reached from it.
 
 ## Keeping these files
 

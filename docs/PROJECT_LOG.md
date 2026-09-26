@@ -18,6 +18,7 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
+| 25 Sep 2026 | Grenades and building destruction merged, off by default — 25 September 2026 | [plan 032](../plans/032-grenades-and-using-the-pin.md), [plan 033](../plans/033-building-destruction.md) |
 | 25 Sep 2026 | Covering fire made useful: Stage G is the default — 25 September 2026 | [plan 031](../plans/031-fire-and-movement.md), [tools/covering](../tools/covering/README.md) |
 | 24 Sep 2026 | Plan 031 stage D measured, merged off; D2 approved; work pushed for the move — 24 September 2026 | [plan 031](../plans/031-fire-and-movement.md), [tools/covering](../tools/covering/README.md) |
 | 24 Sep 2026 | Plan 031 fire and movement started — 24 September 2026 | [plan 031](../plans/031-fire-and-movement.md) |
@@ -65,6 +66,48 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 | 16 Sep 2026 | Current playable default — user replay decision, 16 September 2026 | [AI_MAIN_BUILD](AI_MAIN_BUILD.md), plan 014 phase reviews |
 | by 16 Sep 2026 | Previous main-build decisions (history, superseded by the replay decision above) | [AI_MAIN_BUILD](AI_MAIN_BUILD.md) |
 | undated | Early project instructions — undated, before 16 September 2026 | [plans/README](../plans/README.md), [AI_RELIABILITY_RESULTS](AI_RELIABILITY_RESULTS.md) |
+
+## Grenades and building destruction merged, off by default — 25 September 2026
+
+Jordan (25 Sep): the soldiers should use the pin (close in on pinned enemies) and grenades, with physics-based blast
+and fragments; then "might be a good time to add destruction to the buildings ... You can work on that part." Jordan's
+rulings are in [plan 032](../plans/032-grenades-and-using-the-pin.md) sections 8–9 and
+[plan 033](../plans/033-building-destruction.md) section 9 ("we prototype"). Three Opus 5.5 agents built them in
+worktrees (grenades; destruction in the simulator; destruction in Unreal); the overseer merged and integrated.
+
+- **Grenades** (`--grenades azure|ember|both`, game `-ArmyGrenades[=...]`, Legacy only, off): 1–2 per man (gunners
+  none), 50/50 fragmentation (70 g TNT, 0.55 kg casing) or concussion (US Mk 3, 170 g, fibre); throws at pinned or
+  known enemies from reports only; close-ins on pinned enemies; dives, runs and skill-checked throw-backs; friendly
+  fire, no duds; "make it safer" (no friend within 15 m of the aim, the thrower 20 m away unless in cover).
+  Physics: Kingery–Bulmash blast, Bowen lethality, Hirsch eardrums, knockback from the net impulse, a Mott fragment
+  population flown as projectiles. Calibrated: a standing man in the open at 5 m from a fragmentation grenade is
+  out of action with p 0.50 (E_v 137.9 J; 0.98 at 2 m, 0.22 at 8 m; prone 0.19 at 5 m); the concussion grenade puts a
+  man out of action only within about half a metre in the open (60% killed there; in a room at 1 m survival 0.0005),
+  stuns 8 s within 1 m and throws a man 0.98 m at 0.5 m.
+- **Destruction** (`--destruction`, `--test-charge x,y,z,kg,time`, game `-ArmyDestruction`, off): every explosion
+  (test charges, and grenade bursts when both are on) loads wall panels (village stone, city2 brick, timber sheds;
+  no concrete), window panes and sheds; single-degree-of-freedom response, FM 5-250 breaching, glass at 7 kPa;
+  walls crack, breach or go, sheds break, glass shatters and flies, storeys collapse; debris and glass are
+  projectiles; one geometry revision per explosion with incremental cache updates; soldiers learn of changes by
+  seeing them. Grenade-scale anchors: walls outdoors only crack; windows within 6 m shatter; sheds within 1–2 m
+  break; 0.5 kg in contact breaches one brick; a 2.2 kg charge at 2–3 m breaches one brick but only cracks the
+  maps' 0.5 m walls. Cost: 90 s village battle 4.20 s off, 4.23 s with five charges.
+- **Unreal:** geometry changes shown during playback (walls hidden, split, rubble added, storeys falling), debris
+  chunks and dust, window glass until it shatters, grenades in flight, a flash and smoke per burst.
+  `-ArmyTestDestruction -ArmyDestructionCapture` (fabricated) and `-ArmyBlastCapture` (a real battle) take stills.
+- **In battle** (8 battles, both sides with grenades): 6–21 bursts per battle, 0–4 casualties from them; they crack
+  up to 25 walls and shatter up to 22 panes per battle; one burst beside a timber shed destroyed it (city2 E-6 7535,
+  seed 107; top-down video sent). Indoors, the room's ×3 pulse lets a grenade blow out a thin (0.23 m) wall within
+  about 2 m; the maps' 0.5 m walls only crack.
+- **Gates:** off byte-identical (40/40 lean parity; E-6 8/8 digests); `sim_tests --grenades` and `--destruction`
+  pass, including a new check that every burst reaches the explosion queue; with each switch on, the merged build
+  equals its module's own build digest for digest (grenades 4/4 E-6, destruction 2/2); Unreal build (no new
+  warnings) and the fabricated-destruction capture pass; full suite and Python tests pass; source 090b6da63e131f07. The Kingery–Bulmash fits live once, in `BlastSim`.
+- **Screen** (lean rule: meeting battles, Azure with grenades against none, 30 E-6 maps × seed 107): flat. Exchange
+  +0.022 [−0.072, +0.120], win share +0.10 [−0.05, +0.27], own lost −0.17, enemy lost +0.53 (map-cluster 95%
+  intervals); stopped there. Attacks, where grenades should matter most, were not screened.
+- **Not done:** test charges still hurt nobody by blast (only by debris and collapse); grenade art beyond a sphere,
+  flash and smoke.
 
 ## Covering fire made useful: Stage G is the default — 25 September 2026
 

@@ -5,11 +5,14 @@
 #include "Sim/BattleSim.h"
 #include "HAL/PlatformProcess.h"
 #include "CharacterBlend.h"
+#include "DestructionEffects.h"
 #include "BattleGameMode.generated.h"
 
 class ACameraActor;
 class UStaticMesh;
 class UMaterialInterface;
+class UInstancedStaticMeshComponent;
+class ADestructionVisual;
 
 UCLASS()
 class ARMYPROTOTYPE_API ABattleGameMode : public AGameModeBase
@@ -47,6 +50,11 @@ public:
     int CognitiveScenario = 0;
     FString Notice;
     int MapSelection=0;
+    // Plan 033: Record::map is the final geometry once a battle has run; the scene starts from the battle's first
+    // geometry and shows each geometry version from its time (preparation shows the first).
+    const army::Map& InitialGeometry() const;
+    const army::Map& ShownGeometry() const;
+    bool bCleanView=false; // -ArmyDestructionCapture stills: no HUD, the view centred on the camera target
 private:
     bool SelectMap(int Index);
     void GenerateMap();
@@ -83,6 +91,33 @@ private:
     bool bSmoke = false;
     bool bDurationSmokeChecked = false;
     bool bCapture = false;
+    // Plan 033 building destruction (presentation only). Every obstacle is an instance in a colour batch, found by its
+    // id, so a geometry version can hide, move or add any one; debris and dust come from Record::destruction.
+    void PlaceObstacle(const army::Obstacle& O);
+    int32 ObstacleBatch(const FLinearColor& Color,bool Roof);
+    FLinearColor ObstacleColor(const army::Obstacle& O,float Time,bool& Roof) const;
+    int32 GeometryIndexAt(float Time) const;
+    void ShowGeometry();
+    void IndexDestruction();
+    void ConfigureDestruction();
+    void PresentDestruction();
+    void DestructionCapture();
+    void BlastCapture();
+    FString CheckDestruction();
+    TMap<uint64,armydestruction::FObstacleVisual> ObstacleVisuals;
+    UPROPERTY() TArray<TObjectPtr<UInstancedStaticMeshComponent>> ObstacleBatches;
+    TMap<FString,int32> ObstacleBatchKeys;
+    TArray<armydestruction::FDecorationVisual> DecorationVisuals;
+    TMap<uint64,int32> RubbleMaterials;              // an added obstacle that is rubble: the material it fell from
+    TMap<uint64,float> CrackedAt;                    // a cracked wall: when it cracked
+    std::vector<armydestruction::FCollapse> Collapses;
+    std::vector<float> StyleTimes;                   // cracks and collapses change the picture between versions too
+    int32 ShownVersion=-2,ShownStyle=-1;
+    uint32 GeometryPass=0;
+    UPROPERTY() TObjectPtr<ADestructionVisual> DestructionVisual;
+    bool bTestDestruction=false;
+    armydestruction::FTestDestruction TestDestruction;
+    float BlastShown=0;   // -ArmyBlastCapture: the burst the stills show
 };
 
 UCLASS()

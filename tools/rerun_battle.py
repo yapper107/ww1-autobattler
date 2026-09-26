@@ -64,7 +64,15 @@ for key,flag in [('graded_peek','--no-graded-peek'),('keep_down','--no-keep-down
 for key,flag in [('gun_burst','--gun-burst'),('gun_beat','--gun-beat'),('gun_rotate','--gun-rotate'),('gun_threat_bonus','--gun-threat-bonus'),
                   ('gun_mover_weight','--gun-mover-weight'),('gun_bipod_factor','--gun-bipod-factor')]:
     if m.get(key) is not None:cmd+=[flag,str(m[key])]
+# Plan 032: the grenade teams (written only when on) and the table's entries that differ from the defaults.
+if m.get('grenades'):cmd+=['--grenades',m['grenades']]
+for key,value in (m.get('grenade_params') or {}).items():cmd+=['--grenade-param',f'{key}={value!r}']
 if m.get('roster_seed'):cmd+=['--roster-seed',str(m['roster_seed'])]
+# Plan 033: destruction, its test charges and its table entries that differ from the defaults (written only when on).
+if m.get('destruction'):
+    cmd+=['--destruction']
+    for charge in m.get('test_charges',[]):cmd+=['--test-charge',','.join(repr(float(v)) for v in charge)]
+    for name,value in m.get('destruction_params',{}).items():cmd+=['--destruction-param',f'{name}={value!r}']
 if m.get('foundations_policy'):cmd+=['--foundations','--estimate-bias',str(m.get('estimate_bias',0))]
 if m.get('cognition_policy') or m.get('drills_policy'):
     cmd+=['--drills' if m.get('drills_policy') else '--cognition','--report-delay',str(m.get('report_delay',.75)),'--judgment',str(m.get('judgment',.7)),'--risk',str(m.get('risk',.5)),'--adaptability',str(m.get('adaptability',.7))]
