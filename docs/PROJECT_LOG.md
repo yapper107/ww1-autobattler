@@ -18,7 +18,7 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
-| 25 Sep 2026 | Soldier actions authored in Blender — 25 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [critic pass 17](reviews/animation-critic-pass17-ammunition-verification.md) |
+| 25 Sep 2026 | Soldier actions authored in Blender — 25 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [female pass 37](reviews/animation-critic-pass37-female-thumb-views.md), [male pass 36](reviews/animation-critic-pass36-male-pronation.md) |
 | 25 Sep 2026 | Soldier animation rejected and reference study started — 25 September 2026 | [study](SOLDIER_MOTION_STUDY_2026-09-25.md), [reference page](../art/reviews/gasp/research.html) |
 | 25 Sep 2026 | GASP brought onto main with destruction-aware contacts — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md), [review](../art/reviews/gasp/armed-soldiers-2026-09-25.mp4) |
 | 25 Sep 2026 | Grenades and building destruction merged, off by default — 25 September 2026 | [plan 032](../plans/032-grenades-and-using-the-pin.md), [plan 033](../plans/033-building-destruction.md) |
@@ -84,12 +84,18 @@ bodies. No animation-pack purchase follows this direction. GASP locomotion remai
 in place; these changes do not alter simulation timing or rules.
 
 Independent rendered-frame critique remains **4.0/10 overall**, below Jordan's 8.5
-bar. Focused reviews: female rifle reload 5.5 (pass 17), male bolt 5.5/reload 5.5
-(pass 15), female MG reload/exit 4.0 (pass 12), held crouch stop 5.5 (pass 11).
+bar. Focused reviews through 26 September: female rifle reload 6.0 (pass 37,
+stock clearance and support wrist improved; pressure and pickup remain obscured), male sequence 7.5 provisional (pass 36, glove fin and sleeve collapse repaired), female MG
+reload/exit 4.0 (pass 12), held crouch stop 5.5 (pass 11).
 The shared authored spine/gun frame, body-specific male arm fit, cached MG carry
 transition and rigid belt-pouch weights address measured defects. Explicit finger
-poses and ammunition seating have a subsequent correction pass. Closed-pouch
-retrieval, complete MG mechanics, residual arm clearance and broad action coverage
+poses and ammunition seating have a subsequent correction pass. Both rifle bodies
+now have articulated pouches. Exact masks preserve their existing skeletal/cloth
+bindings and the male faction atlas. A measured web/cuff weight repair removes the
+male glove fin, and forearm pronation repairs the extraction sleeve collapse.
+Current rifle sources match those reviews. Female pressure/release weight remains
+under review; hidden contacts are not assumed faulty.
+Male interruption clearance is repaired. Convincing retrieval, complete MG mechanics and broad action coverage
 remain open. Numerical checks and the 732-clip inventory are not visual acceptance.
 
 Editable Blender/FBX sources, reproduction, graded captures and exact outstanding

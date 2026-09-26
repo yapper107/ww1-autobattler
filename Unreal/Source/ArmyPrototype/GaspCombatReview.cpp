@@ -27,6 +27,10 @@
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "UnrealClient.h"
+#if WITH_EDITOR
+#include "AssetCompilingManager.h"
+#include "ShaderCompiler.h"
+#endif
 namespace {
 constexpr int TotalFrames=46*30;
 bool HoldCrouch=false;
@@ -135,8 +139,9 @@ void AGaspCombatReview::BeginPlay() {
     }
     FVector PreviousFeet[4][2],PreviousHips[4],PreviousRawFeet[4][2],PreviousRawHips[4];float CrouchFootStep=0,CrouchHipStep=0;
     FString Continuity=TEXT("frame,body,weapon,crouch_foot_step_cm,crouch_hip_step_cm,raw_foot_step_cm,raw_hip_step_cm,pose\n");
-    FVector PreviousElbows[4][2];float ReloadElbowStep=0;
+    FVector PreviousElbows[4][2];float ReloadElbowStep=0,ReloadSurfaceError=0;
     FString ArmContinuity=TEXT("frame,body,weapon,reload_phase,left_elbow_step_cm,right_elbow_step_cm\n");
+    FString ArmGeometry=TEXT("frame,body,weapon,bone,x,y,z\n");
     FString BoxContacts=TEXT("frame,body,phase,error_cm,palm,dock,hand,shoulder\n");
     int ClothVertices=0;bool ClothFinite=true;
     const double Start=FPlatformTime::Seconds();
@@ -166,6 +171,10 @@ void AGaspCombatReview::BeginPlay() {
             const double RightStep=FVector::Distance(Elbows[1],PreviousElbows[I][1]);
             ReloadElbowStep=FMath::Max(ReloadElbowStep,float(FMath::Max(LeftStep,RightStep)));
             ArmContinuity+=FString::Printf(TEXT("%d,%s,%s,%.6f,%.6f,%.6f\n"),F,I>=2?TEXT("male"):TEXT("female"),I%2?TEXT("MG"):TEXT("rifle"),CurrentAnim->Handling.reloadPhase,LeftStep,RightStep);
+            for(const TCHAR* Bone:{TEXT("Hips"),TEXT("Spine"),TEXT("Spine2"),TEXT("LeftArm"),TEXT("RightArm"),TEXT("RightForeArm"),TEXT("RightHand")}) {
+                const FVector P=V->Body->GetSocketTransform(Bone,RTS_Component).GetLocation();
+                ArmGeometry+=FString::Printf(TEXT("%d,%s,%s,%s,%.6f,%.6f,%.6f\n"),F,I>=2?TEXT("male"):TEXT("female"),I%2?TEXT("MG"):TEXT("rifle"),Bone,P.X,P.Y,P.Z);
+            }
         }
         for(int J=0;J<2;++J)PreviousElbows[I][J]=Elbows[J];
         const FVector Feet[]={V->Body->GetSocketTransform(TEXT("LeftFoot"),RTS_Component).GetLocation(),V->Body->GetSocketTransform(TEXT("RightFoot"),RTS_Component).GetLocation()};
@@ -192,15 +201,31 @@ void AGaspCombatReview::BeginPlay() {
         if(CurrentAnim->VaultPlant>.999f)PlantError=FMath::Max(PlantError,float(FVector::Distance(V->Body->GetSocketTransform(TEXT("LeftHand"),RTS_Component).GetLocation(),CurrentAnim->VaultHandTarget)));
         if(!V->IsMachineGun&&V->EquipmentProfile&&CurrentAnim->Handling.boltContact>.999f) {
             ++BoltSamples[I];
-            const FVector Palm=FMath::Lerp(V->Body->GetSocketLocation(TEXT("RightHand")),V->Body->GetSocketLocation(TEXT("RightHandMiddle1")),.65);
-            BoltError=FMath::Max(BoltError,float(FVector::Distance(Palm,V->Bolt->GetComponentTransform().TransformPosition(V->EquipmentProfile->BoltKnob))));
+            const FVector Palm=CurrentAnim->AuthoredHandling?
+                (V->Body->GetSocketLocation(TEXT("RightHandThumb4"))+V->Body->GetSocketLocation(TEXT("RightHandIndex4")))*.5:
+                FMath::Lerp(V->Body->GetSocketLocation(TEXT("RightHand")),V->Body->GetSocketLocation(TEXT("RightHandMiddle1")),.65);
+            FVector MeshKnob=V->EquipmentProfile->BoltKnob;
+            MeshKnob.X=FMath::Abs(MeshKnob.X); // Component scale supplies the operating-side reflection.
+            BoltError=FMath::Max(BoltError,float(FVector::Distance(Palm,V->Bolt->GetComponentTransform().TransformPosition(MeshKnob))));
         }
         if(!V->IsMachineGun&&V->EquipmentProfile&&CurrentAnim->Handling.reloadContact>.999f&&CurrentAnim->Handling.clip>0) {
             ++ReloadSamples[I];
             const FVector Palm=FMath::Lerp(V->Body->GetSocketLocation(TEXT("RightHand")),V->Body->GetSocketLocation(TEXT("RightHandMiddle1")),.65);
             const FVector Clip=V->Rifle->GetComponentTransform().TransformPosition(V->EquipmentProfile->ReloadClipPosition(CurrentAnim->Handling.reloadPhase));
             ReloadError=FMath::Max(ReloadError,float(FVector::Distance(Clip,V->ReloadProp->GetComponentLocation())));
-            ReloadError=FMath::Max(ReloadError,float(FVector::Distance(Palm,Clip+V->Rifle->GetComponentTransform().TransformVectorNoScale(V->EquipmentProfile->ReloadPalmOffset))));
+            if(CurrentAnim->ArticulatedRiflePouch) {
+                // This action changes from pinching the rail to pressing the
+                // top cartridge. Check the actual fingertip after that regrip.
+                if(CurrentAnim->Handling.reloadPhase>=.535f) {
+                    const FVector Top=Clip+V->Rifle->GetComponentTransform().TransformVectorNoScale(FVector(0,0,V->EquipmentProfile->ReloadStackHalfHeight));
+                    ReloadError=FMath::Max(ReloadError,float(FVector::Distance(V->Body->GetSocketLocation(TEXT("RightHandThumb4")),Top)));
+                    if(V->ReloadProp->GetStaticMesh()) {
+                        const FBox Bounds=V->ReloadProp->GetStaticMesh()->GetBoundingBox();
+                        const FVector Surface=V->ReloadProp->GetComponentTransform().TransformPosition(FVector(Bounds.Min.X,0,0));
+                        ReloadSurfaceError=FMath::Max(ReloadSurfaceError,float(FVector::Distance(V->Body->GetSocketLocation(TEXT("RightHandThumb4")),Surface)));
+                    }
+                }
+            } else ReloadError=FMath::Max(ReloadError,float(FVector::Distance(Palm,Clip+V->Rifle->GetComponentTransform().TransformVectorNoScale(V->EquipmentProfile->ReloadPalmOffset))));
         }
         if(V->IsMachineGun&&CurrentAnim->AuthoredHandling&&CurrentAnim->Handling.reloadPhase>=.20f&&CurrentAnim->Handling.reloadPhase<=.60f) {
             ++BoxSamples[I];
@@ -253,11 +278,12 @@ void AGaspCombatReview::BeginPlay() {
     FFileHelper::SaveStringToFile(Queries,*(Folder/TEXT("gasp-queries.txt")));
     FFileHelper::SaveStringToFile(Continuity,*(Folder/TEXT("gasp-crouch-continuity.csv")));
     FFileHelper::SaveStringToFile(ArmContinuity,*(Folder/TEXT("gasp-arm-continuity.csv")));
+    FFileHelper::SaveStringToFile(ArmGeometry,*(Folder/TEXT("gasp-arm-geometry.csv")));
     FFileHelper::SaveStringToFile(BoxContacts,*(Folder/TEXT("gasp-box-contacts.csv")));
     const bool ContactsExercised=BoltSamples[0]>0&&BoltSamples[2]>0&&ReloadSamples[0]>0&&ReloadSamples[2]>0&&BoxSamples[1]>0&&BoxSamples[3]>0;
-    const bool Passed=AuthoredAssetsPresent&&ContactsExercised&&SeekEqual&&QueryPreservesPose&&Worst<2&&Reconstruction<.2&&AimError<1&&RootError<12.01&&ClothFinite&&ClothVertices>0&&PlantError<2&&BoltError<1&&ReloadError<1&&BoxError<1;
+    const bool Passed=AuthoredAssetsPresent&&ContactsExercised&&SeekEqual&&QueryPreservesPose&&Worst<2&&Reconstruction<.2&&AimError<1&&RootError<12.01&&ClothFinite&&ClothVertices>0&&PlantError<2&&BoltError<1&&ReloadError<1&&ReloadSurfaceError<.3f&&BoxError<1;
     const FString Summary=FString::Printf(TEXT("frames=%d bodies=4 worst_wrist_cm=%.6f native_stack_reconstruction_cm=%.6f seek_equal=%d generation_seconds=%.3f aim_error_deg=%.5f root_offset_cm=%.3f cloth_vertices=%d cloth_finite=%d vault_plant_cm=%.4f query_preserves_pose=%d bolt_contact_cm=%.4f passed=%d\n"),TotalFrames+1,Worst,Reconstruction,int(SeekEqual),FPlatformTime::Seconds()-Start,AimError,RootError,ClothVertices,int(ClothFinite),PlantError,int(QueryPreservesPose),BoltError,int(Passed));
-    const FString FullSummary=FString::Printf(TEXT("authored_assets=%d contacts_exercised=%d bolt_samples=%d,%d reload_samples=%d,%d mg_box_samples=%d,%d mg_box_contact_cm=%.4f crouch_foot_step_cm=%.4f crouch_hip_step_cm=%.4f reload_contact_cm=%.4f reload_elbow_step_cm=%.4f "),int(AuthoredAssetsPresent),int(ContactsExercised),BoltSamples[0],BoltSamples[2],ReloadSamples[0],ReloadSamples[2],BoxSamples[1],BoxSamples[3],BoxError,CrouchFootStep,CrouchHipStep,ReloadError,ReloadElbowStep)+Summary;
+    const FString FullSummary=FString::Printf(TEXT("authored_assets=%d contacts_exercised=%d bolt_samples=%d,%d reload_samples=%d,%d mg_box_samples=%d,%d mg_box_contact_cm=%.4f crouch_foot_step_cm=%.4f crouch_hip_step_cm=%.4f reload_contact_cm=%.4f reload_surface_gap_cm=%.4f reload_elbow_step_cm=%.4f "),int(AuthoredAssetsPresent),int(ContactsExercised),BoltSamples[0],BoltSamples[2],ReloadSamples[0],ReloadSamples[2],BoxSamples[1],BoxSamples[3],BoxError,CrouchFootStep,CrouchHipStep,ReloadError,ReloadSurfaceError,ReloadElbowStep)+Summary;
     FFileHelper::SaveStringToFile(FullSummary,*(Folder/TEXT("gasp-combat-check.txt")));UE_LOG(LogTemp,Display,TEXT("GASP_COMBAT_CHECK %s"),*FullSummary);
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyMotionValidate"))){FPlatformMisc::RequestExitWithStatus(false,Passed?0:1);return;}
     }
@@ -274,12 +300,25 @@ void AGaspCombatReview::BeginPlay() {
     Camera->GetCameraComponent()->OrthoWidth=1150;
     auto& PP=Camera->GetCameraComponent()->PostProcessSettings;PP.bOverride_AutoExposureMinBrightness=PP.bOverride_AutoExposureMaxBrightness=true;
     PP.AutoExposureMinBrightness=PP.AutoExposureMaxBrightness=1;PP.bOverride_MotionBlurAmount=true;PP.MotionBlurAmount=0;
-    GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);Ready=true;
+    GetWorld()->GetFirstPlayerController()->SetViewTarget(Camera);
+#if WITH_EDITOR
+    // A capture must not record cached/fallback materials while a changed shader
+    // or imported static mesh is still compiling asynchronously.
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyGaspReviewCapture"))) {
+        FAssetCompilingManager::Get().FinishAllCompilation();
+        if(GShaderCompilingManager)GShaderCompilingManager->FinishAllCompilation();
+    }
+#endif
+    Ready=true;
 }
 void AGaspCombatReview::Tick(float Dt) {
     Super::Tick(Dt);Elapsed+=Dt;
     if(!Ready){if(Elapsed>15)FPlatformMisc::RequestExitWithStatus(false,1);return;}
     const bool Capture=FParse::Param(FCommandLine::Get(),TEXT("ArmyGaspReviewCapture"));
+#if WITH_EDITOR
+    if(Capture&&(FAssetCompilingManager::Get().GetNumRemainingAssets()>0||
+        (GShaderCompilingManager&&GShaderCompilingManager->IsCompiling())))return;
+#endif
     if(Capture&&FScreenshotRequest::IsScreenshotRequested())return;
     const bool Still=FParse::Param(FCommandLine::Get(),TEXT("ArmyGaspReviewStill"));
     float RequestedTime=27;FParse::Value(FCommandLine::Get(),TEXT("ArmyGaspTime="),RequestedTime);
@@ -330,4 +369,31 @@ void AGaspCombatReviewHUD::DrawHUD(){
     DrawText(TEXT("GASP | ARMED MOTION REVIEW"),FLinearColor::White,30,25,nullptr,1.3f);
     DrawText(M->Ready?M->Label:TEXT("Preparing continuous motion decisions"),FLinearColor(.6,.85,1),30,58);
     DrawText(TEXT("Male machine gun / Male rifle / Female machine gun / Female rifle"),FLinearColor::White,30,Canvas->SizeY-45);
+    if(FParse::Param(FCommandLine::Get(),TEXT("ArmyContactMarkers"))) {
+        DrawText(TEXT("DIAGNOSTIC: projected bone tips, including occluded points"),FLinearColor::Yellow,30,85);
+        int Body=0;FParse::Value(FCommandLine::Get(),TEXT("ArmyGaspReviewBody="),Body);
+        if(M->Soldiers.IsValidIndex(Body)) {
+            const auto* V=M->Soldiers[Body].Get();
+            const TCHAR* Digits[]={TEXT("Thumb"),TEXT("Index"),TEXT("Middle")};
+            const FLinearColor Colors[]={FLinearColor::Red,FLinearColor::Yellow,FLinearColor(0,.8,1)};
+            for(int D=0;D<3;++D) {
+                FVector Previous;
+                for(int J=1;J<=4;++J) {
+                    const FVector P=Canvas->Project(V->Body->GetSocketLocation(FName(FString::Printf(TEXT("RightHand%s%d"),Digits[D],J))));
+                    if(J>1)DrawLine(Previous.X,Previous.Y,P.X,P.Y,Colors[D],2);
+                    DrawRect(Colors[D],P.X-2,P.Y-2,4,4);Previous=P;
+                }
+                DrawText(Digits[D],Colors[D],Previous.X+12,Previous.Y-45+D*23);
+            }
+            if(!V->IsMachineGun&&V->ReloadProp->GetStaticMesh()) {
+                // +90 degrees around local Y makes the mesh's minimum X the
+                // top cartridge. Display its actual surface independently of
+                // the profile contact target, even when the glove hides it.
+                const FBox Bounds=V->ReloadProp->GetStaticMesh()->GetBoundingBox();
+                const FVector P=Canvas->Project(V->ReloadProp->GetComponentTransform().TransformPosition(FVector(Bounds.Min.X,0,0)));
+                DrawRect(FLinearColor::Green,P.X-3,P.Y-3,6,6);
+                DrawText(TEXT("Top cartridge surface"),FLinearColor::Green,P.X+15,P.Y+20);
+            }
+        }
+    }
 }

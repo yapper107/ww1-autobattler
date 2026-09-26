@@ -1,6 +1,8 @@
 #include "GaspAuthoringLibrary.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/StaticMesh.h"
 #include "Animation/Skeleton.h"
+#include "Materials/Material.h"
 bool UGaspAuthoringLibrary::AssignPrototypeSkeleton(USkeletalMesh* Mesh,USkeleton* Skeleton) {
 #if WITH_EDITOR
     if(!Mesh||!Skeleton)return false;
@@ -229,6 +231,100 @@ TArray<int32> UGaspAuthoringLibrary::FemaleBeltPouchVertices(USkeletalMesh* Mesh
     Result=Selected.Array();Result.Sort();
 #endif
     return Result;
+}
+
+TArray<FVector> UGaspAuthoringLibrary::FemaleBeltPouchPositions(USkeletalMesh* Mesh) {
+    TArray<FVector> Result;
+#if WITH_EDITOR
+    const auto Vertices=FemaleBeltPouchVertices(Mesh);
+    if(Vertices.IsEmpty())return Result;
+    const FStaticMeshConstAttributes Attributes(*Mesh->GetMeshDescription(0));
+    for(int32 Vertex:Vertices)Result.Add(FVector(Attributes.GetVertexPositions()[FVertexID(Vertex)]));
+#endif
+    return Result;
+}
+
+TArray<FVector> UGaspAuthoringLibrary::StaticMeshPositions(UStaticMesh* Mesh) {
+    TArray<FVector> Result;
+#if WITH_EDITOR
+    if(!Mesh)return Result;
+    const FMeshDescription* Description=Mesh->GetMeshDescription(0);
+    if(!Description)return Result;
+    const FStaticMeshConstAttributes Attributes(*Description);
+    for(const FVertexID Vertex:Description->Vertices().GetElementIDs())
+        Result.Add(FVector(Attributes.GetVertexPositions()[Vertex]));
+#endif
+    return Result;
+}
+
+TArray<FVector> UGaspAuthoringLibrary::SkeletalMeshPositions(USkeletalMesh* Mesh,FName MaterialSlot) {
+    TArray<FVector> Result;
+#if WITH_EDITOR
+    if(!Mesh)return Result;
+    const FMeshDescription* Description=Mesh->GetMeshDescription(0);
+    if(!Description)return Result;
+    const FStaticMeshConstAttributes Attributes(*Description);
+    TSet<FVertexID> Selected;
+    if(MaterialSlot.IsNone()) {
+        for(const FVertexID Vertex:Description->Vertices().GetElementIDs())Selected.Add(Vertex);
+    } else {
+        const auto Slots=Attributes.GetPolygonGroupMaterialSlotNames();
+        for(const FPolygonID Polygon:Description->Polygons().GetElementIDs()) {
+            if(Slots[Description->GetPolygonPolygonGroup(Polygon)]!=MaterialSlot)continue;
+            for(const FVertexInstanceID Instance:Description->GetPolygonVertexInstances(Polygon))
+                Selected.Add(Description->GetVertexInstanceVertex(Instance));
+        }
+    }
+    for(const FVertexID Vertex:Selected)Result.Add(FVector(Attributes.GetVertexPositions()[Vertex]));
+#endif
+    return Result;
+}
+
+TMap<int32,FVector> UGaspAuthoringLibrary::SkeletalMeshVertexPositions(USkeletalMesh* Mesh) {
+    TMap<int32,FVector> Result;
+#if WITH_EDITOR
+    if(!Mesh)return Result;
+    const FMeshDescription* Description=Mesh->GetMeshDescription(0);
+    if(!Description)return Result;
+    const FStaticMeshConstAttributes Attributes(*Description);
+    for(const FVertexID Vertex:Description->Vertices().GetElementIDs())
+        Result.Add(Vertex.GetValue(),FVector(Attributes.GetVertexPositions()[Vertex]));
+#endif
+    return Result;
+}
+
+bool UGaspAuthoringLibrary::FinalizeArticulatedPouchMaterial(UMaterial* Material) {
+#if WITH_EDITOR
+    if(!Material)return false;
+    const FString Path=Material->GetPathName();
+    if(Path!=TEXT("/Game/Characters/GASP/Equipment/M_WebbingArticulatedPouch.M_WebbingArticulatedPouch")&&
+       Path!=TEXT("/Game/Characters/GASP/Equipment/M_maleatlasArticulatedPouch.M_maleatlasArticulatedPouch"))return false;
+    if(Material->BlendMode!=BLEND_Masked)return false;
+    // Duplicating an opaque palette preserves this cached optimization in 5.8.
+    // It is not exposed to Python; an opacity expression alone cannot clear it.
+    Material->Modify();Material->bCanMaskedBeAssumedOpaque=false;
+    Material->PostEditChange();Material->MarkPackageDirty();
+    return Material->GetBlendMode()==BLEND_Masked;
+#else
+    return false;
+#endif
+}
+
+bool UGaspAuthoringLibrary::FinalizeHandlingFeedMaterial(UMaterial* Material) {
+#if WITH_EDITOR
+    if(!Material)return false;
+    const FString Path=Material->GetPathName();
+    if(Path!=TEXT("/Game/Characters/FemaleRifle/M_handlingbrass.M_handlingbrass")&&
+       Path!=TEXT("/Game/Characters/FemaleRifle/M_handlingcyan.M_handlingcyan"))return false;
+    if(Material->BlendMode!=BLEND_Masked)return false;
+    UE_LOG(LogTemp,Display,TEXT("ARMY_FEED_MATERIAL %s assumed_opaque=%d effective_blend=%d"),
+        *Path,int(Material->bCanMaskedBeAssumedOpaque),int(Material->GetBlendMode()));
+    Material->Modify();Material->bCanMaskedBeAssumedOpaque=false;
+    Material->PostEditChange();Material->MarkPackageDirty();
+    return Material->GetBlendMode()==BLEND_Masked;
+#else
+    return false;
+#endif
 }
 
 FVector UGaspAuthoringLibrary::RootMotionTranslation(UAnimSequence* Clip,float Start,float Duration) {

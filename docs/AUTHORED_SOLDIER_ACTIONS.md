@@ -11,17 +11,17 @@ The requested 8.5/10 has not been reached. Focused reviews below do not approve 
 score. Review is from dense chronological rendered frames, not continuous video
 playback.
 
-The latest focused reviews are female rifle reload **5.5/10** (pass 17), male
-shot/bolt **5.5** and reload **5.5** (pass 15), and female MG reload/exit **4.0**
-(pass 12). Female held crouch stop is **5.5**, carry **5.5**, walking **5.0**, and
-walk-stop **4.5**. These grades refer to the exact captures in the critic reports,
-not subsequent unreviewed changes. Finger gestures, the male's intermediate elbow
-arc and ammunition seating have a later correction pass in progress.
+The latest focused reviews are female rifle reload **6.0/10** (pass 37), the
+male shot/bolt/interrupted reload sequence **7.5 provisional** (pass 36), and female MG
+reload/exit **4.0** (pass 12). Female held crouch stop is **5.5**, carry **5.5**,
+walking **5.0**, and walk-stop **4.5**. These grades refer to the exact captures in
+the critic reports, not subsequent unreviewed changes.
 
-The remaining visible problems include retrieval through a closed pouch, weak
-physical feed/release beats, residual male arm clearance during interruption,
-incomplete MG replacement/feed mechanics, and locomotion weight acceptance. None
-is waived by a passing technical check.
+Male bolt placement and ammunition visibility improve, and the glove fin is repaired,
+and the extraction sleeve fold is repaired. Female stock clearance and supporting wrist improve;
+the feed still needs a clearly readable press. Pickup remains obscured. Complete
+MG mechanics, locomotion weight acceptance and broad action coverage remain open.
+Passing numerical checks do not waive these visible failures.
 
 ## Editable sources and reproduction
 
@@ -29,7 +29,7 @@ All paths below are repository-relative. Binary art belongs in Git LFS.
 
 | Source | Contents |
 |---|---|
-| `art/characters/authored_rifle/Female/Rifle_Handling_Authored.blend` | Editable shot/bolt, reload and lowered-carry loop, weapon controls, wrist IK, elbow pole, planted ankles and body keys |
+| `art/characters/authored_rifle/Female/Rifle_Handling_Authored.blend` | Editable shot/bolt, reload and lowered-carry loop, weapon controls, keyed two-bone reload solve, planted ankles and body keys |
 | `art/characters/authored_rifle/Male/Male_Rifle_Handling_Authored.blend` | Compatible male actions retaining his actual proportions and finger gestures |
 | `art/characters/authored_mg/MachineGun_Handling_Authored.blend` | Body-specific MG firing and ammunition-box reload blocking; not finished feed mechanics |
 | Each body's `manifest.json` and FBXs | Exact durations, 60 Hz bake, editable action names and WIP status |
@@ -44,12 +44,17 @@ stretching the gun or the arm. `retarget_authored_rifle.py` transfers the perfor
 to the fitted male rig and preserves changes in finger pose relative to his grip.
 His wider chest needs its own torso opening and arm fit: copying female FK rotations
 left the source wrists 12–16 cm away from their controls. The male action now keys
-both arms to the targets without lengthening bones. The operating elbow has an
-explicit forward/outward preference through manipulation.
+both arms to the targets without lengthening bones. The operating elbow transports an outward/downward bend frame from a forward
+reach to the live wrist. A fixed world-space pole can align with a close reach
+and swap elbow sides; the transported frame removes that singularity.
 
 The editable female scene also carries the rigid belt-pouch weight repair.
-The female scene saves the reload action together with its matching `Elbow_Reload`
-control action. When manually changing the rig action, change the elbow action too.
+The female scene saves the reload action together with matching `Elbow_Reload`
+and `Pouch_Reload` control actions. When manually changing the rig action, change
+both control actions too. Keep `author_rifle_pouch.py` beside the action authoring
+script, together with `author_rifle_charger.py`, the male pouch helper and
+`repair_male_glove.py`, when copying scripts to a separate
+Blender working folder.
 Open, pinch, knob-grasp and thumb-press finger poses are fitted on the existing
 three-digit glove rig, then blended through explicit action keys.
 
@@ -58,9 +63,13 @@ Run with Blender 5.2 in background mode, using these arguments after `--`:
 1. Open `art/characters/authored_sources/female_grip_C_2026-09-25.blend`; run
    `tools/character/author_rifle_actions.py` with output
    `art/characters/authored_rifle/Female`.
-2. Open that generated female blend; run `retarget_authored_rifle.py` with male
-   output directory, `art/characters/authored_sources/gunners_2026-09-25.blend`,
-   and the generated female manifest as its three arguments.
+2. Open the newly authored female blend; run `retarget_authored_rifle.py` with
+   the male output directory, `art/characters/authored_sources/gunners_2026-09-25.blend`,
+   and the female manifest as its three arguments. Keep `author_male_rifle_pouch.py`
+   and `author_rifle_pouch.py`, plus `fit_authored_fingers.py`, beside the retargeter. The articulated variant fits
+   the male glove's actual fingertip pinch and exports his opening pouch, mask
+   specification and matching flap actions. The optional `--closed-pouch-source`
+   female authoring mode remains available for historical diagnostics.
 3. Open the same gunners blend; run `author_mg_actions.py` with output
    `art/characters/authored_mg`. It takes the actual body-specific standing MG grip
    at source frame 85. The shot and reload are newly keyed actions.
@@ -69,7 +78,19 @@ Run with Blender 5.2 in background mode, using these arguments after `--`:
    despite the historical filename, it imports both authored weapon families.
    It preserves the existing source skeleton and normalizes duplicate runtime
    clips into `/Game/Characters/GASP/Legacy/{Female,Male}`.
-5. Copy newly generated mirror assets back into `Unreal/Content/Characters/`
+   For articulated manifests it also runs `import_rifle_pouch.py` and
+   `import_male_rifle_pouch.py` for the respective bodies.
+   Import with `-nullrhi`, then validate the material in the rendered game review.
+   The capture waits for asset/shader compilation and rejects material-fallback
+   errors in its own `render.log`; NullRHI alone cannot certify a material.
+   A cold rendering commandlet was aborted after compiling unrelated engine
+   debug materials; it is not passing validation evidence.
+5. Run `Tools/character/repair_handling_materials.py` after the native authoring
+   library has been built when regenerating handling materials. It asserts its
+   graph connections, clears the two generated feed materials' cached opaque
+   flags and restores separate brass/cyan/steel sections. Validate with an actual
+   rendered capture; NullRHI cannot detect every platform shader failure.
+6. Copy newly generated mirror assets back into `Unreal/Content/Characters/`
    before another build, or the source checkout will replace them in the mirror.
 
 The male FBX retains the `Male_Azure_Rig` root contract. The female uses
@@ -111,7 +132,7 @@ box contact too; its previous wrist-only result did not prove prop contact.
 | Family / transition | Evidence and remaining work |
 |---|---|
 | Rifle shot → bolt → aim | Female pass 10: 5.5; male pass 13: 5.5. Mechanism effort and regrip remain weak. |
-| Rifle reload → aim | Female pass 17: 5.5; male pass 15: 5.5. Closed-pouch retrieval, feed explanation and intermediate male clearance remain open. |
+| Rifle reload → aim | Female pass 31: 6.0; male sequence fresh pass 30: 5.5. Pouch opening and stock clearance improve, but pickup/feeding and the male bolt grip remain rejected. Later contact edits require new review. |
 | Crouch start / side move / stop | Held female stop pass 11: 5.5. Timed stopping reduces early planting; toe support and load acceptance remain unaccepted. |
 | Walk / turns / run / sprint / braking | Pass 9 female carry 5.5, walk 5.0, stop 4.5. Other gait/body combinations still need review. Carry follows chest; intent contexts remain separate. |
 | Moving fire / crouched handling | Layers function, but the standing performance has not been certified for these adaptations. |
@@ -306,3 +327,331 @@ contains five completed captures with their individual historical limits. The
 latest UE5.8.3 editor build, 7 documentation tests and focused weapon-handling tests
 pass; the final four-body diagnostic reports contact/seek reconstruction and finite
 cloth passing. These checks do not constitute the requested visual acceptance.
+
+### 26 September continuation — male anticipation and female pouch
+
+[Pass 18](reviews/animation-critic-pass18-male-anticipation.md), capture
+`GaspCombat-20260926-001808`, confirms the male interruption clearance repair at
+29.20–29.33 s, with earlier feed/withdrawal repairs preserved. The male opens his
+broad torso before closing his hand on the bolt; the old action delayed that
+opening until after contact. A component-space elbow-blend experiment did not
+repair the cause and was reverted. Shot/bolt and reload remain **5.5/10**. The
+opposite close view `002109` shows no new jump but partly hides the operating arm.
+The review is adjacent-frame inspection, not continuous playback.
+
+The new female pouch is a separate low-poly bag with an interior and a hinged
+flap, authored by `author_rifle_pouch.py`. The editable duplicate removes only the
+old 82-vertex front-right pouch. Runtime keeps the skeletal mesh and its cloth
+binding: a scoped, bind-space webbing mask is intended to hide that original pouch;
+the two static components follow its exact bind-to-current pelvis transform. The
+first rendered version failed to hide the old pouch (diagnosis below). This is currently female-rifle equipment
+only. The common male authoring input still reproduces the earlier closed-pouch
+route (source elbow diagnostic 2.34055 cm per 60 Hz sample).
+
+The female keys reach for the flap, lift it, enter the opening, pinch, and carry
+ammunition toward the receiver. During access, the runtime hand follows the pouch's
+pelvis frame rather than the gun frame; receiver contact resumes before feeding.
+A first straight-up extraction folded the wrist close to the shoulder, so the
+source now draws toward the gun with an explicit outward elbow. A first pouch
+render exposed reversed bag faces; those faces and the planar UVs were repaired.
+These implementation details do **not** establish an accepted visual result.
+
+[Pass 19](reviews/animation-critic-pass19-pouch.md), capture `003711`, lowers the
+female reload to **5.0/10**. Frames 58–60 show sleeve/rim conflict; 54–61 have a
+fast wrist reversal; the forearm hides extraction at 68–74. The prior ammunition
+seating and interruption repairs remain visible. This is adjacent-frame review,
+not continuous playback.
+
+The subsequent material diagnostic found that the cloned opaque webbing retained
+`bCanMaskedBeAssumedOpaque`. Despite `BlendMode=BLEND_Masked` and a connected mask,
+the renderer's `GetBlendMode()` returned opaque, including with a constant-zero
+mask. `FinalizeArticulatedPouchMaterial` clears this flag only on the generated
+pouch material; the importer and runtime verify the effective masked mode. The
+hand now approaches the raised flap more horizontally. Pass 20 confirms the
+duplicate surface and blue intrusion are gone, but still rejects the contorted
+opening route (5.0/10). The later capture `014313`, with static meshes hidden,
+confirms that the old front-right pouch alone is removed by the material.
+
+The first masked render then exposed the previously dormant shader error:
+pre-skinned position cannot feed a pixel opacity expression directly on SM5.
+The importer now uses a vertex interpolator, verifies the 82-of-329 pouch vertex
+selection, and checks material compilation errors when graphics is enabled.
+The diagnostic captures with fallback gray webbing are failed probes, not review
+versions.
+
+[Pass 21](reviews/animation-critic-pass21-pouch-reach.md), captures `014800`,
+`015241` and `015453`, restores the female reload to **5.5/10**. Keeping the wrist
+away from the shoulder and removing the transport detour repairs the severe fold.
+A new approach conflict remains at 29.883–29.917 s, plus weak pressure and unclear
+clip completion. These captures are 1066×600; earlier comparison captures were
+1600×900. The critic explicitly limits its conclusions to adjacent-frame evidence.
+
+The next ungraded source raises the hand before approaching the flap; a short
+front capture `015943` checks this approach only. A further iteration fits the
+loaded strip to the actual thumb/index tips and retains a separate empty charger
+rail at the receiver. The closing bolt displaces that rail, using the interaction
+described in the [FN Mauser operator's manual, the “Loading the magazine” section](https://www.indaginibalistiche.it/utlities/manuali/fn_mauser_98_EN.pdf).
+This is an animation reference for the fictional weapon, not a claim that its
+eight-round arcane ammunition matches that rifle. This iteration requires new
+rendered review; it does not inherit pass 21's score.
+
+
+26 September continuation, pass 22: the new empty charger remains in the guide and is ejected by the bolt, but the independent critic lowers the female reload to **5.0/10**. The hand doubles back against the forearm during extraction, and cartridge fragments reappear below the stock. [Pass 22 evidence](reviews/animation-critic-pass22-charger-and-thumb.md) supersedes any assumption that the new candidate preserves the pass 21 contacts. The review player still shows the last graded 5.5 candidate; current source is under further repair.
+
+The ammunition leak has a concrete material cause: a diagnostic in `FinalizeHandlingFeedMaterial` reported `assumed_opaque=1 effective_blend=0` for both `M_handlingbrass` and `M_handlingcyan`. The mask graph was therefore not sufficient. `repair_handling_materials.py` now invalidates that cached opaque optimization through a helper scoped to those two generated materials. The Unreal build passed in 22.30 seconds and the repair commandlet passed with zero errors; rendered verification remains required. The native pouch helper retains its separate exact-path guard.
+
+A straight-wrist reach-cone experiment was rejected before visual review: with the hand path too close to the shoulder, its elbow moved 30.24 cm in a 60 Hz source sample. The next candidate authors a continuous **fingertip** transport path, keeps minimum wrist clearance, and derives the elbow direction from that same glove instead of an independent downward pole. Its maximum source elbow step is 6.98 cm; this diagnostic alone is not a quality pass. The editable source output is `AuthoredRiflePinchRoute`, with corresponding `.blend`, FBX and authoring script retained in the repository.
+
+
+Follow-up rendered verification found a second cause hidden by the old opaque flag: the `ComponentMask` node had no connected input, so enabling the mask fell back to the default material. `repair_handling_materials.py` now uses local vertex position through a vertex interpolator and an asserted dot-product connection, with compilation errors checked. `GaspCombat-20260926-023218` is rejected (the capture runner removed its completion flag). `023546`, `023831` and `024249` completed without material fallbacks and show brass/blue cartridges entering the receiver without the earlier underneath-stock leak in inspected samples. They remain unaccepted pose experiments, not published improvements.
+
+The current low-transfer candidate replaces the old over-high palm route with a lateral fingertip grip, keeps its orientation through extraction, and turns toward the receiver farther from the shoulder. It removes a high-speed bolt-release detour. A baked elbow control transports its previous bend through pole-axis ambiguity and bounds roll change to four degrees per 60 Hz key; it introduces no runtime history and does not change seek determinism. The unused minimum-reach cone was removed because its closest-orientation solution itself became singular. `AuthoredRifleLowTransfer` has a maximum source elbow step of 5.69 cm. Actual normal-speed renders and an independent review are still required.
+
+Timing limitation found during this continuation: the reviewed rifle load has been forced to four seconds to inspect contacts, while `Sim/Weapons.cpp` specifies **2.5 seconds at dexterity 100**. The simulation is unchanged. Four-second contact approval cannot certify gameplay timing; a 2.5-second native capture is required separately before promotion.
+
+
+Pass 23 rejects the low-transfer pose at **4.5/10**: [independent report](reviews/animation-critic-pass23-lateral-transfer.md). It credits repaired brass/blue feeding and empty-rail completion but finds the operating arm collapsing into the torso through transfer. Do not promote this candidate. `024458` and `024618` are its front/side evidence.
+
+The subsequent source revision replaces the female reload's rig-specific pole correction with explicit two-bone joint placement, keyed onto the editable action (the original forearm IK influence is keyed off only in that action). It uses a stable upper-arm orientation reference and retains the original constraints for shot/bolt and carry. A hard elbow-arc constraint experiment (`AuthoredRifleClearElbow`) was discarded after a 33.39 cm source step; no acceptance is attached to it. The current candidate instead brings the rifle 12 cm toward the operating side and 6 cm forward in the horizontal body frame during the load, shortens the extraction excursion and keeps a forward/outside/downward elbow preference. `AuthoredRifleReceiverReach` has a 4.54 cm maximum source elbow step at 60 Hz. Native visual verification is underway. No simulation timing or gameplay state changed.
+
+
+Pass 24 scores the receiver-shift candidate **5.0/10**, including a native 2.5-second reload: [report](reviews/animation-critic-pass24-arm-and-clearance.md). The arm no longer disappears, but its raised loop during pouch access and forearm/stock/pouch intersection during recovery remain blockers. Native captures: `025741` front, `025917` side, and `030029` at 2.5 seconds. The critic reviewed all adjacent frames, not continuous playback.
+
+Runtime diagnosis: pouch contact remaps the authored hand through the live pelvis, while the chest and rifle are calibrated to weapon facing. Reusing the old arm bend after those different transformations does not preserve the authored anatomical relationship. `SoldierAnimInstance.cpp` now derives the female articulated-pouch reload elbow preference from the live shoulder line, outward/downward during retrieval and on the gun's operating side during closing. This is stateless IK after the authored action; it preserves event timing, source clips and replay seeking. The `030440` side capture removes the raised loop in the inspected pouch frames, but retains a recovery intersection; it is not promoted.
+
+The next candidate, `AuthoredRifleClearCarrier`, reduces the temporary gun shift to 4 cm toward the operating side (6 cm forward retained) and combines it with the separate gun-space closing preference. Native compilation passed in 7.42 seconds. Its source maximum elbow step is 5.21 cm at 60 Hz; visual review and native-speed clearance verification remain pending.
+
+
+The next diagnostic found a geometry/contact mismatch that the old point-to-point
+check could not catch. The imported `SM_Bolt` lateral handle has UE coordinates
+X = 0–6.7 cm, Y = +2.4–+3.6 cm, Z = −0.9–+0.5 cm. The profile used
+Y = −3 cm: its validated contact was six centimetres away from the visible
+handle. The new contact uses Y = +3 cm and is checked against imported mesh
+vertices during import. Earlier near-zero bolt-contact errors established
+consistency with the profile, not contact with the visible handle.
+
+The operating arm was also being driven across the stock. The next candidate
+reflects the separate handle component onto the operating side, with matching
+negative-X pivot/knob, opening rotation and Blender hand keys for **both** rifle
+bodies. Source manifests now record `bolt_side` and `bolt_knob_ue_cm`; the importer
+rejects a mismatched body pair. The renderer reflection is applied once in the
+contact check. `AuthoredRifleOperatingSide` and `AuthoredMaleOperatingSide` are
+unreviewed replacements, including shot/bolt as well as reload; they do not
+inherit earlier grades. The core rifle art and simulation timings are unchanged.
+
+UE 5.8 compilation passed in 20.25 seconds, and the matching import passed with
+zero errors and the ten known animation-only FBX bind-pose warnings. Rendered
+front/side and actual-duration verification follow before any score change.
+
+
+[Pass 25](reviews/animation-critic-pass25-measured-bolt-contact.md) raises the
+female reload to **5.5/10**. The measured-handle candidate removes the high pouch
+elbow loop and recovery sleeve/pouch intersection in front, side and 2.5-second
+renders (`032752`, `032628`, `032854`). It remains rejected for a sharp transfer
+reversal, a high cuff with a folded feeding glove, and crowded pouch contact.
+The critic inspected every adjacent frame, without continuous playback.
+
+The transfer reversal coincides with a source singularity: at reload phase
+0.4208, the preferred elbow direction becomes almost parallel to the shoulder–
+wrist axis, producing a 26.29 cm source elbow step. The next authoring revision
+transports the approved bend plane and chooses an outward/forward preference
+that stays off that axis. A further rejected preference (`StableBend`) still had
+a 23.46 cm step; `StableBend2` reduces it to 3.73 cm. `AuthoredRifleForwardPress`
+also aligns the palm toward the receiver along the reaching forearm, rather than
+sideways to it, and has a maximum source elbow step of 3.44 cm. Its native visual
+review is pending; those measurements alone are not quality acceptance.
+
+New capture runs retain their own technical contact and arm-geometry reports
+inside each capture directory, so the next run cannot overwrite their evidence.
+The runner rejects fallback materials and failed native validation.
+
+
+[Male pass 26](reviews/animation-critic-pass26-male-contact.md), captures `033026`
+and `033233`, leaves shot/bolt at **5.5**, and lowers reload to **5.0**. Both
+captures contain 225 frames (start 26, end 33.5), not 226. Glove geometry shows
+through the cuff during feeding, and the male still retrieves through a closed
+pouch. The changed mechanism side does not introduce another torso collapse.
+
+The forward-press female captures (`033420`, `033523` and the gameplay capture recorded in `.local/animation-context/capture-forward-press-gameplay.log`) are ungraded
+diagnostics. Correcting the hand direction alone leaves a sharply angled wrist
+because the live retrieval elbow preference persists into pressing. The next
+revision derives the pressing elbow from the glove's axis on both rifle bodies.
+An unconstrained trial (`034028`) raised the elbow above the shoulder and is not
+promoted. The current `AuthoredRiflePressClearance` candidate selects the nearest
+feasible bend with the elbow below the shoulder by 22% of upper-arm length, then
+blends through the pressure interval. This constraint changes only the authored
+and runtime reload arm fit; no bone is stretched and no simulation clock changes.
+It requires new complete views and gameplay-duration review.
+
+
+The male editable-file audit found a separate transform bug: the mesh world matrix
+was read after moving its parent rig and then transformed again for saving. The
+saved body therefore had a second bind-axis rotation and deformed across a
+roughly three-metre volume, although animation-only FBX did not export that mesh.
+`retarget_authored_rifle.py` now captures the rig and mesh world matrices after
+dependency evaluation and before resetting the origin. The repaired saved body
+evaluates from Z = 0.001 to 1.741 m in the ready pose; the source mesh is upright
+again. This repair changes the editable scene presentation, not the game mesh or
+its animation timing. `AuthoredMalePortablePress` supplies the corrected blend.
+
+
+[Pass 27](reviews/animation-critic-pass27-supported-press.md) remained at 5.5:
+the old transfer jump was repaired, but press entry acquired a new elbow jump at
+frames 80–81. [Pass 28](reviews/animation-critic-pass28-press-arc.md) reaches
+**6.0/10** after the press elbow follows an earlier angular blend on its actual
+reach circle. The critic inspected every frame of front `035245`, side `035139`,
+and actual-duration `035347`: the exact defect and its gameplay counterpart are
+repaired. Pressure readability, high forearm posture and crowded pouch access
+remain rejected. This focused score does not approve the full course (still 4.0).
+
+The current portable player includes all three pass 28 views. Its encoder now
+uses the same end-exclusive sample count as capture; 3.75 seconds at 30 fps has
+113 samples, not Python's banker's-rounded 112. Missing frames still fail export.
+
+The broader live elbow correction exposed a male-only press discontinuity near
+phase 0.47. It remains under repair, with exact body-specific continuity reports
+retained beside captures. The female's next ungraded `OpenReceiver` experiment
+cants the gun toward the operating hand and raises it slightly to open the
+pressure and pouch silhouettes. Neither candidate inherits a grade.
+
+
+## 26 September continuation — male pouch and stable reach frame (ungraded)
+
+[Pass 29](reviews/animation-critic-pass29-open-receiver.md) reviews the female
+`OpenReceiver` side experiment at a provisional 6.0, without promoting its whole
+action. The new cant exposes more mechanism but does not expose thumb pressure;
+the support wrist bends more and the butt moves lower across the belt. The
+subsequent `BeltClearance` candidate raises the stock, reduces roll to 5 degrees
+and muzzle pitch to -2, with a small keyed shoulder/support response during
+feeding. Its generated source reload elbow step is 3.50 cm at 60 Hz.
+
+The earlier male press-release discontinuity measured 14.42 cm per 30 Hz frame.
+A single outside-half-circle elbow parameter and a regularized pressing direction
+reduce that transition to 3.91 cm in the `042122`/`042230` diagnostic captures.
+The press direction stays in weapon space as the glove releases toward the bolt;
+the elbow no longer follows the new hand rotation through an ambiguous direction.
+Those measurements do not establish a visual grade.
+
+The new male source uses the actual articulated female performance. Its mapped
+pouch is fitted to the measured male dimensions, and the wrist is solved from
+the glove's own thumb/index contact rather than a scaled female wrist offset.
+A separate source singularity at the close extraction reach is removed by
+transporting a bend frame from a forward reach. `AuthoredMalePouchPinch` has
+source maximum elbow steps 2.93 cm (shot/bolt) and 5.66 cm (reload) at 60 Hz;
+its faster extraction still requires rendered inspection.
+
+The male editable scene replaces exactly three disconnected pouch islands
+(41 vertices) and packs its atlas. In Unreal the new vertex-stage material mask
+selects the same 41 unique positions and explicitly protects nine nearby strap
+vertices. The initial all-material check also saw 22 coat vertices; selection
+is now validated against the atlas slot to which the mask actually applies.
+The coat material and skeletal mesh are not rebuilt. The male atlas retains its
+`BaseColorTexture` parameter for Ember. The new pouch and flap follow the live
+pelvis; the empty charger and thumb-contact path now apply to both rifle bodies.
+
+At the pass 30/31 checkpoint the source and portable assets used `AuthoredRifleBeltClearance` and
+`AuthoredMalePouchPinch`. Front and operating-side captures at the actual
+2.5-second reload duration are in progress. They do not inherit prior scores.
+
+
+[Fresh male pass 30](reviews/animation-critic-pass30-fresh-male-pouch.md) grades
+`043444`/`043558` at 5.5. The pouch does open; the critic identifies the conspicuous
+raised fingers above the bolt, obscured feeding and weakly readable bolt-driven
+empty-rail ejection. [Female pass 31](reviews/animation-critic-pass31-belt-clearance.md)
+keeps `043710`/`043813` at 6.0: stock clearance and the support wrist improve, while
+pickup and thumb pressure remain hidden. Both reviews cover actual 2.5-second
+reloads, with every adjacent frame inspected; neither is continuous playback.
+
+Subsequent source work replaces male finger-quaternion deltas with anatomical
+palm-frame fingertip fitting. Phalanx lengths stay fixed and local-space blending
+preserves the original firing grip outside manipulation. The bolt now contacts
+the actual thumb/index pad midpoint on both rifle bodies, rather than a palm
+proxy several centimetres away; the native validator checks that same physical
+grip against the measured mesh knob. The source operating wrist follows the same
+contact, and the shot's approach starts earlier without changing cycle length.
+The next pressure orientation approaches more from the operating side to expose
+the feed. `AuthoredRifleSidePress` and `AuthoredMaleSidePress` are the current
+ungraded candidate (not the videos in the player). New rendered verification is
+pending; no studio-ready or full-course score is inferred from source fits.
+
+
+### Passes 32–33 and glove repair — 26 September 2026
+
+[Male pass 32](reviews/animation-critic-pass32-male-grasp.md) grades
+`044912`/`045015` at **6.0**. The compact bolt grip is visibly improved over pass
+30, but moving fingers pull sharp triangular fins out of the glove web.
+[Female pass 33](reviews/animation-critic-pass33-side-press.md) keeps
+`045117`/`045449` at **6.0**, with the additional opposite/high view `045631`.
+The projecting digit's identity and the visible pressure surface need diagnosis;
+the reviewer does not claim that projected overlap establishes a measured 3D gap.
+Every adjacent frame in those views was inspected, not continuous playback.
+
+A source-mesh audit found male palm-web vertices dominated by the thumb's second
+joint, including an edge stretching from 2.01 cm to 10.78 cm during opening.
+The new `repair_male_glove.py` paints three measured web vertices and blends the
+cuff's wrist/forearm weights. It changes 54 source vertices, no positions, topology
+or bones. `hand-weights.json` records bind positions and weights; the Unreal
+importer matches mesh-description vertex IDs by position, checks the region and
+normalization, then verifies weights after committing. This also repairs the
+shared male MG body. That body still requires its own rendered review.
+
+At the glove-weight checkpoint the male editable source was `AuthoredMaleGloveWeights`; female remained
+`AuthoredRifleSidePress`. This weight repair has no inherited visual score.
+The optional `--contact-markers` review overlay labels projected thumb, index and
+middle bones, including occluded points, to diagnose digit identity. It is an
+explicit diagnostic overlay, not a replacement for the unmarked rendered review.
+
+
+[Male pass 34](reviews/animation-critic-pass34-male-glove-weights.md) grades
+`050529`/`050629` at **6.5**. Both 180-frame views confirm that the black web fin
+is removed and cuffs improve. A forearm/cuff opening persists at frame 121, and
+feed force/contact plus pouch staging remain unresolved. Native import changed
+54 of 2,612 vertices. The four-body numerical check still reports 1,628 finite
+cloth vertices, seek equality, and passing contact checks. This is not an 8.5.
+
+The next source candidate (`AuthoredRifleThumbPress`, `AuthoredMaleThumbPress`)
+folds the index/middle fingers during seating while preserving the extended
+pressing thumb. It retains the male web/cuff weight repair. These are unreviewed
+source/FBX/Unreal assets; the eight-clip player intentionally labels the last
+graded captures (female33, male34), not an inherited grade for later assets.
+
+Latest focused verification: Unreal 5.8 build succeeded; full Python suite
+230 tests, eight skips; presentation weapon-handling checks pass including
+2,000 replay seeks. The earlier full Linux suite on unchanged simulation code
+remains the simulation evidence; it was not rerun for glove weights.
+
+
+The male source wrist audit measured approximately 170 degrees of axial twist
+at extraction (source phase 0.40). `AuthoredMaleForearmRoll` transfers this twist
+into forearm pronation while retaining joint positions, bone lengths and wrist
+swing; the source residual axial twist is near zero in the fully operating pose.
+New native renders are required to judge the sleeve result. The loaded magazine
+surface is now checked against the actual imported cartridge bounds as well as
+the profile target; the diagnostic overlay distinguishes hidden surface contact
+from the visible index-finger silhouette. These diagnostics alone carry no grade.
+
+
+### Current reviewed checkpoint — passes 36–37
+
+[Male pass 36](reviews/animation-critic-pass36-male-pronation.md) grades
+`051706` front / `051554` side **7.5/10 provisional**. The extraction sleeve
+collapse at frame 121 is repaired, and no new gross pronation jump is observed.
+Small camera-hidden contact details remain unverified rather than proven wrong.
+[Female pass 37](reviews/animation-critic-pass37-female-thumb-views.md) grades
+`051928` / `052026`, plus high `051108`, **6.0/10**. The projecting digit was the
+index; the earlier late-thumb inference is withdrawn. Pressure/release weight
+and the elevated operating-arm silhouette remain performance concerns.
+
+The source, FBX and imported Unreal rifle clips now match these captures:
+`AuthoredRifleThumbPress` and `AuthoredMaleForearmRoll`. The eight-clip portable
+player includes these graded views. Both critics inspected every adjacent frame;
+neither certifies continuous playback or AAA acceptance. Overall remains 4.0.
+The next major unfinished action is the MG's complete ammunition exchange and
+feed operation, followed by locomotion weight/transition and wider action review.
+
+Verification of this checkpoint: native UE5.8 build and D3D11 captures pass;
+all four bodies retain 1,628 finite cloth vertices, deterministic seeks, actual
+bolt-pad contact, and 0.15 cm maximum thumb-to-cartridge surface spacing. Full
+Python230 tests pass with eight skips, documentation7 pass, and focused weapon
+handling checks including2,000 seeks pass. Unchanged simulation inherits the
+previous full Linux suite; these numerical checks do not establish visual quality.

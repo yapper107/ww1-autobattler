@@ -7,6 +7,7 @@ presenting an interrupted render as a complete performance.
 import argparse
 import html
 import json
+import math
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,7 +26,9 @@ def main():
     for i, clip in enumerate(clips):
         folder = Path(clip['folder'])
         assert (folder / 'capture-complete.txt').is_file(), (clip['name'], 'incomplete capture')
-        count = round((clip['end'] - clip['start']) * 30)
+        # Capture includes every sample before end, including a fractional last
+        # interval. Banker's rounding incorrectly rejected 112.5 as 112 frames.
+        count = math.ceil((clip['end'] - clip['start']) * 30 - 1e-8)
         expected = [folder / f'combat-{f:04d}.png' for f in range(count)]
         assert count > 0 and all(p.is_file() and p.stat().st_size for p in expected), clip['name']
         assert len(list(folder.glob('combat-*.png'))) == count, (clip['name'], 'frame count')

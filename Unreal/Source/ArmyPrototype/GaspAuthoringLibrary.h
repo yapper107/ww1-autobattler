@@ -3,11 +3,13 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GaspAuthoringLibrary.generated.h"
 class USkeletalMesh;
+class UStaticMesh;
 class USkeleton;
 class UAnimSequence;
 class UPoseSearchSchema;
 class UPoseSearchDatabase;
 class UAnimBlueprint;
+class UMaterial;
 UCLASS()
 class ARMYPROTOTYPE_API UGaspAuthoringLibrary : public UBlueprintFunctionLibrary {
     GENERATED_BODY()
@@ -31,6 +33,21 @@ public:
     // Read-only selection in bind-pose centimetres for the four female belt pouches.
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
     static TArray<int32> FemaleBeltPouchVertices(USkeletalMesh* Mesh);
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static TArray<FVector> FemaleBeltPouchPositions(USkeletalMesh* Mesh);
+    // Read-only mesh-space vertices for measured equipment contacts.
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static TArray<FVector> StaticMeshPositions(UStaticMesh* Mesh);
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static TArray<FVector> SkeletalMeshPositions(USkeletalMesh* Mesh, FName MaterialSlot=NAME_None);
+    // Preserve mesh-description vertex IDs for position-matched weight painting.
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static TMap<int32,FVector> SkeletalMeshVertexPositions(USkeletalMesh* Mesh);
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static bool FinalizeArticulatedPouchMaterial(UMaterial* Material);
+
+    UFUNCTION(BlueprintCallable, Category="Army|Authoring")
+    static bool FinalizeHandlingFeedMaterial(UMaterial* Material);
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
     static FVector RootMotionTranslation(UAnimSequence* Clip,float Start,float Duration);
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")

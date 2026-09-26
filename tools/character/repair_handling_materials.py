@@ -45,24 +45,30 @@ try:
                 # Cartridges disappear only as they pass through the receiver
                 # mouth. Local X is the ammunition row before its insertion turn.
                 mat.set_editor_property('blend_mode',unreal.BlendMode.BLEND_MASKED)
-                position=edit.create_material_expression(mat,unreal.MaterialExpressionWorldPosition,-700,400)
-                local=edit.create_material_expression(mat,unreal.MaterialExpressionTransformPosition,-500,400)
-                local.set_editor_property('transform_source_type',unreal.MaterialPositionTransformSource.TRANSFORMPOSSOURCE_WORLD)
-                local.set_editor_property('transform_type',unreal.MaterialPositionTransformSource.TRANSFORMPOSSOURCE_LOCAL)
-                edit.connect_material_expressions(position,'',local,'Input')
-                axis=edit.create_material_expression(mat,unreal.MaterialExpressionComponentMask,-300,400)
-                axis.set_editor_property('r',True);axis.set_editor_property('g',False);axis.set_editor_property('b',False);axis.set_editor_property('a',False)
-                edit.connect_material_expressions(local,'',axis,'Input')
+                def link(a,b,pin):assert edit.connect_material_expressions(a,'',b,pin)
+                position=edit.create_material_expression(mat,unreal.MaterialExpressionPreSkinnedPosition,-900,400)
+                local=edit.create_material_expression(mat,unreal.MaterialExpressionVertexInterpolator,-700,400)
+                link(position,local,'')
+                component=edit.create_material_expression(mat,unreal.MaterialExpressionVectorParameter,-700,600)
+                component.set_editor_property('parameter_name','FeedAxis')
+                component.set_editor_property('default_value',unreal.LinearColor(1,0,0,0))
+                axis=edit.create_material_expression(mat,unreal.MaterialExpressionDotProduct,-500,400)
+                link(local,axis,'A');link(component,axis,'B')
                 limit=edit.create_material_expression(mat,unreal.MaterialExpressionScalarParameter,-300,600)
                 limit.set_editor_property('parameter_name','FeedLimit');limit.set_editor_property('default_value',100)
                 difference=edit.create_material_expression(mat,unreal.MaterialExpressionSubtract,-100,450)
-                edit.connect_material_expressions(limit,'',difference,'A');edit.connect_material_expressions(axis,'',difference,'B')
+                link(limit,difference,'A');link(axis,difference,'B')
                 edge=edit.create_material_expression(mat,unreal.MaterialExpressionMultiply,100,450);edge.set_editor_property('const_b',100)
-                edit.connect_material_expressions(difference,'',edge,'A');edit.connect_material_property(edge,'',unreal.MaterialProperty.MP_OPACITY_MASK)
+                link(difference,edge,'A');assert edit.connect_material_property(edge,'',unreal.MaterialProperty.MP_OPACITY_MASK)
             for prop,value,y in [(unreal.MaterialProperty.MP_ROUGHNESS,.95,150),(unreal.MaterialProperty.MP_SPECULAR,.1,250)]:
                 node=edit.create_material_expression(mat,unreal.MaterialExpressionConstant,-200,y);node.set_editor_property('r',value)
                 edit.connect_material_property(node,'',prop)
-            edit.recompile_material(mat);unreal.EditorAssetLibrary.save_loaded_asset(mat)
+            if key in ['handlingbrass','handlingcyan']:
+                # Older opaque palette assets retain their optimization flag.
+                # Merely connecting the opacity mask does not invalidate it.
+                assert unreal.GaspAuthoringLibrary.finalize_handling_feed_material(mat)
+            errors=edit.recompile_material(mat);assert not errors,errors
+            unreal.EditorAssetLibrary.save_loaded_asset(mat)
             slot.set_editor_property('material_interface',mat);slots[i]=slot
         target.set_editor_property('static_materials',slots)
         for section,slot in enumerate(mapping):editor.set_lod_material_slot(target,slot,0,section)

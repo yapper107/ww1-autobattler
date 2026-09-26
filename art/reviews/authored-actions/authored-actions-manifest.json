@@ -10,22 +10,22 @@
     "poster": "authored-actions-media/action-0.png"
   },
   {
-    "name": "Female rifle reload \u2014 close review",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-235955",
+    "name": "Female rifle reload \u2014 reviewed front",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051928",
     "start": 28.25,
-    "end": 33.5,
-    "note": "Pass17:5.5. Adjacent-frame review confirms seated rounds no longer return with the hand and the withdrawal fragment is gone. Closed-pouch retrieval and thumb pressure remain unfinished.",
-    "frames": 158,
+    "end": 32,
+    "note": "Pass37:6.0. Actual2.5-second reload. No new discontinuity; index/thumbnail ambiguity resolved. Weight response and release need polish. Unaccepted.",
+    "frames": 113,
     "video": "authored-actions-media/action-1.mp4",
     "poster": "authored-actions-media/action-1.png"
   },
   {
-    "name": "Male rifle and interrupted reload",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-234531",
+    "name": "Male rifle and interrupted reload \u2014 reviewed front",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051706",
     "start": 26,
-    "end": 33.5,
-    "note": "Pass15: bolt5.5, reload5.5. Feed/withdrawal arm clearance repaired; interruption clearance29.23\u201329.30 remains. This capture precedes the seated-ammunition repair.",
-    "frames": 225,
+    "end": 32,
+    "note": "Pass36:7.5 provisional. Glove fin and extraction sleeve collapse repaired. Dense-frame review; continuous-motion AAA quality is not certified.",
+    "frames": 180,
     "video": "authored-actions-media/action-2.mp4",
     "poster": "authored-actions-media/action-2.png"
   },
@@ -48,5 +48,35 @@
     "frames": 150,
     "video": "authored-actions-media/action-4.mp4",
     "poster": "authored-actions-media/action-4.png"
+  },
+  {
+    "name": "Female rifle reload \u2014 reviewed operating side",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-052026",
+    "start": 28.25,
+    "end": 32,
+    "note": "Pass37:6.0. Ordinary occlusion is not a demonstrated contact error. Dominant operating forearm and modest force response remain performance issues.",
+    "frames": 113,
+    "video": "authored-actions-media/action-5.mp4",
+    "poster": "authored-actions-media/action-5.png"
+  },
+  {
+    "name": "Male rifle and interrupted reload \u2014 reviewed operating side",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051554",
+    "start": 26,
+    "end": 32,
+    "note": "Pass36:7.5 provisional. Continuous sleeve at121, cleaner manipulation. Some small contacts remain occluded/unverified, not proven faulty.",
+    "frames": 180,
+    "video": "authored-actions-media/action-6.mp4",
+    "poster": "authored-actions-media/action-6.png"
+  },
+  {
+    "name": "Female rifle reload \u2014 reviewed opposite high view",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051108",
+    "start": 28.25,
+    "end": 32,
+    "note": "Pass35/37:6.0. Curl exposes more ammunition. Diagnostic companion confirms projected thumb and cartridge contact; this unmarked view is the visual evidence.",
+    "frames": 113,
+    "video": "authored-actions-media/action-7.mp4",
+    "poster": "authored-actions-media/action-7.png"
   }
 ]

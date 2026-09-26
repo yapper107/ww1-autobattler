@@ -114,6 +114,12 @@ for family in ['Rifle','MachineGun']:
     factory.set_editor_property('data_asset_class',unreal.WeaponAnimationProfile)
     profile=unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else unreal.AssetToolsHelpers.get_asset_tools().create_asset('DA_'+family,DEST+'/Equipment',unreal.WeaponAnimationProfile,factory)
     assert profile
+    if family=='Rifle':
+        profile.set_editor_property('bolt_rest',unreal.Vector(-2.5,-16,13))
+        profile.set_editor_property('bolt_knob',unreal.Vector(-6.2,3,-.2))
+        profile.set_editor_property('bolt_open_degrees',-60.)
+        profile.set_editor_property('reload_palm_offset',unreal.Vector(-3,0,1))
+        profile.set_editor_property('reload_press_direction',unreal.Vector(.75,.4,-.52))
     if family=='MachineGun':
         profile.set_editor_property('spine_weight',.75)
         profile.set_editor_property('moving_lean_degrees',6.)

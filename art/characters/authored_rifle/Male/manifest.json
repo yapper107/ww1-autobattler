@@ -1,5 +1,12 @@
 {
   "fps": 60,
+  "articulated_pouch": true,
+  "bolt_side": -1,
+  "bolt_knob_ue_cm": [
+    -6.2,
+    3,
+    -0.2
+  ],
   "status": "WIP \u2014 visual review required",
   "clips": [
     {
@@ -7,24 +14,40 @@
       "frames": 76,
       "duration": 1.25,
       "editable_action": "Authored_Male_A_Rifle_ShotBolt",
-      "max_elbow_step_cm": 3.4978954929327797,
-      "diagnostic_fps": 60
+      "max_elbow_step_cm": 2.8730153577467785,
+      "max_elbow_step_frame": 10,
+      "diagnostic_fps": 60,
+      "max_fingertip_fit_error_cm": 0.034527652276127925,
+      "pouch_action": "MalePouch_A_Rifle_ShotBolt"
     },
     {
       "name": "A_Rifle_Reload",
       "frames": 241,
       "duration": 4.0,
       "editable_action": "Authored_Male_A_Rifle_Reload",
-      "max_elbow_step_cm": 2.619775452328577,
-      "diagnostic_fps": 60
+      "max_elbow_step_cm": 5.4754852219665775,
+      "max_elbow_step_frame": 105,
+      "diagnostic_fps": 60,
+      "max_fingertip_fit_error_cm": 0.3186560139497699,
+      "pouch_action": "MalePouch_A_Rifle_Reload"
     },
     {
       "name": "A_Rifle_LowReady",
       "frames": 121,
       "duration": 2.0,
       "editable_action": "Authored_Male_A_Rifle_LowReady",
-      "max_elbow_step_cm": 0.008718369017623705,
-      "diagnostic_fps": 60
+      "max_elbow_step_cm": 0.008618173242890315,
+      "max_elbow_step_frame": 62,
+      "diagnostic_fps": 60,
+      "max_fingertip_fit_error_cm": 0.0,
+      "pouch_action": "MalePouch_A_Rifle_LowReady"
     }
+  ],
+  "hand_weights": "hand-weights.json",
+  "pouch_mask": "pouch-mask.json",
+  "pouch_hinge_cm": [
+    -15.785832703113556,
+    9.880498051643372,
+    118.36638450622559
   ]
 }

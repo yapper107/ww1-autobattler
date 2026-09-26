@@ -1,5 +1,12 @@
 {
   "fps": 60,
+  "articulated_pouch": true,
+  "bolt_side": -1,
+  "bolt_knob_ue_cm": [
+    -6.2,
+    3,
+    -0.2
+  ],
   "status": "WIP \u2014 visual review required",
   "clips": [
     {
@@ -7,7 +14,8 @@
       "frames": 76,
       "duration": 1.25,
       "editable_action": "Authored_Rifle_ShotBolt",
-      "max_elbow_step_cm": 2.9625824225650805,
+      "max_elbow_step_cm": 6.8833470151200515,
+      "max_elbow_step_frame": 15,
       "diagnostic_fps": 60
     },
     {
@@ -15,7 +23,8 @@
       "frames": 241,
       "duration": 4.0,
       "editable_action": "Authored_Rifle_Reload",
-      "max_elbow_step_cm": 2.3405461016328193,
+      "max_elbow_step_cm": 5.257562688696473,
+      "max_elbow_step_frame": 13,
       "diagnostic_fps": 60
     },
     {
@@ -24,6 +33,7 @@
       "duration": 2.0,
       "editable_action": "Authored_Rifle_LowReady",
       "max_elbow_step_cm": 0.008846550713987687,
+      "max_elbow_step_frame": 2,
       "diagnostic_fps": 60
     }
   ]

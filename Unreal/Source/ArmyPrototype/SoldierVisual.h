@@ -12,6 +12,7 @@ class UAnimSequence;
 class UPoseSearchDatabase;
 class UWeaponAnimationProfile;
 class UTraversalAnimationProfile;
+class UMaterialInstanceDynamic;
 USTRUCT()
 struct FArmyMotionFrame {
     GENERATED_BODY()
@@ -73,6 +74,9 @@ public:
     UPROPERTY() TObjectPtr<UTraversalAnimationProfile> VaultProfile;
     UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Bolt;
     UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> ReloadProp;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> RiflePouch;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> RiflePouchFlap;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> RifleCharger;
     bool IsMale=false,IsMachineGun=false;
     armyvisual::State LastState;
     double LastTime=0;
@@ -81,5 +85,7 @@ private:
     bool bPoseQuery=false;
     float AimYaw=0,AimPitch=0,LookYaw=0,LookPitch=0;
     FVector VaultTakeoff=FVector::ZeroVector,VaultLanding=FVector::ZeroVector;
+    FTransform PouchBindHipInverse;
+    FVector PouchHinge=FVector(-13.3,4.3,108.4);
     void ReadMotion(double Time,TArray<FArmyPoseSample>& Out) const;
 };

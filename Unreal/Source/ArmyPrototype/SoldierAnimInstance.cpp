@@ -15,6 +15,7 @@ public:
     TArray<FArmyPoseSample> ArmedReference;
     float WeaponReady=1;
     bool AuthoredHandling=false;
+    bool ArticulatedRiflePouch=false;
     float AuthoredHandlingAlpha=0;
     FVector AuthoredPelvisOffset=FVector::ZeroVector;
     armyvisual::HandlingPose Handling;
@@ -35,6 +36,7 @@ public:
         Profile=A->EquipmentProfile;AimYaw=A->AimYaw;AimPitch=A->AimPitch;LookYaw=A->LookYaw;LookPitch=A->LookPitch;MoveSpeed=A->MoveSpeed;PoseTime=A->PoseTime;
         ArmedReference=A->ArmedReference;WeaponReady=A->WeaponReady;
         AuthoredHandling=A->AuthoredHandling;
+        ArticulatedRiflePouch=A->ArticulatedRiflePouch;
         AuthoredHandlingAlpha=A->AuthoredHandlingAlpha;
         AuthoredPelvisOffset=A->AuthoredPelvisOffset;
         AimYaw*=WeaponReady*(1-Handling.traversal);AimPitch*=WeaponReady*(1-Handling.traversal);
@@ -277,9 +279,14 @@ public:
                     if(Profile&&!MG&&Layer&&FString(Name)==TEXT("WeaponGrip_R")&&Handling.boltContact>0) {
                         const auto Hand=index(TEXT("RightHand")),Knuckle=index(TEXT("RightHandMiddle1"));
                         if(Hand.GetInt()>=0&&Knuckle.GetInt()>=0) {
-                            // The palm contacts the same moving knob used by the
-                            // visible mechanism, instead of an unrelated wrist offset.
-                            const FVector Palm=StandingCS.GetComponentSpaceTransform(Hand).InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Knuckle).GetLocation())*.65;
+                            // The authored thumb/index grip contacts the same
+                            // knob as the visible mechanism. Legacy uses its palm.
+                            FVector Palm=StandingCS.GetComponentSpaceTransform(Hand).InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Knuckle).GetLocation())*.65;
+                            const auto ThumbTip=index(TEXT("RightHandThumb4")),IndexTip=index(TEXT("RightHandIndex4"));
+                            if(AuthoredHandling&&ThumbTip.GetInt()>=0&&IndexTip.GetInt()>=0) {
+                                const FVector Pinch=(StandingCS.GetComponentSpaceTransform(ThumbTip).GetLocation()+StandingCS.GetComponentSpaceTransform(IndexTip).GetLocation())*.5;
+                                Palm=StandingCS.GetComponentSpaceTransform(Hand).InverseTransformPosition(Pinch);
+                            }
                             const FTransform Bolt(FRotator(Profile->BoltOpenDegrees*Handling.boltOpen,0,0),Profile->BoltRest-FVector(0,Profile->BoltTravel*Handling.boltBack,0));
                             const FQuat HandRotation=AuthoredHandling?Relative.GetRotation():Bolt.GetRotation()*Relative.GetRotation();
                             const FVector Contact=Bolt.TransformPosition(Profile->BoltKnob)-HandRotation.RotateVector(Palm);
@@ -291,7 +298,13 @@ public:
                         const auto Hand=index(TEXT("RightHand")),Knuckle=index(TEXT("RightHandMiddle1"));
                         if(Hand.GetInt()>=0&&Knuckle.GetInt()>=0) {
                             const FVector Palm=StandingCS.GetComponentSpaceTransform(Hand).InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Knuckle).GetLocation())*.65;
-                            const FVector Contact=Profile->ReloadClipPosition(Handling.reloadPhase)+Profile->ReloadPalmOffset-Relative.GetRotation().RotateVector(Palm);
+                            FVector Contact=Profile->ReloadClipPosition(Handling.reloadPhase)+Profile->ReloadPalmOffset-Relative.GetRotation().RotateVector(Palm);
+                            const auto Thumb=index(TEXT("RightHandThumb4"));
+                            if(ArticulatedRiflePouch&&AuthoredHandling&&Thumb.GetInt()>=0) {
+                                const FVector Tip=StandingCS.GetComponentSpaceTransform(Hand).InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Thumb).GetLocation());
+                                const FVector Top=Profile->ReloadClipPosition(Handling.reloadPhase)+FVector(0,0,Profile->ReloadStackHalfHeight);
+                                Contact=FMath::Lerp(Contact,Top-Relative.GetRotation().RotateVector(Tip),FMath::SmoothStep(.49f,.535f,Handling.reloadPhase));
+                            }
                             P=FMath::Lerp(P,Contact,Handling.reloadContact);
                         }
                     }
@@ -323,6 +336,14 @@ public:
                     const auto B=index(Name);if(B.GetInt()<0)continue;
                     FTransform T=CS.GetComponentSpaceTransform(B),Relative=relativeControl(Name);
                     T.SetLocation(Rigid.TransformPosition(Relative.GetLocation()));T.SetRotation(Rigid.GetRotation()*Relative.GetRotation());
+                    if(ArticulatedRiflePouch&&AuthoredHandling&&Layer&&FString(Name)==TEXT("WeaponGrip_R")&&Handling.reloadPhase>=0) {
+                        // During pouch access the hand follows the pelvis-mounted
+                        // equipment, independent of locomotion/aim chest tilt.
+                        const float U=Handling.reloadPhase;
+                        const float Contact=FMath::SmoothStep(.205f,.245f,U)*(1-FMath::SmoothStep(.405f,.455f,U));
+                        const FTransform PouchHand=StandingCS.GetComponentSpaceTransform(B).GetRelativeTransform(StandingCS.GetComponentSpaceTransform(Hip))*CS.GetComponentSpaceTransform(Hip);
+                        T.Blend(T,PouchHand,Contact);
+                    }
                     if(FString(Name)!=TEXT("WeaponMuzzle")) {
                         const FString Side=FString(Name)==TEXT("WeaponGrip_L")?TEXT("Left"):TEXT("Right");
                         const float Support=Side==TEXT("Left")?Handling.leftSupport:Handling.rightSupport;
@@ -370,7 +391,85 @@ public:
                     const FVector Bend=L.GetLocation()-(U.GetLocation()+H.GetLocation())*.5;
                     const FQuat Transport=FQuat::FindBetweenNormals(SourceAxis,TargetAxis);
                     Pole=(U.GetLocation()+T.GetLocation())*.5+Transport.RotateVector(Bend)*4;
-
+                    if(!MG&&Side==TEXT("Right")&&Handling.reloadPhase>=0) {
+                        // Pouch contact follows the live pelvis, while the
+                        // authored chest is calibrated to weapon facing. That
+                        // changes the reach plane; transporting its old elbow
+                        // alone can raise the arm over the shoulder or into the
+                        // vest. Resolve the operating bend from the live chest
+                        // on both body sizes before blending into pressure.
+                        const auto Other=index(TEXT("LeftArm"));
+                        if(Other.GetInt()>=0) {
+                            const FVector Outward=(U.GetLocation()-CS.GetComponentSpaceTransform(Other).GetLocation()).GetSafeNormal2D();
+                            FVector Forward=FVector::CrossProduct(Outward,FVector::UpVector).GetSafeNormal();
+                            const FVector MuzzleDirection=CS.GetComponentSpaceTransform(Socket).GetUnitAxis(EAxis::Y);
+                            if(FVector::DotProduct(Forward,MuzzleDirection)<0)Forward=-Forward;
+                            const FVector ReachAxis=(T.GetLocation()-U.GetLocation()).GetSafeNormal();
+                            const FQuat BendFrame=FQuat::FindBetweenNormals(Forward,ReachAxis);
+                            FVector Preferred=U.GetLocation()+BendFrame.RotateVector(Outward*.7-FVector::UpVector*.7)*100.;
+                            const float Phase=Handling.reloadPhase;
+                            // When closing the bolt, keep the forearm on the
+                            // operating side of the stock instead of reaching
+                            // up through it from the belt-pouch bend.
+                            const FVector ClosingPole=U.GetLocation()+BendFrame.RotateVector(Outward*.9-FVector::UpVector*.15)*100.;
+                            Preferred=FMath::Lerp(Preferred,ClosingPole,FMath::SmoothStep(.70f,.77f,Phase));
+                            const float Contact=FMath::SmoothStep(.17f,.245f,Phase)*(1-FMath::SmoothStep(.94f,.99f,Phase));
+                            Pole=FMath::Lerp(Pole,Preferred,Contact);
+                        }
+                    }
+                    if(!MG&&Side==TEXT("Right")&&Handling.reloadPhase>=0) {
+                        // Let the forearm support the pressing glove. The
+                        // downward pouch-reach pole folds the wrist backwards
+                        // when the thumb reaches the receiver on either body.
+                        const auto Knuckle=index(TEXT("RightHandMiddle1"));
+                        if(Knuckle.GetInt()>=0) {
+                            const auto& SourceHand=StandingCS.GetComponentSpaceTransform(Hand);
+                            const FVector AlongGlove=SourceHand.InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Knuckle).GetLocation()).GetSafeNormal();
+                            const float UpperLength=FVector::Distance(U.GetLocation(),L.GetLocation());
+                            const float ForearmLength=FVector::Distance(L.GetLocation(),H.GetLocation());
+                            // During release the glove turns toward the bolt. Keep
+                            // the supporting forearm on the authored press axis
+                            // until the press layer fades, rather than following
+                            // that new hand rotation across a bend singularity.
+                            const FVector PressDirection=Profile?CS.GetComponentSpaceTransform(Socket).TransformVectorNoScale(Profile->ReloadPressDirection).GetSafeNormal():T.GetRotation().RotateVector(AlongGlove);
+                            const FVector NaturalElbow=T.GetLocation()-PressDirection*ForearmLength;
+                            const FVector Axis=(T.GetLocation()-U.GetLocation()).GetSafeNormal();
+                            const float Distance=FMath::Clamp(float(FVector::Distance(T.GetLocation(),U.GetLocation())),FMath::Abs(UpperLength-ForearmLength)+.01f,UpperLength+ForearmLength-.01f);
+                            const float Along=(UpperLength*UpperLength-ForearmLength*ForearmLength+Distance*Distance)/(2*Distance);
+                            const FVector Center=U.GetLocation()+Axis*Along;
+                            const float Radius=FMath::Sqrt(FMath::Max(0.f,UpperLength*UpperLength-Along*Along));
+                            const auto OtherShoulder=index(TEXT("LeftArm"));
+                            const FVector Outside=OtherShoulder.GetInt()>=0?(U.GetLocation()-CS.GetComponentSpaceTransform(OtherShoulder).GetLocation()).GetSafeNormal2D():FVector(-1,0,0);
+                            FVector Up=FVector::UpVector-Axis*Axis.Z;
+                            const float Phase=Handling.reloadPhase;
+                            const float Press=FMath::SmoothStep(.405f,.52f,Phase)*(1-FMath::SmoothStep(.665f,.75f,Phase));
+                            if(Press>SMALL_NUMBER&&Up.SizeSquared()>SMALL_NUMBER&&Radius>.01f) {
+                                const float UpLength=Up.Size();Up.Normalize();
+                                FVector Lateral=FVector::CrossProduct(Axis,Up).GetSafeNormal();
+                                if(FVector::DotProduct(Lateral,Outside)<0)Lateral=-Lateral;
+                                // Parameterize the anatomical outside half of the
+                                // reach circle. A shortest quaternion arc can
+                                // switch direction when the rotating glove takes
+                                // its desired elbow across the opposite pole;
+                                // the male release then jumped in one frame.
+                                // Elevation on this single feasible interval has
+                                // no wrap boundary and remains seek-independent.
+                                const FVector Current=Pole-Center,Desired=NaturalElbow-Center;
+                                const float CurrentAngle=FMath::Atan2(float(FVector::DotProduct(Current,Up)),FMath::Max(0.f,float(FVector::DotProduct(Current,Lateral))));
+                                // When wrist and glove point along the reach axis,
+                                // their projected elbow direction has zero length.
+                                // Give that ambiguous pose a soft outward preference
+                                // instead of letting infinitesimal motion choose
+                                // opposite sides of the circle.
+                                const float OutwardPreference=UpperLength*.35f;
+                                float DesiredAngle=FMath::Atan2(float(FVector::DotProduct(Desired,Up)),FMath::Abs(float(FVector::DotProduct(Desired,Lateral)))+OutwardPreference);
+                                const float Ceiling=(U.GetLocation().Z-UpperLength*.22f-Center.Z)/(Radius*UpLength);
+                                DesiredAngle=FMath::Min(DesiredAngle,FMath::Asin(FMath::Clamp(Ceiling,-1.f,1.f)));
+                                const float Angle=FMath::Lerp(CurrentAngle,DesiredAngle,Press);
+                                Pole=Center+(Up*FMath::Sin(Angle)+Lateral*FMath::Cos(Angle))*100;
+                            }
+                        }
+                    }
                 }
                 AnimationCore::SolveTwoBoneIK(U,L,H,Pole,T.GetLocation(),false,1.,1.);
                 H.SetRotation(T.GetRotation());

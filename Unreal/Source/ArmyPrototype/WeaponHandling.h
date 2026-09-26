@@ -66,7 +66,7 @@ inline HandlingPose AuthoredRifleMechanism(float u,bool reload) {
     HandlingPose p;
     p.boltOpen=reload?env(.04f,.12f,.84f,.90f):env(.22f,.31f,.60f,.70f);
     p.boltBack=reload?env(.10f,.17f,.77f,.84f):env(.32f,.42f,.46f,.59f);
-    p.boltContact=reload?std::max(env(.01f,.06f,.16f,.22f),env(.72f,.77f,.89f,.97f)):env(.12f,.22f,.74f,.90f);
+    p.boltContact=reload?std::max(env(.01f,.06f,.16f,.22f),env(.72f,.77f,.89f,.97f)):env(.08f,.22f,.74f,.90f);
     p.reloadContact=reload?env(.455f,.49f,.665f,.715f):0;
     p.rightSupport=1-(reload?env(0,.06f,.94f,1.f):p.boltContact);
     return p;

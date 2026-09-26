@@ -26,6 +26,7 @@ public:
     UPROPERTY(Transient) TArray<FArmyPoseSample> ArmedReference;
     float WeaponReady=1;
     bool AuthoredHandling=false;
+    bool ArticulatedRiflePouch=false;
     float AuthoredHandlingAlpha=0;
     FVector AuthoredPelvisOffset=FVector::ZeroVector;
     UPROPERTY(Transient) TObjectPtr<UWeaponAnimationProfile> EquipmentProfile;

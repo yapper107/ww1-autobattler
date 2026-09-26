@@ -1,0 +1,31 @@
+# Animation critic pass 26 — male contact and cuff failure
+
+26 September 2026. **Male shot/bolt: 5.5/10. Male interrupted reload: 5.0/10**, down from the previous male reload's 5.5. The arm remains connected through bolt operation and interruption, but the reload exposes a large glove/cuff surface intersection, a sharply folded wrist and unconvincing closed-pouch retrieval. Female improvements do not transfer automatically. Both actions remain unaccepted against the fixed anchors: rejected original 3/10; fluid, continuous, studio-ready AAA motion 8.5/10. No overall grade changes.
+
+## Evidence and limits
+
+Completed captures `GaspCombat-20260926-033026` (front) and `GaspCombat-20260926-033233` (operating side) are under `/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/`. Each directory actually contains **225 images, combat-0000.png through combat-0224.png**, native 1600×900, with a completion marker. Time is `26 + frame / 30`; the reload interval is 29.025–33.025 seconds. Thus these are 4-second reload captures, not a male verification of the actual 2.5-second duration.
+
+I inspected every adjacent frame of both captures in chronological sheets and original-resolution frames for bolt contact, interruption, pouch retrieval, cuff deformation and feeding. Comparison with pass 18's `001808` uses corresponding times. Its camera is much wider, so enlargement is useful for pose comparison but does not create equivalent contact detail. Local evidence is in `.local/critic-pass1/pass26/`, including `compare-detail-pass18.jpg` and the chronological `front-*.jpg` / `side-*.jpg` sheets.
+
+**This is adjacent-frame inspection, not continuous video playback.** Rhythm, acceleration feel and studio-ready fluidity are not certified. Much of the hand is occluded in the side view. No external reference video was viewed, and implementation/numerical checks do not determine the grade.
+
+## Reload: priorities
+
+1. **Glove geometry intersects the cuff during transfer.** In the front view, a black patch appears on the top of the blue cuff around **132 (30.400)** and becomes conspicuous through **133–145 (30.433–30.833)**. Original front **135 (30.500)** shows the patch enclosed by blue sleeve surface, with the glove hanging below the sharply folded wrist. Original side **135** independently shows the same open/intersecting cuff region. During feeding it narrows to a black slit or seam, still visible at original front **150 (31.000)** and **172 (31.733)**. This is not ordinary hand occlusion behind the torso. Correct wrist/forearm alignment and the actual glove/cuff clearance on this body before refining the fingers. Compared with the wider pass 18 image at 135, the current folded cuff and hand silhouette is substantially worse; the older pose has more readable fingers below the cuff.
+
+2. **The pickup does not establish access to a pouch opening.** Approximately **120–138 (30.000–30.600)** moves the hand over a visibly closed pouch front. At original front **127 (30.233)**, repeated cartridge silhouettes appear down the green front surface; they then emerge as the visible loaded strip. There is no readable flap-open, enter, pinch and clear-the-rim sequence on this male equipment. The rifle also crowds the same region. The separately reviewed female hollow pouch and flap receive no male credit.
+
+3. **Feeding still looks like a folded hand held against the gun.** Approximately **148–173 (30.933–31.767)** keeps the cuff high and the glove turned down beside the receiver. The front view reveals the diminishing strip, but a distinct thumb pad applying pressure and releasing it is not convincingly legible. The side view is dominated by the sleeve and provides little independent contact evidence. The support hand and gun show little readable response to the applied effort. Author the pressure pose with a comfortable wrist and visible force direction, then make the empty-hand release distinct.
+
+The connected arm survives feed entry and withdrawal, including the historical failure intervals **142–147** and **175–178**. Late feeding does not reintroduce conspicuous cartridges below the stock, and a loaded stack does not return with the hand through **173–182**. The final lowering/regrip through **194–214** has intermediate poses and no evident isolated whole-body reset. These preserved repairs do not offset the new prominent cuff failure enough to retain the previous reload grade.
+
+The female candidate's retained-rail/ejection completion is not independently demonstrated by these male views. The glove blocks much of the mechanism during closure, and I do not see an unambiguous rail flight comparable to the female evidence. Treat that step as unverified here, not as passed from shared code.
+
+## Shot/bolt and interruption
+
+The first cycle shows recoil/recovery at **0–4**, hand departure at **5–8**, bolt operation at **9–28**, and release/regrip at **29–35**. Later cycles retain the same visible route. The upper arm and forearm stay connected, and the former vest disappearance does not return at the interruption boundary **90→91 (29.000→29.033)** or the previously problematic **96–100 (29.200–29.333)**. Native front **98** is a useful confirmation. I do not find a new isolated torso or elbow reset in that interval.
+
+The principal bolt weakness remains the large raised glove silhouette through **12–24 (26.400–26.800)**, repeated around **50–61**. The front sees mostly the back of the glove, while the side shows a large curled opening above the receiver; secure knob enclosure and the change from pull to push/lock are still insufficiently distinct. The arm route is clearer than the old collapsed poses, but the hand, gun and torso do not yet communicate convincing effort and mechanical completion. There is no evidence here for raising the prior **5.5** shot/bolt grade, nor a decisive new shot/bolt regression warranting a reduction.
+
+The next concrete correction is the male wrist/cuff contact through **132–173**, checked from both views, while preserving interruption clearance. Then give his actual pouch a readable acquisition action and verify the entire reload at the native 2.5-second duration. Continuous playback and the full body/action course remain outstanding. No source, runtime code or asset was edited for this review.

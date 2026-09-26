@@ -25,12 +25,14 @@ public:
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Recoil") float RecoverySeconds=.055f;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") bool ManualBolt=true;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float BoltStartSeconds=.16f;
-    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector BoltRest=FVector(2.5,-16,13);
-    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector BoltKnob=FVector(6.2,-3,-.2);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector BoltRest=FVector(-2.5,-16,13);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector BoltKnob=FVector(-6.2,3,-.2);
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float BoltTravel=8;
-    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float BoltOpenDegrees=60;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float BoltOpenDegrees=-60;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadFeed=FVector(0,-10,14);
-    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadPalmOffset=FVector(3,0,1);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadPalmOffset=FVector(-3,0,1);
+    // Authored pressing-glove axis in weapon space, stable through hand release.
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadPressDirection=FVector(.75,.4,-.52);
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector AmmunitionBoxGrip=FVector(-3.5,-12,7.5);
     // Eight rounds at 9 mm centres. The row stands above the receiver and is
     // pressed into it, instead of hovering as a horizontal tray over the gun.

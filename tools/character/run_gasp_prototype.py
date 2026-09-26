@@ -45,6 +45,7 @@ def main():
     parser.add_argument('--focus-height', type=float, default=95, help='Close view focus height in centimetres')
     parser.add_argument('--source-clip', help='Raw normalized source clip; bypasses runtime layers for diagnosis')
     parser.add_argument('--hold-crouch', action='store_true', help='Keep crouch after the stop to inspect settling before any rise')
+    parser.add_argument('--contact-markers', action='store_true', help='Diagnostic projected thumb/index/middle bones, including occluded points')
     parser.add_argument('--reload-start', type=float, default=30, help='Course reload start; use 29.025 to interrupt a rifle rearward stroke')
     parser.add_argument('--reload-end', type=float, default=34, help='Course reload end')
     parser.add_argument('--body', type=int, choices=range(4), help='Close view: female rifle/MG, male rifle/MG')
@@ -134,13 +135,18 @@ def main():
             command.extend(['-ArmyGaspStart='+str(args.start), '-ArmyGaspEnd='+str(args.end), '-ArmyGaspCameraYaw='+str(args.camera_yaw), '-ArmyGaspCameraHeight='+str(args.camera_height), '-ArmyGaspCameraWidth='+str(args.camera_width), '-ArmyGaspFocusHeight='+str(args.focus_height)])
             if args.source_clip:command.append('-ArmySourceClip='+args.source_clip)
             if args.hold_crouch:command.append('-ArmyHoldCrouch')
+            if args.contact_markers:command.append('-ArmyContactMarkers')
             command.extend(['-ArmyReloadBegin='+str(args.reload_start), '-ArmyReloadFinish='+str(args.reload_end)])
             if args.body is not None:command.append('-ArmyGaspReviewBody='+str(args.body))
         if args.capture:
+            # Keep artifact resolution independent of the desktop work area and
+            # Windows display scaling (which reduced 1600x900 to 1066x600).
+            command.extend(['-RenderOffScreen','-ForceRes'])
             command.append('-ArmyGaspReviewCapture')
             capture_dir=args.mirror/'Saved/Screenshots'/(('GaspCombat-' if combat else 'GaspReview-')+datetime.now().strftime('%Y%m%d-%H%M%S'))
             capture_dir.mkdir(parents=True)
             command.append('-ArmyGaspCaptureDir='+windows(capture_dir))
+            command.append('-abslog='+windows(capture_dir/'render.log'))
             print('Capture folder:',capture_dir,flush=True)
         if args.still:
             command.append('-ArmyGaspReviewStill')
@@ -148,6 +154,24 @@ def main():
             command.append('-ArmyGaspClip='+str(args.clip))
         with (logs/('combat-review.log' if combat else 'review.log')).open('w') as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, check=True)
+        if args.capture:
+            rendered_log=(capture_dir/'render.log').read_text(errors='replace')
+            material_failures=[line for line in rendered_log.splitlines()
+                               if 'failed to compile material' in line.lower()
+                               or 'material with missing usage flag' in line.lower()]
+            if material_failures:
+                (capture_dir/'capture-complete.txt').unlink(missing_ok=True)
+                raise RuntimeError('Rendered review used fallback materials:\n'+'\n'.join(material_failures))
+            if combat and not args.source_clip:
+                # Keep the validation for this exact render. The next capture
+                # replaces the shared Saved/AnimationReview diagnostics.
+                review=args.mirror/'Saved/AnimationReview'
+                for name in ['gasp-combat-check.txt','gasp-arm-continuity.csv','gasp-arm-geometry.csv']:
+                    (capture_dir/name).write_bytes((review/name).read_bytes())
+                result=(capture_dir/'gasp-combat-check.txt').read_text()
+                if 'passed=1' not in result.split():
+                    (capture_dir/'capture-complete.txt').unlink(missing_ok=True)
+                    raise RuntimeError(result)
         if args.motion_validate:
             result = report_path.read_text()
             assert 'passed=1' in result.split(), result

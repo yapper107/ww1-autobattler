@@ -20,8 +20,8 @@ src="authored-actions-media/action-0.mp4" data-start="0"></video>
 <label>Speed <select data-video="v0"><option value="1">Normal</option>
 <option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
 <output id="t0"></output><a href="authored-actions-media/action-0.mp4">Open MP4</a></div></section>
-<section><h2>Female rifle reload — close review</h2>
-<p>Pass17:5.5. Adjacent-frame review confirms seated rounds no longer return with the hand and the withdrawal fragment is gone. Closed-pouch retrieval and thumb pressure remain unfinished.</p>
+<section><h2>Female rifle reload — reviewed front</h2>
+<p>Pass37:6.0. Actual2.5-second reload. No new discontinuity; index/thumbnail ambiguity resolved. Weight response and release need polish. Unaccepted.</p>
 <video id="v1" controls preload="metadata" playsinline poster="authored-actions-media/action-1.png"
 src="authored-actions-media/action-1.mp4" data-start="28.25"></video>
 <div class="controls"><button data-video="v1" data-step="-1">Previous frame</button>
@@ -29,8 +29,8 @@ src="authored-actions-media/action-1.mp4" data-start="28.25"></video>
 <label>Speed <select data-video="v1"><option value="1">Normal</option>
 <option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
 <output id="t1"></output><a href="authored-actions-media/action-1.mp4">Open MP4</a></div></section>
-<section><h2>Male rifle and interrupted reload</h2>
-<p>Pass15: bolt5.5, reload5.5. Feed/withdrawal arm clearance repaired; interruption clearance29.23–29.30 remains. This capture precedes the seated-ammunition repair.</p>
+<section><h2>Male rifle and interrupted reload — reviewed front</h2>
+<p>Pass36:7.5 provisional. Glove fin and extraction sleeve collapse repaired. Dense-frame review; continuous-motion AAA quality is not certified.</p>
 <video id="v2" controls preload="metadata" playsinline poster="authored-actions-media/action-2.png"
 src="authored-actions-media/action-2.mp4" data-start="26"></video>
 <div class="controls"><button data-video="v2" data-step="-1">Previous frame</button>
@@ -55,7 +55,34 @@ src="authored-actions-media/action-4.mp4" data-start="21"></video>
 <button data-video="v4" data-step="1">Next frame</button>
 <label>Speed <select data-video="v4"><option value="1">Normal</option>
 <option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
-<output id="t4"></output><a href="authored-actions-media/action-4.mp4">Open MP4</a></div></section><script>
+<output id="t4"></output><a href="authored-actions-media/action-4.mp4">Open MP4</a></div></section>
+<section><h2>Female rifle reload — reviewed operating side</h2>
+<p>Pass37:6.0. Ordinary occlusion is not a demonstrated contact error. Dominant operating forearm and modest force response remain performance issues.</p>
+<video id="v5" controls preload="metadata" playsinline poster="authored-actions-media/action-5.png"
+src="authored-actions-media/action-5.mp4" data-start="28.25"></video>
+<div class="controls"><button data-video="v5" data-step="-1">Previous frame</button>
+<button data-video="v5" data-step="1">Next frame</button>
+<label>Speed <select data-video="v5"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t5"></output><a href="authored-actions-media/action-5.mp4">Open MP4</a></div></section>
+<section><h2>Male rifle and interrupted reload — reviewed operating side</h2>
+<p>Pass36:7.5 provisional. Continuous sleeve at121, cleaner manipulation. Some small contacts remain occluded/unverified, not proven faulty.</p>
+<video id="v6" controls preload="metadata" playsinline poster="authored-actions-media/action-6.png"
+src="authored-actions-media/action-6.mp4" data-start="26"></video>
+<div class="controls"><button data-video="v6" data-step="-1">Previous frame</button>
+<button data-video="v6" data-step="1">Next frame</button>
+<label>Speed <select data-video="v6"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t6"></output><a href="authored-actions-media/action-6.mp4">Open MP4</a></div></section>
+<section><h2>Female rifle reload — reviewed opposite high view</h2>
+<p>Pass35/37:6.0. Curl exposes more ammunition. Diagnostic companion confirms projected thumb and cartridge contact; this unmarked view is the visual evidence.</p>
+<video id="v7" controls preload="metadata" playsinline poster="authored-actions-media/action-7.png"
+src="authored-actions-media/action-7.mp4" data-start="28.25"></video>
+<div class="controls"><button data-video="v7" data-step="-1">Previous frame</button>
+<button data-video="v7" data-step="1">Next frame</button>
+<label>Speed <select data-video="v7"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t7"></output><a href="authored-actions-media/action-7.mp4">Open MP4</a></div></section><script>
 for(const button of document.querySelectorAll('button[data-step]'))button.onclick=()=>{
  const video=document.getElementById(button.dataset.video);video.pause();
  video.currentTime=Math.max(0,Math.min(video.duration-1/30,(Math.round(video.currentTime*30)+Number(button.dataset.step))/30));

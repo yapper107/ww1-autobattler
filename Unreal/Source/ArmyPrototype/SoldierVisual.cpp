@@ -17,6 +17,7 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "Engine/StaticMesh.h"
 #include "Animation/AnimSequence.h"
+#include "AnimationRuntime.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 ASoldierVisual::ASoldierVisual() {
@@ -37,6 +38,11 @@ ASoldierVisual::ASoldierVisual() {
     Rifle=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Rifle"));Rifle->SetupAttachment(RootComponent);Rifle->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Bolt=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Bolt"));Bolt->SetupAttachment(Rifle);Bolt->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     ReloadProp=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ReloadProp"));ReloadProp->SetupAttachment(Rifle);ReloadProp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    RiflePouch=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RiflePouch"));RiflePouch->SetupAttachment(RootComponent);
+    RiflePouchFlap=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RiflePouchFlap"));RiflePouchFlap->SetupAttachment(RootComponent);
+    RifleCharger=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RifleCharger"));RifleCharger->SetupAttachment(RootComponent);
+    RifleCharger->SetCollisionEnabled(ECollisionEnabled::NoCollision);RifleCharger->SetVisibility(false);
+    for(auto* Part:{RiflePouch.Get(),RiflePouchFlap.Get()}){Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);Part->SetVisibility(false);}
 }
 bool ASoldierVisual::AssetsAvailable() {
     return LoadObject<USkeletalMesh>(nullptr,TEXT("/Game/Characters/FemaleRifle/SK_Female_Rifle.SK_Female_Rifle"))!=nullptr;
@@ -137,6 +143,28 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
         auto* M=ReloadProp->CreateDynamicMaterialInstance(I);M->SetVectorParameterValue(TEXT("Tint"),FLinearColor::FromSRGBColor(FColor(245,98,23)));
     }
     if(!MachineGun)for(int I=0;I<ReloadProp->GetNumMaterials();++I)ReloadProp->CreateDynamicMaterialInstance(I);
+    if(bGasp&&!MachineGun) {
+        auto* Bag=LoadObject<UStaticMesh>(nullptr,Male?TEXT("/Game/Characters/GASP/Equipment/SM_MaleRiflePouch"):TEXT("/Game/Characters/GASP/Equipment/SM_RiflePouch"),nullptr,LOAD_NoWarn);
+        auto* Flap=LoadObject<UStaticMesh>(nullptr,Male?TEXT("/Game/Characters/GASP/Equipment/SM_MaleRiflePouchFlap"):TEXT("/Game/Characters/GASP/Equipment/SM_RiflePouchFlap"),nullptr,LOAD_NoWarn);
+        auto* Mask=LoadObject<UMaterialInterface>(nullptr,Male?TEXT("/Game/Characters/GASP/Equipment/M_maleatlasArticulatedPouch"):TEXT("/Game/Characters/GASP/Equipment/M_WebbingArticulatedPouch"),nullptr,LOAD_NoWarn);
+        const int32 Hip=Mesh->GetRefSkeleton().FindBoneIndex(TEXT("Hips"));
+        if(Bag&&Flap&&Mask&&Hip!=INDEX_NONE) {
+            PouchBindHipInverse=FAnimationRuntime::GetComponentSpaceTransformRefPose(Mesh->GetRefSkeleton(),Hip).Inverse();
+            int32 MaskedSlots=0;
+            for(int I=0;I<Body->GetNumMaterials();++I) {
+                if(Body->GetMaterial(I)->GetName().Contains(Male?TEXT("maleatlas"):TEXT("webbing"))) {
+                    Body->SetMaterial(I,Mask);++MaskedSlots;
+                    if(Male&&Team==1)Body->CreateDynamicMaterialInstance(I)->SetTextureParameterValue(TEXT("BaseColorTexture"),LoadObject<UTexture>(nullptr,TEXT("/Game/Characters/Male/T_Male_Ember")));
+                }
+            }
+            if(MaskedSlots>0&&ensureMsgf(Mask->GetBlendMode()==BLEND_Masked,TEXT("Articulated pouch requires a masked webbing material"))) {
+                RiflePouch->SetStaticMesh(Bag);RiflePouchFlap->SetStaticMesh(Flap);
+                PouchHinge=Male?FVector(-15.7858327,9.8804981,118.3663845):FVector(-13.3,4.3,108.4);
+                RifleCharger->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,TEXT("/Game/Characters/GASP/Equipment/SM_RifleCharger"),nullptr,LOAD_NoWarn));
+                RiflePouch->SetVisibility(true);RiflePouchFlap->SetVisibility(true);
+            }
+        }
+    }
     return true;
 }
 void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
@@ -176,6 +204,7 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
     Anim->Handling=armyvisual::Handling(Input,Time,State.aim,State.outAt>=0,Settings);
     Anim->ArmedReference.Reset();
     Anim->AuthoredHandling=false;
+    Anim->ArticulatedRiflePouch=RiflePouch->GetStaticMesh()!=nullptr;
     Anim->AuthoredHandlingAlpha=0;
     Anim->AuthoredPelvisOffset=FVector::ZeroVector;
     Anim->WeaponReady=FMath::Clamp(State.aim,0.f,1.f);
@@ -233,7 +262,7 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
             H.boltBack=Mechanism(Shot.boltBack,Reload.boltBack);
             H.boltContact=Mechanism(Shot.boltContact,Reload.boltContact);
             H.reloadContact=Mechanism(0,Reload.reloadContact);
-            if(ActionLayers.reloadActive&&!IsMachineGun)H.clip=ActionLayers.reloadPhase>=.295f&&ActionLayers.reloadPhase<.70f?1.f:0.f;
+            if(ActionLayers.reloadActive&&!IsMachineGun)H.clip=ActionLayers.reloadPhase>=(RiflePouch->GetStaticMesh()?.345f:.295f)&&ActionLayers.reloadPhase<.70f?1.f:0.f;
             H.rightSupport=1-Mechanism(1-Shot.rightSupport,1-Reload.rightSupport);
             H.leftSupport=IsMachineGun?1-Envelope(ActionLayers.reloadPhase,.02f,.10f,.90f,.98f)*ActionLayers.reloadWeight:1;
             const float Stationary=(1-armyvisual::Smooth(float(std::hypot(State.forward,State.right))/.35f))*(1-FMath::Clamp(State.crouch,0.f,1.f));
@@ -297,6 +326,17 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
         }
     }
     Body->TickAnimation(0.f,false);Body->RefreshBoneTransforms();Body->UpdateComponentToWorld();
+    if(RiflePouch->GetStaticMesh()) {
+        // Equipment follows the exact same pelvis as the rigid belt vertices.
+        // A local webbing mask replaces one pouch without rebuilding the mesh's
+        // cloth bindings. The remainder of the webbing retains its material.
+        const FTransform BindToWorld=PouchBindHipInverse*Body->GetSocketTransform(TEXT("Hips"));
+        RiflePouch->SetWorldTransform(BindToWorld);
+        const float U=Anim->Handling.reloadPhase;
+        const float Open=U<0?0.f:FMath::SmoothStep(.255f,.295f,U)*(1-FMath::SmoothStep(.405f,.480f,U));
+        const FTransform Flap(FQuat(FVector::ForwardVector,FMath::DegreesToRadians(110*Open)),PouchHinge);
+        RiflePouchFlap->SetWorldTransform(Flap*BindToWorld);
+    }
     if(bGasp&&!bPoseQuery)CastChecked<USoldierClothComponent>(Body)->AdvanceCoat(Time);
     const bool Released=State.outAt>=0&&Time-State.outAt>=11./60.;
     FTransform Gun=Body->GetSocketTransform(Released?TEXT("Weapon_Free"):TEXT("WeaponSocket_R"),RTS_World);
@@ -306,7 +346,11 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
     Bolt->SetVisibility(!IsMachineGun);
     Bolt->SetRelativeLocation((EquipmentProfile?EquipmentProfile->BoltRest:FVector(2.5,-24,13))-FVector(0,(EquipmentProfile?EquipmentProfile->BoltTravel:8)*Anim->Handling.boltBack,0));
     Bolt->SetRelativeRotation(FRotator((EquipmentProfile?EquipmentProfile->BoltOpenDegrees:60)*Anim->Handling.boltOpen,0,0));
+    // The portable bolt mesh is authored toward +X. Match the equipped
+    // profile's operating side without reflecting the rifle or its sockets.
+    Bolt->SetRelativeScale3D(FVector(EquipmentProfile&&EquipmentProfile->BoltKnob.X<0?-1.f:1.f,1,1));
     ReloadProp->SetVisibility(IsMachineGun||Anim->Handling.clip>0);
+    RifleCharger->SetVisibility(false);
     if(IsMachineGun) {
         if(Anim->AuthoredHandling&&Anim->Handling.reloadPhase>=0) {
             auto Prop=Body->GetSocketTransform(TEXT("Weapon_Free"));Prop.SetScale3D(FVector::OneVector);
@@ -331,12 +375,27 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
             // stack inside the palm hid the ammunition inside the bulky glove.
             Prop.SetLocation(Knuckle+Row*EquipmentProfile->ReloadStackHalfHeight);
             Prop.SetRotation(FRotationMatrix::MakeFromXY(Row,Gun.TransformVectorNoScale(FVector::RightVector)).ToQuat());
+            if(RifleCharger->GetStaticMesh()) {
+                // The upper end of the charger belongs between the actual
+                // thumb/index tips. The old knuckle offset put the strip on
+                // the wrong side of the glove and did not represent a grip.
+                const FVector Pinch=(Body->GetSocketLocation(TEXT("RightHandThumb4"))+Body->GetSocketLocation(TEXT("RightHandIndex4")))*.5;
+                const auto Hand=Body->GetSocketTransform(TEXT("RightHand"));
+                Prop.SetRotation(FRotationMatrix::MakeFromXY(-Row,Hand.GetUnitAxis(EAxis::X)).ToQuat());
+                Prop.SetLocation(Pinch-Prop.TransformVectorNoScale(FVector(3.4,-1.4,0)));
+            }
+            const FTransform HeldCharger=Prop;
             const FTransform Insert(Gun.GetRotation()*FQuat(FVector::RightVector,PI*.5),Gun.TransformPosition(EquipmentProfile->ReloadClipPosition(Anim->Handling.reloadPhase)));
             // Once aligned, the rounds belong to the receiver while the thumb
             // presses them in. They must not return to the withdrawing hand.
             const float Phase=Anim->Handling.reloadPhase;
             const float Feeding=FMath::SmoothStep(.455f,.49f,Phase);
             Prop.Blend(Prop,Insert,FMath::Max(Anim->Handling.reloadContact,Feeding));ReloadProp->SetWorldTransform(Prop);
+            if(RifleCharger->GetStaticMesh()) {
+                const FTransform Dock(Gun.GetRotation()*FQuat(FVector::RightVector,PI*.5),Gun.TransformPosition(EquipmentProfile->ReloadClipPosition(0)));
+                FTransform Charger=HeldCharger;Charger.Blend(HeldCharger,Dock,Feeding);
+                RifleCharger->SetWorldTransform(Charger);RifleCharger->SetVisibility(true);
+            }
             const float Limit=Phase<.5f?100.f:EquipmentProfile->ReloadStackHalfHeight*(1-2*FMath::SmoothStep(.50f,.70f,Phase));
             // Once the feed plane has passed every vertex, remove the draw as
             // well as masking it. Keeping an entirely masked moving primitive
@@ -345,6 +404,16 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
                 ReloadProp->SetVisibility(false);
             for(int I=0;I<ReloadProp->GetNumMaterials();++I)if(auto* Material=Cast<UMaterialInstanceDynamic>(ReloadProp->GetMaterial(I)))
                 Material->SetScalarParameterValue(TEXT("FeedLimit"),Limit);
+        }
+        if(RifleCharger->GetStaticMesh()&&Anim->AuthoredHandling&&Anim->Handling.reloadPhase>=.70f&&Anim->Handling.reloadPhase<.97f) {
+            // The empty rail remains in the charger guide after feeding. The
+            // forward bolt stroke displaces it; it is never another loaded strip.
+            const float U=Anim->Handling.reloadPhase;
+            FTransform Empty(Gun.GetRotation()*FQuat(FVector::RightVector,PI*.5),Gun.TransformPosition(EquipmentProfile->ReloadClipPosition(0)));
+            const float Age=FMath::Max(0.f,U-.805f)*float(FMath::Max(.01,Input.reloadEnd-Input.reloadStart));
+            Empty.AddToTranslation(Gun.TransformVectorNoScale(FVector(80*Age,30*Age,125*Age))+FVector(0,0,-490*Age*Age));
+            Empty.SetRotation(Empty.GetRotation()*FQuat(FVector::RightVector,Age*12));
+            RifleCharger->SetWorldTransform(Empty);RifleCharger->SetVisibility(true);
         }
     }
 }
