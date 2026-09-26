@@ -1,0 +1,20 @@
+{
+  "hero": {
+    "duration": 49,
+    "width": 1600,
+    "height": 900
+  },
+  "initialCount": "28 of 85 previews",
+  "heroPlays": true,
+  "latestCount": 4,
+  "dropDuration": 5.5,
+  "dropPlays": true,
+  "frameStep": 1.033333,
+  "speed": 0.5,
+  "allCount": 85,
+  "searchCount": 20,
+  "stillWidth": 1024,
+  "stillControlsHidden": true,
+  "mobileNoOverflow": true,
+  "errors": []
+}

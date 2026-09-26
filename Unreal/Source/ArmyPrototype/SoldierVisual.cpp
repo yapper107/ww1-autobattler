@@ -202,6 +202,19 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
 }
 void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
     auto* Anim=Cast<USoldierAnimInstance>(Body->GetAnimInstance());if(!Anim)return;
+    constexpr double ReleaseAge=11./60.;
+    if(bGasp&&!bDropQuery&&State.outAt>=0&&Time-State.outAt>=ReleaseAge&&EquipmentProfile&&EquipmentProfile->DropHull.Num()>3&&
+        (WeaponDrop.DeathAt!=State.outAt||!WeaponDrop.OwnerTransform.Equals(GetActorTransform(),.0001))) {
+        TGuardValue<bool> PoseQuery(bPoseQuery,true),DropQuery(bDropQuery,true);
+        Present(State,State.outAt+ReleaseAge-.05);
+        FTransform Before=Body->GetSocketTransform(TEXT("WeaponSocket_R"));Before.SetScale3D(FVector::OneVector);
+        Present(State,State.outAt+ReleaseAge);
+        FTransform Release=Body->GetSocketTransform(TEXT("WeaponSocket_R"));Release.SetScale3D(FVector::OneVector);
+        if(MotionGeometry)MotionGeometry(State.outAt+ReleaseAge);
+        WeaponDrop.Build(this,EquipmentProfile,Release,Before,.05);
+        if(RestoreGeometry)RestoreGeometry();
+        WeaponDrop.DeathAt=State.outAt;WeaponDrop.OwnerTransform=GetActorTransform();
+    }
     Anim->DeathEntryPose.Reset();Anim->DeathEntryWeight=0;
     TArray<FTransform> EntryPose;
     const double DeathAge=State.outAt<0?-1:Time-State.outAt;
@@ -414,7 +427,8 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
     }
     if(bGasp&&!bPoseQuery)CastChecked<USoldierClothComponent>(Body)->AdvanceCoat(Time);
     const bool Released=State.outAt>=0&&Time-State.outAt>=11./60.;
-    FTransform Gun=Body->GetSocketTransform(Released?TEXT("Weapon_Free"):TEXT("WeaponSocket_R"),RTS_World);
+    FTransform Gun=Body->GetSocketTransform(Released&&!bDropQuery?TEXT("Weapon_Free"):TEXT("WeaponSocket_R"),RTS_World);
+    if(Released&&!bDropQuery&&!WeaponDrop.Frames.IsEmpty())Gun=WeaponDrop.Sample(Time-State.outAt-ReleaseAge);
     // FBX bone axes and the separately exported mesh share the same scene conversion.
     Gun.SetScale3D(FVector::OneVector); // Skeleton carries FBX metre-to-cm scale; static mesh is already cm.
     Rifle->SetWorldTransform(Gun);
@@ -569,7 +583,7 @@ FString ASoldierVisual::ValidatePresentation() {
     const auto FallenPose=Body->GetComponentSpaceTransforms();const FTransform FallenGun=Rifle->GetComponentTransform();
     Present(Fallen,10);bool Frozen=FallenGun.Equals(Rifle->GetComponentTransform(),.00001f);
     for(int I=0;I<FallenPose.Num();++I)Frozen=Frozen&&FallenPose[I].Equals(Body->GetComponentSpaceTransforms()[I],.00001f);
-    const bool Dropped=Rifle->GetComponentLocation().Equals(Body->GetSocketLocation(TEXT("Weapon_Free")),.001f);
+    const bool Dropped=HasPhysicalWeaponDrop()||Rifle->GetComponentLocation().Equals(Body->GetSocketLocation(TEXT("Weapon_Free")),.001f);
     Present(State,2);
     const auto Bounds=Body->CalcBounds(Body->GetComponentTransform());
     Report=FString::Printf(TEXT("%s evaluations=%d clips=%d bones=%d worst_blended_wrist_cm=%.5f rewind_equal=%d body_bounds_cm=%s rifle_scale=%s\n"),LegsSame&&Same&&Worst<2.f&&Frozen&&Dropped&&MuzzleError<.05f?TEXT("PASS"):TEXT("FAIL"),Evaluations,Clips.Num(),Body->GetNumBones(),Worst,int(Same),*Bounds.BoxExtent.ToString(),*Rifle->GetComponentScale().ToString());
@@ -581,6 +595,7 @@ FString ASoldierVisual::ValidatePresentation() {
 }
 
 void ASoldierVisual::ResetMotion() {
+    WeaponDrop.Reset();
     MotionFrames.Reset();
     if(bGasp)MotionDriver->InitAnim(true);
 }

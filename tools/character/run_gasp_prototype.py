@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--contacts', action='store_true')
     parser.add_argument('--actions', action='store_true')
     parser.add_argument('--cloth', action='store_true')
+    parser.add_argument('--weapon-drop', action='store_true', help='Bake assembled weapon collision hulls into equipment profiles')
     parser.add_argument('--runtime', action='store_true', help='Compile runtime Motion Matching node constants')
     parser.add_argument('--combat-crouch', action='store_true', help='Bake the combat crouch duplicate poses')
     parser.add_argument('--contexts', action='store_true', help='Index separate moving-only contexts')
@@ -60,7 +61,7 @@ def main():
         parser.error('Capture range must satisfy 0 <= start < end <= 49')
     if args.source_clip and (not args.combat_review or args.motion_validate):
         parser.error('--source-clip requires --combat-review and cannot validate runtime motion')
-    assert any([args.stage, args.retarget, args.review, args.validate, args.motion_library,args.contacts,args.actions,args.cloth,args.runtime,args.contexts,args.combat_crouch,args.audit_library,args.combat_review,args.motion_validate]), 'Choose a preparation or review action'
+    assert any([args.stage, args.retarget, args.review, args.validate, args.motion_library,args.contacts,args.actions,args.cloth,args.weapon_drop,args.runtime,args.contexts,args.combat_crouch,args.audit_library,args.combat_review,args.motion_validate]), 'Choose a preparation or review action'
     assert (args.mirror/'.army-build-mirror').is_file(), 'Requires a marked, separate build mirror'
     assert args.sample.parent.resolve() != args.mirror.resolve()
     if args.stage:
@@ -77,7 +78,7 @@ def main():
     source = Path(__file__).parent
     dest = args.mirror/'Tools/character'
     dest.mkdir(parents=True, exist_ok=True)
-    for name in ['stage_gasp_prototype.py', 'create_soldier_ik_rigs.py', 'retarget_gasp_prototype.py', 'validate_gasp_prototype.py', 'build_gasp_motion_library.py', 'gasp_motion_catalog.json', 'create_gasp_contacts.py', 'create_gasp_actions.py', 'create_gasp_cloth.py', 'create_gasp_runtime.py', 'create_gasp_contexts.py', 'audit_gasp_library.py', 'create_combat_crouch.py']:
+    for name in ['stage_gasp_prototype.py', 'create_soldier_ik_rigs.py', 'retarget_gasp_prototype.py', 'validate_gasp_prototype.py', 'build_gasp_motion_library.py', 'gasp_motion_catalog.json', 'create_gasp_contacts.py', 'create_gasp_actions.py', 'create_gasp_cloth.py', 'create_gasp_runtime.py', 'create_gasp_contexts.py', 'audit_gasp_library.py', 'create_combat_crouch.py', 'create_weapon_drop_collision.py']:
         shutil.copy2(source/name, dest/name)
     project = args.mirror/'ArmyPrototype.uproject'
     logs = args.mirror/'Saved/GaspPreparation'
@@ -109,6 +110,8 @@ def main():
         run_script(project, 'create_gasp_actions.py')
     if args.cloth:
         run_script(project, 'create_gasp_cloth.py')
+    if args.weapon_drop:
+        run_script(project, 'create_weapon_drop_collision.py')
     if args.runtime:
         run_script(project, 'create_gasp_runtime.py')
     if args.combat_crouch:
@@ -168,7 +171,7 @@ def main():
                 review=args.mirror/'Saved/AnimationReview'
                 for name in ['gasp-combat-check.txt','gasp-arm-continuity.csv','gasp-arm-geometry.csv',
                              'gasp-foot-continuity.csv','gasp-crouch-continuity.csv',
-                             'gasp-combat.csv','gasp-queries.txt']:
+                             'gasp-combat.csv','gasp-queries.txt','gasp-drop-contacts.csv']:
                     (capture_dir/name).write_bytes((review/name).read_bytes())
                 result=(capture_dir/'gasp-combat-check.txt').read_text()
                 if 'passed=1' not in result.split():

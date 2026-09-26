@@ -896,3 +896,81 @@ remain applicable; current documentation checks and video decoding are recorded
 with this checkpoint. No 64-body, packaged-build or normal-speed visual acceptance
 is implied. Next work addresses weight and collision rather than raising grades
 from technical checks.
+
+
+## Stopped after physical-drop run — 26 September 2026
+
+Jordan requested: **“Stop after this run and give me a gallery of everything.”**
+The four physical weapon-drop captures and critic pass 63 are finished. Animation
+iteration is stopped at this checkpoint; the 8.5 quality goal remains unachieved.
+Do not resume further body-death, vault or ragdoll work without a new instruction.
+
+[The complete gallery](../art/reviews/gallery/index.html) contains **28 motion
+clips and 57 still images**, including the four latest drops, the complete 49-second
+course with chapter buttons, rifle/MG close-ups, characters, concepts, Tripo inputs,
+effects and historical previews. Posters are represented by their parent video.
+Flat texture atlases have their own category. All media references are relative;
+Git LFS must be pulled. The Windows copy is
+`C:/Users/Jordan/Documents/Codex/AnimationReviews/complete-gallery/art/reviews/gallery/index.html`.
+The earlier 20-clip player remains an earlier checkpoint. In particular, its full
+course predates the final physical-drop change; the gallery explicitly says so.
+
+[Pass 63](reviews/animation-critic-pass63-physical-weapon-drop.md) independently
+reviews all 660 chronological frames and native detail crops: male/female rifle
+deaths **5.0 each**, male/female MG deaths **4.5 each**, versus 4.5/4.0 in pass 59.
+The weapon now falls, impacts briefly and settles; previous repeated rocking and
+visible MG green-box floor clipping were not reproduced. The bowed body hold and
+staged knee/fold/roll are unchanged. Both yellow belt pouches still penetrate the
+floor at frames 76–81. This bounded death score does not replace the last complete
+course grade, **6.0 in pass 62**. Critics inspected adjacent frames, not continuous
+playback; normal-speed visual acceptance remains with the user.
+
+The final implementation uses an isolated immediate Chaos simulation for each
+released weapon. Release pose and velocity come from the evaluated armed pose,
+including the preceding sample. Serialized profile point clouds cover the whole
+assembled weapon (rifle 990 points, MG 1,613), with an exact convex support hull,
+point-cloud-integrated mass properties, CCD and 1/240-second stepping. Nearby
+world collision is copied at release with its actual instance scale. A cached
+trajectory gives repeatable replay/seek results without advancing global physics.
+The review scene waits for floor compilation before the collision query.
+
+Limits: this is a release-time environment snapshot within 6 m, with a maximum
+six-second trajectory and early settle detection. The hull approximates concave
+weapon shapes; mass properties assume a uniform hull. Body and belt-pouch contact
+are not simulated by the weapon drop. Later moving/destructible environment changes,
+64-body cost and cooked-build behavior have not been accepted. If no valid local
+collider exists, the previous authored drop remains the fallback.
+
+Current UE 5.8 build and all four capture validations pass: 1,471 instants across
+four bodies, 580 physical-drop samples, maximum weapon/floor penetration **0.0444 cm**,
+28 death-entry cases at **0 cm** entry difference, deterministic seek and
+query-preserved body/weapon transforms, finite cloth, and existing contact checks.
+Every new capture has its completion marker and exactly 165 frames at 30 fps.
+Portable manifests and per-capture checks/contacts are in
+`art/reviews/gallery/evidence/`; they establish technical behavior, not a visual grade.
+Simulation source remains `090b6da63e131f07`; no simulation changes or new simulation
+acceptance are claimed.
+
+Rebuild profile collision with `tools/character/run_gasp_prototype.py --weapon-drop`
+using the documented engine/sample/mirror arguments. Rebuild the offline gallery
+with `python3 tools/character/build_art_gallery.py`; optionally add `--publish DIR`
+to copy its referenced art tree to another machine. Regenerating the four video
+files also requires `--drop-captures MANIFEST --ffmpeg /path/to/ffmpeg`; the saved
+physical-drop manifest records the original raw captures, which are local only.
+
+Read-only findings for a future user-authorized continuation: the current vault
+stretches a roughly 0.9-second source landing across a 2.2-second action, explaining
+its long airborne beat. Death source hips rise before a prolonged hold, then follow
+separate kneeling and rolling stages. Existing cloth physics assets do not contain
+a complete constrained body ragdoll. No vault retiming, death reauthoring or body
+ragdoll change was made after the stop request.
+
+Gallery verification: all 28 MP4 files fully decode as H.264/yuv420p and all 57
+stills verify. Two earlier effects videos were initially LFS placeholders; their
+actual media was fetched before final publication. The builder rejects remaining
+LFS placeholders. Headless Microsoft Edge played both the 49-second course and a
+5.5-second final drop, exercised chapter seeking, frame stepping, half speed,
+category/search filters and image previews, with zero script errors and no mobile
+horizontal overflow. Desktop and mobile layouts were captured. Nine focused
+documentation/curve checks pass. These playback checks certify delivery controls,
+not an animation-quality grade.

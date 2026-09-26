@@ -5,6 +5,7 @@
 #include "AnimationContext.h"
 #include "Animation/TrajectoryTypes.h"
 #include "SoldierAnimInstance.h"
+#include "WeaponDrop.h"
 #include "SoldierVisual.generated.h"
 class USkeletalMeshComponent;
 class UStaticMeshComponent;
@@ -51,6 +52,7 @@ public:
     FVector SampleMuzzle(const armyvisual::context::ReplaySource* Source,int Slot,const armyvisual::State& State,double Time,const FTransform& Transform);
     void SetCoatDetail(bool Enabled);
     bool HasCoatDetail() const;
+    bool HasPhysicalWeaponDrop() const{return !WeaponDrop.Frames.IsEmpty();}
     UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> Body;
     UPROPERTY() TObjectPtr<USkeletalMeshComponent> MotionDriver;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingDatabase;
@@ -91,6 +93,8 @@ public:
 private:
     bool bGasp=false;
     bool bPoseQuery=false;
+    bool bDropQuery=false;
+    FWeaponDrop WeaponDrop;
     float AimYaw=0,AimPitch=0,LookYaw=0,LookPitch=0;
     FVector VaultTakeoff=FVector::ZeroVector,VaultLanding=FVector::ZeroVector;
     FTransform PouchBindHipInverse;

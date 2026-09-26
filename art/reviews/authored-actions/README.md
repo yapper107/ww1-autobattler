@@ -1,5 +1,7 @@
 # Authored-action checkpoint — 26 September 2026
 
+The newer [complete gallery](../gallery/index.html) adds the final physical drops and all saved art previews. This 20-clip player predates those drops.
+
 Open [the local player](authored-actions.html). Its 20 H.264 MP4s, posters and
 controls are self-contained. Git LFS is required for videos and character assets.
 Manifest source paths record capture provenance; they are not playback dependencies.

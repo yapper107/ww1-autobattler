@@ -8,6 +8,10 @@ UCLASS(BlueprintType)
 class ARMYPROTOTYPE_API UWeaponAnimationProfile:public UDataAsset {
     GENERATED_BODY()
 public:
+    // Convex support hull of the assembled weapon, in its exported centimetres.
+    // Includes the MG box, belt, handle and cover; never the belt-mounted pouch.
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Drop") TArray<FVector> DropHull;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Drop") float DropMassKg=4.5f;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Carry") float SpineWeight=.65f;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Carry") float MovingLeanDegrees=2.f;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Carry") float BreathingCentimetres=.25f;

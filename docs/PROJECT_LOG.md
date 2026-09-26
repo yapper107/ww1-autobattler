@@ -18,6 +18,7 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
+| 26 Sep 2026 | Physical weapon drops reviewed and art work stopped — 26 September 2026 | [complete gallery](../art/reviews/gallery/index.html), [pass 63](reviews/animation-critic-pass63-physical-weapon-drop.md), [handoff](AUTHORED_SOLDIER_ACTIONS.md) |
 | 26 Sep 2026 | Machine-gun recoil and locomotion transitions — 26 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [full-course review](reviews/animation-critic-pass51-complete-course.md), [stop review](reviews/animation-critic-pass53-stop-continuity.md) |
 | 26 Sep 2026 | Machine-gun mechanisms authored and reviewed — 26 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [female MG review](reviews/animation-critic-pass46-female-mg-armor.md), [male MG review](reviews/animation-critic-pass48-male-shoulder-cloth.md) |
 | 25 Sep 2026 | Soldier actions authored in Blender — 25 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [female pass 37](reviews/animation-critic-pass37-female-thumb-views.md), [male pass 36](reviews/animation-critic-pass36-male-pronation.md) |
@@ -75,6 +76,23 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 | 16 Sep 2026 | Current playable default — user replay decision, 16 September 2026 | [AI_MAIN_BUILD](AI_MAIN_BUILD.md), plan 014 phase reviews |
 | by 16 Sep 2026 | Previous main-build decisions (history, superseded by the replay decision above) | [AI_MAIN_BUILD](AI_MAIN_BUILD.md) |
 | undated | Early project instructions — undated, before 16 September 2026 | [plans/README](../plans/README.md), [AI_RELIABILITY_RESULTS](AI_RELIABILITY_RESULTS.md) |
+
+## Physical weapon drops reviewed and art work stopped — 26 September 2026
+
+At Jordan's request to stop after the current run, four completed physical
+weapon-drop captures were reviewed and animation iteration stopped. An isolated
+Chaos drop replaces the rocking weapon track where valid world collision exists.
+Pass 63 rates the complete deaths 5.0 per rifle and 4.5 per MG: weapon impact and
+settling improve, while staged body collapse and both belt-pouch floor penetrations
+remain. The last whole-course grade stays 6.0 (pass 62); 8.5 is not achieved.
+
+The complete portable gallery contains 28 motion clips and 57 stills, with current
+versus earlier capture scope explicit. Four final captures total 660 frames; native
+checks pass all 1,471 course instants, four bodies, seek/query preservation, contact
+checks and 580 physical-drop samples (maximum floor penetration 0.0444 cm). The
+handoff records implementation limits, reproduction, the requested stop and the
+remaining work. No subsequent animation iteration, simulation change, packaged
+acceptance or 64-body approval is claimed.
 
 ## Machine-gun recoil and locomotion transitions — 26 September 2026
 

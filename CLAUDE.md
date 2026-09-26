@@ -72,7 +72,7 @@ As of 25 September 2026:
   finished with no reliable gain; neural training is paused. [Plan 028](plans/028-covering-fire.md)
   (covering-fire repair) stopped by the stop rule; all off. Capacity file `.local/neural/max_jobs`.
 - **Plan 031:** Stage G default; D, D2, D3 no gain (D merged off); [tools/covering](tools/covering/README.md).
-- **Art:** [Authored actions](docs/AUTHORED_SOLDIER_ACTIONS.md), WIP; full-course critic 6.0/10 (pass 62), target 8.5.
+- **Art:** User stopped after pass 63. [Gallery](art/reviews/gallery/index.html); full-course 6.0/10, target 8.5 unmet.
 - **Models:** `models/squad/` (the three plan 024 squad models); none promoted.
 - **Maps:** four generated families in `Unreal/Config/GeneratedMaps/` (`city`, `trenches`, `village`,
   `city2`; village and city2 seed 17 accepted 23 Sep 2026, golden-byte tested). Training

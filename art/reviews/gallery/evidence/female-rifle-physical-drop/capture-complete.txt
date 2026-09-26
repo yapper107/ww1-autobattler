@@ -1,0 +1,1 @@
+Animation diagnostic capture. Visual approval is separate.

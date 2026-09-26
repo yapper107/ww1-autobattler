@@ -109,6 +109,14 @@ void AGaspCombatReview::BeginPlay() {
     }
     auto* Floor=GetWorld()->SpawnActor<AStaticMeshActor>(FVector(2000,1000,-6),FRotator::ZeroRotator);
     Floor->GetStaticMeshComponent()->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Cube")));Floor->SetActorScale3D(FVector(120,120,.1));
+#if WITH_EDITOR
+    // Native course generation runs inside BeginPlay, before editor async mesh
+    // compilation normally finishes and registers the floor's collision body.
+    FAssetCompilingManager::Get().FinishAllCompilation();
+#endif
+    Floor->GetStaticMeshComponent()->SetCollisionProfileName(TEXT("BlockAll"));
+    Floor->GetStaticMeshComponent()->RecreatePhysicsState();
+    UE_LOG(LogTemp,Display,TEXT("REVIEW_FLOOR collision=%d physics_state=%d valid_body=%d"),int(Floor->GetStaticMeshComponent()->GetCollisionEnabled()),Floor->GetStaticMeshComponent()->IsPhysicsStateCreated(),Floor->GetStaticMeshComponent()->BodyInstance.IsValidBodyInstance());
     auto* FloorMat=UMaterialInstanceDynamic::Create(LoadObject<UMaterialInterface>(nullptr,TEXT("/Engine/BasicShapes/BasicShapeMaterial")),Floor);
     FloorMat->SetVectorParameterValue(TEXT("Color"),FLinearColor(.16f,.19f,.23f));Floor->GetStaticMeshComponent()->SetMaterial(0,FloorMat);
     // Fixed one-metre ground marks make a tracking-camera render useful for
@@ -149,6 +157,8 @@ void AGaspCombatReview::BeginPlay() {
     FString ArmGeometry=TEXT("frame,body,weapon,bone,x,y,z\n");
     FString BoxContacts=TEXT("frame,body,phase,error_cm,palm,dock,hand,shoulder\n");
     int ClothVertices=0;bool ClothFinite=true;
+    double DropFloorPenetration=0;int PhysicalDropSamples=0;
+    FString DropContacts=TEXT("frame,body,min_z,x,y,z\n");
     const double Start=FPlatformTime::Seconds();
     for(int F=0;F<=TotalFrames;++F)for(int I=0;I<4;++I) {
         const double T=F/30.;auto* V=Soldiers[I].Get();
@@ -161,6 +171,15 @@ void AGaspCombatReview::BeginPlay() {
         V->SetActorTransform(Transform);
         if(!V->AdvanceMotion(T>=21&&(HoldCrouch||T<25),Transform,Trajectory,T>=16&&T<19,true,T>=34&&T<38))return;
         V->Present(State(T,V->IsMachineGun),T);
+        if(T>=44.2) {
+            if(V->HasPhysicalWeaponDrop())++PhysicalDropSamples;
+            double Minimum=DBL_MAX;
+            if(V->EquipmentProfile)for(const auto& Point:V->EquipmentProfile->DropHull)
+                Minimum=FMath::Min(Minimum,V->Rifle->GetComponentTransform().TransformPosition(Point).Z);
+            DropFloorPenetration=FMath::Max(DropFloorPenetration,-1.-Minimum);
+            const FVector G=V->Rifle->GetComponentLocation();
+            DropContacts+=FString::Printf(TEXT("%d,%d,%.6f,%.6f,%.6f,%.6f\n"),F,I,Minimum,G.X,G.Y,G.Z);
+        }
         auto* Coat=CastChecked<USoldierClothComponent>(V->Body);
         ClothFinite&=Coat->CoatIsFinite();
         if(F==0)ClothVertices+=Coat->CoatVertexCount();
@@ -291,14 +310,16 @@ void AGaspCombatReview::BeginPlay() {
     for(int J=0;J<Soldiers.Num();++J)for(double At:{28.45,40.7,41.5,42.3,44.,44.05,44.1,44.18,44.5,48.5}) {
         auto* Visual=Soldiers[J].Get();
         auto PresentAt=[&](double T){Visual->SetActorTransform(FTransform(FRotator(0,Yaw(T),0),Position(T)+Offset(J)));Visual->Present(State(T,Visual->IsMachineGun),T);};
-        PresentAt(At);const auto Before=Visual->Body->GetComponentSpaceTransforms();const FTransform BeforeActor=Visual->GetActorTransform();
+        PresentAt(At);const auto Before=Visual->Body->GetComponentSpaceTransforms();const FTransform BeforeActor=Visual->GetActorTransform(),BeforeWeapon=Visual->Rifle->GetComponentTransform();
         const uint32 BeforeCloth=CastChecked<USoldierClothComponent>(Visual->Body)->CoatSignature();
         const FVector Muzzle=Visual->SampleMuzzle(nullptr,J,State(4.25,Visual->IsMachineGun),4.25,FTransform(FRotator(0,Yaw(4.25),0),Position(4.25)+Offset(J)));
         QueryPreservesPose&=!Muzzle.ContainsNaN()&&BeforeActor.Equals(Visual->GetActorTransform(),.00001)&&BeforeCloth==CastChecked<USoldierClothComponent>(Visual->Body)->CoatSignature();
         for(int I=0;I<Before.Num();++I)QueryPreservesPose&=Before[I].Equals(Visual->Body->GetComponentSpaceTransforms()[I],.00001);
+        QueryPreservesPose&=BeforeWeapon.Equals(Visual->Rifle->GetComponentTransform(),.0001);
         PresentAt(4.25);PresentAt(At);
         for(int I=0;I<Before.Num();++I)SeekEqual&=Before[I].Equals(Visual->Body->GetComponentSpaceTransforms()[I],.00001);
         SeekEqual&=BeforeActor.Equals(Visual->GetActorTransform(),.00001);
+        SeekEqual&=BeforeWeapon.Equals(Visual->Rifle->GetComponentTransform(),.0001);
     }
     double DeathEntryError=0;
     for(int J=0;J<Soldiers.Num();++J)for(float At:{22.f,26.025f,26.5f,31.f,32.f,36.5f,44.f}) {
@@ -317,10 +338,11 @@ void AGaspCombatReview::BeginPlay() {
     FFileHelper::SaveStringToFile(ArmContinuity,*(Folder/TEXT("gasp-arm-continuity.csv")));
     FFileHelper::SaveStringToFile(ArmGeometry,*(Folder/TEXT("gasp-arm-geometry.csv")));
     FFileHelper::SaveStringToFile(BoxContacts,*(Folder/TEXT("gasp-box-contacts.csv")));
+    FFileHelper::SaveStringToFile(DropContacts,*(Folder/TEXT("gasp-drop-contacts.csv")));
     const bool ContactsExercised=BoltSamples[0]>0&&BoltSamples[2]>0&&ReloadSamples[0]>0&&ReloadSamples[2]>0&&BoxSamples[1]>0&&BoxSamples[3]>0&&MGCoverSamples[1]>0&&MGCoverSamples[3]>0&&MGChargeSamples[1]>0&&MGChargeSamples[3]>0;
-    const bool Passed=DeathEntryError<.01&&AuthoredAssetsPresent&&ContactsExercised&&MGBurstSamples[1]>0&&MGBurstSamples[3]>0&&SeekEqual&&QueryPreservesPose&&Worst<2&&Reconstruction<.2&&AimError<1&&RootError<12.01&&ClothFinite&&ClothVertices>0&&PlantError<2&&BoltError<1&&ReloadError<1&&ReloadSurfaceError<.3f&&BoxError<1&&MGCoverError<1&&MGChargeError<1;
+    const bool Passed=PhysicalDropSamples==580&&DropFloorPenetration<.5&&DeathEntryError<.01&&AuthoredAssetsPresent&&ContactsExercised&&MGBurstSamples[1]>0&&MGBurstSamples[3]>0&&SeekEqual&&QueryPreservesPose&&Worst<2&&Reconstruction<.2&&AimError<1&&RootError<12.01&&ClothFinite&&ClothVertices>0&&PlantError<2&&BoltError<1&&ReloadError<1&&ReloadSurfaceError<.3f&&BoxError<1&&MGCoverError<1&&MGChargeError<1;
     const FString Summary=FString::Printf(TEXT("frames=%d bodies=4 worst_wrist_cm=%.6f native_stack_reconstruction_cm=%.6f seek_equal=%d generation_seconds=%.3f aim_error_deg=%.5f root_offset_cm=%.3f cloth_vertices=%d cloth_finite=%d vault_plant_cm=%.4f query_preserves_pose=%d bolt_contact_cm=%.4f passed=%d\n"),TotalFrames+1,Worst,Reconstruction,int(SeekEqual),FPlatformTime::Seconds()-Start,AimError,RootError,ClothVertices,int(ClothFinite),PlantError,int(QueryPreservesPose),BoltError,int(Passed));
-    const FString FullSummary=FString::Printf(TEXT("death_entry_cm=%.6f authored_assets=%d contacts_exercised=%d bolt_samples=%d,%d reload_samples=%d,%d mg_box_samples=%d,%d mg_box_contact_cm=%.4f crouch_foot_step_cm=%.4f crouch_hip_step_cm=%.4f reload_contact_cm=%.4f reload_surface_gap_cm=%.4f reload_elbow_step_cm=%.4f "),DeathEntryError,int(AuthoredAssetsPresent),int(ContactsExercised),BoltSamples[0],BoltSamples[2],ReloadSamples[0],ReloadSamples[2],BoxSamples[1],BoxSamples[3],BoxError,CrouchFootStep,CrouchHipStep,ReloadError,ReloadSurfaceError,ReloadElbowStep)+FString::Printf(TEXT("mg_cover_contact_cm=%.4f mg_charge_contact_cm=%.4f mg_cover_samples=%d,%d mg_charge_samples=%d,%d mg_overlap_samples=%d,%d "),MGCoverError,MGChargeError,MGCoverSamples[1],MGCoverSamples[3],MGChargeSamples[1],MGChargeSamples[3],MGBurstSamples[1],MGBurstSamples[3])+Summary;
+    const FString FullSummary=FString::Printf(TEXT("physical_drop_samples=%d weapon_floor_penetration_cm=%.4f death_entry_cm=%.6f authored_assets=%d contacts_exercised=%d bolt_samples=%d,%d reload_samples=%d,%d mg_box_samples=%d,%d mg_box_contact_cm=%.4f crouch_foot_step_cm=%.4f crouch_hip_step_cm=%.4f reload_contact_cm=%.4f reload_surface_gap_cm=%.4f reload_elbow_step_cm=%.4f "),PhysicalDropSamples,DropFloorPenetration,DeathEntryError,int(AuthoredAssetsPresent),int(ContactsExercised),BoltSamples[0],BoltSamples[2],ReloadSamples[0],ReloadSamples[2],BoxSamples[1],BoxSamples[3],BoxError,CrouchFootStep,CrouchHipStep,ReloadError,ReloadSurfaceError,ReloadElbowStep)+FString::Printf(TEXT("mg_cover_contact_cm=%.4f mg_charge_contact_cm=%.4f mg_cover_samples=%d,%d mg_charge_samples=%d,%d mg_overlap_samples=%d,%d "),MGCoverError,MGChargeError,MGCoverSamples[1],MGCoverSamples[3],MGChargeSamples[1],MGChargeSamples[3],MGBurstSamples[1],MGBurstSamples[3])+Summary;
     FFileHelper::SaveStringToFile(FullSummary,*(Folder/TEXT("gasp-combat-check.txt")));UE_LOG(LogTemp,Display,TEXT("GASP_COMBAT_CHECK %s"),*FullSummary);
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyMotionValidate"))){FPlatformMisc::RequestExitWithStatus(false,Passed?0:1);return;}
     }

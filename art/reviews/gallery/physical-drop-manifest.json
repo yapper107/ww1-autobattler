@@ -1,0 +1,38 @@
+[
+  {
+    "name": "male-rifle-physical-drop",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-093513",
+    "start": 43.5,
+    "end": 49,
+    "frames": 165,
+    "video": "media/male-rifle-physical-drop.mp4",
+    "poster": "media/male-rifle-physical-drop.png"
+  },
+  {
+    "name": "female-rifle-physical-drop",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-093618",
+    "start": 43.5,
+    "end": 49,
+    "frames": 165,
+    "video": "media/female-rifle-physical-drop.mp4",
+    "poster": "media/female-rifle-physical-drop.png"
+  },
+  {
+    "name": "male-mg-physical-drop",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-093722",
+    "start": 43.5,
+    "end": 49,
+    "frames": 165,
+    "video": "media/male-mg-physical-drop.mp4",
+    "poster": "media/male-mg-physical-drop.png"
+  },
+  {
+    "name": "female-mg-physical-drop",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-093826",
+    "start": 43.5,
+    "end": 49,
+    "frames": 165,
+    "video": "media/female-mg-physical-drop.mp4",
+    "poster": "media/female-mg-physical-drop.png"
+  }
+]
