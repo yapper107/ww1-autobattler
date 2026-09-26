@@ -32,6 +32,7 @@ public:
     UPoseSearchDatabase* LastDatabase=nullptr;
     int32 WarpMask=7;
     FVector LastTravelDirection=FVector::ZeroVector;
+    float TravelWarpWeight=0;
     bool StopEventWasActive=false;
     float StopEventSourceTime=-1;
     int32 TimedStopSearches=0;
@@ -106,7 +107,10 @@ public:
         FPoseSearchEvent StopEvent;
         if(A->StopSeconds>.025f&&A->LocomotionSpeed>5) {
             StopEvent.EventTag=TAG_ArmyAnimationStop;StopEvent.TimeToEvent=A->StopSeconds;
-            StopEvent.PlayRateRangeOverride=FFloatInterval(.35f,1.5f);
+            // Standing stops include a flight phase; do not suspend it in
+            // slow motion. Crouch retains its planted-step event range: the
+            // tighter bound changed its support choice to a crossed-foot stop.
+            StopEvent.PlayRateRangeOverride=A->Crouching?FFloatInterval(.35f,1.5f):FFloatInterval(.65f,1.2f);
         }
         *FindFProperty<FStructProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("EventToSearch"))->ContainerPtrToValuePtr<FPoseSearchEvent>(&Motion)=StopEvent;
         History.TransformTrajectory=A->Trajectory;
@@ -115,7 +119,12 @@ public:
         // Root-motion direction/velocity become ill-conditioned as a stop
         // settles. Release travel warping continuously while retaining ground
         // contacts, rather than steering planted feet with near-zero deltas.
-        const float TravelWarp=FMath::SmoothStep(5.f,35.f,A->LocomotionSpeed);
+        const float TravelTarget=FMath::SmoothStep(5.f,35.f,A->LocomotionSpeed);
+        // Speed can cross the entire release interval in a single braking
+        // frame. A smooth function of speed alone then unwinds the planted
+        // lower body instantly. Filter in animation time, including release.
+        TravelWarpWeight=Dt>0?FMath::Lerp(TravelWarpWeight,TravelTarget,1.f-FMath::Exp(-Dt/.12f)):TravelTarget;
+        const float TravelWarp=TravelWarpWeight;
         if(A->LocomotionSpeed>1.f)LastTravelDirection=A->LocomotionVelocity;
         Stride.Alpha=A->ContactsEnabled&&(WarpMask&2)?TravelWarp:0.f;Stride.LocomotionSpeed=A->LocomotionSpeed;
         Orientation.Alpha=A->ContactsEnabled&&(WarpMask&1)?TravelWarp:0.f;Orientation.LocomotionDirection=LastTravelDirection;
@@ -129,6 +138,14 @@ public:
         const bool FinishStop=(A->CanFinishStop||TimedStop)&&!BeginTimedStop&&Sequence&&Sequence->GetName().Contains(TEXT("_Stop_"))&&
             Sequence->GetName().Contains(TEXT("_Crouch_"))==A->Crouching&&
             Selected.SelectedTime<Sequence->GetPlayLength()-.2f;
+        // Pose similarity repeatedly restarted the first fraction of nearby
+        // 45/90-degree turns. Let the selected support exchange complete while
+        // stationary; translation, stance change or opposite intent releases it.
+        const bool FinishTurn=A->CanFinishTurn&&Sequence&&
+            (Sequence->GetName().Contains(TEXT("_Stand_Turn_"))||Sequence->GetName().Contains(TEXT("_Crouch_Idle_Turn_")))&&
+            Sequence->GetName().Contains(TEXT("_Crouch_"))==A->Crouching&&
+            Selected.SelectedTime<Sequence->GetPlayLength()-.2f&&
+            (FMath::IsNearlyZero(A->TurnYaw)||(A->TurnYaw>0)==Sequence->GetName().EndsWith(TEXT("_R")));
         StopEventSourceTime=-1;
         auto* Rate=FindFProperty<FStructProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("PlayRate"))->ContainerPtrToValuePtr<FFloatInterval>(&Motion);
         *Rate=FFloatInterval(.65f,1.2f);
@@ -140,12 +157,16 @@ public:
                 // UE5.8's Blueprint result does not retain EventPoseIdx when
                 // rebuilding the continuing search result. Preserve its timed
                 // playback explicitly after the initial native event search.
-                const float MatchedRate=FMath::Clamp((StopEventSourceTime-Selected.SelectedTime)/A->StopSeconds,.2f,1.5f);
+                const float MatchedRate=FMath::Clamp((StopEventSourceTime-Selected.SelectedTime)/A->StopSeconds,A->Crouching?.2f:.65f,A->Crouching?1.5f:1.2f);
                 *Rate=FFloatInterval(MatchedRate,MatchedRate);
             }
         }
-        FindFProperty<FBoolProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("bShouldSearch"))->SetPropertyValue_InContainer(&Motion,!FinishStop);
-        auto* Database=FinishStop&&LastDatabase?LastDatabase:A->Database.Get();
+        // A long crossfade erases most of the opening turn step. Locomotion
+        // keeps its existing blend; in-place support changes enter promptly.
+        FindFProperty<FFloatProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("BlendTime"))->SetPropertyValue_InContainer(&Motion,A->CanFinishTurn&&FMath::Abs(A->TurnYaw)>5?.2f:.3f);
+        const bool FinishTransition=FinishStop||FinishTurn;
+        FindFProperty<FBoolProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("bShouldSearch"))->SetPropertyValue_InContainer(&Motion,!FinishTransition);
+        auto* Database=FinishTransition&&LastDatabase?LastDatabase:A->Database.Get();
         Motion.SetDatabaseToSearch(Database,BeginTimedStop?EPoseSearchInterruptMode::ForceInterrupt:Database==LastDatabase?EPoseSearchInterruptMode::DoNotInterrupt:EPoseSearchInterruptMode::InterruptOnDatabaseChange);
         if(BeginTimedStop)++TimedStopSearches;
         StopEventWasActive=TimedStop;

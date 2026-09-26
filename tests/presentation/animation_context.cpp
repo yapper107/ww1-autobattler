@@ -42,6 +42,10 @@ int main() {
     assert(replay.ShotsBetween(0,.375,.125).empty());
     assert(replay.ShotsBetween(0,.25,.25).empty());
     assert(replay.ShotsBetween(1,0,1).empty());
+    assert((replay.ShotTimesBetween(0,.125,.375).value()==std::vector<double>{.25,.25,.375}));
+    assert(replay.ShotTimesBetween(0,.375,.125)->empty());
+    assert(replay.ShotTimesBetween(1,0,1)->empty());
+    assert(!replay.ShotTimesBetween(-1,0,1));
     assert(context.aimPoint.x==8&&Near(context.aimPoint.z,2.5)); // Restore the fire solution's world height.
 
     // State extraction is invariant to seeks, pause and the caller's frame cadence.
@@ -51,6 +55,9 @@ int main() {
         replay.At(0,randomTime(rng));const auto b=replay.At(0,time);
         assert(a.time==b.time&&a.position.x==b.position.x&&a.forwardSpeed==b.forwardSpeed);
         assert(a.lastShotIndex==b.lastShotIndex&&a.reloadStart==b.reloadStart);
+        const auto impulses=replay.ShotTimesBetween(0,time-.4,time);
+        replay.ShotTimesBetween(0,randomTime(rng),randomTime(rng));
+        assert(impulses==replay.ShotTimesBetween(0,time-.4,time));
     }
     const auto trajectory=replay.Trajectory(0,.25,{-1,0,.25,2});
     assert(!trajectory[0].available&&Near(trajectory[0].sampledOffset,-.25));

@@ -12,8 +12,11 @@ public:
     FArmyAnimProxy(UAnimInstance* Instance):FAnimInstanceProxy(Instance){}
     TArray<FArmyPoseSample> Samples;
     float Grip=1,Scale=1;
+    TArray<FTransform> DeathEntryPose;
+    float DeathEntryWeight=0;
     UAnimSequence* Standing=nullptr;
     TArray<FArmyPoseSample> ArmedReference;
+    TArray<FArmyPoseSample> AuthoredBurst;
     float WeaponReady=1;
     bool AuthoredHandling=false;
     bool ArticulatedRiflePouch=false,ArticulatedMG=false;
@@ -37,6 +40,8 @@ public:
         auto* A=CastChecked<USoldierAnimInstance>(Instance);Samples=A->Samples;Grip=A->GripAlpha;Standing=A->StandingAim;Handling=A->Handling;MG=A->MachineGun;Scale=A->ModelScale;
         Profile=A->EquipmentProfile;AimYaw=A->AimYaw;AimPitch=A->AimPitch;LookYaw=A->LookYaw;LookPitch=A->LookPitch;MoveSpeed=A->MoveSpeed;PoseTime=A->PoseTime;
         ArmedReference=A->ArmedReference;WeaponReady=A->WeaponReady;
+        DeathEntryPose=A->DeathEntryPose;DeathEntryWeight=A->DeathEntryWeight;
+        AuthoredBurst=A->AuthoredBurst;
         AuthoredHandling=A->AuthoredHandling;
         ArticulatedRiflePouch=A->ArticulatedRiflePouch;ArticulatedMG=A->ArticulatedMG;
         AuthoredHandlingAlpha=A->AuthoredHandlingAlpha;
@@ -236,6 +241,38 @@ public:
                     CS.SafeSetCSBoneTransforms({FBoneTransform(Head,T)});
                 }
             }
+            FTransform BurstGun=FTransform::Identity;
+            if(MG&&Layer&&Socket.GetInt()>=0&&!AuthoredBurst.IsEmpty()) {
+                // Add each actual shot's authored deviation from its own first
+                // pose. Sampling in seconds preserves the shoulder's recovery
+                // across subsequent rounds instead of compressing/restarting a
+                // 0.4-second performance at every 0.12-second firing interval.
+                FPoseContext Base(this);Base.ResetToRefPose();FAnimationPoseData BaseData(Base);
+                AuthoredBurst[0].Sequence->GetAnimationPose(BaseData,FAnimExtractContext(0.,false));
+                FCSPose<FCompactPose> BaseCS;BaseCS.InitPose(Base.Pose);
+                FPoseContext BodyResponse(this);BodyResponse.ResetToRefPose();
+                for(auto I:Output.Pose.ForEachBoneIndex())BodyResponse.Pose[I]=CS.GetLocalSpaceTransform(I);
+                for(const auto& Sample:AuthoredBurst) {
+                    FPoseContext Impulse(this);Impulse.ResetToRefPose();FAnimationPoseData Data(Impulse);
+                    Sample.Sequence->GetAnimationPose(Data,FAnimExtractContext(Sample.Time,false));
+                    for(const TCHAR* Name:{TEXT("Spine"),TEXT("Spine1"),TEXT("Spine2"),TEXT("Neck"),TEXT("Head")}) {
+                        const auto Bone=index(Name);if(Bone.GetInt()<0)continue;
+                        const auto& Reference=Base.Pose[Bone];const auto& Shot=Impulse.Pose[Bone];
+                        auto& Current=BodyResponse.Pose[Bone];
+                        const FQuat Delta=Shot.GetRotation()*Reference.GetRotation().Inverse();
+                        Current.SetRotation((FQuat::Slerp(FQuat::Identity,Delta,Sample.Weight)*Current.GetRotation()).GetNormalized());
+                        Current.AddToTranslation((Shot.GetLocation()-Reference.GetLocation())*Sample.Weight);
+                    }
+                    FCSPose<FCompactPose> ImpulseCS;ImpulseCS.InitPose(Impulse.Pose);
+                    auto ShotGun=ImpulseCS.GetComponentSpaceTransform(Socket),BaseGun=BaseCS.GetComponentSpaceTransform(Socket);
+                    ShotGun.SetScale3D(FVector::OneVector);BaseGun.SetScale3D(FVector::OneVector);
+                    auto Delta=ShotGun.GetRelativeTransform(BaseGun);
+                    Delta.SetLocation(Delta.GetLocation()*Sample.Weight);
+                    Delta.SetRotation(FQuat::Slerp(FQuat::Identity,Delta.GetRotation(),Sample.Weight).GetNormalized());
+                    Delta.SetScale3D(FVector::OneVector);BurstGun=Delta*BurstGun;
+                }
+                CS.InitPose(BodyResponse.Pose);
+            }
             if(Socket.GetInt()>=0) {
                 const FTransform Original=CS.GetComponentSpaceTransform(Socket);
                 FTransform Gun=Original;
@@ -294,6 +331,7 @@ public:
                     Rigid.SetLocation(Pivot+Aim.RotateVector(Rigid.GetLocation()-Pivot));Rigid.SetRotation(Aim*Rigid.GetRotation());
                     Rigid.AddToTranslation(FVector(0,0,FMath::Sin(PoseTime*2.3)*Profile->BreathingCentimetres));
                 }
+                Rigid=BurstGun*Rigid;
                 auto relativeControl=[&](const TCHAR* Name) {
                     const auto B=index(Name);
                     FTransform Relative=CS.GetComponentSpaceTransform(B).GetRelativeTransform(RigidOriginal);
@@ -559,6 +597,37 @@ public:
                 if(HandAlpha<1){U.Blend(OldU,U,HandAlpha);L.Blend(OldL,L,HandAlpha);H.Blend(OldH,H,HandAlpha);}
                 TArray<FBoneTransform> Edits;Edits.Emplace(Upper,U);Edits.Emplace(Lower,L);Edits.Emplace(Hand,H);
                 CS.SafeSetCSBoneTransforms(Edits);
+            }
+            for(auto I:Output.Pose.ForEachBoneIndex())Output.Pose[I]=CS.GetLocalSpaceTransform(I);
+            Output.Pose.NormalizeRotations();
+        }
+        if(DeathEntryWeight>0&&!DeathEntryPose.IsEmpty()) {
+            // Blend the fully evaluated armed pose, not only its bare locomotion
+            // sample. Otherwise the gun, arm overlay and contact root disappear
+            // on the first death frame before the body has begun its reaction.
+            const auto& Bones=Output.Pose.GetBoneContainer();
+            for(auto I:Output.Pose.ForEachBoneIndex()) {
+                const int MeshIndex=Bones.MakeMeshPoseIndex(I).GetInt();
+                if(DeathEntryPose.IsValidIndex(MeshIndex)) {
+                    FTransform T;T.Blend(Output.Pose[I],DeathEntryPose[MeshIndex],DeathEntryWeight);Output.Pose[I]=T;
+                }
+            }
+            Output.Pose.NormalizeRotations();
+            // Local-space blending follows different chains for hands and gun
+            // controls. Keep the grips until the authored release, using the
+            // blended elbow plane instead of adding an unrelated arm pose.
+            FCSPose<FCompactPose> CS;CS.InitPose(Output.Pose);
+            auto Index=[&](const FString& N){return Bones.MakeCompactPoseIndex(FMeshPoseBoneIndex(Bones.GetPoseBoneIndexForBoneName(FName(N))));};
+            for(int Side=0;Side<2&&Grip>0;++Side) {
+                const FString Prefix=Side==0?TEXT("Left"):TEXT("Right");
+                const auto U=Index(Prefix+TEXT("Arm")),L=Index(Prefix+TEXT("ForeArm")),H=Index(Prefix+TEXT("Hand"));
+                const auto Target=Index(Side==0?TEXT("WeaponGrip_L"):TEXT("WeaponGrip_R"));
+                if(U.GetInt()<0||L.GetInt()<0||H.GetInt()<0||Target.GetInt()<0)continue;
+                auto UT=CS.GetComponentSpaceTransform(U),LT=CS.GetComponentSpaceTransform(L),HT=CS.GetComponentSpaceTransform(H);
+                const auto OldU=UT,OldL=LT,OldH=HT,Goal=CS.GetComponentSpaceTransform(Target);
+                AnimationCore::SolveTwoBoneIK(UT,LT,HT,LT.GetLocation(),Goal.GetLocation(),false,1.,1.);HT.SetRotation(Goal.GetRotation());
+                UT.Blend(OldU,UT,Grip);LT.Blend(OldL,LT,Grip);HT.Blend(OldH,HT,Grip);
+                CS.SafeSetCSBoneTransforms({FBoneTransform(U,UT),FBoneTransform(L,LT),FBoneTransform(H,HT)});
             }
             for(auto I:Output.Pose.ForEachBoneIndex())Output.Pose[I]=CS.GetLocalSpaceTransform(I);
             Output.Pose.NormalizeRotations();

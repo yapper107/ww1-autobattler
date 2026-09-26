@@ -62,14 +62,24 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
     CrouchingStartingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_starting")));
     StandingStoppingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_stopping")));
     CrouchingStoppingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_stopping")));
+    for(const TCHAR* Gait:{TEXT("walk"),TEXT("run"),TEXT("sprint")})
+        for(const TCHAR* Sector:{TEXT(""),TEXT("_f"),TEXT("_fr"),TEXT("_r"),TEXT("_br"),TEXT("_b"),TEXT("_bl"),TEXT("_l"),TEXT("_fl")})
+            StandingGaitStoppingDatabases.Add(LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_stopping_")+Gait+Sector),nullptr,LOAD_NoWarn));
+    for(const TCHAR* Stance:{TEXT("standing"),TEXT("crouch")})
+        for(const TCHAR* Angle:{TEXT("045"),TEXT("090"),TEXT("135"),TEXT("180")})
+            for(const TCHAR* Side:{TEXT("_L"),TEXT("_R")})
+                TurningAngleDatabases.Add(LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_")+Stance+TEXT("_turning_")+Angle+Side),nullptr,LOAD_NoWarn));
     StandingIdleDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_idle")));
     CrouchingIdleDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_idle")));
+    StandingTurningDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_turning")),nullptr,LOAD_NoWarn);
+    CrouchingTurningDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_turning")),nullptr,LOAD_NoWarn);
     bGasp=StandingDatabase&&CrouchingDatabase&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacyAnimation"));
     if(bGasp) {
         if(!MachineGun) {
             AuthoredWeaponShot=LoadObject<UAnimSequence>(nullptr,*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+TEXT("/A_Rifle_ShotBolt")),nullptr,LOAD_NoWarn);
             AuthoredWeaponCarry=LoadObject<UAnimSequence>(nullptr,*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+TEXT("/A_Rifle_LowReady")),nullptr,LOAD_NoWarn);
         }
+        else AuthoredMGShot=LoadObject<UAnimSequence>(nullptr,*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+TEXT("/A_MG_Shot")),nullptr,LOAD_NoWarn);
         AuthoredWeaponReload=LoadObject<UAnimSequence>(nullptr,*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+(MachineGun?TEXT("/A_MG_Reload"):TEXT("/A_Rifle_Reload"))),nullptr,LOAD_NoWarn);
         VaultProfile=LoadObject<UTraversalAnimationProfile>(nullptr,*(TEXT("/Game/Characters/GASP/Actions/")+GaspBody+TEXT("/DA_Vault")));
         // In an uncooked editor game, loading a database starts its DDC build
@@ -77,8 +87,12 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
 #if WITH_EDITOR
         using namespace UE::PoseSearch;
         for(const UPoseSearchDatabase* Database:{StandingDatabase.Get(),CrouchingDatabase.Get(),StandingMovingDatabase.Get(),CrouchingMovingDatabase.Get(),
-            StandingStartingDatabase.Get(),CrouchingStartingDatabase.Get(),StandingStoppingDatabase.Get(),CrouchingStoppingDatabase.Get(),StandingIdleDatabase.Get(),CrouchingIdleDatabase.Get()})
+            StandingStartingDatabase.Get(),CrouchingStartingDatabase.Get(),StandingStoppingDatabase.Get(),CrouchingStoppingDatabase.Get(),StandingIdleDatabase.Get(),CrouchingIdleDatabase.Get(),StandingTurningDatabase.Get(),CrouchingTurningDatabase.Get()})
             if(Database)
+            if(FAsyncPoseSearchDatabasesManagement::RequestAsyncBuildIndex(Database,ERequestAsyncBuildFlag::NewRequest|ERequestAsyncBuildFlag::WaitForCompletion)!=EAsyncBuildIndexResult::Success)return false;
+        for(const auto& Database:TurningAngleDatabases)if(Database)
+            if(FAsyncPoseSearchDatabasesManagement::RequestAsyncBuildIndex(Database,ERequestAsyncBuildFlag::NewRequest|ERequestAsyncBuildFlag::WaitForCompletion)!=EAsyncBuildIndexResult::Success)return false;
+        for(const auto& Database:StandingGaitStoppingDatabases)if(Database)
             if(FAsyncPoseSearchDatabasesManagement::RequestAsyncBuildIndex(Database,ERequestAsyncBuildFlag::NewRequest|ERequestAsyncBuildFlag::WaitForCompletion)!=EAsyncBuildIndexResult::Success)return false;
 #endif
         const FString ProfilePath=TEXT("/Game/Characters/GASP/Equipment/DA_")+FString(MachineGun?TEXT("MachineGun"):TEXT("Rifle"));
@@ -187,8 +201,22 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
     return true;
 }
 void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
-    LastState=State;LastTime=Time;
     auto* Anim=Cast<USoldierAnimInstance>(Body->GetAnimInstance());if(!Anim)return;
+    Anim->DeathEntryPose.Reset();Anim->DeathEntryWeight=0;
+    TArray<FTransform> EntryPose;
+    const double DeathAge=State.outAt<0?-1:Time-State.outAt;
+    if(bGasp&&DeathAge>=0&&DeathAge<.15) {
+        // PresentationState retains the last living handling/stance. Evaluate
+        // that exact entry on demand so direct seeks and muzzle queries agree
+        // with ordinary forward playback, without advancing cloth twice.
+        auto Live=State;Live.outAt=-1;
+        TGuardValue<bool> Query(bPoseQuery,true);
+        Present(Live,State.outAt);
+        EntryPose=Body->GetBoneSpaceTransforms();
+    }
+    LastState=State;LastTime=Time;
+    Anim->DeathEntryPose=MoveTemp(EntryPose);
+    Anim->DeathEntryWeight=Anim->DeathEntryPose.IsEmpty()?0:1-FMath::SmoothStep(0.f,.15f,float(DeathAge));
     Anim->Samples.Reset();
     Anim->ContactsEnabled=false;
     Anim->RootOffsetEnabled=false;
@@ -220,8 +248,11 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
         Settings.recoverySeconds=EquipmentProfile->RecoverySeconds;Settings.manualBolt=EquipmentProfile->ManualBolt;
         Settings.boltStartSeconds=EquipmentProfile->BoltStartSeconds;
     }
-    Anim->Handling=armyvisual::Handling(Input,Time,State.aim,State.outAt>=0,Settings);
+    auto BaseHandling=Input;
+    if(IsMachineGun&&AuthoredMGShot)BaseHandling.lastShot=-1000; // authored impulses replace procedural recoil
+    Anim->Handling=armyvisual::Handling(BaseHandling,Time,State.aim,State.outAt>=0,Settings);
     Anim->ArmedReference.Reset();
+    Anim->AuthoredBurst.Reset();
     Anim->AuthoredHandling=false;
     Anim->ArticulatedRiflePouch=RiflePouch->GetStaticMesh()!=nullptr;
     Anim->AuthoredHandlingAlpha=0;
@@ -286,7 +317,7 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
             H.rightSupport=1-Mechanism(1-Shot.rightSupport,1-Reload.rightSupport);
             H.leftSupport=IsMachineGun?1-Envelope(ActionLayers.reloadPhase,.18f,.20f,.67f,.685f)*ActionLayers.reloadWeight:1;
             Anim->ArticulatedMG=MGFeedCover->GetStaticMesh()!=nullptr;
-            if(IsMachineGun&&ActionLayers.reloadActive) {
+            if(IsMachineGun&&!AuthoredMGShot&&ActionLayers.reloadActive) {
                 // Retain the end of the latest burst as the authored reload
                 // enters. Clearing recoil on the request frame snapped the
                 // supporting elbow before the authored action had any weight.
@@ -302,6 +333,17 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
             const float ReloadLoad=Envelope(ActionLayers.reloadPhase,0,.16f,.90f,1.f)*ActionLayers.reloadWeight;
             Anim->AuthoredPelvisOffset=IsMachineGun?FVector::ZeroVector:(FVector(.8,0,0)*ShotLoad+FVector(1.8,1.4,-1.2)*ReloadLoad)*Stationary;
             Anim->AuthoredMGPelvisWeight=IsMachineGun?Stationary:0.f;
+        }
+        if(IsMachineGun&&AuthoredMGShot&&!Input.sprinting&&!Input.vaulting) {
+            auto AddImpulse=[&](double ShotTime) {
+                const double Age=Time-ShotTime;
+                if(Age<0||Age>=AuthoredMGShot->GetPlayLength())return;
+                FArmyPoseSample Sample;Sample.Sequence=AuthoredMGShot;Sample.Time=Age;
+                Sample.Weight=1-ActionLayers.reloadWeight;
+                if(Sample.Weight>0)Anim->AuthoredBurst.Add(Sample);
+            };
+            for(int I=0;I<Input.recoilShotCount;++I)AddImpulse(Input.recoilShots[size_t(I)]);
+            if(Input.recoilShotCount==0)AddImpulse(Input.lastShot);
         }
     }
     if(IsMachineGun&&State.outAt<0&&!Input.vaulting)Anim->Handling.upper=1.f;
@@ -560,15 +602,58 @@ bool ASoldierVisual::AdvanceMotion(bool Crouch,const FTransform& Transform,const
     auto* Moving=Crouch?CrouchingMovingDatabase.Get():StandingMovingDatabase.Get();
     auto* Starting=Crouch?CrouchingStartingDatabase.Get():StandingStartingDatabase.Get();
     auto* Stopping=Crouch?CrouchingStoppingDatabase.Get():StandingStoppingDatabase.Get();
+    if(!Crouch&&!MotionFrames.IsEmpty()) {
+        // A late pose in a sprint stop can cheaply match a walking trajectory
+        // even though its weight transfer is wrong. Finish the gait actually
+        // being played. This also keeps a decelerating runner from switching
+        // to a walking stop merely because its current speed has fallen.
+        const FArmyPoseSample* Dominant=nullptr;
+        for(const auto& S:MotionFrames.Last().Samples)
+            if(S.Sequence&&(!Dominant||S.Weight>Dominant->Weight))Dominant=&S;
+        if(Dominant) {
+            const FString Name=Dominant->Sequence->GetName();
+            const TCHAR* Markers[]={TEXT("_Walk_"),TEXT("_Run_"),TEXT("_Sprint_")};
+            const FVector Travel=Transform.InverseTransformVectorNoScale(Transform.GetLocation()-MotionDriver->GetComponentLocation());
+            const int Sector=((FMath::RoundToInt(FMath::RadiansToDegrees(FMath::Atan2(Travel.Y,Travel.X))/45.)+8)%8)+1;
+            for(int I=0;I<3;++I)if(Name.Contains(Markers[I])&&StandingGaitStoppingDatabases.IsValidIndex(I*9)&&StandingGaitStoppingDatabases[I*9]) {
+                const int Directed=I*9+Sector;
+                // Choose the nearest source travel direction before pose/foot
+                // selection. A diagonal stop for straight travel required a
+                // large orientation correction that unwound at foot plant.
+                // A gait with no such direction retains its general fallback.
+                Stopping=StandingGaitStoppingDatabases.IsValidIndex(Directed)&&StandingGaitStoppingDatabases[Directed]?
+                    StandingGaitStoppingDatabases[Directed].Get():StandingGaitStoppingDatabases[I*9].Get();break;
+            }
+        }
+    }
     auto* Idle=Crouch?CrouchingIdleDatabase.Get():StandingIdleDatabase.Get();
+    const float RotationSpeed=MotionFrames.IsEmpty()?0.f:FMath::FindDeltaAngleDegrees(MotionDriver->GetComponentRotation().Yaw+90,Transform.Rotator().Yaw)*30;
+    const float FutureTurn=FutureA?FMath::FindDeltaAngleDegrees(Transform.Rotator().Yaw-90,FutureA->Facing.Rotator().Yaw):0.f;
+    const bool Turning=Grounded&&Speed<10&&FutureSpeed<10&&(FMath::Abs(RotationSpeed)>10||FMath::Abs(FutureTurn)>5);
+    auto* Turn=Crouch?CrouchingTurningDatabase.Get():StandingTurningDatabase.Get();
     Planner->Database=Crouch?CrouchingDatabase.Get():StandingDatabase.Get();
     if(FutureSpeed>Speed+25&&Starting)Planner->Database=Starting;
     else if(Speed>FutureSpeed+25&&Stopping)Planner->Database=Stopping;
     else if(Cruising&&Moving)Planner->Database=Moving;
     else if(Speed<10&&FutureSpeed<10&&Idle)Planner->Database=Idle;
+    if(Turning&&Turn) {
+        // Select the size of the planned heading change before matching the
+        // support foot. A short 45-degree turn cannot explain a full right angle.
+        float PlannedTurn=FutureTurn;
+        for(const auto& P:Trajectory.Samples)if(P.TimeInSeconds>0) {
+            const float Angle=FMath::FindDeltaAngleDegrees(Transform.Rotator().Yaw-90,P.Facing.Rotator().Yaw);
+            if(FMath::Abs(Angle)>FMath::Abs(PlannedTurn))PlannedTurn=Angle;
+        }
+        const int AngleIndex=(Crouch?8:0)+FMath::Clamp(FMath::RoundToInt(FMath::Abs(PlannedTurn)/45)-1,0,3)*2+(PlannedTurn>0?1:0);
+        Planner->Database=TurningAngleDatabases.IsValidIndex(AngleIndex)&&TurningAngleDatabases[AngleIndex]?TurningAngleDatabases[AngleIndex].Get():Turn;
+    }
     Planner->Trajectory=Trajectory;
     Planner->Crouching=Crouch;
-    Planner->CanFinishStop=Grounded&&FutureSpeed<25;
+    // A stationary turn is a new footwork intent. Holding the old stop tail
+    // here made both feet rotate with the actor throughout a ninety-degree turn.
+    Planner->CanFinishStop=Grounded&&FutureSpeed<25&&!Turning;
+    Planner->CanFinishTurn=Grounded&&Speed<10&&FutureSpeed<10;
+    Planner->TurnYaw=FMath::Abs(FutureTurn)>5?FutureTurn:FMath::Abs(RotationSpeed)>10?RotationSpeed:0;
     Planner->StopSeconds=-1;
     if(Grounded&&Speed>5&&Stopping) {
         const FTransformTrajectorySample* Previous=nullptr;
@@ -697,5 +782,11 @@ void ASoldierVisual::PresentReplay(const armyvisual::context::ReplaySource& Sour
     if(RestoreGeometry)RestoreGeometry();
     auto Presentation=State;
     if(const auto S=Source.At(Slot,Time))Presentation.handling.vaultLandsAt=S->traversal.landsAt;
+    if(IsMachineGun&&AuthoredMGShot) {
+        Presentation.handling.recoilShotCount=0;
+        const double RecoilTime=State.outAt>=0?FMath::Min(Time,double(State.outAt)):Time;
+        if(const auto Shots=Source.ShotTimesBetween(Slot,RecoilTime-AuthoredMGShot->GetPlayLength(),RecoilTime))
+            for(double Shot:*Shots)armyvisual::AddRecoilShot(Presentation.handling,Shot);
+    }
     Present(Presentation,Time);
 }

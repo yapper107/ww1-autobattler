@@ -1,43 +1,93 @@
 [
   {
-    "name": "Female machine gun \u2014 reload and move",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-064856",
-    "start": 29.5,
-    "end": 35.5,
-    "note": "Pass 46: 6.0/10. Entry, pouch clearance, sleeve and plate roll repaired. Shoulder strap, load response and equipment motion remain unaccepted.",
-    "frames": 180,
+    "name": "Current four-soldier course",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-085719",
+    "start": 0,
+    "end": 49,
+    "note": "Pass 62: 6.0/10, complete 49-second course. Vault timing, staged collapse, torso/weapon coordination and crouch weight transfer remain below the requested 8.5. Dense frame inspection; normal-speed playback remains for human judgment.",
+    "frames": 1470,
     "video": "authored-actions-media/action-0.mp4",
     "poster": "authored-actions-media/action-0.png"
   },
   {
-    "name": "Male machine gun \u2014 reload and move",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-070047",
-    "start": 29.5,
-    "end": 35.5,
-    "note": "Pass 48: 8.0/10 provisional. Armor/cloth intrusion, sleeve holes and transition pop repaired. Minor cuff folds and motion weight remain unaccepted; no full-course approval.",
-    "frames": 180,
+    "name": "Male rifle \u2014 sprint stop detail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-081602",
+    "start": 18,
+    "end": 21,
+    "note": "Pass 55: 6.5/10, sprint-stop only. Natural braking playback removes the long suspended step; the one-frame stance split remains repaired. Weight transfer and coat response need work.",
+    "frames": 90,
     "video": "authored-actions-media/action-1.mp4",
     "poster": "authored-actions-media/action-1.png"
   },
   {
-    "name": "Female machine gun \u2014 opposite view",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-064657",
-    "start": 29.5,
-    "end": 35.5,
-    "note": "Pass 46 companion. Complete 180-frame view; exact hidden finger contacts remain unverified.",
-    "frames": 180,
+    "name": "Female rifle \u2014 sprint stop detail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-081655",
+    "start": 18,
+    "end": 21,
+    "note": "Pass 55: 6.5/10, sprint-stop only. Natural braking playback removes the long suspended step; the one-frame stance split remains repaired. Weight transfer and coat response need work.",
+    "frames": 90,
     "video": "authored-actions-media/action-2.mp4",
     "poster": "authored-actions-media/action-2.png"
   },
   {
-    "name": "Male machine gun \u2014 opposite view",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-065920",
-    "start": 29.5,
-    "end": 35.5,
-    "note": "Pass 48 companion. Shoulder cloth stays beneath the plate through the walking exit. Dense-frame review cannot certify continuous timing or weight.",
-    "frames": 180,
+    "name": "Female machine gun \u2014 fire, reload, walk and recovery",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-072920",
+    "start": 26,
+    "end": 39,
+    "note": "Pass 50: 6.0/10 provisional on both bodies. Maintained walking-fire brace and modest reload response. Braking crouch, recoil absorption and load transfer remain unaccepted. Captured before the gait/direction repair.",
+    "frames": 390,
     "video": "authored-actions-media/action-3.mp4",
     "poster": "authored-actions-media/action-3.png"
+  },
+  {
+    "name": "Male machine gun \u2014 fire, reload, walk and recovery",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-073042",
+    "start": 26,
+    "end": 39,
+    "note": "Pass 50: 6.0/10 provisional on both bodies. Maintained walking-fire brace and modest reload response. Braking crouch, recoil absorption and load transfer remain unaccepted. Captured before the gait/direction repair.",
+    "frames": 390,
+    "video": "authored-actions-media/action-4.mp4",
+    "poster": "authored-actions-media/action-4.png"
+  },
+  {
+    "name": "Female machine gun \u2014 reload detail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-072520",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 50: 6.0/10 provisional on both bodies. Maintained walking-fire brace and modest reload response. Braking crouch, recoil absorption and load transfer remain unaccepted. Captured before the gait/direction repair.",
+    "frames": 180,
+    "video": "authored-actions-media/action-5.mp4",
+    "poster": "authored-actions-media/action-5.png"
+  },
+  {
+    "name": "Male machine gun \u2014 reload detail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-072620",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 50: 6.0/10 provisional on both bodies. Maintained walking-fire brace and modest reload response. Braking crouch, recoil absorption and load transfer remain unaccepted. Captured before the gait/direction repair.",
+    "frames": 180,
+    "video": "authored-actions-media/action-6.mp4",
+    "poster": "authored-actions-media/action-6.png"
+  },
+  {
+    "name": "Female machine gun \u2014 opposite view",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-072721",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 50: 6.0/10 provisional on both bodies. Maintained walking-fire brace and modest reload response. Braking crouch, recoil absorption and load transfer remain unaccepted. Captured before the gait/direction repair.",
+    "frames": 180,
+    "video": "authored-actions-media/action-7.mp4",
+    "poster": "authored-actions-media/action-7.png"
+  },
+  {
+    "name": "Male machine gun \u2014 opposite view",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-072820",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 50: 6.0/10 provisional on both bodies. Maintained walking-fire brace and modest reload response. Braking crouch, recoil absorption and load transfer remain unaccepted. Captured before the gait/direction repair.",
+    "frames": 180,
+    "video": "authored-actions-media/action-8.mp4",
+    "poster": "authored-actions-media/action-8.png"
   },
   {
     "name": "Female rifle \u2014 current body check",
@@ -46,8 +96,8 @@
     "end": 32,
     "note": "Front body-regression review found no new gross defect. Action keys unchanged from pass 37 (6.0). This is not a new performance grade.",
     "frames": 113,
-    "video": "authored-actions-media/action-4.mp4",
-    "poster": "authored-actions-media/action-4.png"
+    "video": "authored-actions-media/action-9.mp4",
+    "poster": "authored-actions-media/action-9.png"
   },
   {
     "name": "Male rifle \u2014 current body check",
@@ -56,8 +106,8 @@
     "end": 32,
     "note": "Current shoulder, cuff and sleeve repairs passed the bounded front-view body regression. Action keys unchanged from pass 36 (7.5 provisional); no new performance grade.",
     "frames": 180,
-    "video": "authored-actions-media/action-5.mp4",
-    "poster": "authored-actions-media/action-5.png"
+    "video": "authored-actions-media/action-10.mp4",
+    "poster": "authored-actions-media/action-10.png"
   },
   {
     "name": "Female rifle reload \u2014 reviewed operating side",
@@ -66,8 +116,8 @@
     "end": 32,
     "note": "Pass37:6.0. Ordinary occlusion is not a demonstrated contact error. Dominant operating forearm and modest force response remain performance issues. Historical body weights; action keys unchanged.",
     "frames": 113,
-    "video": "authored-actions-media/action-6.mp4",
-    "poster": "authored-actions-media/action-6.png"
+    "video": "authored-actions-media/action-11.mp4",
+    "poster": "authored-actions-media/action-11.png"
   },
   {
     "name": "Male rifle and interrupted reload \u2014 reviewed operating side",
@@ -76,8 +126,8 @@
     "end": 32,
     "note": "Pass36:7.5 provisional. Continuous sleeve at121, cleaner manipulation. Some small contacts remain occluded/unverified, not proven faulty. Historical body weights; action keys unchanged.",
     "frames": 180,
-    "video": "authored-actions-media/action-7.mp4",
-    "poster": "authored-actions-media/action-7.png"
+    "video": "authored-actions-media/action-12.mp4",
+    "poster": "authored-actions-media/action-12.png"
   },
   {
     "name": "Female rifle reload \u2014 reviewed opposite high view",
@@ -86,27 +136,67 @@
     "end": 32,
     "note": "Pass35/37:6.0. Curl exposes more ammunition. Diagnostic companion confirms projected thumb and cartridge contact; this unmarked view is the visual evidence. Historical body weights; action keys unchanged.",
     "frames": 113,
-    "video": "authored-actions-media/action-8.mp4",
-    "poster": "authored-actions-media/action-8.png"
+    "video": "authored-actions-media/action-13.mp4",
+    "poster": "authored-actions-media/action-13.png"
   },
   {
-    "name": "Lowered rifle carry and walking",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-220522",
-    "start": 0,
-    "end": 7,
-    "note": "Historical pass9: carry5.5, walk5.0, stop4.5. Before later timed-stop correction.",
-    "frames": 210,
-    "video": "authored-actions-media/action-9.mp4",
-    "poster": "authored-actions-media/action-9.png"
+    "name": "Male rifle \u2014 current turn",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-085529",
+    "start": 6.5,
+    "end": 9.5,
+    "note": "Pass 61: 6.0/10, turn only. Entry reversal repaired, but narrow support and a separate late crossing/replant remain.",
+    "frames": 90,
+    "video": "authored-actions-media/action-14.mp4",
+    "poster": "authored-actions-media/action-14.png"
   },
   {
-    "name": "Female held crouch stop",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-224507",
-    "start": 21,
-    "end": 26,
-    "note": "Pass11:5.5. Timed stop reduces early planting; narrow support and weak weight acceptance remain.",
-    "frames": 150,
-    "video": "authored-actions-media/action-10.mp4",
-    "poster": "authored-actions-media/action-10.png"
+    "name": "Female rifle \u2014 current turn",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-085624",
+    "start": 6.5,
+    "end": 9.5,
+    "note": "Pass 61: 6.0/10, turn only. Entry reversal repaired, but narrow support and a separate late crossing/replant remain.",
+    "frames": 90,
+    "video": "authored-actions-media/action-15.mp4",
+    "poster": "authored-actions-media/action-15.png"
+  },
+  {
+    "name": "Male rifle \u2014 death and settled tail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-084127",
+    "start": 43.5,
+    "end": 49,
+    "note": "Pass 59: 4.5/10, death only. Entry pose reset repaired. Staged collapse and unconvincing weapon roll remain; machine-gun box and belt pouch penetrate the floor.",
+    "frames": 165,
+    "video": "authored-actions-media/action-16.mp4",
+    "poster": "authored-actions-media/action-16.png"
+  },
+  {
+    "name": "Female rifle \u2014 death and settled tail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-084228",
+    "start": 43.5,
+    "end": 49,
+    "note": "Pass 59: 4.5/10, death only. Entry pose reset repaired. Staged collapse and unconvincing weapon roll remain; machine-gun box and belt pouch penetrate the floor.",
+    "frames": 165,
+    "video": "authored-actions-media/action-17.mp4",
+    "poster": "authored-actions-media/action-17.png"
+  },
+  {
+    "name": "Male machine gun \u2014 death and settled tail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-084330",
+    "start": 43.5,
+    "end": 49,
+    "note": "Pass 59: 4.0/10, death only. Entry pose reset repaired. Staged collapse and unconvincing weapon roll remain; machine-gun box and belt pouch penetrate the floor.",
+    "frames": 165,
+    "video": "authored-actions-media/action-18.mp4",
+    "poster": "authored-actions-media/action-18.png"
+  },
+  {
+    "name": "Female machine gun \u2014 death and settled tail",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-084432",
+    "start": 43.5,
+    "end": 49,
+    "note": "Pass 59: 4.0/10, death only. Entry pose reset repaired. Staged collapse and unconvincing weapon roll remain; machine-gun box and belt pouch penetrate the floor.",
+    "frames": 165,
+    "video": "authored-actions-media/action-19.mp4",
+    "poster": "authored-actions-media/action-19.png"
   }
 ]

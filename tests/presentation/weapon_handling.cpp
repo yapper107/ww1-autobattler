@@ -29,6 +29,10 @@ int main(){
  assert(Handling(rifle,10.55,1,false,automatic).boltBack==0);
  assert(Handling(rifle,10,1,false,automatic).gun.y==-1);
  auto mg=rifle;mg.machineGun=true;
+ {HandlingInput history;for(int i=0;i<20;++i)AddRecoilShot(history,10.+i*.01);
+  assert(history.recoilShotCount==16&&history.recoilShots[0]==10.04&&history.recoilShots[15]==10.19);
+  ReadHandling(soldier,history);assert(history.recoilShotCount==0);
+ }
  assert(Handling(mg,10.55,1,false).boltBack==0);
  // Cached carry blending controls both activation and release independently
  // of a newly changed movement flag; replay seeking supplies the same weight.
@@ -37,7 +41,7 @@ int main(){
   carry.movingFireWeight=.5f;const auto entering=Handling(carry,10,1,false);
   carry.movingFire=false;const auto leaving=Handling(carry,10,1,false);
   assert(entering.gun.z==leaving.gun.z&&entering.pitch==leaving.pitch);
-  assert(entering.gun.z<0&&entering.gun.z>-14);
+  assert(entering.gun.z==0&&entering.pitch==0); // retain the acquired firing brace
  }
  rifle.reloadStart=11;rifle.reloadEnd=13.5;
  assert(std::strcmp(Handling(rifle,12,1,false).name,"rifle reload")==0);

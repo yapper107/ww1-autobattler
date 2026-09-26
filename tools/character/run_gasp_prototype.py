@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--warp-mask', type=int, choices=range(8), default=7, help='Diagnostic layer mask: orientation=1, stride=2, foot placement=4')
     parser.add_argument('--time', type=float, default=27, help='Combat still time')
     parser.add_argument('--start', type=float, default=0, help='First combat capture second')
-    parser.add_argument('--end', type=float, default=46, help='Last combat capture second')
+    parser.add_argument('--end', type=float, default=49, help='Last combat capture second')
     parser.add_argument('--camera-yaw', type=float, default=43, help='Close camera angle: 0 front, 90 side')
     parser.add_argument('--camera-height', type=float, default=130, help='Close camera height above the focus, centimetres')
     parser.add_argument('--camera-width', type=float, default=390, help='Close view orthographic width in centimetres')
@@ -56,8 +56,8 @@ def main():
     args = parser.parse_args()
     if args.still:
         args.capture = True
-    if not 0 <= args.start < args.end <= 46:
-        parser.error('Capture range must satisfy 0 <= start < end <= 46')
+    if not 0 <= args.start < args.end <= 49:
+        parser.error('Capture range must satisfy 0 <= start < end <= 49')
     if args.source_clip and (not args.combat_review or args.motion_validate):
         parser.error('--source-clip requires --combat-review and cannot validate runtime motion')
     assert any([args.stage, args.retarget, args.review, args.validate, args.motion_library,args.contacts,args.actions,args.cloth,args.runtime,args.contexts,args.combat_crouch,args.audit_library,args.combat_review,args.motion_validate]), 'Choose a preparation or review action'
@@ -166,7 +166,9 @@ def main():
                 # Keep the validation for this exact render. The next capture
                 # replaces the shared Saved/AnimationReview diagnostics.
                 review=args.mirror/'Saved/AnimationReview'
-                for name in ['gasp-combat-check.txt','gasp-arm-continuity.csv','gasp-arm-geometry.csv']:
+                for name in ['gasp-combat-check.txt','gasp-arm-continuity.csv','gasp-arm-geometry.csv',
+                             'gasp-foot-continuity.csv','gasp-crouch-continuity.csv',
+                             'gasp-combat.csv','gasp-queries.txt']:
                     (capture_dir/name).write_bytes((review/name).read_bytes())
                 result=(capture_dir/'gasp-combat-check.txt').read_text()
                 if 'passed=1' not in result.split():

@@ -19,6 +19,8 @@ public:
     bool ContactsEnabled=false;
     bool Crouching=false;
     bool CanFinishStop=false;
+    bool CanFinishTurn=false;
+    float TurnYaw=0;
     float LocomotionSpeed=0;
     float StopSeconds=-1;
     FVector LocomotionVelocity=FVector::ZeroVector;

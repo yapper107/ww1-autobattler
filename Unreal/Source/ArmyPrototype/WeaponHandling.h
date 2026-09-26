@@ -1,9 +1,14 @@
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cmath>
 namespace armyvisual {
 struct HandlingInput {
     double lastShot=-1000, reloadStart=-1, reloadEnd=-1;
+    // Actual recent events, not an assumed cadence. Overlapping authored recoil
+    // must survive the next shot and remain identical during backward seeks.
+    std::array<double,16> recoilShots{};
+    int recoilShotCount=0;
     float cycleSeconds=1.25f;
     bool machineGun=false, movingFire=false, coveredPath=false;
     float movingFireWeight=-1; // cached presentation blend; negative uses the legacy flag
@@ -14,6 +19,13 @@ struct HandlingInput {
     float vaultProgress=0, vaultHeight=0;
     double vaultLandsAt=-1;
 };
+inline void AddRecoilShot(HandlingInput& input,double time) {
+    if(input.recoilShotCount==int(input.recoilShots.size())) {
+        std::move(input.recoilShots.begin()+1,input.recoilShots.end(),input.recoilShots.begin());
+        --input.recoilShotCount;
+    }
+    input.recoilShots[size_t(input.recoilShotCount++)]=time;
+}
 struct Offset {float x=0,y=0,z=0;};
 inline Offset Mix(Offset a,Offset b,float t){return {a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,a.z+(b.z-a.z)*t};}
 inline float Smooth(float t){t=std::clamp(t,0.f,1.f);return t*t*(3-2*t);}
@@ -85,7 +97,10 @@ inline HandlingPose Handling(const HandlingInput& s,double time,float aim,bool d
         p.gun.z=breath*.4f;p.torsoPitch=3+breath*.8f;p.headPitch=-2-breath*.5f;p.name="winded";
     }
     const float movingFireWeight=s.movingFireWeight>=0?std::clamp(s.movingFireWeight,0.f,1.f):(s.movingFire?1.f:0.f);
-    if(s.machineGun&&movingFireWeight>0){p.gun.z-=14*movingFireWeight;p.pitch-=8*movingFireWeight;p.upper=1;p.name="moving hip fire";}
+    // Walking fire keeps the acquired firing brace. Dropping fourteen
+    // centimetres here made reload recovery aim up, then immediately sink
+    // into a second pose as movement began, even with continuous aim intent.
+    if(s.machineGun&&movingFireWeight>0){p.upper=1;p.name="moving fire";}
     const float age=float(time-s.lastShot);
     if(age>=0&&age<.35f){
         const float kick=std::exp(-age/std::max(.01f,settings.recoverySeconds));

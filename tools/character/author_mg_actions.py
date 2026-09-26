@@ -15,6 +15,7 @@ import author_mg_mechanism as mechanism
 import repair_male_glove
 import repair_male_sleeve
 import repair_soldier_pauldrons
+from author_motion_curves import monotone_transit
 
 OUT=Path(sys.argv[sys.argv.index('--')+1]);OUT.mkdir(parents=True,exist_ok=True)
 scene=bpy.context.scene;scene.render.fps=60
@@ -133,8 +134,13 @@ for gender,source_name in [('Female','Female_Mixamo_Rig'),('Male','Male_Azure_Ri
             for p in rig.pose.bones:p.matrix_basis=base[p.name]
             bpy.context.view_layer.update();t=(frame-1)/60;u=t/duration
             loading=env(u,0,.16,.85,1) if kind=='Reload' else 0
+            # Take the one-handed burden before the offhand releases. The
+            # supporting hip accepts the gun, then shifts toward the pouch
+            # reach. Ankles remain at their authored plants through this load
+            # transfer; it is not a decorative loop over the operating arm.
+            support=env(u,0,.055,.94,1) if kind=='Reload' else 0
             kick=route([(0,(0,0,0)),(.028,(1,0,0)),(.075,(.3,0,0)),(.2,(0,0,0)),(.4,(0,0,0))],t).x if kind=='Shot' else 0
-            response=route([(0,(0,0,0)),(.065,(-1.8,0,.7)),(.16,(.6,0,-.2)),(.4,(0,0,0))],t) if kind=='Shot' else Vector((4*loading,-2*loading,-4*loading))
+            response=route([(0,(0,0,0)),(.065,(-1.8,0,.7)),(.16,(.6,0,-.2)),(.4,(0,0,0))],t) if kind=='Shot' else Vector((5.5*support,-4*support,-4.5*loading))
             retrieve=env(u,.24,.35,.475,.635) if kind=='Reload' else 0
             def impulse(keys):return route([(phase,(value,0,0)) for phase,value in keys],u).x if kind=='Reload' else 0
             seat=impulse([(.60,0),(.64,1),(.657,-.28),(.69,0),(1,0)])
@@ -142,7 +148,9 @@ for gender,source_name in [('Female','Female_Mixamo_Rig'),('Male','Male_Azure_Ri
             latch=impulse([(.81,0),(.835,1),(.85,-.25),(.88,0),(1,0)])
             pull=mechanism.charging(u) if kind=='Reload' else 0
             response+=Vector((3*retrieve+2.8*press+2.2*latch-1.8*seat,-2.5*retrieve,7*retrieve-3*pull))
-            hip=world[hip_name].copy();hip.translation+=Vector((-.018*loading,.002*kick+.01*retrieve,-.013*loading-.004*seat));set_world(hip_name,hip)
+            hip=world[hip_name].copy()
+            hip.translation+=Vector((-.036*support+.014*retrieve,.002*kick+.012*support-.02*retrieve,-.025*support-.012*retrieve-.004*seat))
+            set_world(hip_name,hip)
             body_turn(chest_name,response);body_turn(head_name,Vector((8*loading+5*retrieve,0,6*loading+8*retrieve)))
             gun=(rig.matrix_world@rig.pose.bones[chest_name].matrix)@world[chest_name].inverted()@gun_base
             gun.translation+=Vector((0,.018*kick+.03*loading,-.065*loading-.016*seat-.012*press-.012*latch))
@@ -165,16 +173,16 @@ for gender,source_name in [('Female','Female_Mixamo_Rig'),('Male','Male_Azure_Ri
                 above=bag@Matrix.Translation(Vector((0,-.126,.065)))
                 inside=bag@Matrix.Translation(Vector((0,-.126,-.155)))
                 undocked=gun@Matrix.Translation(Vector((-.035,0,-.09)))
-                aligned=above.copy()
                 box_keys=[(0,gun),(.215,gun),(.26,undocked),(.32,above),(.37,inside),
                     (.425,inside),(.485,above),(.595,undocked),(.645,gun),(1,gun)]
+                position=Vector(monotone_transit([(phase,tuple(m.translation)) for phase,m in box_keys],u))
                 for (a,m),(b,n) in zip(box_keys,box_keys[1:]):
                     if a<=u<=b:
                         alpha=smooth((u-a)/(b-a))
-                        box=Matrix.LocRotScale(m.translation.lerp(n.translation,alpha),m.to_quaternion().slerp(n.to_quaternion(),alpha),Vector((1,1,1)));break
+                        box=Matrix.LocRotScale(position,m.to_quaternion().slerp(n.to_quaternion(),alpha),Vector((1,1,1)));break
                 bag_hand=gun.inverted()@(box@dock)
                 box_offset=gun.inverted()@box.translation
-                hand_local=route([(0,tuple(supported_palm)),(.075,(-.065,.203,.14)),
+                hand_local=route([(0,tuple(supported_palm)),(.035,tuple(supported_palm)),(.075,(-.065,.203,.14)),
                     (.085,tuple(lid)),(.16,tuple(lid)),(.20,tuple(dock)),(.215,tuple(dock)),
                     (.265,tuple(dock+box_offset)),(.365,tuple(dock+box_offset)),(.405,tuple(bag_hand)),
                     (.465,tuple(bag_hand)),(.535,tuple(dock+box_offset)),(.60,tuple(dock)),

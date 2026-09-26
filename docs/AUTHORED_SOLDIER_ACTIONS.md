@@ -6,20 +6,28 @@ soldier rig, exported into the existing deterministic Unreal presentation layer.
 GASP still provides locomotion. We are not replacing the character or weapon art.
 No new animation pack purchase is part of this work.
 
-The independent critic's last complete four-body course grade is **4.0/10**.
+The independent critic's last complete four-body course grade is **5.5/10** ([pass 51](reviews/animation-critic-pass51-complete-course.md)).
 The requested 8.5/10 has not been reached. Focused reviews below do not approve the complete system or raise that overall
 score. Review is from dense chronological rendered frames, not continuous video
 playback.
 
 The latest focused reviews are female rifle reload **6.0/10** (pass 37), the
-male shot/bolt/interrupted reload sequence **7.5 provisional** (pass 36), female MG
-reload/exit **6.0** (pass 46), and male MG **8.0 provisional** (pass 48). Female held crouch stop is **5.5**, carry **5.5**,
+male shot/bolt/interrupted reload sequence **7.5 provisional** (pass 36), and **both MG
+performances 6.0 provisional** in pass 50, following the fresh 5.5 comparison
+(pass 49). Maintained firing carriage and modest reload response improved; the
+longer full-body view exposed an inappropriate late braking crouch. Gait and direction
+selection repair removes that crouch; the subsequent walking-fire/stop-only review
+is **6.5 on both bodies** ([pass 52](reviews/animation-critic-pass52-directed-stop.md)).
+Pass 51 still finds a sprint-stop discontinuity, weak supported turning and staged death. Earlier focused reviews gave
+female MG 6.0 (pass 46) and male MG 8.0 provisional (pass 48); pass 49 judged both
+on the same performance criteria and found similarly weak load response and firing
+commitment. The earlier grades remain attributed in their reports. Female held crouch stop is **5.5**, carry **5.5**,
 walking **5.0**, and walk-stop **4.5**. These grades refer to the exact captures in
 the critic reports, not subsequent unreviewed changes.
 
 Male bolt placement and ammunition visibility improve, and the glove fin is repaired,
 and the extraction sleeve fold is repaired. Female stock clearance and supporting wrist improve;
-the feed still needs a clearly readable press. Pickup remains obscured. The MG pouch-wall conflict, sleeve holes and action-boundary pop are repaired in the latest graded captures; shoulder armor and load response remain open. Locomotion weight and broad action coverage remain unaccepted.
+the feed still needs a clearly readable press. Pickup remains obscured. The MG pouch-wall conflict, sleeve holes and action-boundary pop are repaired in the latest graded captures; the revised shoulder passed the bounded mesh checks, but load response remains open. Locomotion weight and broad action coverage remain unaccepted.
 Passing numerical checks do not waive these visible failures.
 
 ## Editable sources and reproduction
@@ -71,7 +79,10 @@ Run with Blender 5.2 in background mode, using these arguments after `--`:
    female authoring mode remains available for historical diagnostics.
 3. Open the same gunners blend; run `author_mg_actions.py` with output
    `art/characters/authored_mg`. It takes the actual body-specific standing MG grip
-   at source frame 85. The shot and reload are newly keyed actions.
+   at source frame 85. The shot and reload are newly keyed actions. Keep
+   `author_motion_curves.py` beside the script; its bounded cubic box-transfer
+   curve preserves deliberate grip/exchange holds without stopping at every
+   clearance waypoint.
 4. `scripts/build.sh` copies authoring exports to the marked Windows mirror.
    Run `Tools/character/import_authored_rifle.py` through UE's Python commandlet;
    despite the historical filename, it imports both authored weapon families.
@@ -113,9 +124,12 @@ receiver on the imported static mesh, not a free-floating target above the stock
 The eight-round strip is vertical and descends into the receiver.
 
 The MG reload uses `Weapon_Free` as the ammunition-box carrier while alive; death
-still uses the existing drop contract. The MG firing source exists as editable
-blocking, but is **not enabled as the runtime firing action** yet. Its interrupted
-burst behavior needs authoring and review before replacing current recoil.
+still uses the existing drop contract. The MG firing source is now sampled additively for each recorded shot during its
+0.4-second recovery. Actual recent event times let successive impulses overlap;
+there is no synthesized cadence. The weapon and upper-body responses derive from
+the authored clip relative to its first pose. This candidate replaces procedural
+MG recoil when that clip exists and still requires visual review. Walking fire
+retains the acquired brace instead of applying the former 14 cm / 8 degree drop.
 The MG feed cover, belt, box and charging handle are articulated. The belt remains
 a rigid linked section during feeding; individual link flex and exact opposing
 finger contacts are not certified. These source assets remain work in progress.
@@ -134,9 +148,9 @@ box contact too; its previous wrist-only result did not prove prop contact.
 | Rifle shot → bolt → aim | Female earlier pass 10: 5.5; male full sequence pass 36: 7.5 provisional. Female firing needs a current review. |
 | Rifle reload → aim | Female pass 37: 6.0; male sequence pass 36: 7.5 provisional. Female force/release remains weak; neither reaches 8.5. |
 | Crouch start / side move / stop | Held female stop pass 11: 5.5. Timed stopping reduces early planting; toe support and load acceptance remain unaccepted. |
-| Walk / turns / run / sprint / braking | Pass 9 female carry 5.5, walk 5.0, stop 4.5. Other gait/body combinations still need review. Carry follows chest; intent contexts remain separate. |
-| Moving fire / crouched handling | Layers function, but the standing performance has not been certified for these adaptations. |
-| MG firing / reload | Articulated reload: female pass 46 6.0, male pass 48 8.0 provisional. Main plate roll and male shoulder-cloth intrusions repaired; load response remains unaccepted. Authored burst integration remains open. |
+| Walk / turns / run / sprint / braking | Pass 51 full course: ordinary stop improves, supported turn remains weak, sprint stop snaps at frames 583–584. Gait and direction now constrain stop selection. |
+| Moving fire / crouched handling | MG walking-fire/stop 6.5 on both bodies in pass 52. High brace retained and deep braking crouch removed; body absorption remains weak. Crouched weapon handling needs its own review. |
+| MG firing / reload | Both 6.0 provisional in pass 50. Authored impulses overlap using recorded shots; continuous box transfer and reload body response improve. Force transmission remains weak. |
 | Vault / landing | Improved retained carry and free-hand plant. Landing is continuous in the inspected sequence; speed/obstacle variants and landing-to-travel remain open. |
 | Winded / death / drop | Existing runtime behavior; no new quality approval. |
 | Prone / other gameplay actions | No claim of complete authored coverage. |
@@ -765,3 +779,120 @@ and weapon-handling/2,000-seek checks pass. The current 1,381-frame/four-body na
 course passes contacts, deterministic seeking, pose-query preservation and finite
 cloth checks. This is technical evidence, not visual acceptance. The complete
 Linux simulation suite remains inherited on unchanged source `090b6da63e131f07`.
+
+
+## MG impulses and stopping continuation — 26 September 2026
+
+This supersedes the current-status portion of the earlier 11-clip checkpoint.
+The player currently contains **14 complete videos**: stopping course `080401`,
+close male/female sprint stops `080224`/`080313`, six MG performance views from
+pass 50, and five rifle body/operating-side companions. Every name here uses
+`GaspCombat-20260926-`. These are explicitly marked as preceding subsequent turn
+and braking-time iteration. Captures remain machine-local; the H.264 videos,
+posters, manifest, controls and editable sources travel with the repository.
+
+The MG source blend was regenerated from portable `gunners_2026-09-25.blend`.
+Authored per-shot impulses now overlap from actual recorded times (0.4-second
+recovery); the retained 16-event window is reset when replay handling is read.
+Standing fire and walking fire share that response. Reload support begins before
+release, and the box uses componentwise monotone Hermite translation through
+clearance points, retaining deliberate contact holds. Neither cadence nor ammunition
+rules changed. Both MG performances are **6.0 provisional** in
+[pass 50](reviews/animation-critic-pass50-mg-performance.md), following the common
+[pass 49](reviews/animation-critic-pass49-fresh-mg-comparison.md) comparison at 5.5.
+
+Stopping databases retain the incoming walk/run/sprint and choose the nearest of
+eight travel directions before pose/foot similarity. Source root travel is checked
+against every directional database. A requested direction missing from the sprint
+library retains the explicit general-gait fallback; that fallback is not visually
+certified. Context rebuilding preserves unchanged transition notify objects.
+Walking fire no longer drops the gun 14 cm or picks a deep sprint/backward stop.
+[Pass 52](reviews/animation-critic-pass52-directed-stop.md) rates that bounded
+section 6.5 on both bodies.
+
+The [pass 51 complete course](reviews/animation-critic-pass51-complete-course.md)
+is **5.5/10**, up from the original critic's 4.0. It exposed a sprint-stop
+583→584 discontinuity. Layer ablation retained it without stride warping or foot
+placement, and removed it without orientation warping. The former raw foot step
+was 1.56 cm while the final right foot jumped 41.92 cm. Time-filtering the release
+alone only reduced that to 25.02 cm. Precise forward source selection plus the
+filter reduced it to 3.69 cm. These are diagnostic measurements, not grade inputs.
+[Pass 53](reviews/animation-critic-pass53-stop-continuity.md) independently confirms
+the split is removed on all four bodies and scores the close rifle braking
+performances 6.0 each. Supported compression, transmitted load and coat flare
+remain below the 8.5 requirement.
+
+The next iteration enables the eight existing standing turn clips excluded by the
+idle filter, releasing stop continuation when angular intent arrives. Initial
+[pass 54](reviews/animation-critic-pass54-standing-turn.md) is 5.5 on both bodies:
+clip reselection still repeatedly uses their opening poses. Continuing the selected
+support exchange improves both turns to 6.0 in
+[pass 56](reviews/animation-critic-pass56-continued-turn.md). A subsequent root-hold
+experiment stalls then catches up and was discarded; turn-size selection is being
+investigated separately. The source 45-degree turn retains the same root rotation
+in the source and retarget, so missing source rotation is not the explanation.
+
+The prolonged braking flight was traced to roughly 0.37x source playback. Standing
+timed-stop bounds now match ordinary locomotion at 0.65–1.2.
+[Pass 55](reviews/animation-critic-pass55-braking-timing.md) rates both close sprint
+stops 6.5, with the repaired boundary still intact. Applying that same bound to
+crouch selected the opposite stopping foot and delayed stance opening; crouch
+therefore retains its prior timing range. None of these scoped grades promotes
+the historical whole-course score.
+
+Verification so far: UE 5.8 builds and the native 1,381-frame/four-body course pass
+contacts, nonzero authored MG overlap (246 samples per gunner), deterministic
+seeking, query preservation and finite cloth. Python: 232 tests, eight skipped;
+focused documentation/curve checks: nine; native weapon-handling and 2,000-seek
+context checks pass. All 14 portable videos decode. The unchanged simulation's
+full Linux suite is inherited on `090b6da63e131f07`. An initial read-only source
+contact audit omitted sample plugins and exited on unrelated sample Blueprint
+errors; the corrected invocation completed with zero errors/warnings. It did not
+modify the sample or source assets. No continuous-video perception, packaged-build,
+64-body gameplay or 8.5 acceptance is claimed.
+
+
+## Current 49-second checkpoint — 26 September 2026
+
+This supersedes the earlier player's current-status claims. The portable player
+contains **20 complete H.264 clips**: current course `085719` (1,470 frames),
+pass-55 sprint stops `081602`/`081655`, six explicitly historical MG views,
+five rifle companions, current directed turns `085529`/`085624`, and four death
+views `084127`/`084228`/`084330`/`084432`. Prefix for all is
+`GaspCombat-20260926-`. Files and manifest carry their exact scope and provenance.
+
+The [fresh full-course review](reviews/animation-critic-pass62-current-course.md)
+rates this complete 49-second candidate **6.0/10**. Its reviewer did not read
+implementation, technical test results or other critic scores. Priorities are
+vault descent/landing coordination, the held bow in the death, torso/weapon
+coordination and crouch weight transfer. The requested **8.5 is not achieved**.
+
+Turn selection now separates planned angle and left/right direction, and blocks
+new searches from entering a late tail while allowing the selected clip to finish.
+The old female right turn could select the left turn at 1.367 s. Current directed
+entry selects the right turn at its opening. [Pass 61](reviews/animation-critic-pass61-directed-turn-entry.md)
+confirms the reversed entry is repaired; both turns remain **6.0** because narrow
+support and a separate crossing/replant remain. [Pass 60](reviews/animation-critic-pass60-turn-entry.md)
+and the earlier pass-58 result remain historical evidence, not overwritten grades.
+
+Death blends the fully evaluated living pose, including weapon/contact layers,
+for its first 0.15 s. The pose is evaluated from the retained entry state rather
+than an ambient previous-frame cache, preserving seeking and muzzle-query behavior.
+[Pass 59](reviews/animation-critic-pass59-death-entry.md) verifies the exact entry
+pop is removed on all four bodies but grades the full deaths **4.5 per rifle / 4.0
+per MG**. The original collapse and weapon-free track remain: staged bow/kneel/roll,
+implausible repeated weapon rocking, MG box and belt-pouch ground penetration.
+Those are unfinished work, not accepted animation.
+
+Native UE 5.8 checks pass 1,471 sampled instants across four bodies, deterministic
+seeking, query preservation, finite cloth, and 28 exact death-entry comparisons
+(seven entry states per body, including crouch, firing, bolt, reload and moving fire).
+Maximum death-entry bone-position difference is 0 cm at the entry instant; this
+proves continuity only. Standing stop bounds remain 0.65–1.2; crouch timing was
+restored after a regression. Source turn-root rotation was audited read-only and
+matches the sample. No simulation files changed. The earlier 232 Python tests
+(eight skips), native handling/context checks, and same-source full Linux suite
+remain applicable; current documentation checks and video decoding are recorded
+with this checkpoint. No 64-body, packaged-build or normal-speed visual acceptance
+is implied. Next work addresses weight and collision rather than raising grades
+from technical checks.

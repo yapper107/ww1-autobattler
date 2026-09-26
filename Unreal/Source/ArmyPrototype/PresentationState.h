@@ -23,6 +23,7 @@ template<class T>struct VaultBridge<T,std::void_t<decltype(T::vaulting),decltype
     static void Read(const T& s,HandlingInput& h){h.vaulting=s.vaulting;h.vaultProgress=s.vaultProgress;h.vaultHeight=s.vaultHeight;}
 };
 template<class T>inline void ReadHandling(const T& s,HandlingInput& h) {
+    h.recoilShotCount=0; // ReplaySource supplies the actual event window separately.
     h.machineGun=s.machineGun;h.movingFire=s.movingFire;h.coveredPath=s.coveredPath;
     h.cycleSeconds=s.gun.cycleSeconds>0?s.gun.cycleSeconds/army::StatScale(s.stats.Get(army::Stat::Dexterity)):0;
     h.reloadEnd=s.reloadUntil;

@@ -36,7 +36,7 @@ def main():
         poster = media / f'action-{i}.png'
         subprocess.run([args.ffmpeg, '-hide_banner', '-loglevel', 'error', '-y',
                         '-framerate', '30', '-i', str(folder / 'combat-%04d.png'),
-                        '-frames:v', str(count), '-c:v', 'libx264', '-crf', '20',
+                        '-frames:v', str(count), '-c:v', 'libx264', '-threads', '2', '-crf', '20',
                         '-pix_fmt', 'yuv420p', '-movflags', '+faststart', str(movie)], check=True)
         shutil.copy2(expected[min(15, count - 1)], poster)
         rows.append(dict(clip, frames=count, video=movie.relative_to(args.output).as_posix(),
@@ -63,7 +63,7 @@ video{width:100%;max-height:75vh;background:#10151c}button,select{font:inherit;p
 .status{padding:14px;border-left:4px solid #e0b767;background:#2a2b27}</style>
 <h1>Authored soldier actions</h1>
 <p class="status">Work in progress. These are actual Unreal captures of our authored actions.
-The last full-course critic grade was 4.0/10; the requested 8.5 has not been reached.
+The last full-course critic grade was 6.0/10 (pass 62); the requested 8.5 has not been reached.
 Critic scores are based on dense adjacent frames, not continuous playback. Technical contact checks do not certify animation quality.</p>
 <p>Use normal speed to judge rhythm and transitions. Pause and step frames to inspect contacts.
 All videos are local MP4 files; no account or network connection is needed.</p>'''

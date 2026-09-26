@@ -60,10 +60,15 @@ public:
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingStartingDatabase;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingStartingDatabase;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingStoppingDatabase;
+    UPROPERTY() TArray<TObjectPtr<UPoseSearchDatabase>> StandingGaitStoppingDatabases;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingStoppingDatabase;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingIdleDatabase;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingIdleDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingTurningDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingTurningDatabase;
+    UPROPERTY() TArray<TObjectPtr<UPoseSearchDatabase>> TurningAngleDatabases;
     UPROPERTY() TObjectPtr<UAnimSequence> AuthoredWeaponShot;
+    UPROPERTY() TObjectPtr<UAnimSequence> AuthoredMGShot;
     UPROPERTY() TObjectPtr<UAnimSequence> AuthoredWeaponReload;
     UPROPERTY() TObjectPtr<UAnimSequence> AuthoredWeaponCarry;
     UPROPERTY() TArray<FArmyMotionFrame> MotionFrames;

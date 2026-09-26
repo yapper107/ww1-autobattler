@@ -21,9 +21,13 @@ public:
     USoldierAnimInstance();
     UPROPERTY(Transient) TArray<FArmyPoseSample> Samples;
     float GripAlpha=1;
+    // Evaluated live entry, including weapon and contact layers, for death entry.
+    TArray<FTransform> DeathEntryPose;
+    float DeathEntryWeight=0;
     UPROPERTY(Transient) TObjectPtr<UAnimSequence> StandingAim;
     // Authored carry/aim references, blended independently of the locomotion legs.
     UPROPERTY(Transient) TArray<FArmyPoseSample> ArmedReference;
+    UPROPERTY(Transient) TArray<FArmyPoseSample> AuthoredBurst;
     float WeaponReady=1;
     bool AuthoredHandling=false;
     bool ArticulatedRiflePouch=false;

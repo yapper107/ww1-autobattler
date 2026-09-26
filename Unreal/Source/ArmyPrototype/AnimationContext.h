@@ -204,6 +204,14 @@ public:
         return std::vector<int>{bound(after),bound(through)};
     }
 
+    std::optional<std::vector<double>> ShotTimesBetween(int slot,double after,double through) const {
+        const auto indices=ShotsBetween(slot,after,through);
+        if(!indices)return std::nullopt;
+        std::vector<double> times;times.reserve(indices->size());
+        for(int index:*indices)times.push_back(record.shots[size_t(index)].time);
+        return times;
+    }
+
     std::optional<std::vector<TrajectoryPoint>> Trajectory(int slot,double time,const std::vector<double>& offsets) const {
         if(!valid || !ValidSlot(slot) || !ValidTime(time))return std::nullopt;
         std::vector<TrajectoryPoint> result; result.reserve(offsets.size());

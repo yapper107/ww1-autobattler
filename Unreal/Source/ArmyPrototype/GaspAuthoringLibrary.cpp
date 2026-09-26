@@ -82,7 +82,6 @@ UPoseSearchDatabase* UGaspAuthoringLibrary::CreateSoldierDatabase(UPoseSearchSch
         // Keep the full clip indexed so a selected footfall can still finish.
         if(Path.EndsWith(TEXT("_starting"))||Path.EndsWith(TEXT("_stopping"))) {
             const FName Marker(TEXT("Army transition continuation"));
-            Clip->Notifies.RemoveAll([&](const FAnimNotifyEvent& Event){return Event.NotifyName.ToString().StartsWith(TEXT("Army transition "));});
             const float Duration=Clip->GetPlayLength(),Step=1.f/60;
             float MovementBegin=Duration,MovementEnd=0;
             for(float T=0;T<Duration-Step*.5f;T+=Step) {
@@ -96,22 +95,68 @@ UPoseSearchDatabase* UGaspAuthoringLibrary::CreateSoldierDatabase(UPoseSearchSch
             const bool Starting=Path.EndsWith(TEXT("_starting"));
             const float EntryBegin=FMath::Max(0.f,Starting?MovementBegin-.25f:MovementEnd-1.f);
             const float EntryEnd=FMath::Min(Duration,Starting?MovementBegin+1.f:MovementEnd+.15f);
-            auto BlockEntry=[&](float Begin,float End,FName Label) {
-                if(End-Begin<Step)return;
-                auto& Event=Clip->Notifies.AddDefaulted_GetRef();Event.NotifyName=Marker;
-                Event.NotifyName=Label;
-                Event.NotifyStateClass=NewObject<UAnimNotifyState_PoseSearchBlockTransition>(Clip);
-                Event.Link(Clip,Begin);Event.SetDuration(End-Begin);Event.EndLink.Link(Clip,End);
-            };
-            BlockEntry(0,EntryBegin,TEXT("Army transition approach"));
-            BlockEntry(EntryEnd,Duration,Marker);
-            if(!Starting) {
-                auto& Event=Clip->Notifies.AddDefaulted_GetRef();Event.NotifyName=TEXT("Army transition stop event");
-                auto* Notify=NewObject<UAnimNotify_PoseSearchEvent>(Clip);Notify->EventTag=TAG_ArmyAnimationStop;
-                Event.Notify=Notify;Event.Link(Clip,MovementEnd);
+            // Context databases share clips. Rebuilding their indexes should
+            // not replace unchanged notify objects and churn every source asset.
+            int Existing=0,Expected=int(EntryBegin>=Step)+int(Duration-EntryEnd>=Step)+int(!Starting);
+            bool Matches=true;TSet<FName> Seen;
+            for(const auto& Event:Clip->Notifies)if(Event.NotifyName.ToString().StartsWith(TEXT("Army transition "))) {
+                ++Existing;Matches&=!Seen.Contains(Event.NotifyName);Seen.Add(Event.NotifyName);
+                if(Event.NotifyName==TEXT("Army transition stop event")) {
+                    const auto* Notify=Cast<UAnimNotify_PoseSearchEvent>(Event.Notify);
+                    Matches&=!Starting&&Notify&&Notify->EventTag==TAG_ArmyAnimationStop&&FMath::IsNearlyEqual(Event.GetTriggerTime(),MovementEnd,.0001f);
+                } else {
+                    const bool Approach=Event.NotifyName==TEXT("Army transition approach");
+                    const float Begin=Approach?0.f:EntryEnd,End=Approach?EntryBegin:Duration;
+                    Matches&=(Approach||Event.NotifyName==Marker)&&End-Begin>=Step&&
+                        Event.NotifyStateClass&&Event.NotifyStateClass->IsA<UAnimNotifyState_PoseSearchBlockTransition>()&&
+                        FMath::IsNearlyEqual(Event.GetTriggerTime(),Begin,.0001f)&&FMath::IsNearlyEqual(Event.GetDuration(),End-Begin,.0001f);
+                }
+            }
+            if(!Matches||Existing!=Expected) {
+                Clip->Notifies.RemoveAll([&](const FAnimNotifyEvent& Event){return Event.NotifyName.ToString().StartsWith(TEXT("Army transition "));});
+                auto BlockEntry=[&](float Begin,float End,FName Label) {
+                    if(End-Begin<Step)return;
+                    auto& Event=Clip->Notifies.AddDefaulted_GetRef();Event.NotifyName=Marker;
+                    Event.NotifyName=Label;
+                    Event.NotifyStateClass=NewObject<UAnimNotifyState_PoseSearchBlockTransition>(Clip);
+                    Event.Link(Clip,Begin);Event.SetDuration(End-Begin);Event.EndLink.Link(Clip,End);
+                };
+                BlockEntry(0,EntryBegin,TEXT("Army transition approach"));
+                BlockEntry(EntryEnd,Duration,Marker);
+                if(!Starting) {
+                    auto& Event=Clip->Notifies.AddDefaulted_GetRef();Event.NotifyName=TEXT("Army transition stop event");
+                    auto* Notify=NewObject<UAnimNotify_PoseSearchEvent>(Clip);Notify->EventTag=TAG_ArmyAnimationStop;
+                    Event.Notify=Notify;Event.Link(Clip,MovementEnd);
+                }
+                Clip->RefreshCacheData();Clip->MarkPackageDirty();
             }
             UE_LOG(LogTemp,Display,TEXT("ARMY_TRANSITION_WINDOW %s movement=%.3f..%.3f entry=%.3f..%.3f"),*Clip->GetName(),MovementBegin,MovementEnd,EntryBegin,EntryEnd);
-            Clip->RefreshCacheData();Clip->MarkPackageDirty();
+        }
+        if(Path.Contains(TEXT("_turning"))) {
+            // A late left-turn pose can resemble an early right turn while its
+            // remaining trajectory is almost zero. Admit only the opening
+            // support exchange; continuations remain available to the player.
+            const float Step=1.f/60,Duration=Clip->GetPlayLength();float Begin=-1;
+            for(float T=0;T<Duration-Step*.5f;T+=Step) {
+                const auto Delta=Clip->ExtractRootMotionFromRange(T,FMath::Min(T+Step,Duration),FAnimExtractContext(T,true));
+                if(FMath::Abs(Delta.Rotator().Yaw)/Step>5){Begin=T;break;}
+            }
+            if(Begin<0)return nullptr;
+            const float EntryEnd=FMath::Min(Duration,Begin+.15f);
+            const FName Marker(TEXT("Army turn continuation"));
+            int Count=0;bool Matches=true;
+            for(const auto& Event:Clip->Notifies)if(Event.NotifyName==Marker) {
+                ++Count;Matches&=Event.NotifyStateClass&&Event.NotifyStateClass->IsA<UAnimNotifyState_PoseSearchBlockTransition>()&&
+                    FMath::IsNearlyEqual(Event.GetTriggerTime(),EntryEnd,.0001f)&&FMath::IsNearlyEqual(Event.GetDuration(),Duration-EntryEnd,.0001f);
+            }
+            if(!Matches||Count!=1) {
+                Clip->Notifies.RemoveAll([&](const FAnimNotifyEvent& E){return E.NotifyName==Marker;});
+                auto& Event=Clip->Notifies.AddDefaulted_GetRef();Event.NotifyName=Marker;
+                Event.NotifyStateClass=NewObject<UAnimNotifyState_PoseSearchBlockTransition>(Clip);
+                Event.Link(Clip,EntryEnd);Event.SetDuration(Duration-EntryEnd);Event.EndLink.Link(Clip,Duration);
+                Clip->RefreshCacheData();Clip->MarkPackageDirty();
+            }
+            UE_LOG(LogTemp,Display,TEXT("ARMY_TURN_ENTRY %s rotation_begin=%.3f entry_end=%.3f"),*Clip->GetName(),Begin,EntryEnd);
         }
         Database->AddAnimationAsset(Asset);
     }

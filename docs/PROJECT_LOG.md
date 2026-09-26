@@ -18,6 +18,7 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
+| 26 Sep 2026 | Machine-gun recoil and locomotion transitions — 26 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [full-course review](reviews/animation-critic-pass51-complete-course.md), [stop review](reviews/animation-critic-pass53-stop-continuity.md) |
 | 26 Sep 2026 | Machine-gun mechanisms authored and reviewed — 26 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [female MG review](reviews/animation-critic-pass46-female-mg-armor.md), [male MG review](reviews/animation-critic-pass48-male-shoulder-cloth.md) |
 | 25 Sep 2026 | Soldier actions authored in Blender — 25 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [female pass 37](reviews/animation-critic-pass37-female-thumb-views.md), [male pass 36](reviews/animation-critic-pass36-male-pronation.md) |
 | 25 Sep 2026 | Soldier animation rejected and reference study started — 25 September 2026 | [study](SOLDIER_MOTION_STUDY_2026-09-25.md), [reference page](../art/reviews/gasp/research.html) |
@@ -74,6 +75,33 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 | 16 Sep 2026 | Current playable default — user replay decision, 16 September 2026 | [AI_MAIN_BUILD](AI_MAIN_BUILD.md), plan 014 phase reviews |
 | by 16 Sep 2026 | Previous main-build decisions (history, superseded by the replay decision above) | [AI_MAIN_BUILD](AI_MAIN_BUILD.md) |
 | undated | Early project instructions — undated, before 16 September 2026 | [plans/README](../plans/README.md), [AI_RELIABILITY_RESULTS](AI_RELIABILITY_RESULTS.md) |
+
+## Machine-gun recoil and locomotion transitions — 26 September 2026
+
+The MG now layers authored shot impulses from actual recorded events, with overlapping
+recovery, retained walking-fire brace and a continuous cubic ammunition-box route.
+Reload load transfer has additional authored pelvis/chest response. The fresh common
+MG comparison is 6.0 provisional on both bodies (pass 50); walking-fire/stop alone
+is 6.5 on both (pass 52). These replace neither the earlier attributed grades nor
+whole-system acceptance. The fresh complete 49-second course is **6.0/10** (pass 62), below 8.5.
+
+Stop selection now respects incoming gait and nearest source travel direction.
+The deep walking brake and sprint boundary split are removed in inspected captures;
+time-filtered warping release avoids abrupt unwinding. Pass 53 grades the latter
+6.0 on both bodies; limiting standing braking to natural playback timing raises the
+focused score to 6.5 in pass 55. Crouch keeps its previous timing after the same bound
+selected a worse support foot (pass 57). Whole-course foot diagnostics expose raw
+versus final pose displacement. Completing turn clips raises their score from 5.5
+to 6.0 (pass 56); selecting the planned turn size gives a clearer step and 6.5
+(pass 58), with entry continuity still under review. A failed root-hold experiment
+was discarded. Directed turn entry removes a wrong-side late-tail selection (pass 61: 6.0 both);
+narrow support and a separate late replant remain. Death entry blends the fully
+evaluated armed pose, but pass 59 grades the complete death 4.5 on rifles and 4.0
+on MGs: staged collapse and equipment ground penetration remain. The course extends
+to 49 seconds, and 28 living-state death-entry cases pass exact-pose checks. The handoff records the exact current revision,
+source assets, tests, video provenance and remaining work. No simulation rule or
+AAA acceptance changes. A portable local player carries complete renders and explicit
+capture-specific limits.
 
 ## Machine-gun mechanisms authored and reviewed — 26 September 2026
 
