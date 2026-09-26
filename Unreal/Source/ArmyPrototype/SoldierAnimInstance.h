@@ -27,8 +27,10 @@ public:
     float WeaponReady=1;
     bool AuthoredHandling=false;
     bool ArticulatedRiflePouch=false;
+    bool ArticulatedMG=false;
     float AuthoredHandlingAlpha=0;
     FVector AuthoredPelvisOffset=FVector::ZeroVector;
+    float AuthoredMGPelvisWeight=0;
     UPROPERTY(Transient) TObjectPtr<UWeaponAnimationProfile> EquipmentProfile;
     float AimYaw=0,AimPitch=0,LookYaw=0,LookPitch=0,MoveSpeed=0;
     double PoseTime=0;

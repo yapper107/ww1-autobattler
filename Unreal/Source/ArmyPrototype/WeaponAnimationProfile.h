@@ -34,6 +34,8 @@ public:
     // Authored pressing-glove axis in weapon space, stable through hand release.
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadPressDirection=FVector(.75,.4,-.52);
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector AmmunitionBoxGrip=FVector(-3.5,-12,7.5);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector MGAmmoPouchFemale=FVector(25,8,90);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector MGAmmoPouchMale=FVector(25,8,100);
     // Eight rounds at 9 mm centres. The row stands above the receiver and is
     // pressed into it, instead of hovering as a horizontal tray over the gun.
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float ReloadStackHalfHeight=3.6f;

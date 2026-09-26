@@ -1,0 +1,1879 @@
+{
+  "mesh": "/Game/Characters/GASP/Bodies/SK_Female_GASP",
+  "vertices": [
+    {
+      "position_cm": [
+        -26.86614692211151,
+        0.6228205282241106,
+        123.4929084777832
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -28.69320809841156,
+        0.622820109128952,
+        125.07082223892212
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -24.20859783887863,
+        5.3565774112939835,
+        123.07766675949097
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -25.53737163543701,
+        3.0312230810523033,
+        123.32680225372314
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -24.04250055551529,
+        5.10743148624897,
+        124.65558052062988
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -24.70688819885254,
+        2.6990296319127083,
+        123.07766675949097
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -26.367855072021484,
+        2.865125797688961,
+        124.90472793579102
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -25.952613353729248,
+        0.6228204350918531,
+        123.4929084777832
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -23.37811440229416,
+        4.692190513014793,
+        122.66242504119873
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -21.301905810832977,
+        0.6228150334209204,
+        137.77722120285034
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -17.979969084262848,
+        8.927654474973679,
+        129.1401982307434
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -16.15290641784668,
+        7.183636724948883,
+        133.707857131958
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -18.72740536928177,
+        3.9447493851184845,
+        136.94673776626587
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -16.568148136138916,
+        3.114265948534012,
+        136.69759035110474
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -16.651196777820587,
+        3.529507666826248,
+        137.5280737876892
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -18.561309576034546,
+        0.6228148937225342,
+        137.5280737876892
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -15.820711851119995,
+        8.595460653305054,
+        129.3062925338745
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -15.903761982917786,
+        7.515832036733627,
+        129.3062925338745
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -14.491939544677734,
+        5.68876639008522,
+        133.54175090789795
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -14.242793619632721,
+        6.519249826669693,
+        134.20614004135132
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -18.976551294326782,
+        0.6228146143257618,
+        138.4416103363037
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -26.86614692211151,
+        -3.861791267991066,
+        123.4929084777832
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -28.69320809841156,
+        -3.861791267991066,
+        125.15387535095215
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -25.952613353729248,
+        -3.861791267991066,
+        123.4929084777832
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -25.53737163543701,
+        -6.270193308591843,
+        123.32680225372314
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -24.70688819885254,
+        -5.854951590299606,
+        123.07766675949097
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -26.367855072021484,
+        -6.10409751534462,
+        124.90472793579102
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -24.20859783887863,
+        -8.595547825098038,
+        123.07766675949097
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -24.04250055551529,
+        -8.346403390169144,
+        124.65558052062988
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -23.37811440229416,
+        -7.931160926818848,
+        122.66242504119873
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -21.301905810832977,
+        -3.861796483397484,
+        137.77722120285034
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -18.561309576034546,
+        -3.8617968559265137,
+        137.5280737876892
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -18.72740536928177,
+        -7.183731347322464,
+        136.94673776626587
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -16.568148136138916,
+        -6.353247910737991,
+        136.69759035110474
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -16.651196777820587,
+        -6.768489629030228,
+        137.5280737876892
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -16.1529079079628,
+        -10.422615706920624,
+        133.707857131958
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -14.491941034793854,
+        -8.84469747543335,
+        133.54175090789795
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -14.24279510974884,
+        -9.758228808641434,
+        134.20614004135132
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -18.976551294326782,
+        -3.8617968559265137,
+        138.4416103363037
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -17.979972064495087,
+        -12.16663047671318,
+        129.1401982307434
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -15.903763473033905,
+        -10.75480803847313,
+        129.3062925338745
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        -15.820714831352234,
+        -11.834436655044556,
+        129.3062925338745
+      ],
+      "side": "Right",
+      "kind": "plate",
+      "weights": {
+        "RightShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.20859783887863,
+        5.356573686003685,
+        123.07766675949097
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.37811440229416,
+        4.692186787724495,
+        122.66242504119873
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.87982404232025,
+        4.858282208442688,
+        127.3131251335144
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.045921325683594,
+        4.941330477595329,
+        126.9809365272522
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.04250055551529,
+        5.107427760958672,
+        124.65558052062988
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.70688819885254,
+        2.69902590662241,
+        123.07766675949097
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.53737163543701,
+        3.03121916949749,
+        123.32680225372314
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.367855072021484,
+        2.8651218861341476,
+        124.90472793579102
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.952613353729248,
+        0.622816663235426,
+        123.4929084777832
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.86614692211151,
+        0.6228165701031685,
+        123.4929084777832
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        28.69320809841156,
+        0.6228158250451088,
+        125.07082223892212
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        15.820714831352234,
+        8.595458418130875,
+        129.3062925338745
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        15.903761982917786,
+        7.515829801559448,
+        129.3062925338745
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        14.491939544677734,
+        5.688763782382011,
+        133.54175090789795
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        14.242793619632721,
+        6.519247591495514,
+        134.20614004135132
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        17.979972064495087,
+        8.92765149474144,
+        129.1401982307434
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        16.15290641784668,
+        7.183634489774704,
+        133.707857131958
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        20.305325090885162,
+        5.107425898313522,
+        130.96725940704346
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        20.554469525814056,
+        4.858280718326569,
+        130.88420629501343
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        16.568148136138916,
+        3.114263527095318,
+        136.69759035110474
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        16.651196777820587,
+        3.5295050591230392,
+        137.5280737876892
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        18.561309576034546,
+        0.6228121463209391,
+        137.5280737876892
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        18.72740536928177,
+        3.9447471499443054,
+        136.94673776626587
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        18.976551294326782,
+        0.622811820358038,
+        138.4416103363037
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.13238924741745,
+        4.027797654271126,
+        129.80457544326782
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.04934060573578,
+        3.9447490125894547,
+        130.05372285842896
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.79677540063858,
+        3.6125559359788895,
+        129.3893337249756
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.962872684001923,
+        3.446459397673607,
+        129.47238683700562
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.87982404232025,
+        3.1973138451576233,
+        130.05372285842896
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.045921325683594,
+        3.1973138451576233,
+        129.80457544326782
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.21543788909912,
+        3.6125555634498596,
+        130.38592338562012
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.381533682346344,
+        3.446459025144577,
+        130.4689645767212
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.793356120586395,
+        2.366830036044121,
+        130.05372285842896
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.045921325683594,
+        2.366829663515091,
+        131.29944801330566
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.46116304397583,
+        2.366829849779606,
+        130.6350588798523
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.295065760612488,
+        2.2837815806269646,
+        130.88420629501343
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.37811440229416,
+        1.9515879452228546,
+        131.46554231643677
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.46116304397583,
+        1.7854910343885422,
+        131.5485954284668
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.122129917144775,
+        2.200733870267868,
+        128.14360857009888
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.87298548221588,
+        2.2837823256850243,
+        128.39275598526
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.284807920455933,
+        0.20757268648594618,
+        129.3062925338745
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.0356605052948,
+        0.12452419614419341,
+        129.72153425216675
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.12554919719696,
+        1.8685398623347282,
+        130.21981716156006
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.291646480560303,
+        1.7024429515004158,
+        130.3028702735901
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.291646480560303,
+        1.4532976783812046,
+        130.80116510391235
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.12554919719696,
+        1.453297771513462,
+        131.05030059814453
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.12554919719696,
+        0.6228134967386723,
+        132.54517316818237
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.291646480560303,
+        0.6228136364370584,
+        132.21298456192017
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.800194680690765,
+        2.4498773738741875,
+        133.37565660476685
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.966291964054108,
+        2.4498775601387024,
+        132.9604148864746
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.301905810832977,
+        0.622811820358038,
+        137.77722120285034
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.952613353729248,
+        -3.8617949932813644,
+        123.4929084777832
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.37811440229416,
+        -7.931164652109146,
+        122.66242504119873
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.547630965709686,
+        -8.346407860517502,
+        127.39617824554443
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.70688819885254,
+        -5.854955315589905,
+        123.07766675949097
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.53737163543701,
+        -6.270197033882141,
+        123.32680225372314
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.367855072021484,
+        -6.104101240634918,
+        124.90472793579102
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.20859783887863,
+        -8.595551550388336,
+        123.07766675949097
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.04250055551529,
+        -8.346407115459442,
+        124.65558052062988
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.86614692211151,
+        -3.8617949932813644,
+        123.4929084777832
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        28.69320809841156,
+        -3.861795738339424,
+        125.15387535095215
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        14.491938054561615,
+        -8.844699710607529,
+        133.54175090789795
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        14.242793619632721,
+        -9.758231788873672,
+        134.20614004135132
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        18.561309576034546,
+        -3.8617994636297226,
+        137.5280737876892
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.135808527469635,
+        -6.851539760828018,
+        132.7943205833435
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        19.807033240795135,
+        -9.010795503854752,
+        130.88420629501343
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        20.05617916584015,
+        -8.761650323867798,
+        130.88420629501343
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        16.568148136138916,
+        -6.35325014591217,
+        136.69759035110474
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        16.651196777820587,
+        -6.768491864204407,
+        137.5280737876892
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        16.15290492773056,
+        -10.422618687152863,
+        133.707857131958
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        20.969711244106293,
+        -6.8515390157699585,
+        133.20956230163574
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        18.72740536928177,
+        -7.183733582496643,
+        136.94673776626587
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        18.976551294326782,
+        -3.8618002086877823,
+        138.4416103363037
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        15.903760492801666,
+        -10.754810273647308,
+        129.3062925338745
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        15.820711851119995,
+        -11.834438890218735,
+        129.3062925338745
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        17.979969084262848,
+        -12.16663271188736,
+        129.1401982307434
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.876404762268066,
+        -4.94142659008503,
+        131.5485954284668
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.78993684053421,
+        -1.2042502872645855,
+        131.880784034729
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.956032633781433,
+        -1.1212018318474293,
+        131.63164854049683
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.039082765579224,
+        -2.533023990690708,
+        131.46554231643677
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.540790915489197,
+        -1.9516857340931892,
+        132.37907886505127
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.540790915489197,
+        -2.200830914080143,
+        132.29602575302124
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.87298548221588,
+        -2.533024176955223,
+        131.7146897315979
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.45432448387146,
+        -1.6194917261600494,
+        130.80116510391235
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.37127435207367,
+        -1.3703466393053532,
+        130.88420629501343
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.201757788658142,
+        -3.8617968559265137,
+        129.47238683700562
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.367855072021484,
+        -3.363506868481636,
+        129.22323942184448
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        26.284807920455933,
+        -3.4465551376342773,
+        129.47238683700562
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        25.952613353729248,
+        -3.8617972284555435,
+        129.80457544326782
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.540790915489197,
+        -3.6957014352083206,
+        132.4621319770813
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.374695122241974,
+        -3.6957014352083206,
+        132.7943205833435
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.959453403949738,
+        -5.190571025013924,
+        130.71811199188232
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.959453403949738,
+        -4.94142659008503,
+        131.29944801330566
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.46116304397583,
+        -0.1246222760528326,
+        134.12309885025024
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.627258837223053,
+        -0.12462215963751078,
+        133.79089832305908
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.212017118930817,
+        -4.277040809392929,
+        133.95699262619019
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.46116304397583,
+        -4.277040436863899,
+        133.54175090789795
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.301905810832977,
+        -3.8617998361587524,
+        137.77722120285034
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.4680016040802,
+        -7.931166887283325,
+        130.05372285842896
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.634098887443542,
+        -7.931166887283325,
+        129.80457544326782
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.464582324028015,
+        -7.1006834506988525,
+        129.97068166732788
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.381533682346344,
+        -7.515925168991089,
+        129.3062925338745
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.547630965709686,
+        -7.349828630685806,
+        129.3062925338745
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.630679607391357,
+        -7.1006834506988525,
+        129.72153425216675
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.634098887443542,
+        -7.59897381067276,
+        130.38592338562012
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        21.800194680690765,
+        -7.432877272367477,
+        130.4689645767212
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.79677540063858,
+        -6.353248655796051,
+        130.80116510391235
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.71372675895691,
+        -6.353248655796051,
+        131.05030059814453
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.793356120586395,
+        -5.439716205000877,
+        130.6350588798523
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.045921325683594,
+        -5.6058138608932495,
+        131.79774284362793
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        23.212017118930817,
+        -5.439716950058937,
+        131.79774284362793
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        22.381533682346344,
+        -8.429456502199173,
+        127.72836685180664
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.20859783887863,
+        -6.187150627374649,
+        128.64190340042114
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    },
+    {
+      "position_cm": [
+        24.457743763923645,
+        -6.104102358222008,
+        128.30971479415894
+      ],
+      "side": "Left",
+      "kind": "plate",
+      "weights": {
+        "LeftShoulder": 1.0
+      }
+    }
+  ],
+  "source_vertices": 156,
+  "tolerance_cm": 0.03
+}

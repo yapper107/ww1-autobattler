@@ -293,6 +293,50 @@ TMap<int32,FVector> UGaspAuthoringLibrary::SkeletalMeshVertexPositions(USkeletal
     return Result;
 }
 
+bool UGaspAuthoringLibrary::RepairMaleSleeveTriangle(USkeletalMesh* Mesh,const TArray<FVector>& Boundary) {
+#if WITH_EDITOR
+    if(!Mesh||Mesh->GetPathName()!=TEXT("/Game/Characters/GASP/Bodies/SK_Male_GASP.SK_Male_GASP")||Boundary.Num()!=3)return false;
+    FMeshDescription* D=Mesh->GetMeshDescription(0);if(!D)return false;
+    FStaticMeshAttributes A(*D);const auto Positions=A.GetVertexPositions();
+    FVertexInstanceID Source[3];bool Found[3]={};int EdgeCounts[3]={};
+    FPolygonGroupID Group;bool Reverse=false,HasExisting=false;FTriangleID Existing,Neighbor;
+    for(const FTriangleID Tri:D->Triangles().GetElementIDs()) {
+        const auto Instances=D->GetTriangleVertexInstances(Tri);int Corners[3]={-1,-1,-1};
+        for(int J=0;J<3;++J)for(int K=0;K<3;++K)
+            if(FVector::Distance(FVector(Positions[D->GetVertexInstanceVertex(Instances[J])]),Boundary[K])<.03)Corners[J]=K;
+        if(Corners[0]>=0&&Corners[1]>=0&&Corners[2]>=0){Existing=Tri;HasExisting=true;continue;}
+        for(int J=0;J<3;++J) {
+            const int X=Corners[J],Y=Corners[(J+1)%3];if(X<0||Y<0||X==Y)continue;
+            const int Edge=X+Y==1?0:X+Y==3?1:2;++EdgeCounts[Edge];
+            if(Edge==0){Group=D->GetTrianglePolygonGroup(Tri);Reverse=X==0;Neighbor=Tri;}
+            Source[X]=Instances[J];Source[Y]=Instances[(J+1)%3];Found[X]=Found[Y]=true;
+        }
+    }
+    for(int J=0;J<3;++J)if(!Found[J]||EdgeCounts[J]!=1)return false;
+    Mesh->Modify();TArray<FVertexInstanceID> NewInstances;
+    auto Normals=A.GetVertexInstanceNormals(),Tangents=A.GetVertexInstanceTangents();
+    auto Signs=A.GetVertexInstanceBinormalSigns();auto UVs=A.GetVertexInstanceUVs();auto Colors=A.GetVertexInstanceColors();
+    for(int J=0;J<3;++J) {
+        const int K=Reverse?2-J:J;const auto Old=Source[K];
+        const auto New=HasExisting?D->GetTriangleVertexInstances(Existing)[J]:D->CreateVertexInstance(D->GetVertexInstanceVertex(Old));
+        Normals[New]=Normals[Old];Tangents[New]=Tangents[Old];Signs[New]=Signs[Old];Colors[New]=Colors[Old];
+        // This mesh uses isolated atlas islands. Interpolating three unrelated
+        // corner UVs drew stripes across the patch; sample the adjacent cloth.
+        for(int Channel=0;Channel<UVs.GetNumChannels();++Channel) {
+            FVector2f ColorUV=FVector2f::ZeroVector;
+            for(const auto Corner:D->GetTriangleVertexInstances(Neighbor))ColorUV+=UVs.Get(Corner,Channel)/3.f;
+            UVs.Set(New,Channel,ColorUV);
+        }
+        NewInstances.Add(New);
+    }
+    if(!HasExisting)D->CreatePolygon(Group,NewInstances);
+    if(!Mesh->CommitMeshDescription(0))return false;
+    Mesh->Build();Mesh->MarkPackageDirty();return true;
+#else
+    return false;
+#endif
+}
+
 bool UGaspAuthoringLibrary::FinalizeArticulatedPouchMaterial(UMaterial* Material) {
 #if WITH_EDITOR
     if(!Material)return false;

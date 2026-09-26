@@ -1,5 +1,6 @@
 #include "GaspCombatReview.h"
 #include "SoldierVisual.h"
+#include "MachineGunMechanism.h"
 #include "SoldierClothComponent.h"
 #include "SoldierAnimInstance.h"
 #include "SoldierMotionInstance.h"
@@ -131,8 +132,8 @@ void AGaspCombatReview::BeginPlay() {
     }
     if(SourceClipName.IsEmpty()) {
     FString Report=TEXT("frame,body,weapon,stage,wrist_error_cm,foot_min_z,weapon_yaw_deg,selected_motion\n");
-    float Worst=0,Reconstruction=0,AimError=0,RootError=0,PlantError=0,BoltError=0,ReloadError=0,BoxError=0;FString Queries;
-    int BoltSamples[4]={},ReloadSamples[4]={},BoxSamples[4]={};bool AuthoredAssetsPresent=true;
+    float Worst=0,Reconstruction=0,AimError=0,RootError=0,PlantError=0,BoltError=0,ReloadError=0,BoxError=0,MGCoverError=0,MGChargeError=0;FString Queries;
+    int BoltSamples[4]={},ReloadSamples[4]={},BoxSamples[4]={},MGCoverSamples[4]={},MGChargeSamples[4]={};bool AuthoredAssetsPresent=true;
     for(const auto& Soldier:Soldiers) {
         const auto* V=Soldier.Get();
         AuthoredAssetsPresent&=V->AuthoredWeaponReload!=nullptr&&(V->IsMachineGun||(V->AuthoredWeaponShot!=nullptr&&V->AuthoredWeaponCarry!=nullptr));
@@ -166,12 +167,12 @@ void AGaspCombatReview::BeginPlay() {
         }
         const FVector Elbows[]={V->Body->GetSocketTransform(TEXT("LeftForeArm"),RTS_Component).GetLocation(),
                                 V->Body->GetSocketTransform(TEXT("RightForeArm"),RTS_Component).GetLocation()};
-        if(F>0&&CurrentAnim->Handling.reloadPhase>=0) {
+        if(F>0&&(CurrentAnim->Handling.reloadPhase>=0||(T>=ReloadBegin-.15&&T<=ReloadFinish+.15))) {
             const double LeftStep=FVector::Distance(Elbows[0],PreviousElbows[I][0]);
             const double RightStep=FVector::Distance(Elbows[1],PreviousElbows[I][1]);
             ReloadElbowStep=FMath::Max(ReloadElbowStep,float(FMath::Max(LeftStep,RightStep)));
             ArmContinuity+=FString::Printf(TEXT("%d,%s,%s,%.6f,%.6f,%.6f\n"),F,I>=2?TEXT("male"):TEXT("female"),I%2?TEXT("MG"):TEXT("rifle"),CurrentAnim->Handling.reloadPhase,LeftStep,RightStep);
-            for(const TCHAR* Bone:{TEXT("Hips"),TEXT("Spine"),TEXT("Spine2"),TEXT("LeftArm"),TEXT("RightArm"),TEXT("RightForeArm"),TEXT("RightHand")}) {
+            for(const TCHAR* Bone:{TEXT("Hips"),TEXT("Spine"),TEXT("Spine2"),TEXT("LeftArm"),TEXT("LeftForeArm"),TEXT("LeftHand"),TEXT("WeaponGrip_L"),TEXT("RightArm"),TEXT("RightForeArm"),TEXT("RightHand")}) {
                 const FVector P=V->Body->GetSocketTransform(Bone,RTS_Component).GetLocation();
                 ArmGeometry+=FString::Printf(TEXT("%d,%s,%s,%s,%.6f,%.6f,%.6f\n"),F,I>=2?TEXT("male"):TEXT("female"),I%2?TEXT("MG"):TEXT("rifle"),Bone,P.X,P.Y,P.Z);
             }
@@ -227,12 +228,26 @@ void AGaspCombatReview::BeginPlay() {
                 }
             } else ReloadError=FMath::Max(ReloadError,float(FVector::Distance(Palm,Clip+V->Rifle->GetComponentTransform().TransformVectorNoScale(V->EquipmentProfile->ReloadPalmOffset))));
         }
-        if(V->IsMachineGun&&CurrentAnim->AuthoredHandling&&CurrentAnim->Handling.reloadPhase>=.20f&&CurrentAnim->Handling.reloadPhase<=.60f) {
+        if(V->IsMachineGun&&CurrentAnim->AuthoredHandling&&CurrentAnim->Handling.reloadPhase>=.225f&&CurrentAnim->Handling.reloadPhase<=.60f&&V->ReloadProp->IsVisible()) {
             ++BoxSamples[I];
             const FVector Palm=FMath::Lerp(V->Body->GetSocketLocation(TEXT("LeftHand")),V->Body->GetSocketLocation(TEXT("LeftHandMiddle1")),.65);
             const FVector Dock=V->ReloadProp->GetComponentTransform().TransformPosition(V->EquipmentProfile->AmmunitionBoxGrip);
             BoxError=FMath::Max(BoxError,float(FVector::Distance(Palm,Dock)));
             BoxContacts+=FString::Printf(TEXT("%d,%d,%.4f,%.4f,%s,%s,%s,%s\n"),F,I,CurrentAnim->Handling.reloadPhase,float(FVector::Distance(Palm,Dock)),*Palm.ToString(),*Dock.ToString(),*V->Body->GetSocketLocation(TEXT("LeftHand")).ToString(),*V->Body->GetSocketLocation(TEXT("LeftArm")).ToString());
+        }
+        if(V->IsMachineGun&&V->MGFeedCover->GetStaticMesh()&&CurrentAnim->Handling.reloadPhase>=0) {
+            const float U=CurrentAnim->Handling.reloadPhase;
+            const FVector Palm=FMath::Lerp(V->Body->GetSocketLocation(TEXT("LeftHand")),V->Body->GetSocketLocation(TEXT("LeftHandMiddle1")),.65);
+            if((U>=.09f&&U<=.155f)||(U>=.775f&&U<=.83f)) {
+                ++MGCoverSamples[I];
+                const FVector Contact=V->MGFeedCover->GetComponentTransform().TransformPosition(FVector(-5.5,-12.8,0));
+                MGCoverError=FMath::Max(MGCoverError,float(FVector::Distance(Palm,Contact)));
+            }
+            if(U>=.875f&&U<=.935f) {
+                ++MGChargeSamples[I];
+                const FVector Contact=V->Bolt->GetComponentTransform().TransformPosition(FVector(-.7,0,0));
+                MGChargeError=FMath::Max(MGChargeError,float(FVector::Distance(Palm,Contact)));
+            }
         }
         // Compare cached native-stack reconstruction before applying weapon layers.
         if(F%30==0) {
@@ -280,10 +295,10 @@ void AGaspCombatReview::BeginPlay() {
     FFileHelper::SaveStringToFile(ArmContinuity,*(Folder/TEXT("gasp-arm-continuity.csv")));
     FFileHelper::SaveStringToFile(ArmGeometry,*(Folder/TEXT("gasp-arm-geometry.csv")));
     FFileHelper::SaveStringToFile(BoxContacts,*(Folder/TEXT("gasp-box-contacts.csv")));
-    const bool ContactsExercised=BoltSamples[0]>0&&BoltSamples[2]>0&&ReloadSamples[0]>0&&ReloadSamples[2]>0&&BoxSamples[1]>0&&BoxSamples[3]>0;
-    const bool Passed=AuthoredAssetsPresent&&ContactsExercised&&SeekEqual&&QueryPreservesPose&&Worst<2&&Reconstruction<.2&&AimError<1&&RootError<12.01&&ClothFinite&&ClothVertices>0&&PlantError<2&&BoltError<1&&ReloadError<1&&ReloadSurfaceError<.3f&&BoxError<1;
+    const bool ContactsExercised=BoltSamples[0]>0&&BoltSamples[2]>0&&ReloadSamples[0]>0&&ReloadSamples[2]>0&&BoxSamples[1]>0&&BoxSamples[3]>0&&MGCoverSamples[1]>0&&MGCoverSamples[3]>0&&MGChargeSamples[1]>0&&MGChargeSamples[3]>0;
+    const bool Passed=AuthoredAssetsPresent&&ContactsExercised&&SeekEqual&&QueryPreservesPose&&Worst<2&&Reconstruction<.2&&AimError<1&&RootError<12.01&&ClothFinite&&ClothVertices>0&&PlantError<2&&BoltError<1&&ReloadError<1&&ReloadSurfaceError<.3f&&BoxError<1&&MGCoverError<1&&MGChargeError<1;
     const FString Summary=FString::Printf(TEXT("frames=%d bodies=4 worst_wrist_cm=%.6f native_stack_reconstruction_cm=%.6f seek_equal=%d generation_seconds=%.3f aim_error_deg=%.5f root_offset_cm=%.3f cloth_vertices=%d cloth_finite=%d vault_plant_cm=%.4f query_preserves_pose=%d bolt_contact_cm=%.4f passed=%d\n"),TotalFrames+1,Worst,Reconstruction,int(SeekEqual),FPlatformTime::Seconds()-Start,AimError,RootError,ClothVertices,int(ClothFinite),PlantError,int(QueryPreservesPose),BoltError,int(Passed));
-    const FString FullSummary=FString::Printf(TEXT("authored_assets=%d contacts_exercised=%d bolt_samples=%d,%d reload_samples=%d,%d mg_box_samples=%d,%d mg_box_contact_cm=%.4f crouch_foot_step_cm=%.4f crouch_hip_step_cm=%.4f reload_contact_cm=%.4f reload_surface_gap_cm=%.4f reload_elbow_step_cm=%.4f "),int(AuthoredAssetsPresent),int(ContactsExercised),BoltSamples[0],BoltSamples[2],ReloadSamples[0],ReloadSamples[2],BoxSamples[1],BoxSamples[3],BoxError,CrouchFootStep,CrouchHipStep,ReloadError,ReloadSurfaceError,ReloadElbowStep)+Summary;
+    const FString FullSummary=FString::Printf(TEXT("authored_assets=%d contacts_exercised=%d bolt_samples=%d,%d reload_samples=%d,%d mg_box_samples=%d,%d mg_box_contact_cm=%.4f crouch_foot_step_cm=%.4f crouch_hip_step_cm=%.4f reload_contact_cm=%.4f reload_surface_gap_cm=%.4f reload_elbow_step_cm=%.4f "),int(AuthoredAssetsPresent),int(ContactsExercised),BoltSamples[0],BoltSamples[2],ReloadSamples[0],ReloadSamples[2],BoxSamples[1],BoxSamples[3],BoxError,CrouchFootStep,CrouchHipStep,ReloadError,ReloadSurfaceError,ReloadElbowStep)+FString::Printf(TEXT("mg_cover_contact_cm=%.4f mg_charge_contact_cm=%.4f mg_cover_samples=%d,%d mg_charge_samples=%d,%d "),MGCoverError,MGChargeError,MGCoverSamples[1],MGCoverSamples[3],MGChargeSamples[1],MGChargeSamples[3])+Summary;
     FFileHelper::SaveStringToFile(FullSummary,*(Folder/TEXT("gasp-combat-check.txt")));UE_LOG(LogTemp,Display,TEXT("GASP_COMBAT_CHECK %s"),*FullSummary);
     if(FParse::Param(FCommandLine::Get(),TEXT("ArmyMotionValidate"))){FPlatformMisc::RequestExitWithStatus(false,Passed?0:1);return;}
     }

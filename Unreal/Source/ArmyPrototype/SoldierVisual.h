@@ -77,6 +77,9 @@ public:
     UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> RiflePouch;
     UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> RiflePouchFlap;
     UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> RifleCharger;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> MGFeedCover;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> MGFeedBelt;
+    UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> MGAmmoPouch;
     bool IsMale=false,IsMachineGun=false;
     armyvisual::State LastState;
     double LastTime=0;

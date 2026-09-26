@@ -14,7 +14,7 @@ WEB=[((2.8030469,9.8872871,4.6862030),{HAND:.75,HAND+'Index1':.25}),
      ((3.032,8.70,5.05),{HAND:.90,HAND+'Thumb1':.10}),
      ((4.57,7.34,6.18),{HAND:.60,HAND+'Thumb1':.40})]
 
-def repair(rig,body,out):
+def repair(rig,body,out,include_left=False):
     inverse=(rig.matrix_world@rig.data.bones[HAND].matrix_local).inverted()
     positions={v.index:inverse@body.matrix_world@v.co*100 for v in body.data.vertices}
     edits={}
@@ -30,6 +30,20 @@ def repair(rig,body,out):
             t=max(0.,min(1.,(p.y+3)/5));t=t*t*(3-2*t)
             edits[v.index]={HAND:t,'mixamorig:RightForeArm':1-t}
     assert 10<=len(edits)<=60,len(edits)
+    if include_left:
+        # The other cuff has the same alternating rigid-hand weights. Keep
+        # the sleeve on its forearm and blend only across the wrist seam.
+        hand='mixamorig:LeftHand';forearm='mixamorig:LeftForeArm'
+        left_inverse=(rig.matrix_world@rig.data.bones[hand].matrix_local).inverted()
+        added=0
+        for v in body.data.vertices:
+            p=left_inverse@body.matrix_world@v.co*100
+            weights={body.vertex_groups[g.group].name:g.weight for g in v.groups}
+            connected=sum(w for n,w in weights.items() if n in [hand,forearm,'mixamorig:LeftArm'])
+            if connected>.98 and -14<p.y<2 and abs(p.x)<15 and abs(p.z)<15:
+                t=max(0.,min(1.,(p.y+3)/5));t=t*t*(3-2*t)
+                edits[v.index]={hand:t,forearm:1-t};added+=1
+        assert 40<=added<=100,added
     rows=[]
     for i,weights in sorted(edits.items()):
         v=body.data.vertices[i]

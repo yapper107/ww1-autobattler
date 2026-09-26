@@ -1,18 +1,48 @@
 {
   "fps": 60,
-  "status": "WIP blocking; cover and belt articulation outstanding",
+  "status": "WIP articulated retained-box reload; visual review required",
+  "articulated_mg": true,
+  "pouch_bind_cm": [
+    25.0,
+    7.999999821186066,
+    95.6924319267273
+  ],
+  "box_grip_cm": [
+    -4.600000008940697,
+    -12.600000202655792,
+    6.499999761581421
+  ],
+  "cover_hinge_cm": [
+    0,
+    -7.5,
+    13.45
+  ],
+  "charge_rest_cm": [
+    -5.5,
+    -22.5,
+    12.4
+  ],
   "clips": [
+    {
+      "name": "A_MG_Ready",
+      "duration": 2.0,
+      "frames": 121,
+      "editable_action": "Male_MG_Ready",
+      "deformation_action": "Baked_Male_MG_Ready"
+    },
     {
       "name": "A_MG_Shot",
       "duration": 0.4,
       "frames": 25,
-      "editable_action": "Male_MG_Shot"
+      "editable_action": "Male_MG_Shot",
+      "deformation_action": "Baked_Male_MG_Shot"
     },
     {
       "name": "A_MG_Reload",
       "duration": 6.0,
       "frames": 361,
-      "editable_action": "Male_MG_Reload"
+      "editable_action": "Male_MG_Reload",
+      "deformation_action": "Baked_Male_MG_Reload"
     }
   ]
 }

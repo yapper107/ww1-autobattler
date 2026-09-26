@@ -1,5 +1,6 @@
 #include "SoldierAnimInstance.h"
 #include "WeaponAnimationProfile.h"
+#include "MachineGunMechanism.h"
 #include "Animation/AnimInstanceProxy.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimationPoseData.h"
@@ -15,9 +16,10 @@ public:
     TArray<FArmyPoseSample> ArmedReference;
     float WeaponReady=1;
     bool AuthoredHandling=false;
-    bool ArticulatedRiflePouch=false;
+    bool ArticulatedRiflePouch=false,ArticulatedMG=false;
     float AuthoredHandlingAlpha=0;
     FVector AuthoredPelvisOffset=FVector::ZeroVector;
+    float AuthoredMGPelvisWeight=0;
     armyvisual::HandlingPose Handling;
     bool MG=false;
     UWeaponAnimationProfile* Profile=nullptr;
@@ -36,9 +38,10 @@ public:
         Profile=A->EquipmentProfile;AimYaw=A->AimYaw;AimPitch=A->AimPitch;LookYaw=A->LookYaw;LookPitch=A->LookPitch;MoveSpeed=A->MoveSpeed;PoseTime=A->PoseTime;
         ArmedReference=A->ArmedReference;WeaponReady=A->WeaponReady;
         AuthoredHandling=A->AuthoredHandling;
-        ArticulatedRiflePouch=A->ArticulatedRiflePouch;
+        ArticulatedRiflePouch=A->ArticulatedRiflePouch;ArticulatedMG=A->ArticulatedMG;
         AuthoredHandlingAlpha=A->AuthoredHandlingAlpha;
         AuthoredPelvisOffset=A->AuthoredPelvisOffset;
+        AuthoredMGPelvisWeight=A->AuthoredMGPelvisWeight;
         AimYaw*=WeaponReady*(1-Handling.traversal);AimPitch*=WeaponReady*(1-Handling.traversal);
         Contacts=A->ContactsEnabled;ContactPelvis=A->ContactPelvis;ContactFeet[0]=A->ContactLeftFoot;ContactFeet[1]=A->ContactRightFoot;
         ContactKnees[0]=A->ContactLeftKnee;ContactKnees[1]=A->ContactRightKnee;
@@ -155,6 +158,29 @@ public:
                 }
             }
             FCSPose<FCompactPose> CS;CS.InitPose(Output.Pose);
+            if(MG&&AuthoredHandling&&Layer&&AuthoredMGPelvisWeight>0&&Socket.GetInt()>=0) {
+                // Preserve the source's actual loading and recovery keys. A
+                // fixed reload offset erased the hip response to each operation.
+                // Translate the pelvis while keeping the locomotion feet planted.
+                const auto BaseGun=GripCS.GetComponentSpaceTransform(Socket);
+                const FQuat Facing=FQuat::FindBetweenNormals(BaseGun.GetUnitAxis(EAxis::Y),FVector::RightVector);
+                const FVector Delta=Facing.RotateVector(StandingCS.GetComponentSpaceTransform(Hip).GetLocation()-GripCS.GetComponentSpaceTransform(Hip).GetLocation())*AuthoredMGPelvisWeight;
+                FTransform Feet[2];FVector Knees[2];
+                for(int I=0;I<2;++I) {
+                    const FString Side=I==0?TEXT("Left"):TEXT("Right");
+                    Feet[I]=CS.GetComponentSpaceTransform(index(Side+TEXT("Foot")));
+                    Knees[I]=CS.GetComponentSpaceTransform(index(Side+TEXT("Leg"))).GetLocation();
+                }
+                auto Pelvis=CS.GetComponentSpaceTransform(Hip);Pelvis.AddToTranslation(Delta);
+                CS.SafeSetCSBoneTransforms({FBoneTransform(Hip,Pelvis)});
+                for(int I=0;I<2;++I) {
+                    const FString Side=I==0?TEXT("Left"):TEXT("Right");
+                    const auto U=index(Side+TEXT("UpLeg")),L=index(Side+TEXT("Leg")),F=index(Side+TEXT("Foot"));
+                    auto UT=CS.GetComponentSpaceTransform(U),LT=CS.GetComponentSpaceTransform(L),FT=CS.GetComponentSpaceTransform(F);
+                    AnimationCore::SolveTwoBoneIK(UT,LT,FT,Knees[I],Feet[I].GetLocation(),false,1.,1.);FT.SetRotation(Feet[I].GetRotation());
+                    CS.SafeSetCSBoneTransforms({FBoneTransform(U,UT),FBoneTransform(L,LT),FBoneTransform(F,FT)});
+                }
+            }
             if(AuthoredHandling&&Layer&&Profile&&Socket.GetInt()>=0) {
                 // The gun is calibrated from the authored hip translation and
                 // facing, while local spine keys used to inherit the unarmed
@@ -227,11 +253,13 @@ public:
                         StandingGun.SetRotation(Calibration*StandingGun.GetRotation());
                         const auto ReferenceSpine=GunReference.GetComponentSpaceTransform(Spine);
                         const FQuat ChestDelta=CarrierSpine.GetRotation()*ReferenceSpine.GetRotation().Inverse();
-                        const float GaitFollow=AuthoredHandling?0.f:FMath::Lerp(.8f,.18f*FMath::Clamp(MoveSpeed,0.f,1.f),WeaponReady)*(1-Handling.traversal);
+                        const float ActionFrame=MG?AuthoredHandlingAlpha:(AuthoredHandling?1.f:0.f);
+                        const float GaitFollow=(1-ActionFrame)*FMath::Lerp(.8f,.18f*FMath::Clamp(MoveSpeed,0.f,1.f),WeaponReady)*(1-Handling.traversal);
                         const FQuat Follow=FQuat::Slerp(FQuat::Identity,ChestDelta,GaitFollow);
                         const FVector ReferenceChest=CS.GetComponentSpaceTransform(Hip).GetLocation()+
                             Calibration.RotateVector(ReferenceSpine.GetLocation()-GunReference.GetComponentSpaceTransform(Hip).GetLocation());
-                        if(!AuthoredHandling)StandingGun.SetLocation(CarrierSpine.GetLocation()+Follow.RotateVector(StandingGun.GetLocation()-ReferenceChest));
+                        const FVector Carried=CarrierSpine.GetLocation()+Follow.RotateVector(StandingGun.GetLocation()-ReferenceChest);
+                        StandingGun.SetLocation(FMath::Lerp(Carried,StandingGun.GetLocation(),ActionFrame));
                         StandingGun.SetRotation(Follow*StandingGun.GetRotation());
                     } else StandingGun=StandingGun.GetRelativeTransform(StandingCS.GetComponentSpaceTransform(Hip))*CS.GetComponentSpaceTransform(Hip);
                     Gun.Blend(Original,StandingGun,(Profile?1.f:FMath::Clamp(Handling.upper+Handling.traversal,0.f,1.f))*Grip);
@@ -344,6 +372,12 @@ public:
                         const FTransform PouchHand=StandingCS.GetComponentSpaceTransform(B).GetRelativeTransform(StandingCS.GetComponentSpaceTransform(Hip))*CS.GetComponentSpaceTransform(Hip);
                         T.Blend(T,PouchHand,Contact);
                     }
+                    if(ArticulatedMG&&AuthoredHandling&&Layer&&FString(Name)==TEXT("WeaponGrip_L")&&Handling.reloadPhase>=0) {
+                        // Ammunition lives on the pelvis; weapon aim must not
+                        // pull the retrieving glove away from that pouch.
+                        const auto PouchHand=StandingCS.GetComponentSpaceTransform(B).GetRelativeTransform(StandingCS.GetComponentSpaceTransform(Hip))*CS.GetComponentSpaceTransform(Hip);
+                        T.Blend(T,PouchHand,armymg::PouchContact(Handling.reloadPhase));
+                    }
                     if(FString(Name)!=TEXT("WeaponMuzzle")) {
                         const FString Side=FString(Name)==TEXT("WeaponGrip_L")?TEXT("Left"):TEXT("Right");
                         const float Support=Side==TEXT("Left")?Handling.leftSupport:Handling.rightSupport;
@@ -361,7 +395,12 @@ public:
                     if(Prop.GetInt()>=0) {
                         FTransform Reference=StandingCS.GetComponentSpaceTransform(Socket);Reference.SetScale3D(FVector::OneVector);
                         const auto Relative=StandingCS.GetComponentSpaceTransform(Prop).GetRelativeTransform(Reference);
-                        auto T=Relative*Rigid;T.SetScale3D(FVector::OneVector);Controls.Emplace(Prop,T);
+                        auto T=Relative*Rigid;
+                        if(ArticulatedMG) {
+                            const auto PouchProp=StandingCS.GetComponentSpaceTransform(Prop).GetRelativeTransform(StandingCS.GetComponentSpaceTransform(Hip))*CS.GetComponentSpaceTransform(Hip);
+                            T.Blend(T,PouchProp,armymg::PouchContact(Handling.reloadPhase));
+                        }
+                        T.SetScale3D(FVector::OneVector);Controls.Emplace(Prop,T);
                     }
                 }
                 Controls.Sort([](const FBoneTransform& A,const FBoneTransform& B){return A.BoneIndex.GetInt()<B.BoneIndex.GetInt();});
@@ -382,6 +421,7 @@ public:
                 }
                 // Preserve the authored elbow side. No stretching: unreachable targets are reported.
                 FVector Pole=L.GetLocation()+(L.GetLocation()-(U.GetLocation()+H.GetLocation())*.5)*3;
+                const FVector UnauthoredPole=Pole;
                 if(AuthoredHandling) {
                     // Contact calibration can move the wrist across the old
                     // absolute pole. Transport the authored bend plane with
@@ -471,8 +511,51 @@ public:
                         }
                     }
                 }
+                if(MG&&AuthoredHandling)Pole=FMath::Lerp(UnauthoredPole,Pole,AuthoredHandlingAlpha);
+                const bool FitMGWrist=MG&&ArticulatedMG&&AuthoredHandling&&Side==TEXT("Left")&&Handling.reloadPhase>=0;
+                if(FitMGWrist) {
+                    const auto Other=index(TEXT("RightArm"));
+                    const FVector Outward=(U.GetLocation()-CS.GetComponentSpaceTransform(Other).GetLocation()).GetSafeNormal2D();
+                    const FVector Forward=CS.GetComponentSpaceTransform(Socket).GetUnitAxis(EAxis::Y).GetSafeNormal2D();
+                    const FVector Axis=(T.GetLocation()-U.GetLocation()).GetSafeNormal();
+                    const FQuat Transport=FQuat::FindBetweenNormals(Forward,Axis);
+                    const FVector Stable=U.GetLocation()+Transport.RotateVector(Outward*.8-FVector::UpVector*.55)*100;
+                    const float Phase=Handling.reloadPhase;
+                    const float Weight=FMath::SmoothStep(.01f,.07f,Phase)*(1-FMath::SmoothStep(.94f,.99f,Phase));
+                    Pole=FMath::Lerp(Pole,Stable,Weight);
+                }
                 AnimationCore::SolveTwoBoneIK(U,L,H,Pole,T.GetLocation(),false,1.,1.);
                 H.SetRotation(T.GetRotation());
+                if(FitMGWrist) {
+                    // Preserve the authored surface contact while the actual
+                    // forearm determines a feasible glove attitude. This avoids
+                    // folding a large glove backward to meet a small lever.
+                    const auto Knuckle=index(TEXT("LeftHandMiddle1")),Thumb=index(TEXT("LeftHandThumb1"));
+                    const FTransform SourceHand=StandingCS.GetComponentSpaceTransform(Hand);
+                    const FVector Forward=SourceHand.InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Knuckle).GetLocation()).GetSafeNormal();
+                    FVector Across=SourceHand.InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Thumb).GetLocation());
+                    Across=(Across-Forward*FVector::DotProduct(Across,Forward)).GetSafeNormal();
+                    const FQuat HandBasis=FRotationMatrix::MakeFromXY(Across,Forward).ToQuat();
+                    const FVector Palm=SourceHand.InverseTransformPosition(StandingCS.GetComponentSpaceTransform(Knuckle).GetLocation())*.65;
+                    const FVector Contact=T.TransformPosition(Palm);
+                    const FVector Normal=T.TransformVectorNoScale(FVector::CrossProduct(Across,Forward));
+                    const FQuat Authored=T.GetRotation();
+                    const float Phase=Handling.reloadPhase;
+                    const float Weight=FMath::Max(FMath::SmoothStep(.015f,.07f,Phase)*(1-FMath::SmoothStep(.17f,.215f,Phase)),FMath::SmoothStep(.65f,.685f,Phase)*(1-FMath::SmoothStep(.94f,.99f,Phase)))*.95f;
+                    for(int Iteration=0;Iteration<6&&Weight>0;++Iteration) {
+                        const FVector Along=(Contact-L.GetLocation()).GetSafeNormal();
+                        const FVector PlaneNormal=(Normal-Along*FVector::DotProduct(Normal,Along)).GetSafeNormal();
+                        if(PlaneNormal.IsNearlyZero())break;
+                        const FVector Lateral=FVector::CrossProduct(Along,PlaneNormal).GetSafeNormal();
+                        const FQuat Natural=FRotationMatrix::MakeFromXY(Lateral,Along).ToQuat()*HandBasis.Inverse();
+                        const FQuat Rotation=FQuat::Slerp(Authored,Natural,Weight);
+                        T.SetRotation(Rotation);T.SetLocation(Contact-Rotation.RotateVector(Palm));
+                        AnimationCore::SolveTwoBoneIK(U,L,H,Pole,T.GetLocation(),false,1.,1.);H.SetRotation(Rotation);
+                    }
+                    // Keep the required control at the final contact-preserving
+                    // wrist so diagnostics and weapon attachment read the same pose.
+                    CS.SafeSetCSBoneTransforms({FBoneTransform(Target,T)});
+                }
                 if(HandAlpha<1){U.Blend(OldU,U,HandAlpha);L.Blend(OldL,L,HandAlpha);H.Blend(OldH,H,HandAlpha);}
                 TArray<FBoneTransform> Edits;Edits.Emplace(Upper,U);Edits.Emplace(Lower,L);Edits.Emplace(Hand,H);
                 CS.SafeSetCSBoneTransforms(Edits);

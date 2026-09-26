@@ -1,43 +1,103 @@
 [
   {
+    "name": "Female machine gun \u2014 reload and move",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-064856",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 46: 6.0/10. Entry, pouch clearance, sleeve and plate roll repaired. Shoulder strap, load response and equipment motion remain unaccepted.",
+    "frames": 180,
+    "video": "authored-actions-media/action-0.mp4",
+    "poster": "authored-actions-media/action-0.png"
+  },
+  {
+    "name": "Male machine gun \u2014 reload and move",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-070047",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 48: 8.0/10 provisional. Armor/cloth intrusion, sleeve holes and transition pop repaired. Minor cuff folds and motion weight remain unaccepted; no full-course approval.",
+    "frames": 180,
+    "video": "authored-actions-media/action-1.mp4",
+    "poster": "authored-actions-media/action-1.png"
+  },
+  {
+    "name": "Female machine gun \u2014 opposite view",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-064657",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 46 companion. Complete 180-frame view; exact hidden finger contacts remain unverified.",
+    "frames": 180,
+    "video": "authored-actions-media/action-2.mp4",
+    "poster": "authored-actions-media/action-2.png"
+  },
+  {
+    "name": "Male machine gun \u2014 opposite view",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-065920",
+    "start": 29.5,
+    "end": 35.5,
+    "note": "Pass 48 companion. Shoulder cloth stays beneath the plate through the walking exit. Dense-frame review cannot certify continuous timing or weight.",
+    "frames": 180,
+    "video": "authored-actions-media/action-3.mp4",
+    "poster": "authored-actions-media/action-3.png"
+  },
+  {
+    "name": "Female rifle \u2014 current body check",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-065220",
+    "start": 28.25,
+    "end": 32,
+    "note": "Front body-regression review found no new gross defect. Action keys unchanged from pass 37 (6.0). This is not a new performance grade.",
+    "frames": 113,
+    "video": "authored-actions-media/action-4.mp4",
+    "poster": "authored-actions-media/action-4.png"
+  },
+  {
+    "name": "Male rifle \u2014 current body check",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-070230",
+    "start": 26,
+    "end": 32,
+    "note": "Current shoulder, cuff and sleeve repairs passed the bounded front-view body regression. Action keys unchanged from pass 36 (7.5 provisional); no new performance grade.",
+    "frames": 180,
+    "video": "authored-actions-media/action-5.mp4",
+    "poster": "authored-actions-media/action-5.png"
+  },
+  {
+    "name": "Female rifle reload \u2014 reviewed operating side",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-052026",
+    "start": 28.25,
+    "end": 32,
+    "note": "Pass37:6.0. Ordinary occlusion is not a demonstrated contact error. Dominant operating forearm and modest force response remain performance issues. Historical body weights; action keys unchanged.",
+    "frames": 113,
+    "video": "authored-actions-media/action-6.mp4",
+    "poster": "authored-actions-media/action-6.png"
+  },
+  {
+    "name": "Male rifle and interrupted reload \u2014 reviewed operating side",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051554",
+    "start": 26,
+    "end": 32,
+    "note": "Pass36:7.5 provisional. Continuous sleeve at121, cleaner manipulation. Some small contacts remain occluded/unverified, not proven faulty. Historical body weights; action keys unchanged.",
+    "frames": 180,
+    "video": "authored-actions-media/action-7.mp4",
+    "poster": "authored-actions-media/action-7.png"
+  },
+  {
+    "name": "Female rifle reload \u2014 reviewed opposite high view",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051108",
+    "start": 28.25,
+    "end": 32,
+    "note": "Pass35/37:6.0. Curl exposes more ammunition. Diagnostic companion confirms projected thumb and cartridge contact; this unmarked view is the visual evidence. Historical body weights; action keys unchanged.",
+    "frames": 113,
+    "video": "authored-actions-media/action-8.mp4",
+    "poster": "authored-actions-media/action-8.png"
+  },
+  {
     "name": "Lowered rifle carry and walking",
     "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-220522",
     "start": 0,
     "end": 7,
     "note": "Historical pass9: carry5.5, walk5.0, stop4.5. Before later timed-stop correction.",
     "frames": 210,
-    "video": "authored-actions-media/action-0.mp4",
-    "poster": "authored-actions-media/action-0.png"
-  },
-  {
-    "name": "Female rifle reload \u2014 reviewed front",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051928",
-    "start": 28.25,
-    "end": 32,
-    "note": "Pass37:6.0. Actual2.5-second reload. No new discontinuity; index/thumbnail ambiguity resolved. Weight response and release need polish. Unaccepted.",
-    "frames": 113,
-    "video": "authored-actions-media/action-1.mp4",
-    "poster": "authored-actions-media/action-1.png"
-  },
-  {
-    "name": "Male rifle and interrupted reload \u2014 reviewed front",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051706",
-    "start": 26,
-    "end": 32,
-    "note": "Pass36:7.5 provisional. Glove fin and extraction sleeve collapse repaired. Dense-frame review; continuous-motion AAA quality is not certified.",
-    "frames": 180,
-    "video": "authored-actions-media/action-2.mp4",
-    "poster": "authored-actions-media/action-2.png"
-  },
-  {
-    "name": "Female machine gun reload and exit",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-231250",
-    "start": 30,
-    "end": 35.5,
-    "note": "Pass12:4.0. Box contact and exit continuity repaired. No complete empty-box exchange or feed-cover/belt operation.",
-    "frames": 165,
-    "video": "authored-actions-media/action-3.mp4",
-    "poster": "authored-actions-media/action-3.png"
+    "video": "authored-actions-media/action-9.mp4",
+    "poster": "authored-actions-media/action-9.png"
   },
   {
     "name": "Female held crouch stop",
@@ -46,37 +106,7 @@
     "end": 26,
     "note": "Pass11:5.5. Timed stop reduces early planting; narrow support and weak weight acceptance remain.",
     "frames": 150,
-    "video": "authored-actions-media/action-4.mp4",
-    "poster": "authored-actions-media/action-4.png"
-  },
-  {
-    "name": "Female rifle reload \u2014 reviewed operating side",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-052026",
-    "start": 28.25,
-    "end": 32,
-    "note": "Pass37:6.0. Ordinary occlusion is not a demonstrated contact error. Dominant operating forearm and modest force response remain performance issues.",
-    "frames": 113,
-    "video": "authored-actions-media/action-5.mp4",
-    "poster": "authored-actions-media/action-5.png"
-  },
-  {
-    "name": "Male rifle and interrupted reload \u2014 reviewed operating side",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051554",
-    "start": 26,
-    "end": 32,
-    "note": "Pass36:7.5 provisional. Continuous sleeve at121, cleaner manipulation. Some small contacts remain occluded/unverified, not proven faulty.",
-    "frames": 180,
-    "video": "authored-actions-media/action-6.mp4",
-    "poster": "authored-actions-media/action-6.png"
-  },
-  {
-    "name": "Female rifle reload \u2014 reviewed opposite high view",
-    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260926-051108",
-    "start": 28.25,
-    "end": 32,
-    "note": "Pass35/37:6.0. Curl exposes more ammunition. Diagnostic companion confirms projected thumb and cartridge contact; this unmarked view is the visual evidence.",
-    "frames": 113,
-    "video": "authored-actions-media/action-7.mp4",
-    "poster": "authored-actions-media/action-7.png"
+    "video": "authored-actions-media/action-10.mp4",
+    "poster": "authored-actions-media/action-10.png"
   }
 ]

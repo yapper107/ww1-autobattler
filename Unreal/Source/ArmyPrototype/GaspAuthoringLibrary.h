@@ -43,6 +43,10 @@ public:
     // Preserve mesh-description vertex IDs for position-matched weight painting.
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
     static TMap<int32,FVector> SkeletalMeshVertexPositions(USkeletalMesh* Mesh);
+    // Close one measured triangular boundary without replacing vertices,
+    // skin weights, the skeleton, or clothing data on the owned male body.
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static bool RepairMaleSleeveTriangle(USkeletalMesh* Mesh,const TArray<FVector>& Boundary);
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
     static bool FinalizeArticulatedPouchMaterial(UMaterial* Material);
 

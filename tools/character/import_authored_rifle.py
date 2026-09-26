@@ -61,3 +61,7 @@ if male.exists() and json.loads(male.read_text()).get('articulated_pouch',False)
     runpy.run_path(str(Path(__file__).with_name('import_male_rifle_pouch.py')),run_name='__main__')
 if male.exists() and json.loads(male.read_text()).get('hand_weights'):
     runpy.run_path(str(Path(__file__).with_name('import_male_glove_weights.py')),run_name='__main__')
+mg=project/'Art/authored_mg/Female/manifest.json'
+if mg.exists() and json.loads(mg.read_text()).get('articulated_mg',False):
+    runpy.run_path(str(Path(__file__).with_name('import_mg_mechanism.py')),run_name='__main__')
+    runpy.run_path(str(Path(__file__).with_name('import_soldier_armor_weights.py')),run_name='__main__')

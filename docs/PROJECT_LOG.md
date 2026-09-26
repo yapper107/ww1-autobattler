@@ -18,6 +18,7 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
+| 26 Sep 2026 | Machine-gun mechanisms authored and reviewed — 26 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [female MG review](reviews/animation-critic-pass46-female-mg-armor.md), [male MG review](reviews/animation-critic-pass48-male-shoulder-cloth.md) |
 | 25 Sep 2026 | Soldier actions authored in Blender — 25 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [female pass 37](reviews/animation-critic-pass37-female-thumb-views.md), [male pass 36](reviews/animation-critic-pass36-male-pronation.md) |
 | 25 Sep 2026 | Soldier animation rejected and reference study started — 25 September 2026 | [study](SOLDIER_MOTION_STUDY_2026-09-25.md), [reference page](../art/reviews/gasp/research.html) |
 | 25 Sep 2026 | GASP brought onto main with destruction-aware contacts — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md), [review](../art/reviews/gasp/armed-soldiers-2026-09-25.mp4) |
@@ -73,6 +74,18 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 | 16 Sep 2026 | Current playable default — user replay decision, 16 September 2026 | [AI_MAIN_BUILD](AI_MAIN_BUILD.md), plan 014 phase reviews |
 | by 16 Sep 2026 | Previous main-build decisions (history, superseded by the replay decision above) | [AI_MAIN_BUILD](AI_MAIN_BUILD.md) |
 | undated | Early project instructions — undated, before 16 September 2026 | [plans/README](../plans/README.md), [AI_RELIABILITY_RESULTS](AI_RELIABILITY_RESULTS.md) |
+
+## Machine-gun mechanisms authored and reviewed — 26 September 2026
+
+Rifle checkpoint `59c963d` is pushed. The MG continuation authors ready/reload
+poses, a hinged cover, feeding parts, charging handle and ammunition-pouch exchange
+on both bodies. Latest focused MG reviews are female 6.0 (pass 46) and male 8.0
+provisional (pass 48). Action boundaries, pouch clearance, male sleeve topology,
+armor attachment and male shoulder-cloth intrusion are repaired. An 11-clip local
+player preserves the reviewed views and current rifle-body regression checks.
+Overall remains 4.0 and the requested 8.5 is unachieved. [The handoff](AUTHORED_SOLDIER_ACTIONS.md)
+records exact review links, reproduction, regressions and remaining work. No
+simulation change or AAA acceptance is claimed.
 
 ## Soldier actions authored in Blender — 25 September 2026
 

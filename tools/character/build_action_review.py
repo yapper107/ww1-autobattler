@@ -44,7 +44,7 @@ def main():
     (args.output / 'authored-actions-manifest.json').write_text(json.dumps(rows, indent=2))
     cards = []
     for i, row in enumerate(rows):
-        cards.append(f'''<section><h2>{html.escape(row['name'])}</h2>
+        cards.append(f'''<section id="clip-{i}"><h2>{html.escape(row['name'])}</h2>
 <p>{html.escape(row.get('note', 'Work in progress.'))}</p>
 <video id="v{i}" controls preload="metadata" playsinline poster="{row['poster']}"
 src="{row['video']}" data-start="{row['start']}"></video>
@@ -64,9 +64,12 @@ video{width:100%;max-height:75vh;background:#10151c}button,select{font:inherit;p
 <h1>Authored soldier actions</h1>
 <p class="status">Work in progress. These are actual Unreal captures of our authored actions.
 The last full-course critic grade was 4.0/10; the requested 8.5 has not been reached.
-Technical contact checks do not certify animation quality.</p>
+Critic scores are based on dense adjacent frames, not continuous playback. Technical contact checks do not certify animation quality.</p>
 <p>Use normal speed to judge rhythm and transitions. Pause and step frames to inspect contacts.
 All videos are local MP4 files; no account or network connection is needed.</p>'''
+    page += '<nav aria-label="Animation clips"><ul>' + ''.join(
+        f'<li><a href="#clip-{i}">{html.escape(row["name"])}</a></li>'
+        for i, row in enumerate(rows)) + '</ul></nav>'
     page += '\n'.join(cards)
     page += '''<script>
 for(const button of document.querySelectorAll('button[data-step]'))button.onclick=()=>{

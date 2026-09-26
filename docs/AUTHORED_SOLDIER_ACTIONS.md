@@ -12,15 +12,14 @@ score. Review is from dense chronological rendered frames, not continuous video
 playback.
 
 The latest focused reviews are female rifle reload **6.0/10** (pass 37), the
-male shot/bolt/interrupted reload sequence **7.5 provisional** (pass 36), and female MG
-reload/exit **4.0** (pass 12). Female held crouch stop is **5.5**, carry **5.5**,
+male shot/bolt/interrupted reload sequence **7.5 provisional** (pass 36), female MG
+reload/exit **6.0** (pass 46), and male MG **8.0 provisional** (pass 48). Female held crouch stop is **5.5**, carry **5.5**,
 walking **5.0**, and walk-stop **4.5**. These grades refer to the exact captures in
 the critic reports, not subsequent unreviewed changes.
 
 Male bolt placement and ammunition visibility improve, and the glove fin is repaired,
 and the extraction sleeve fold is repaired. Female stock clearance and supporting wrist improve;
-the feed still needs a clearly readable press. Pickup remains obscured. Complete
-MG mechanics, locomotion weight acceptance and broad action coverage remain open.
+the feed still needs a clearly readable press. Pickup remains obscured. The MG pouch-wall conflict, sleeve holes and action-boundary pop are repaired in the latest graded captures; shoulder armor and load response remain open. Locomotion weight and broad action coverage remain unaccepted.
 Passing numerical checks do not waive these visible failures.
 
 ## Editable sources and reproduction
@@ -31,7 +30,7 @@ All paths below are repository-relative. Binary art belongs in Git LFS.
 |---|---|
 | `art/characters/authored_rifle/Female/Rifle_Handling_Authored.blend` | Editable shot/bolt, reload and lowered-carry loop, weapon controls, keyed two-bone reload solve, planted ankles and body keys |
 | `art/characters/authored_rifle/Male/Male_Rifle_Handling_Authored.blend` | Compatible male actions retaining his actual proportions and finger gestures |
-| `art/characters/authored_mg/MachineGun_Handling_Authored.blend` | Body-specific MG firing and ammunition-box reload blocking; not finished feed mechanics |
+| `art/characters/authored_mg/MachineGun_Handling_Authored.blend` | Body-specific MG ready, firing and retained-box reload; articulated cover, feed and charging handle; unaccepted |
 | Each body's `manifest.json` and FBXs | Exact durations, 60 Hz bake, editable action names and WIP status |
 
 Exact input blend snapshots and their SHA-256 hashes are retained under
@@ -117,8 +116,9 @@ The MG reload uses `Weapon_Free` as the ammunition-box carrier while alive; deat
 still uses the existing drop contract. The MG firing source exists as editable
 blocking, but is **not enabled as the runtime firing action** yet. Its interrupted
 burst behavior needs authoring and review before replacing current recoil.
-The MG feed cover and belt are not articulated in this source mesh; the reload
-blocking is not a claim of mechanically complete operation.
+The MG feed cover, belt, box and charging handle are articulated. The belt remains
+a rigid linked section during feeding; individual link flex and exact opposing
+finger contacts are not certified. These source assets remain work in progress.
 
 The final two-arm fit also respects rigid bolt/receiver contacts. An undocked MG
 box follows the final reachable palm during its grasp phase, then returns to the
@@ -131,12 +131,12 @@ box contact too; its previous wrist-only result did not prove prop contact.
 
 | Family / transition | Evidence and remaining work |
 |---|---|
-| Rifle shot → bolt → aim | Female pass 10: 5.5; male pass 13: 5.5. Mechanism effort and regrip remain weak. |
-| Rifle reload → aim | Female pass 31: 6.0; male sequence fresh pass 30: 5.5. Pouch opening and stock clearance improve, but pickup/feeding and the male bolt grip remain rejected. Later contact edits require new review. |
+| Rifle shot → bolt → aim | Female earlier pass 10: 5.5; male full sequence pass 36: 7.5 provisional. Female firing needs a current review. |
+| Rifle reload → aim | Female pass 37: 6.0; male sequence pass 36: 7.5 provisional. Female force/release remains weak; neither reaches 8.5. |
 | Crouch start / side move / stop | Held female stop pass 11: 5.5. Timed stopping reduces early planting; toe support and load acceptance remain unaccepted. |
 | Walk / turns / run / sprint / braking | Pass 9 female carry 5.5, walk 5.0, stop 4.5. Other gait/body combinations still need review. Carry follows chest; intent contexts remain separate. |
 | Moving fire / crouched handling | Layers function, but the standing performance has not been certified for these adaptations. |
-| MG firing / reload | New editable blocking; burst integration and complete feed mechanics remain open. |
+| MG firing / reload | Articulated reload: female pass 46 6.0, male pass 48 8.0 provisional. Main plate roll and male shoulder-cloth intrusions repaired; load response remains unaccepted. Authored burst integration remains open. |
 | Vault / landing | Improved retained carry and free-hand plant. Landing is continuous in the inspected sequence; speed/obstacle variants and landing-to-travel remain open. |
 | Winded / death / drop | Existing runtime behavior; no new quality approval. |
 | Prone / other gameplay actions | No claim of complete authored coverage. |
@@ -145,7 +145,11 @@ box contact too; its previous wrist-only result did not prove prop contact.
 clips for numerical properties. Every entry remains `UNREVIEWED` visually; a finite
 pose/root check does not certify performance or every possible transition.
 
-## Diagnostic evidence
+## Earlier diagnostic evidence and iteration history
+
+Historical findings below apply to their named captures. Current status and resume instructions are at the top and in the final MG checkpoint section. Superseded failures must not be treated as current findings.
+
+### Initial diagnostic evidence
 
 Reviews: [pass 1](reviews/animation-critic-pass1.md),
 [pass 2](reviews/animation-critic-pass2-crouch.md),
@@ -263,7 +267,7 @@ through a trigger reference during transport. `gasp-arm-continuity.csv` measures
 rendered elbow displacement in component space at 30 Hz. Neither source nor
 runtime displacement is a substitute for viewing the performance.
 
-Latest graded MG evidence is `GaspCombat-20260925-231250` (female, 30–35.5 s).
+At pass 12, graded MG evidence was `GaspCombat-20260925-231250` (female, 30–35.5 s).
 The 34-second exit jump is repaired by cached movement-fire intent/carry weights,
 with the same fixed-step history used when seeking. It still lacks complete feed
 mechanics and a distinct empty-box/replacement operation.
@@ -306,7 +310,7 @@ removes the prop draw once the feed plane passes every vertex; it needs its own
 rendered check. The normal frame at which ammunition becomes fully seated is
 computed from the actual mesh bound, not a review-time special case.
 
-### Resume priorities
+### Historical pass-17 priorities (superseded)
 
 1. Preserve the verified seated-ammunition correction while improving the hand performance.
 2. Author genuine access to the pouch opening; the current flap remains shut.
@@ -631,7 +635,7 @@ the profile target; the diagnostic overlay distinguishes hidden surface contact
 from the visible index-finger silhouette. These diagnostics alone carry no grade.
 
 
-### Current reviewed checkpoint — passes 36–37
+### Rifle checkpoint — passes 36–37
 
 [Male pass 36](reviews/animation-critic-pass36-male-pronation.md) grades
 `051706` front / `051554` side **7.5/10 provisional**. The extraction sleeve
@@ -655,3 +659,109 @@ bolt-pad contact, and 0.15 cm maximum thumb-to-cartridge surface spacing. Full
 Python230 tests pass with eight skips, documentation7 pass, and focused weapon
 handling checks including2,000 seeks pass. Unchanged simulation inherits the
 previous full Linux suite; these numerical checks do not establish visual quality.
+
+
+## Articulated machine-gun continuation — 26 September 2026
+
+Rifle checkpoint `59c963d` is pushed on `codex/gasp-soldier-animation`. A fresh
+fetch confirmed that this branch contains `origin/main` at `041077d`. No simulation
+source or weapon cadence/reload duration changed during this visual continuation.
+
+The MG now has editable ready, shot and six-second source reload actions for both
+bodies, played at the equipped weapon's four-second reload duration. The approved
+mesh is partitioned into body, box, belt, hinged cover and charging handle. A small
+cover catch and recessed feed tray support the manipulation. An open canvas pouch
+receives the empty box and supplies the replacement. Its attachment and the hand
+follow the live pelvis; the cover and charging handle follow the gun. Equipment
+sampling is deterministic under replay seeks. This is a fictional weapon's visual
+mechanism, not a change to the simulation's ammunition rules.
+
+Reproduce with `author_mg_actions.py`, `author_mg_mechanism.py` and
+`repair_male_glove.py`, `repair_male_sleeve.py` and `repair_soldier_pauldrons.py` beside it, using the portable gunners source. The output is
+`art/characters/authored_mg/`, including both FBX sets, six rigid equipment FBXs,
+body manifests, and `MachineGun_Handling_Authored.blend`. The saved scene retains
+IK authoring rigs and separate baked deformation actions; embedded source atlas
+textures make the preview portable. `import_authored_rifle.py` imports both
+families and invokes `import_mg_mechanism.py`. The latter explicitly uses the legacy
+FBX factory and checks palette-section counts: Interchange's replacement path
+collapsed the body/belt materials to a single section on a subsequent import.
+
+Reviews: [pass 38](reviews/animation-critic-pass38-mg-mechanism.md) is female5.0;
+[pass 39](reviews/animation-critic-pass39-mg-weight.md) is female5.5;
+[pass 40](reviews/animation-critic-pass40-male-mg.md) is male6.5 provisional.
+Every adjacent frame in those six-second views was inspected. They do not certify
+continuous playback or unshown actions. The male sleeve collapse and female
+pouch-wall intersection remained blockers at those exact captures.
+
+Subsequent candidates add a vertical pouch-clearance path, the separate
+ready pose, contact-plane hand orientation, forearm pronation and a stable elbow
+frame. The runtime also preserves residual recoil while entering the reload and
+fits the glove attitude to the actual forearm while preserving its contact point.
+The native review now checks cover and charging-handle contacts on both bodies in
+addition to box/rifle contact, finite cloth and deterministic seeks. Internal
+intermediate candidates exposed a material-section regression and large elbow
+steps; neither was submitted as an accepted improvement. Later findings are recorded below. No new overall score or 8.5 acceptance is
+claimed; locomotion, vaulting, wider action coverage and the female rifle's
+pressure/release performance remain outstanding.
+
+
+### MG transition, sleeve and armor checkpoint — 26 September 2026
+
+[Female pass 46](reviews/animation-critic-pass46-female-mg-armor.md) is **6.0/10**;
+[male pass 48](reviews/animation-critic-pass48-male-shoulder-cloth.md) is **8.0 provisional**.
+They assess complete adjacent-frame sequences from two cameras, not continuous
+playback. The full-course score remains 4.0 and no action is accepted at 8.5.
+
+The female boundary flip was a runtime coordinate-frame switch at zero action
+weight. Gun-frame calibration now blends with action weight. The residual kick at
+34 seconds accompanies the next scripted burst, so it is not evidence that the
+old boundary defect remains. The native pose also retains the authored MG hip
+translation with planted feet, rather than discarding that body response.
+
+The pouch is sized for the carried glove as well as the box. Source measurements
+find finger vertices out to 8.56 cm from its center; the previous 6.3 cm half-width
+put the hand through its wall. The current mouth has 9.3 cm lateral and 10.8 cm
+depth clearance. Both body-specific paths align above the opening before lowering
+and use the live pelvis during transfer. Release/acquisition is hidden inside
+the pouch; exact hidden contacts are unverified, not demonstrated failures.
+
+The male sleeve had an actual missing triangle, not just bad pronation.
+`repair_male_sleeve.py` adds the measured face without moving vertices or joints;
+`RepairMaleSleeveTriangle` applies that same bounded repair only to the owned
+runtime male mesh. A constant cloth-atlas UV avoids interpolating across unrelated
+atlas islands. Reimport is idempotent. `repair_male_glove.py` additionally repairs
+69 left-cuff weights, preserving the earlier 54 right-hand corrections. Native
+weights are checked after commit; the mesh still has 2,612 vertices and coat
+bindings remain finite. Extra native forearm pronation made the female closing
+sleeve worse and was removed; the source performance retains its authored rotation.
+
+The next attachment candidate moves only the two disconnected shoulder shells
+from upper-arm to clavicle bones: 156 female vertices and 60 male vertices.
+`repair_soldier_pauldrons.py` checks each measured connected component and emits
+bind-position manifests. `import_soldier_armor_weights.py` matches those positions,
+checks prior ownership, commits only their weights and rereads them. Fresh complete
+Blender generation succeeds. The body repair is shared with the rifle runtime;
+rifle action keys are unchanged, but old rifle grades do not certify the new body.
+Passes 46 and 47 confirm removal of the large inward roll/gap. The female shoulder strap still deforms, and the male coat cap protrudes through the plate in a few raised-arm poses. Pass 48 confirms removal of the male intrusions after a 22-vertex shoulder-cap weight correction. Existing spine contributions are retained while the cap transitions from clavicle to upper arm over 8 cm. No new sleeve-volume collapse is demonstrated. The rifle body regression also found no new gross body/contact defect; its old action grade is not raised.
+
+Resume priorities: preserve the repaired contacts while improving continuous transport and differentiated anticipation/resistance/release;
+integrate and review the authored MG burst; improve locomotion/crouch/traversal
+weight and transitions; then exercise both bodies, weapons, factions, moving fire,
+fatigue, interruption, death and actual gameplay. Numerical checks cannot substitute
+for those visual reviews. The 732-clip inventory remains visually unreviewed.
+
+
+The portable player now contains **11 clips**, with latest MG side/opposite views
+first, current front rifle body checks next, and clearly labelled historical
+operating-side/locomotion companions. MG exact captures: female `064856`/`064657`
+(pass 46), male `070047`/`065920` (pass 48), all `GaspCombat-20260926-`.
+Current rifle body checks are female `065220` and male `070230`; the latter includes
+the shoulder-cloth correction. See the [bounded regression report](reviews/animation-rifle-body-regression-2026-09-26.md).
+
+Fresh source generation from the hash-identical portable gunners snapshot succeeds;
+native import verifies 156 female armor and 82 male armor/shoulder-cloth vertices.
+The final UE 5.8 build passes. Python ran 230 tests with 8 skips; documentation 7
+and weapon-handling/2,000-seek checks pass. The current 1,381-frame/four-body native
+course passes contacts, deterministic seeking, pose-query preservation and finite
+cloth checks. This is technical evidence, not visual acceptance. The complete
+Linux simulation suite remains inherited on unchanged source `090b6da63e131f07`.
