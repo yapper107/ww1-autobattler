@@ -23,11 +23,20 @@ int main(){
  assert(Handling(rifle,9,0,false).gun.y==0);
  assert(Handling(rifle,10.001,1,false).gun.y< -2);
  assert(Handling(rifle,10.55,1,false).boltBack>.5);
+ assert(Handling(rifle,10.55,1,false).rightSupport<.01f);
+ assert(Handling(rifle,10.55,1,false).leftSupport==1);
+ HandlingSettings automatic;automatic.manualBolt=false;automatic.kickCentimetres=1;
+ assert(Handling(rifle,10.55,1,false,automatic).boltBack==0);
+ assert(Handling(rifle,10,1,false,automatic).gun.y==-1);
  auto mg=rifle;mg.machineGun=true;
  assert(Handling(mg,10.55,1,false).boltBack==0);
  rifle.reloadStart=11;rifle.reloadEnd=13.5;
  assert(std::strcmp(Handling(rifle,12,1,false).name,"rifle reload")==0);
  assert(Handling(rifle,13.5,1,false).clip==0);
+ assert(Handling(rifle,13.5,1,false).rightSupport==1);
+ auto mgReload=rifle;mgReload.machineGun=true;
+ assert(Handling(mgReload,12,1,false).rightSupport==1);
+ assert(Handling(mgReload,12,1,false).leftSupport<.01f);
  assert(Handling(rifle,12,1,true).upper==0);
  rifle.sprinting=true;assert(Handling(rifle,12,1,false).upper==0);
  for(int i=0;i<2000;++i){

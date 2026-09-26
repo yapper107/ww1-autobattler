@@ -1,0 +1,1445 @@
+{
+  "source": "Epic Game Animation Sample 5.8",
+  "clips": [
+    {
+      "source": "Walk/M_Neutral_Transition_Run_to_Walk_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Transition_Run_to_Walk_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Transition_Sprint_to_Walk_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Transition_Sprint_to_Walk_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_B",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_BL",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_BR",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_F",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_FL",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_FR",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_F_L_20",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_F_R_20",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_LL",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_LR",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_LR_offset",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_RL",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_RR",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Loop_RR_offset",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_BL_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_BL_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_BR_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_BR_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_B_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_B_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_FL_BR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_FL_BR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_FR_BL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_FR_BL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_F_B_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_F_B_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_LL_RL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_LL_RL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_LR_RR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_LR_RR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_RL_LL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_RL_LL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_RR_LR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Pivot_RR_LR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_B_L_090",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_B_L_180",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_B_R_090",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_B_R_180",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_F_L_090",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_F_L_180",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_F_L_180_backstep",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_F_R_090",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_F_R_180",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Reface_Start_F_R_180_backstep",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_BL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_BL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_BR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_BR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_B_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_B_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_LL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_LL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_LR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_LR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_RL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_RL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_RR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Start_RR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_BL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_BL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_BR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_BR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_B_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_B_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_LL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_LL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_LR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_LR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_RL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_RL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_RR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Stop_RR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_045_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_045_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_090_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_090_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_135_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_135_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_180_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_L_180_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_045_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_045_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_090_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_090_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_135_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_135_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_180_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Walk/M_Neutral_Walk_Turn_R_180_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_B",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_BL",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_BR",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_F",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_FL",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_FR",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_F_L_20",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_F_R_20",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_LL",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_LR",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_LR_offset",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_RL",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_RR",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_RR_offset",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_Strafe_BR",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Loop_Strafe_FL",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_BL_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_BL_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_BR_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_BR_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_B_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_B_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_FL_BR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_FL_BR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_FR_BL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_FR_BL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_F_B_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_F_B_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_LL_RL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_LL_RL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_LR_RR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_LR_RR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_RL_LL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_RL_LL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_RR_LR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Pivot_RR_LR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_B_L_090",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_B_L_180",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_B_R_090",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_B_R_180",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_F_L_090",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_F_L_180",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_F_R_090",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Reface_Start_F_R_180",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_BL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_BL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_BR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_BR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_B_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_B_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_LL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_LL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_LR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_LR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_RL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_RL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_RR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Start_RR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_BL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_BL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_BR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_BR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_B_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_B_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_LL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_LL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_LR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_LR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_RL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_RL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_RR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Stop_RR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_045_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_045_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_090_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_090_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_135_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_135_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_180_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_L_180_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_045_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_045_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_090_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_090_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_135_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_135_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_180_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Run_Turn_R_180_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Transition_Sprint_to_Run_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Transition_Sprint_to_Run_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Transition_Walk_to_Run_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Run/M_Neutral_Transition_Walk_to_Run_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Loop_F",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Loop_FL",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Loop_FR",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Loop_F_L_20",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Loop_F_R_20",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Reface_Start_F_L_090",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Reface_Start_F_L_180",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Reface_Start_F_R_090",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Reface_Start_F_R_180",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Start_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Start_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Start_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Start_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Start_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Start_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Stop_FL_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Stop_FL_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Stop_FR_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Stop_FR_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Stop_F_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Stop_F_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_L_090_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_L_090_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_L_180_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_L_180_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_R_090_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_R_090_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_R_180_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Sprint_Turn_R_180_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Transition_Run_to_Sprint_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Transition_Run_to_Sprint_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Transition_Walk_to_Sprint_Lfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Sprint/M_Neutral_Transition_Walk_to_Sprint_Rfoot",
+      "group": "standing"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_045_L",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_045_R",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_090_L",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_090_R",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_135_L",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_135_R",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_180_L",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Idle_Turn_180_R",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_B",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_BL",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_BR",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_F",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_FL",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_FR",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_F_L_20",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_F_R_20",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_LL",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_LR",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_RL",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Loop_RR",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_BL_FR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_BL_FR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_BR_FL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_BR_FL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_B_F_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_B_F_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_FL_BR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_FL_BR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_FR_BL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_FR_BL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_F_B_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_F_B_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_LL_RL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_LL_RL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_LR_RR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_LR_RR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_RL_LL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_RL_LL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_RR_LR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Pivot_RR_LR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_B_L_090",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_B_L_180",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_B_R_090",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_B_R_180",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_F_L_090",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_F_L_180",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_F_R_090",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Reface_Start_F_R_180",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_BL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_BL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_BR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_BR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_B_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_B_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_FL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_FL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_FR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_FR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_F_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_F_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_LL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_LL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_LR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_LR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_RL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_RL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_RR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Start_RR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_BL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_BL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_BR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_BR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_B_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_B_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_FL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_FL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_FR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_FR_Rtfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_F_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_F_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_LL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_LL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_LR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_LR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_RL_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_RL_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_RR_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Stop_RR_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_045_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_045_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_090_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_090_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_135_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_135_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_180_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_L_180_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_045_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_045_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_090_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_090_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_135_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_135_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_180_Lfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Crouch_Turn_R_180_Rfoot",
+      "group": "crouch"
+    },
+    {
+      "source": "Crouch/M_Neutral_Transition_Crouch_to_Stand",
+      "group": "actions"
+    },
+    {
+      "source": "Crouch/M_Neutral_Transition_Stand_to_Crouch",
+      "group": "actions"
+    },
+    {
+      "source": "Idle/M_Neutral_Crouch_Idle_Loop",
+      "group": "crouch"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Idle_Loop",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_045_L",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_045_R",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_090_L",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_090_R",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_135_L",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_135_R",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_180_L",
+      "group": "standing"
+    },
+    {
+      "source": "Idle/M_Neutral_Stand_Turn_180_R",
+      "group": "standing"
+    },
+    {
+      "source": "Traversal/Vault/M_Neutral_Traversal_Vault_1_0_run_F_Lfoot",
+      "group": "actions"
+    },
+    {
+      "source": "Traversal/Vault/M_Neutral_Traversal_Vault_1_0_stand_F_Lfoot",
+      "group": "actions"
+    },
+    {
+      "source": "Traversal/Vault/M_Neutral_Traversal_Vault_1_0_walk_F_Rfoot",
+      "group": "actions"
+    }
+  ]
+}

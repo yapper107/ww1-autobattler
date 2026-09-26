@@ -1,7 +1,7 @@
 # Project working instructions
 
-`CLAUDE.md` and `AGENTS.md` are identical: law, current state, standing rulings, gates and an
-index. Dated history lives in [docs/PROJECT_LOG.md](docs/PROJECT_LOG.md); see "Keeping these files".
+`CLAUDE.md` and `AGENTS.md` stay identical. History: [docs/PROJECT_LOG.md](docs/PROJECT_LOG.md).
+See "Keeping these files".
 
 ## Standing Astra / Fable collaboration
 
@@ -73,6 +73,7 @@ As of 25 September 2026:
   finished with no reliable gain; neural training is paused. [Plan 028](plans/028-covering-fire.md)
   (covering-fire repair) stopped by the stop rule; all off. Capacity file `.local/neural/max_jobs`.
 - **Plan 031:** Stage G default; D, D2, D3 no gain (D merged off); [tools/covering](tools/covering/README.md).
+- **Art:** [GASP in progress](docs/GASP_PROTOTYPE.md).
 - **Models:** `models/squad/` (the three plan 024 squad models); none promoted.
 - **Maps:** four generated families in `Unreal/Config/GeneratedMaps/` (`city`, `trenches`, `village`,
   `city2`; village and city2 seed 17 accepted 23 Sep 2026, golden-byte tested). Training

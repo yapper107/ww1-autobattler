@@ -28,6 +28,38 @@
       "TargetAllowList": [
         "Editor"
       ]
+    },
+    {
+      "Name": "PoseSearch",
+      "Enabled": true
+    },
+    {
+      "Name": "Chooser",
+      "Enabled": true
+    },
+    {
+      "Name": "AnimationWarping",
+      "Enabled": true
+    },
+    {
+      "Name": "MotionWarping",
+      "Enabled": true
+    },
+    {
+      "Name": "IKRig",
+      "Enabled": true
+    },
+    {
+      "Name": "ControlRig",
+      "Enabled": true
+    },
+    {
+      "Name": "BlendStack",
+      "Enabled": true
+    },
+    {
+      "Name": "ChaosCloth",
+      "Enabled": true
     }
   ]
 }

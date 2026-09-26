@@ -22,6 +22,8 @@ public class ArmyPrototype : ModuleRules
             PublicDefinitions.Add("ARMY_BUILD_ID=\"" + Hash.ToString("x16") + "\"");
         }
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RenderCore", "AnimationCore", "AnimGraphRuntime" });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "RenderCore", "AnimationCore", "AnimGraphRuntime", "PoseSearch", "BlendStack", "AnimationWarpingRuntime", "Chooser", "IKRig", "GameplayTags" });
+        PublicDependencyModuleNames.AddRange(new string[] { "ClothingSystemRuntimeInterface", "ClothingSystemRuntimeCommon", "ChaosCloth", "PhysicsCore" });
+        if (Target.bBuildEditor) PrivateDependencyModuleNames.AddRange(new string[] { "AssetRegistry", "ClothingSystemEditor", "ClothingSystemEditorInterface", "UnrealEd", "AnimGraph", "BlueprintGraph", "PoseSearchEditor" });
     }
 }

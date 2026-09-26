@@ -6,6 +6,7 @@
 #include "HAL/PlatformProcess.h"
 #include "CharacterBlend.h"
 #include "DestructionEffects.h"
+#include "AnimationContext.h"
 #include "BattleGameMode.generated.h"
 
 class ACameraActor;
@@ -67,6 +68,7 @@ private:
     void BuildVisualTimeline();
     std::array<std::vector<double>,army::UnitCount> VisualShots;
     std::vector<std::array<armyvisual::State,army::UnitCount>> VisualTimeline;
+    TUniquePtr<armyvisual::context::ReplaySource> AnimationSource;
     void RunBattle();
     void SmokeTest(float DeltaSeconds);
     void ShowArtShowcase();
@@ -98,6 +100,7 @@ private:
     FLinearColor ObstacleColor(const army::Obstacle& O,float Time,bool& Roof) const;
     int32 GeometryIndexAt(float Time) const;
     void ShowGeometry();
+    void ShowGeometryAt(float Time);
     void IndexDestruction();
     void ConfigureDestruction();
     void PresentDestruction();

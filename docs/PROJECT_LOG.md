@@ -18,7 +18,12 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
+| 25 Sep 2026 | GASP brought onto main with destruction-aware contacts — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md), [review](../art/reviews/gasp/armed-soldiers-2026-09-25.mp4) |
 | 25 Sep 2026 | Grenades and building destruction merged, off by default — 25 September 2026 | [plan 032](../plans/032-grenades-and-using-the-pin.md), [plan 033](../plans/033-building-destruction.md) |
+| 25 Sep 2026 | Armed GASP integration and replay cache underway — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md) |
+| 25 Sep 2026 | GASP sample retargeted to both soldier bodies — 25 September 2026 | [prototype](GASP_PROTOTYPE.md), [plan 034](../plans/034-contextual-soldier-animation.md) |
+| 25 Sep 2026 | UE 5.8 build and soldier target rigs — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md) |
+| 25 Sep 2026 | Contextual animation preparation on current gameplay — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md), [inputs](SOLDIER_ANIMATION_INPUTS.md) |
 | 25 Sep 2026 | Covering fire made useful: Stage G is the default — 25 September 2026 | [plan 031](../plans/031-fire-and-movement.md), [tools/covering](../tools/covering/README.md) |
 | 24 Sep 2026 | Plan 031 stage D measured, merged off; D2 approved; work pushed for the move — 24 September 2026 | [plan 031](../plans/031-fire-and-movement.md), [tools/covering](../tools/covering/README.md) |
 | 24 Sep 2026 | Plan 031 fire and movement started — 24 September 2026 | [plan 031](../plans/031-fire-and-movement.md) |
@@ -67,6 +72,43 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 | by 16 Sep 2026 | Previous main-build decisions (history, superseded by the replay decision above) | [AI_MAIN_BUILD](AI_MAIN_BUILD.md) |
 | undated | Early project instructions — undated, before 16 September 2026 | [plans/README](../plans/README.md), [AI_RELIABILITY_RESULTS](AI_RELIABILITY_RESULTS.md) |
 
+## GASP brought onto main with destruction-aware contacts — 25 September 2026
+
+Jordan's direction is integration into main. The animation worktree now includes
+main `0a137f5` (grenades and destruction); animation's plan is renumbered 034 to
+avoid colliding with destruction's 033. The original checkout is untouched.
+No simulation source or gameplay default is changed by animation.
+
+The combined UE 5.8.3 editor and Development packaged runtime build successfully.
+Motion contacts select the recorded geometry revision at each cached step, restore
+the displayed revision afterward, and update geometry before character presentation
+on seeks. Instanced obstacles participate in presentation collision queries. Blast
+height now places the visual body above its recorded floor; airborne feet do not
+plant. The grenade reason/stun/deafness/rush contract is available to the adapter;
+authored grenade action tracks remain unfinished.
+
+The packaged motion check passes 1,381 frames × four body/weapon combinations.
+A 120-second city2 battle passes 640 body/time samples, all 64 GASP bodies, 24 exact
+rifle/MG shot events, pose advancement, pause, rewind and changed-rate checks.
+The packaged destruction check also passes four geometry versions, backward seeks,
+73 repeated debris transforms and all five destruction-event stages.
+The full Python suite passes (230 tests, eight skips). Its historical digest test
+now explicitly supplies the original baseline-path fixture: production hashing and
+the expected digest are unchanged, and worktrees can run the same assertion.
+The full Linux simulation suite passed on the pre-merge source in 1,103 seconds;
+the incoming simulation is unchanged from main's separately validated source.
+The engine-independent animation-context check also covers blast-height interpolation.
+
+The updated 46-second H.264 review is tracked in `art/reviews/gasp/` with LFS.
+Jordan could not see the earlier inline video, so the Windows review folder also
+contains `animation-review.html`: a self-contained player with chapters and slow
+playback. This is a review capture, not AAA acceptance. Prone/crawl, authored
+weapon/grenade actions, contact/cloth polish and battlefield visual acceptance remain.
+Jordan has added voxel vision's Free Animation Library to his Fab account; it has
+not appeared in the local projects or Launcher download cache. The Windows UI tool
+fails before execution because it rejects the WSL workspace URI, even after reset.
+The account download/add-to-project step was left with Jordan; independent work continued.
+
 ## Grenades and building destruction merged, off by default — 25 September 2026
 
 Jordan (25 Sep): the soldiers should use the pin (close in on pinned enemies) and grenades, with physics-based blast
@@ -108,6 +150,119 @@ worktrees (grenades; destruction in the simulator; destruction in Unreal); the o
   intervals); stopped there. Attacks, where grenades should matter most, were not screened.
 - **Not done:** test charges still hurt nobody by blast (only by debris and collapse); grenade art beyond a sphere,
   flash and smoke.
+## Armed GASP integration and replay cache underway — 25 September 2026
+
+Further continuation: the review course is now 46 seconds with a standing GASP vault,
+recorded takeoff/landing warping, free-hand wall contact and a bounded airborne body
+reach correction. Chaos simulates the existing lower coat on each actual body (260
+female / 554 male vertices), with waist pins, leg/body capsules and environment
+collisions. Persisting both section binding and its source-section record, and
+invalidating the mesh DDC, was necessary to retain the cloth render mapping. A
+separate cloth-enabled material fixes Unreal's grey fallback. Cloth freezes on pause
+and resets/settles on seek; its historical deformation is not deterministic. The
+battle uses a configurable close-view cloth budget (four by default).
+
+Muzzle queries now preserve the current pose, aim/look state and cloth instead of
+resetting secondary motion each time a shot origin is sampled. The rifle palm follows
+the visible bolt knob through its opening and travel. Latest native four-body course:
+1,381 frames, wrist error below output precision, wall-hand error below output precision,
+bolt-palm error 0.0012 cm, barrel heading error 0.07993 degrees, 1,628 simulated cloth
+vertices with finite output, exact repeated skeletal seeks and unchanged pose/cloth
+after muzzle queries. Generation takes about 18 seconds with cloth. These are technical
+checks, not visual acceptance or a full-army performance result. Corrected v3 motion
+capture is complete (46 seconds); reloads still need stronger action/prop work.
+City2 seed100 passes 640 body/time samples, 24 exact shot events and replay pose checks.
+The inspector now names the actual evaluated GASP clips. A generated, constant Motion
+Matching Blueprint template supplies the compiled node data missing from a standalone
+native graph in cooked builds; editor poses remain unchanged, standalone verification
+is in progress. The 46-second v2 capture is diagnostic:
+it predates the cloth material fix and bolt-knob contact. Requested voxel vision's
+Free Animation Library in a temporary project to evaluate its listed prone clips;
+the current installation has none. The Fable architectural helper is absent from
+`/home/jchan/.local/share/astra-fable/fable_architect.py`; independent work continued.
+
+Continuation: a complete 42-second armed capture now exists for all four body/weapon
+combinations. Foot placement and two-bone leg solves are cached and reproduce after
+seek. The capture and extended diagnostics exposed two additional faults: the
+separate USkeleton still retained the old FBX root scale after the mesh was normalized
+(extracted root motion was 100× too large), and the standing gun overlay inherited
+unarmed hip twist. The generated skeleton reference pose is now synchronized explicitly;
+the overlay calibrates barrel heading. A bounded native presentation-root adapter,
+smoother sprint carry, component-space head attitude and support-hand-aware reload
+reach are under validation. The first capture predates these corrections and is not
+accepted. Prone, real traversal contacts, cloth, action polish and full battle review
+remain open. No simulation changes, commit, push or AAA-quality claim.
+
+
+Jordan explicitly rejected stopping at the unarmed retarget checkpoint and requested
+continuous work until the full animation system is connected. The same isolated
+`codex/gasp-soldier-animation` worktree remains the development branch.
+
+Expanded to 360 named GASP motions per actual body, with standing and crouching
+Pose Search databases and 50 converted existing weapon/death clips per body.
+Native Motion Matching and pose history run on a fixed 30 Hz visual clock; the
+renderer samples cached blend decisions so display frame rate and backward seeking
+do not change selection history. Separate editable rifle/MG carry profiles and a
+four-soldier continuous test course are implemented; battle shots remain authoritative.
+
+The first numerical pass reproduced native blended joint positions and backward
+seeks, but the gait audit found walking/running continuing through stops. Query
+inspection identified the FBX object root's 90-degree basis: horizontal trajectory
+features discarded forward movement. The root basis is now normalized while
+preserving non-root bind positions and the old weapon animations; full library
+regeneration and contact-solving tests are in progress. This is **unfinished work**:
+prone, traversal contacts, authored weapon actions, coat physics and rendered motion
+acceptance remain outstanding. A passing grip-distance test is not visual acceptance.
+
+## GASP sample retargeted to both soldier bodies — 25 September 2026
+
+Jordan supplied the installed Game Animation Sample path; it is the matching 5.8
+project. The isolated animation branch now has ten GASP clips for each actual
+soldier body and an opt-in three-body Unreal review scene. Scale-100 imported roots
+required normalized duplicate meshes/skeletons; reference joint positions are
+verified unchanged. The native build and focused checks pass. The reviewed sample
+dependency closure stays in the local mirror, reproducible from the installed
+sample. Original assets and battle presentation remain intact.
+
+This is a retarget checkpoint, not the requested finished animation system. The
+comparison uses original playback speed, centered root travel and cuts between
+clips; coat/knee deformation and hand/shoulder poses still need refinement.
+Continuous pose search, weapon layers, world contacts, cloth, seeking and crowd
+cost remain to implement and review. [Reproduction and limits](GASP_PROTOTYPE.md).
+No visual acceptance or simulation changes are claimed.
+
+## UE 5.8 build and soldier target rigs — 25 September 2026
+
+Jordan reported the dependencies installed. UE 5.8.3 is verified and the current
+game compiles/links in the separate `ArmyPrototype-GASP` mirror (44 native actions,
+66.5 s). Editor inspection loads the production bodies without errors: female
+56 bones, male 68, with different finger layouts. New reproducible target IK
+rigs have 18 and 22 checked chains, respectively. They preserve the original
+meshes and skeletons; source mapping, retarget poses, contact solving and visible
+GASP animation remain pending. Both imported roots have scale 100, which needs
+explicit validation against the sample. The sample `.uproject` was not found in
+usual locations; Jordan has been asked for its path. This updates the dependency
+and build status of the earlier preparation entry. No visual acceptance, runtime
+animation replacement or simulation change is claimed. Details/evidence in
+[plan 034](../plans/034-contextual-soldier-animation.md).
+
+## Contextual animation preparation on current gameplay — 25 September 2026
+
+Jordan requests AAA-quality continuous, equipment-aware soldier animation using
+the latest GASP if suitable, and permits outside animation sources. Work is isolated
+on `codex/gasp-soldier-animation`, based on latest `9a559c4`. The current male/female
+art is already integrated; prone still substitutes lowered crouch, and vaults use
+jump clips. The engine/sample download is pending: only UE 5.4 is installed here,
+and Windows UI tooling fails during WSL path initialization. Jordan is downloading
+UE 5.8 and GASP and asked preparation to continue.
+
+A tested read-only replay context adapter, equipment/contact contract, clip-gap
+audit and dependency preflight are prepared. Exact shot events and 2,000 shuffled
+input queries pass, along with six preflight tests. No GASP pose graph, visual
+improvement, new Unreal build or acceptance is claimed. Simulation source and
+playable defaults are unchanged. The [plan](../plans/034-contextual-soldier-animation.md)
+records primary-source research, replay/physics constraints and the first visible
+quality test. No paid animation source was acquired.
 
 ## Covering fire made useful: Stage G is the default — 25 September 2026
 

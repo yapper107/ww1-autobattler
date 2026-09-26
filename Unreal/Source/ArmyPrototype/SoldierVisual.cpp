@@ -1,6 +1,16 @@
 #include "SoldierVisual.h"
 #include "Engine/Texture.h"
 #include "SoldierAnimInstance.h"
+#include "SoldierMotionInstance.h"
+#include "SoldierClothComponent.h"
+#include "WeaponAnimationProfile.h"
+#include "TraversalAnimationProfile.h"
+#include "PoseSearch/PoseSearchDatabase.h"
+#if WITH_EDITOR
+#include "PoseSearch/PoseSearchDerivedData.h"
+#endif
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
@@ -12,11 +22,18 @@
 ASoldierVisual::ASoldierVisual() {
     PrimaryActorTick.bCanEverTick=false;
     RootComponent=CreateDefaultSubobject<USceneComponent>(TEXT("GroundRoot"));
-    Body=CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Soldier"));Body->SetupAttachment(RootComponent);
+    Body=CreateDefaultSubobject<USoldierClothComponent>(TEXT("Soldier"));Body->SetupAttachment(RootComponent);
     Body->SetRelativeRotation(FRotator(0,-90,0)); // Standard FBX import faces +Y; game faces +X.
     Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);Body->SetAnimationMode(EAnimationMode::AnimationBlueprint);
     Body->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
     Body->bEnableUpdateRateOptimizations=false;
+    MotionDriver=CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MotionPlanner"));
+    MotionDriver->SetAllowClothActors(false);
+    MotionDriver->SetupAttachment(RootComponent);MotionDriver->SetAbsolute(true,true,true);
+    MotionDriver->SetCollisionEnabled(ECollisionEnabled::NoCollision);MotionDriver->SetVisibility(false);
+    MotionDriver->SetCastShadow(false);MotionDriver->bEnableUpdateRateOptimizations=false;
+    MotionDriver->VisibilityBasedAnimTickOption=EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+    MotionDriver->SetComponentTickEnabled(false);
     Rifle=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Rifle"));Rifle->SetupAttachment(RootComponent);Rifle->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     Bolt=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Bolt"));Bolt->SetupAttachment(Rifle);Bolt->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     ReloadProp=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ReloadProp"));ReloadProp->SetupAttachment(Rifle);ReloadProp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -26,7 +43,28 @@ bool ASoldierVisual::AssetsAvailable() {
 }
 bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
     IsMale=Male;IsMachineGun=MachineGun;
-    auto* Mesh=LoadObject<USkeletalMesh>(nullptr,Male?TEXT("/Game/Characters/Male/SK_Male.SK_Male"):TEXT("/Game/Characters/FemaleRifle/SK_Female_Rifle.SK_Female_Rifle"));
+    const FString GaspBody=Male?TEXT("Male"):TEXT("Female");
+    StandingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing")));
+    CrouchingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch")));
+    bGasp=StandingDatabase&&CrouchingDatabase&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacyAnimation"));
+    if(bGasp) {
+        VaultProfile=LoadObject<UTraversalAnimationProfile>(nullptr,*(TEXT("/Game/Characters/GASP/Actions/")+GaspBody+TEXT("/DA_Vault")));
+        // In an uncooked editor game, loading a database starts its DDC build
+        // asynchronously. A replay must not cache an empty first decision.
+#if WITH_EDITOR
+        using namespace UE::PoseSearch;
+        for(const UPoseSearchDatabase* Database:{StandingDatabase.Get(),CrouchingDatabase.Get()})
+            if(FAsyncPoseSearchDatabasesManagement::RequestAsyncBuildIndex(Database,ERequestAsyncBuildFlag::NewRequest|ERequestAsyncBuildFlag::WaitForCompletion)!=EAsyncBuildIndexResult::Success)return false;
+#endif
+        const FString ProfilePath=TEXT("/Game/Characters/GASP/Equipment/DA_")+FString(MachineGun?TEXT("MachineGun"):TEXT("Rifle"));
+        EquipmentProfile=LoadObject<UWeaponAnimationProfile>(nullptr,*ProfilePath);
+        if(!EquipmentProfile) {
+            EquipmentProfile=NewObject<UWeaponAnimationProfile>(this);
+            if(MachineGun){EquipmentProfile->MovingLeanDegrees=6;EquipmentProfile->ManualBolt=false;EquipmentProfile->SpineWeight=.75f;}
+        }
+    }
+    auto* Mesh=LoadObject<USkeletalMesh>(nullptr,bGasp?*(TEXT("/Game/Characters/GASP/Bodies/SK_")+GaspBody+TEXT("_GASP")):
+        Male?TEXT("/Game/Characters/Male/SK_Male.SK_Male"):TEXT("/Game/Characters/FemaleRifle/SK_Female_Rifle.SK_Female_Rifle"));
     if(!Mesh)return false;
     // These unweighted control bones must survive the required-bone reduction too.
     for(const auto Name:{TEXT("Weapon_Free"),TEXT("WeaponGrip_L"),TEXT("WeaponGrip_R"),TEXT("WeaponMuzzle")}) {
@@ -42,19 +80,29 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
     if(!Body->GetSkeletalMeshAsset()||!Rifle->GetStaticMesh())return false;
     for(const auto& C:armyvisual::Clips) {
         FString Name=UTF8_TO_TCHAR(C.name);
-        auto* Clip=LoadObject<UAnimSequence>(nullptr,*((Male?TEXT("/Game/Characters/Male/"):TEXT("/Game/Characters/FemaleRifle/"))+Name+TEXT(".")+Name));
+        const FString Folder=bGasp?TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+TEXT("/"):
+            Male?TEXT("/Game/Characters/Male/"):TEXT("/Game/Characters/FemaleRifle/");
+        auto* Clip=LoadObject<UAnimSequence>(nullptr,*(Folder+Name+TEXT(".")+Name));
         if(!Clip){UE_LOG(LogTemp,Error,TEXT("Missing character clip %s"),*Name);return false;}
         Clips.Add(Clip);
     }
     if(MachineGun) {
-        MachineGunAim=LoadObject<UAnimSequence>(nullptr,Male?TEXT("/Game/Characters/Male/A_mg_aiming.A_mg_aiming"):TEXT("/Game/Characters/FemaleRifle/A_mg_aiming.A_mg_aiming"));
+        MachineGunAim=LoadObject<UAnimSequence>(nullptr,bGasp?*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+TEXT("/A_mg_aiming")):
+            Male?TEXT("/Game/Characters/Male/A_mg_aiming.A_mg_aiming"):TEXT("/Game/Characters/FemaleRifle/A_mg_aiming.A_mg_aiming"));
         if(!MachineGunAim)return false;
     }
     Body->SetAnimInstanceClass(USoldierAnimInstance::StaticClass());
     Body->SetComponentTickEnabled(false); // Evaluated explicitly at battle time, including paused seeks.
+    Body->ClothTickFunction.SetTickFunctionEnable(false);
+    if(bGasp) {
+        Body->SetDisablePostProcessBlueprint(true);
+        MotionDriver->SetSkeletalMesh(Mesh);MotionDriver->SetDisablePostProcessBlueprint(true);
+        MotionDriver->SetAnimInstanceClass(USoldierMotionInstance::StaticClass());
+        MotionDriver->SetComponentTickEnabled(false);
+    }
     if(Team==1) {
         for(int I=0;I<Body->GetNumMaterials();++I) {
-            const FString Name=Body->GetMaterial(I)->GetName();FLinearColor Tint;bool Swap=true;
+            const FString Name=Body->GetMaterial(I)->GetName();FLinearColor Tint=FLinearColor::White;bool Swap=true;
             if(Name.Contains(TEXT("maleatlas"))) {
                 auto* M=Body->CreateDynamicMaterialInstance(I);
                 M->SetTextureParameterValue(TEXT("BaseColorTexture"),LoadObject<UTexture>(nullptr,TEXT("/Game/Characters/Male/T_Male_Ember.T_Male_Ember")));
@@ -79,37 +127,123 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
     LastState=State;LastTime=Time;
     auto* Anim=Cast<USoldierAnimInstance>(Body->GetAnimInstance());if(!Anim)return;
     Anim->Samples.Reset();
-    for(const auto& S:armyvisual::Samples(State,Time)) {
+    Anim->ContactsEnabled=false;
+    Anim->RootOffsetEnabled=false;
+    Anim->VaultPlant=0;
+    if(bGasp&&!MotionFrames.IsEmpty()&&!State.handling.vaulting&&State.prone<.1f) {
+        const float Death=State.outAt<0?0.f:FMath::Clamp(float((Time-State.outAt)/.15),0.f,1.f);
+        if(Death<1) {
+            ReadMotion(State.outAt<0?Time:FMath::Min(Time,double(State.outAt)),Anim->Samples);
+            for(auto& S:Anim->Samples)S.Weight*=1-Death;
+        }
+        if(Death>0)for(const auto& S:armyvisual::Samples(State,Time)) {
+            if(!FString(UTF8_TO_TCHAR(armyvisual::Clips[S.clip].name)).Contains(TEXT("death")))continue;
+            FArmyPoseSample Sample;Sample.Sequence=Clips[S.clip];Sample.Weight=S.weight;Sample.Time=S.time;Anim->Samples.Add(Sample);
+        }
+    }
+    else for(const auto& S:armyvisual::Samples(State,Time)) {
         FArmyPoseSample Sample;Sample.Sequence=Clips[S.clip];Sample.Weight=S.weight;Sample.Time=S.time;Anim->Samples.Add(Sample);
     }
     Anim->GripAlpha=armyvisual::Grip(State,Time);
     auto Input=State.handling;Input.machineGun=IsMachineGun;
-    Anim->Handling=armyvisual::Handling(Input,Time,State.aim,State.outAt>=0);
-    if(IsMachineGun&&State.outAt<0)Anim->Handling.upper=1.f;
+    armyvisual::HandlingSettings Settings;
+    if(EquipmentProfile) {
+        Settings.kickCentimetres=EquipmentProfile->KickCentimetres;Settings.kickDegrees=EquipmentProfile->KickDegrees;
+        Settings.recoverySeconds=EquipmentProfile->RecoverySeconds;Settings.manualBolt=EquipmentProfile->ManualBolt;
+        Settings.boltStartSeconds=EquipmentProfile->BoltStartSeconds;
+    }
+    Anim->Handling=armyvisual::Handling(Input,Time,State.aim,State.outAt>=0,Settings);
+    if(bGasp&&State.outAt<0) {
+        const float Ready=1-FMath::Clamp(State.aim,0.f,1.f);
+        const bool Handling=Time-Input.lastShot<Input.cycleSeconds||(Input.reloadStart>=0&&Time>=Input.reloadStart&&Time<Input.reloadEnd);
+        float Sprint=Input.sprinting?1.f:0.f;
+        if(!MotionFrames.IsEmpty()) {
+            const double F=FMath::Max(Time,0.)*30;const int A=FMath::Clamp(FMath::FloorToInt(F),0,MotionFrames.Num()-1),B=FMath::Min(A+1,MotionFrames.Num()-1);
+            Sprint=FMath::Lerp(MotionFrames[A].SprintCarry,MotionFrames[B].SprintCarry,float(F-FMath::FloorToDouble(F)));
+        }
+        const float CarryWeight=1-Anim->Handling.traversal;
+        const FVector Carry=FMath::Lerp(EquipmentProfile->ReadyOffset*(Handling?0:Ready),EquipmentProfile->SprintOffset,Sprint)*CarryWeight;
+        Anim->Handling.gun.x+=float(Carry.X);Anim->Handling.gun.y+=float(Carry.Y);Anim->Handling.gun.z+=float(Carry.Z);
+        Anim->Handling.pitch+=FMath::Lerp(EquipmentProfile->ReadyPitch*(Handling?0:Ready),EquipmentProfile->SprintPitch,Sprint)*CarryWeight;
+        if(!Input.vaulting)Anim->Handling.upper=1;
+    }
+    if(IsMachineGun&&State.outAt<0&&!Input.vaulting)Anim->Handling.upper=1.f;
     Anim->StandingAim=IsMachineGun?MachineGunAim.Get():Clips[armyvisual::Find("A_idle_aiming")].Get();Anim->MachineGun=IsMachineGun;Anim->ModelScale=1.f;
+    Anim->EquipmentProfile=EquipmentProfile;Anim->AimYaw=AimYaw;Anim->AimPitch=AimPitch;Anim->LookYaw=LookYaw;Anim->LookPitch=LookPitch;
+    Anim->MoveSpeed=std::hypot(State.forward,State.right);Anim->PoseTime=Time;
+    if(bGasp&&!MotionFrames.IsEmpty()&&State.outAt<0&&!State.handling.vaulting&&State.prone<.1f) {
+        const double Frame=FMath::Max(Time,0.)*30;const int A=FMath::Clamp(FMath::FloorToInt(Frame),0,MotionFrames.Num()-1),B=FMath::Min(A+1,MotionFrames.Num()-1);
+        const float Alpha=A==B?0:float(Frame-FMath::FloorToDouble(Frame));
+        Anim->ContactsEnabled=MotionFrames[A].Contacts&&MotionFrames[B].Contacts;
+        Anim->RootOffsetEnabled=true;
+        Anim->MotionRoot.Blend(FTransform(MotionFrames[A].Root),FTransform(MotionFrames[B].Root),Alpha);
+        Anim->ContactPelvis.Blend(FTransform(MotionFrames[A].Pelvis),FTransform(MotionFrames[B].Pelvis),Alpha);
+        Anim->ContactLeftFoot.Blend(FTransform(MotionFrames[A].LeftFoot),FTransform(MotionFrames[B].LeftFoot),Alpha);
+        Anim->ContactRightFoot.Blend(FTransform(MotionFrames[A].RightFoot),FTransform(MotionFrames[B].RightFoot),Alpha);
+    }
+    if(HasVaultAnimation()&&Input.vaulting&&State.outAt<0&&VaultProfile->Animation) {
+        const float P=FMath::Clamp(Input.vaultProgress,0.f,1.f);
+        const float T=FMath::Lerp(VaultProfile->StartSeconds,VaultProfile->LandSeconds,P);
+        auto RootAt=[&](float At){return VaultProfile->Animation->ExtractRootTrackTransform(FAnimExtractContext(At,false),nullptr);};
+        const FTransform SourceRoot=RootAt(T),StartRoot=RootAt(VaultProfile->StartSeconds),EndRoot=RootAt(VaultProfile->LandSeconds);
+        const double Y=SourceRoot.GetLocation().Y,Wall=VaultProfile->SourceObstacleForward;
+        const float Across=Y<Wall?.5f*float((Y-StartRoot.GetLocation().Y)/FMath::Max(1.,Wall-StartRoot.GetLocation().Y)):
+            .5f+.5f*float((Y-Wall)/FMath::Max(1.,EndRoot.GetLocation().Y-Wall));
+        const FVector Ground=FMath::Lerp(VaultTakeoff,VaultLanding,FMath::Clamp(Across,0.f,1.f));
+        const FVector Direction=VaultLanding-VaultTakeoff;
+        if(!Direction.IsNearlyZero()){SetActorLocation(Ground);SetActorRotation(FRotator(0,Direction.Rotation().Yaw,0));}
+        FArmyPoseSample Sample;Sample.Sequence=VaultProfile->Animation;Sample.Time=T;Sample.ExtractRoot=true;Sample.Weight=Anim->Handling.traversal;
+        Anim->Samples.Reset();if(!MotionFrames.IsEmpty())ReadMotion(Time,Anim->Samples);
+        for(auto& S:Anim->Samples)S.Weight*=1-Sample.Weight;
+        Anim->Samples.Add(Sample);
+        const float Height=Input.vaultHeight*100;
+        Anim->RootOffsetEnabled=true;Anim->MotionRoot=FTransform(FVector(0,0,FMath::Max(0.,SourceRoot.GetLocation().Z)*Height/VaultProfile->SourceObstacleHeight));
+        Anim->ContactsEnabled=false;
+        Anim->VaultPlant=FMath::SmoothStep(VaultProfile->PlantBegin,VaultProfile->PlantFull,T)*(1-FMath::SmoothStep(VaultProfile->PlantRelease,VaultProfile->PlantEnd,T));
+        const float MidDistance=float(Direction.Size2D())*(.5f-FMath::Clamp(Across,0.f,1.f));
+        Anim->VaultHandTarget=FVector(IsMale?28:26,MidDistance,Height+3+VaultTakeoff.Z-Ground.Z);
+    }
     Body->TickAnimation(0.f,false);Body->RefreshBoneTransforms();Body->UpdateComponentToWorld();
+    if(bGasp&&!bPoseQuery)CastChecked<USoldierClothComponent>(Body)->AdvanceCoat(Time);
     const bool Released=State.outAt>=0&&Time-State.outAt>=11./60.;
     FTransform Gun=Body->GetSocketTransform(Released?TEXT("Weapon_Free"):TEXT("WeaponSocket_R"),RTS_World);
     // FBX bone axes and the separately exported mesh share the same scene conversion.
     Gun.SetScale3D(FVector::OneVector); // Skeleton carries FBX metre-to-cm scale; static mesh is already cm.
     Rifle->SetWorldTransform(Gun);
     Bolt->SetVisibility(!IsMachineGun);
-    Bolt->SetRelativeLocation(FVector(2.5,-24-8*Anim->Handling.boltBack,13));
-    Bolt->SetRelativeRotation(FRotator(60*Anim->Handling.boltOpen,0,0));
+    Bolt->SetRelativeLocation((EquipmentProfile?EquipmentProfile->BoltRest:FVector(2.5,-24,13))-FVector(0,(EquipmentProfile?EquipmentProfile->BoltTravel:8)*Anim->Handling.boltBack,0));
+    Bolt->SetRelativeRotation(FRotator((EquipmentProfile?EquipmentProfile->BoltOpenDegrees:60)*Anim->Handling.boltOpen,0,0));
     ReloadProp->SetVisibility(IsMachineGun||Anim->Handling.clip>0);
     if(IsMachineGun)ReloadProp->SetRelativeLocation(FVector(Anim->Handling.left.x,Anim->Handling.left.y,Anim->Handling.left.z));
     else {
         FTransform Prop=Body->GetSocketTransform(TEXT("RightHand"));Prop.SetScale3D(FVector::OneVector);ReloadProp->SetWorldTransform(Prop);
+        if(EquipmentProfile&&Anim->Handling.clip>0) {
+            const FVector Palm=FMath::Lerp(Body->GetSocketLocation(TEXT("RightHand")),Body->GetSocketLocation(TEXT("RightHandMiddle1")),.65);
+            Prop.SetLocation(Palm);
+            const FTransform Insert(Gun.GetRotation(),Gun.TransformPosition(EquipmentProfile->ReloadClipPosition(Anim->Handling.reloadPhase)));
+            Prop.Blend(Prop,Insert,Anim->Handling.reloadContact);ReloadProp->SetWorldTransform(Prop);
+        }
     }
 }
 FString ASoldierVisual::PoseDescription() const {
-    const auto Samples=armyvisual::Samples(LastState,LastTime);FString Text=FString(IsMale?TEXT("Male "):TEXT("Female "))+(IsMachineGun?TEXT("MG "):TEXT("rifle "))+UTF8_TO_TCHAR(armyvisual::Handling(LastState.handling,LastTime,LastState.aim,LastState.outAt>=0).name)+TEXT(" | ");
-    for(const auto& S:Samples)if(S.weight>.05)Text+=FString::Printf(TEXT("%s %.0f%%  "),UTF8_TO_TCHAR(armyvisual::Clips[S.clip].name),S.weight*100);
+    const auto* Anim=Cast<USoldierAnimInstance>(Body->GetAnimInstance());
+    FString Text=FString(IsMale?TEXT("Male "):TEXT("Female "))+(IsMachineGun?TEXT("MG "):TEXT("rifle "));
+    if(!Anim)return Text+TEXT("no evaluated pose");
+    Text+=UTF8_TO_TCHAR(Anim->Handling.name);Text+=bGasp?TEXT(" | GASP | "):TEXT(" | legacy | ");
+    TMap<UAnimSequence*,float> Weights;
+    for(const auto& S:Anim->Samples)if(S.Sequence)Weights.FindOrAdd(S.Sequence)+=S.Weight;
+    TArray<UAnimSequence*> Ordered;Weights.GetKeys(Ordered);
+    Ordered.Sort([&](const UAnimSequence& A,const UAnimSequence& B){return Weights[const_cast<UAnimSequence*>(&A)]>Weights[const_cast<UAnimSequence*>(&B)];});
+    for(auto* Clip:Ordered)if(Weights[Clip]>.05f)Text+=FString::Printf(TEXT("%s %.0f%%  "),*Clip->GetName(),Weights[Clip]*100);
     return Text;
 }
 float ASoldierVisual::GripError() const {
-    return FMath::Max(float(FVector::Distance(Body->GetSocketLocation(TEXT("LeftHand")),Body->GetSocketLocation(TEXT("WeaponGrip_L")))),
-        float(FVector::Distance(Body->GetSocketLocation(TEXT("RightHand")),Body->GetSocketLocation(TEXT("WeaponGrip_R")))));
+    const auto* Anim=Cast<USoldierAnimInstance>(Body->GetAnimInstance());
+    if(Anim&&Anim->GripAlpha<.999f)return 0; // Released hands have no gun constraint.
+    float Error=float(FVector::Distance(Body->GetSocketLocation(TEXT("RightHand")),Body->GetSocketLocation(TEXT("WeaponGrip_R"))));
+    if(!Anim||Anim->Handling.leftIK>.999f)Error=FMath::Max(Error,float(FVector::Distance(Body->GetSocketLocation(TEXT("LeftHand")),Body->GetSocketLocation(TEXT("WeaponGrip_L")))));
+    else if(Anim->VaultPlant>.999f)Error=FMath::Max(Error,float(FVector::Distance(Body->GetSocketTransform(TEXT("LeftHand"),RTS_Component).GetLocation(),Anim->VaultHandTarget)));
+    return Error;
 }
 FVector ASoldierVisual::MuzzlePosition() const{return Body->GetSocketLocation(TEXT("WeaponMuzzle"));}
 
@@ -170,4 +304,117 @@ FString ASoldierVisual::ValidatePresentation() {
     Report+=FString::Printf(TEXT("muzzle_alignment_cm=%.5f death_frozen=%d weapon_follows_drop_track=%d\n"),MuzzleError,Frozen,Dropped);
     for(const auto Name:{TEXT("Hips"),TEXT("WeaponSocket_R"),TEXT("WeaponMuzzle"),TEXT("LeftHand"),TEXT("WeaponGrip_L")})Report+=FString(Name)+TEXT(" ")+Body->GetSocketTransform(Name,RTS_Component).ToString()+TEXT("\n");
     return Report;
+}
+
+void ASoldierVisual::ResetMotion() {
+    MotionFrames.Reset();
+    if(bGasp)MotionDriver->InitAnim(true);
+}
+bool ASoldierVisual::AdvanceMotion(bool Crouch,const FTransform& Transform,const FTransformTrajectory& Trajectory,bool Sprint,bool Grounded) {
+    if(!bGasp)return false;
+    auto* Planner=Cast<USoldierMotionInstance>(MotionDriver->GetAnimInstance());
+    if(!Planner)return false;
+    Planner->Database=Crouch?CrouchingDatabase:StandingDatabase;Planner->Trajectory=Trajectory;
+    Planner->ContactsEnabled=Grounded&&MotionDriver->GetBoneIndex(TEXT("VB FootTarget_Left"))!=INDEX_NONE&&MotionDriver->GetBoneIndex(TEXT("VB FootTarget_Right"))!=INDEX_NONE;
+    MotionDriver->SetWorldTransform(FTransform(FRotator(0,-90,0))*Transform);
+    MotionDriver->TickAnimation(MotionFrames.IsEmpty()?0.f:1.f/30,false);
+    MotionDriver->RefreshBoneTransforms();
+    FArmyMotionFrame Frame;
+    const float CarryTarget=Sprint?1.f:0.f;
+    Frame.SprintCarry=MotionFrames.IsEmpty()?CarryTarget:FMath::Lerp(MotionFrames.Last().SprintCarry,CarryTarget,1.f-FMath::Exp(-1.f/(30*.12f)));
+    if(!Planner->ReadDecision(Frame.Samples)) {
+        UE_LOG(LogTemp,Error,TEXT("Motion decision unavailable for %s at frame %d"),*GetName(),MotionFrames.Num());return false;
+    }
+    Frame.Contacts=Planner->ContactsEnabled;
+    Frame.Root=FTransform3f(MotionDriver->GetComponentSpaceTransforms()[0]);
+    Frame.Pelvis=FTransform3f(MotionDriver->GetSocketTransform(TEXT("Hips"),RTS_Component));
+    Frame.LeftFoot=FTransform3f(MotionDriver->GetSocketTransform(TEXT("LeftFoot"),RTS_Component));
+    Frame.RightFoot=FTransform3f(MotionDriver->GetSocketTransform(TEXT("RightFoot"),RTS_Component));
+    MotionFrames.Add(MoveTemp(Frame));return true;
+}
+void ASoldierVisual::ReadMotion(double Time,TArray<FArmyPoseSample>& Out) const {
+    const double Frame=FMath::Max(Time,0.)*30;
+    const int A=FMath::Clamp(FMath::FloorToInt(Frame),0,MotionFrames.Num()-1),B=FMath::Min(A+1,MotionFrames.Num()-1);
+    const float Alpha=A==B?0.f:float(Frame-FMath::FloorToDouble(Frame));
+    Out.Reset();
+    for(const auto& Sample:MotionFrames[A].Samples) {auto S=Sample;S.Weight*=1-Alpha;Out.Add(S);}
+    if(Alpha>0)for(const auto& Sample:MotionFrames[B].Samples){auto S=Sample;S.Weight*=Alpha;Out.Add(S);}
+}
+void ASoldierVisual::SetCoatDetail(bool Enabled) {
+    CastChecked<USoldierClothComponent>(Body)->SetCoatDetail(Enabled);
+}
+bool ASoldierVisual::HasCoatDetail() const{return CastChecked<USoldierClothComponent>(Body)->HasCoatDetail();}
+FVector ASoldierVisual::SampleMuzzle(const armyvisual::context::ReplaySource* Source,int Slot,const armyvisual::State& State,double Time,const FTransform& Transform) {
+    const auto SavedState=LastState;const double SavedTime=LastTime;const auto SavedTransform=GetActorTransform();
+    const FVector2f SavedAim(AimYaw,AimPitch),SavedLook(LookYaw,LookPitch);
+    const FVector SavedTakeoff=VaultTakeoff,SavedLanding=VaultLanding;
+    TGuardValue<bool> Query(bPoseQuery,true);
+    SetActorTransform(Transform);
+    if(Source)PresentReplay(*Source,Slot,State,Time);else Present(State,Time);
+    const FVector Result=MuzzlePosition();
+    AimYaw=SavedAim.X;AimPitch=SavedAim.Y;LookYaw=SavedLook.X;LookPitch=SavedLook.Y;
+    VaultTakeoff=SavedTakeoff;VaultLanding=SavedLanding;
+    SetActorTransform(SavedTransform);Present(SavedState,SavedTime);
+    return Result;
+}
+void ASoldierVisual::PresentReplay(const armyvisual::context::ReplaySource& Source,int Slot,const armyvisual::State& State,double Time) {
+    AimYaw=AimPitch=LookYaw=LookPitch=0;
+    auto FacingYaw=[](const armyvisual::context::Sample& S){return FMath::RadiansToDegrees(std::atan2(S.facing.y,S.facing.x));};
+    auto AimAngles=[&](const armyvisual::context::Sample& S) {
+        if(!S.hasAimPoint)return FVector2f(FacingYaw(S),0);
+        const FVector Delta=FVector(S.aimPoint.x-S.position.x,S.aimPoint.y-S.position.y,S.aimPoint.z-S.position.z)-FVector::UpVector*(S.stance==army::Stance::Standing?1.45:.95);
+        const FRotator Aim=Delta.Rotation();return FVector2f(Aim.Yaw,Aim.Pitch);
+    };
+    if(const auto S=Source.At(Slot,Time)) {
+        if(S->traversal.active)SetTraversalLandmarks(FVector(S->traversal.takeoff.x,S->traversal.takeoff.y,S->traversal.takeoff.z)*100,FVector(S->traversal.landing.x,S->traversal.landing.y,S->traversal.landing.z)*100);
+        const float Facing=FMath::RadiansToDegrees(std::atan2(S->facing.y,S->facing.x));
+        LookYaw=FMath::FindDeltaAngleDegrees(Facing,FMath::RadiansToDegrees(std::atan2(S->attention.y,S->attention.x)));
+        if(S->hasAimPoint) {
+            const FVector Delta=FVector(S->aimPoint.x-S->position.x,S->aimPoint.y-S->position.y,S->aimPoint.z-S->position.z)-(FVector::UpVector*(State.crouch>.5f?.95:1.45));
+            const FRotator Aim=Delta.Rotation();AimYaw=FMath::FindDeltaAngleDegrees(Facing,Aim.Yaw);AimPitch=Aim.Pitch;
+        }
+    }
+    if(bGasp) {
+        const double End=State.outAt>=0?FMath::Min(Time,State.outAt):Time;
+        const int Last=FMath::CeilToInt(FMath::Max(0.,End)*30);
+        while(MotionFrames.Num()<=Last) {
+            const double At=MotionFrames.Num()/30.;const auto S=Source.At(Slot,At);
+            const auto Future=Source.Trajectory(Slot,At-1./30,{-1.,-.6,-.4,-.2,0.,.2,.4,.7,1.,1.3});
+            if(!S||!Future)break;
+            FTransformTrajectory Trajectory;
+            for(const auto& P:*Future) {
+                FTransformTrajectorySample Sample;Sample.TimeInSeconds=float(P.requestedOffset);
+                Sample.Position=FVector(P.position.x,P.position.y,P.position.z)*100;
+                Sample.Facing=FRotator(0,FMath::RadiansToDegrees(std::atan2(P.facing.y,P.facing.x))-90,0).Quaternion();
+                Trajectory.Samples.Add(Sample);
+            }
+            const FVector Location=FVector(S->position.x,S->position.y,S->position.z)*100;
+            const FRotator Rotation(0,FMath::RadiansToDegrees(std::atan2(S->facing.y,S->facing.x)),0);
+            if(MotionGeometry)MotionGeometry(At);
+            if(!AdvanceMotion(S->stance!=army::Stance::Standing,FTransform(Rotation,Location),Trajectory,S->sprinting,S->knockHeight<=0&&!S->traversal.active))break;
+            auto& Frame=MotionFrames.Last();Frame.WorldAim=AimAngles(*S);
+            Frame.WorldLook=FMath::RadiansToDegrees(std::atan2(S->attention.y,S->attention.x));Frame.AttentionCached=true;
+            if(MotionFrames.Num()>1&&MotionFrames[MotionFrames.Num()-2].AttentionCached) {
+                const auto& Previous=MotionFrames[MotionFrames.Num()-2];
+                const float AimAlpha=1-FMath::Exp(-1.f/(30*FMath::Max(.001f,EquipmentProfile->AimResponseSeconds)));
+                const float LookAlpha=1-FMath::Exp(-1.f/(30*FMath::Max(.001f,EquipmentProfile->LookResponseSeconds)));
+                Frame.WorldAim.X=FMath::UnwindDegrees(Previous.WorldAim.X+FMath::FindDeltaAngleDegrees(Previous.WorldAim.X,Frame.WorldAim.X)*AimAlpha);
+                Frame.WorldAim.Y=FMath::Lerp(Previous.WorldAim.Y,Frame.WorldAim.Y,AimAlpha);
+                Frame.WorldLook=FMath::UnwindDegrees(Previous.WorldLook+FMath::FindDeltaAngleDegrees(Previous.WorldLook,Frame.WorldLook)*LookAlpha);
+            }
+        }
+        if(!MotionFrames.IsEmpty())if(const auto S=Source.At(Slot,Time)) {
+            const double F=FMath::Max(0.,End)*30;
+            const int A=FMath::Clamp(FMath::FloorToInt(F),0,MotionFrames.Num()-1),B=FMath::Min(A+1,MotionFrames.Num()-1);
+            if(MotionFrames[A].AttentionCached&&MotionFrames[B].AttentionCached) {
+                const float Alpha=A==B?0:float(F-FMath::FloorToDouble(F));
+                const auto& Before=MotionFrames[A];const auto& After=MotionFrames[B];
+                AimYaw=FMath::FindDeltaAngleDegrees(FacingYaw(*S),Before.WorldAim.X+FMath::FindDeltaAngleDegrees(Before.WorldAim.X,After.WorldAim.X)*Alpha);
+                AimPitch=FMath::Lerp(Before.WorldAim.Y,After.WorldAim.Y,Alpha);
+                LookYaw=FMath::FindDeltaAngleDegrees(FacingYaw(*S),Before.WorldLook+FMath::FindDeltaAngleDegrees(Before.WorldLook,After.WorldLook)*Alpha);
+            }
+        }
+    }
+    if(RestoreGeometry)RestoreGeometry();
+    Present(State,Time);
 }

@@ -39,6 +39,7 @@
 #include "Misc/Parse.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformMisc.h"
+#include "HAL/IConsoleManager.h"
 #include "UnrealClient.h"
 #include <algorithm>
 
@@ -49,6 +50,7 @@ const FLinearColor Muted(0.50f,0.61f,0.62f,1);
 const FLinearColor Azure(0.18f,0.84f,0.77f,1);
 const FLinearColor Ember(0.98f,0.39f,0.22f,1);
 const FLinearColor Gold(0.90f,0.75f,0.39f,1);
+TAutoConsoleVariable<int32> CoatBudget(TEXT("army.Cloth.MaxSimulated"),4,TEXT("Maximum close-view soldier coats simulated per frame; 0 uses skinned coats."));
 FVector World(army::Vec3 P,float Z=0) {return FVector(P.x*100,P.y*100,P.z*100+Z);}
 FString TimeLabel(float T) {int S=FMath::FloorToInt(T);return FString::Printf(TEXT("%02d:%02d"),S/60,S%60);}
 // An obstacle's box: centre.z is its foot, the engine cube is one metre.
@@ -156,7 +158,7 @@ AActor* ABattleGameMode::Shape(const TCHAR* MeshPath,FVector Location,FVector Sc
     auto* Mesh=NewObject<UStaticMeshComponent>(Actor);
     Actor->SetRootComponent(Mesh);Actor->AddInstanceComponent(Mesh);
     Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,MeshPath));
-    Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);Mesh->SetCollisionResponseToAllChannels(ECR_Ignore);Mesh->SetCollisionResponseToChannel(ECC_Visibility,ECR_Block);
     Mesh->SetMobility(EComponentMobility::Movable);Mesh->RegisterComponent();
     auto* Mat=UMaterialInstanceDynamic::Create(BaseMaterial,Actor);
     Mat->SetVectorParameterValue(TEXT("Color"),Color);Mesh->SetMaterial(0,Mat);
@@ -237,7 +239,11 @@ void ABattleGameMode::BuildScene() {
     for(int I=0;I<army::UnitCount;++I) {
         if(Characters) {
             auto* V=GetWorld()->SpawnActor<ASoldierVisual>();
-            if(V->Initialize(Preparation->soldiers[I].team,(I%4)>=2,(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview"))||IsArtShowcase())?I%2==1:Preparation->soldiers[I].machineGun)){SceneActors.Add(V);Units.Add(V);continue;}
+            if(V->Initialize(Preparation->soldiers[I].team,(I%4)>=2,(FParse::Param(FCommandLine::Get(),TEXT("ArmyHandlingReview"))||IsArtShowcase())?I%2==1:Preparation->soldiers[I].machineGun)){
+                V->MotionGeometry=[this](double At){ShowGeometryAt(float(At));};
+                V->RestoreGeometry=[this](){ShowGeometry();};
+                SceneActors.Add(V);Units.Add(V);continue;
+            }
             V->Destroy();
         }
         auto* Body=Shape(Cylinder,FVector::ZeroVector,FVector(0.65f,0.65f,1.12f),I<army::TeamSize?Azure:Ember);
@@ -322,7 +328,9 @@ int32 ABattleGameMode::ObstacleBatch(const FLinearColor& Color,bool Roof) {
     auto* Actor=GetWorld()->SpawnActor<AActor>();SceneActors.Add(Actor);
     if(Roof){UpperStructure.Add(Actor);Actor->SetActorHiddenInGame(!bShowUpperFloor);}
     auto* Mesh=NewObject<UInstancedStaticMeshComponent>(Actor);Actor->SetRootComponent(Mesh);Actor->AddInstanceComponent(Mesh);
-    Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Cube.Cube")));Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    Mesh->SetStaticMesh(LoadObject<UStaticMesh>(nullptr,TEXT("/Engine/BasicShapes/Cube.Cube")));
+    Mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    Mesh->SetCollisionResponseToAllChannels(ECR_Ignore);Mesh->SetCollisionResponseToChannel(ECC_Visibility,ECR_Block);
     Mesh->SetMobility(EComponentMobility::Movable);Mesh->RegisterComponent();
     auto* Mat=UMaterialInstanceDynamic::Create(BaseMaterial,Actor);Mat->SetVectorParameterValue(TEXT("Color"),Color);Mesh->SetMaterial(0,Mat);
     const int32 Index=ObstacleBatches.Add(Mesh);ObstacleBatchKeys.Add(Key,Index);
@@ -340,8 +348,10 @@ void ABattleGameMode::PlaceObstacle(const army::Obstacle& O) {
 // moves what was replaced, adds what is new (rubble, the pieces left around a breach). Only when the version, or a
 // crack or collapse between versions, changes; otherwise it returns at once.
 void ABattleGameMode::ShowGeometry() {
-    const float Time=bPreparation?-1.f:ReplayTime;
-    const int32 Version=bPreparation?(Battle.geometryVersions.empty()?-1:0):GeometryIndexAt(Time);
+    ShowGeometryAt(bPreparation?-1.f:ReplayTime);
+}
+void ABattleGameMode::ShowGeometryAt(float Time) {
+    const int32 Version=Time<0?(Battle.geometryVersions.empty()?-1:0):GeometryIndexAt(Time);
     const int32 Style=int32(std::upper_bound(StyleTimes.begin(),StyleTimes.end(),Time)-StyleTimes.begin());
     if(Version==ShownVersion&&Style==ShownStyle)return;
     const army::Map& Target=Version>=0?Battle.geometryVersions[size_t(Version)].map:InitialGeometry();
@@ -537,18 +547,23 @@ const army::Frame& ABattleGameMode::Frame() const {
 }
 FVector ABattleGameMode::UnitPosition(int Id) const {
     const auto& F=Frame();const auto& S=F.soldiers[Id];army::Vec3 P=S.position;
+    float KnockHeight=S.knockHeight;
     if(!bPreparation&&S.Active()) {
         auto It=std::upper_bound(Battle.frames.begin(),Battle.frames.end(),ReplayTime,
             [](float T,const army::Frame& A){return T<A.time;});
         if(It!=Battle.frames.end()&&It->time>F.time) {
             float A=FMath::Clamp((ReplayTime-F.time)/(It->time-F.time),0.f,1.f);
             P=P+(It->soldiers[Id].position-P)*A;
+            KnockHeight=FMath::Lerp(KnockHeight,It->soldiers[Id].knockHeight,A);
         }
     }
+    P.z+=KnockHeight;
     return World(P,S.Active()?(S.stance==army::Stance::Crouched?34:S.stance==army::Stance::Prone?12:70):15);
 }
 bool ABattleGameMode::IsFinished() const {return !bPreparation&&ReplayTime>=Battle.duration;}
 void ABattleGameMode::BuildVisualTimeline() {
+    AnimationSource=MakeUnique<armyvisual::context::ReplaySource>(Battle);
+    for(auto Actor:Units)if(auto* Visual=Cast<ASoldierVisual>(Actor))Visual->ResetMotion();
     if(ProjectileVisual)ProjectileVisual->Configure(Battle);
     VisualTimeline.clear();VisualTimeline.resize(Battle.frames.size());
     for(auto& Shots:VisualShots)Shots.clear();
@@ -583,11 +598,32 @@ void ABattleGameMode::ShowUnits() {
     const size_t K=(!bPreparation&&!Battle.frames.empty())?size_t(&F-Battle.frames.data()):0;
     const bool Next=!bPreparation&&K+1<VisualTimeline.size();
     const float Blend=Next?FMath::Clamp((ReplayTime-F.time)/(Battle.frames[K+1].time-F.time),0.f,1.f):0;
+    // Spend secondary-motion time where it is visible. The overhead view can
+    // contain an entire army; its small silhouettes use the existing skin weights.
+    TArray<TPair<float,int>> CoatCandidates;
+    if(Camera&&Camera->GetCameraComponent()->OrthoWidth<3500) {
+        const float Width=Camera->GetCameraComponent()->OrthoWidth;
+        const float Height=Width/FMath::Max(.5f,Camera->GetCameraComponent()->AspectRatio);
+        for(int I=0;I<Units.Num();++I)if(Preparation->soldiers[I].Active()) {
+            const FVector View=Camera->GetActorQuat().UnrotateVector(UnitPosition(I)+FVector(0,0,60)-Camera->GetActorLocation());
+            if(FMath::Abs(View.Y)<Width*.6&&FMath::Abs(View.Z)<Height*.65) {
+                const auto* Visual=Cast<ASoldierVisual>(Units[I]);
+                // Retain an existing coat unless another is materially closer.
+                // Tiny camera/formation changes must not repeatedly reset Chaos.
+                const float Retention=Visual&&Visual->HasCoatDetail()?.65f:1.f;
+                CoatCandidates.Emplace(I==Selected?-1.f:float(FMath::Square(View.Y)+FMath::Square(View.Z))*Retention,I);
+            }
+        }
+        CoatCandidates.Sort([](const auto& A,const auto& B){return A.Key<B.Key;});
+    }
+    TSet<int> DetailedCoats;
+    for(int I=0;I<FMath::Min(CoatCandidates.Num(),FMath::Max(0,CoatBudget.GetValueOnGameThread()));++I)DetailedCoats.Add(CoatCandidates[I].Value);
     for(int I=0;I<Units.Num();++I) {
         const auto& S=F.soldiers[I];auto* A=Units[I].Get();
         A->SetActorHiddenInGame(!Preparation->soldiers[I].Active());
         FVector Location=UnitPosition(I);float Yaw=FMath::RadiansToDegrees(FMath::Atan2(S.facing.y,S.facing.x));
         if(auto* V=Cast<ASoldierVisual>(A)) {
+            V->SetCoatDetail(DetailedCoats.Contains(I));
             Location.Z-=S.Active()?(S.stance==army::Stance::Crouched?34:S.stance==army::Stance::Prone?12:70):15;
             armyvisual::State State;State.phase=std::fmod(I*.61803398875,1.);
             State.crouch=S.stance==army::Stance::Crouched||S.stance==army::Stance::Prone?1:0;State.prone=S.stance==army::Stance::Prone?1:0;
@@ -615,8 +651,10 @@ void ABattleGameMode::ShowUnits() {
                 }
             }
             Location.Z-=armyvisual::ProneRootDrop*State.prone;
-            Location.Z+=armyvisual::VaultLift(State.handling);
-            V->SetActorLocation(Location);V->SetActorRotation(FRotator(0,Yaw,0));V->Present(State,bPreparation?RealSeconds:ReplayTime);
+            if(!V->HasVaultAnimation())Location.Z+=armyvisual::VaultLift(State.handling);
+            V->SetActorLocation(Location);V->SetActorRotation(FRotator(0,Yaw,0));
+            if(!bPreparation&&AnimationSource)V->PresentReplay(*AnimationSource,I,State,ReplayTime);
+            else V->Present(State,RealSeconds);
         } else {
             if(S.Active()&&S.vaulting){armyvisual::HandlingInput Vault;armyvisual::ReadHandling(S,Vault);Location.Z+=armyvisual::VaultLift(Vault);} // greybox lift
             A->SetActorLocation(Location);A->SetActorRotation(FRotator(0,Yaw,0));
@@ -659,7 +697,7 @@ void ABattleGameMode::RunBattle() {
     }
     ConfigureDestruction();
 }
-void ABattleGameMode::Seek(float T) {ReplayTime=FMath::Clamp(T,0.f,Battle.duration);ShowUnits();PresentDestruction();}
+void ABattleGameMode::Seek(float T) {ReplayTime=FMath::Clamp(T,0.f,Battle.duration);ShowGeometry();ShowUnits();PresentDestruction();}
 void ABattleGameMode::SetBattleDuration(float Seconds){
     if(!bPreparation)return;
     Settings.maxSeconds=FMath::Clamp(FMath::RoundToFloat(Seconds/30.f)*30.f,60.f,600.f);
@@ -747,6 +785,7 @@ void ABattleGameMode::Tick(float Dt) {
     Camera->SetActorRotation(ViewRotation);
     Camera->SetActorLocation(CameraPan-ViewRight*(Width*Frac*0.5f)-ViewRotation.Vector()*22000);
     Camera->GetCameraComponent()->OrthoWidth=Width;
+    ShowGeometry();
     ShowUnits();
     if(ProjectileVisual) {
         if(bPreparation)ProjectileVisual->Clear();
@@ -785,11 +824,8 @@ FVector ABattleGameMode::ShotMuzzle(const army::Shot& Shot) {
         State.crouch=FMath::Lerp(State.crouch,P.crouch,A);State.prone=FMath::Lerp(State.prone,P.prone,A);State.aim=FMath::Lerp(State.aim,P.aim,A);State.phase=FMath::Lerp(State.phase,P.phase,double(A));
     }
     Position.Z-=armyvisual::ProneRootDrop*State.prone; // the muzzle of the pose actually drawn
-    const auto SavedTransform=Visual->GetActorTransform();const auto SavedState=Visual->LastState;const double SavedTime=Visual->LastTime;
     armyvisual::ReadHandling(S,State.handling);State.handling.lastShot=Shot.time;State.aim=1;
-    Visual->SetActorLocation(Position);Visual->SetActorRotation(FRotator(0,Yaw,0));Visual->Present(State,Shot.time);
-    const FVector Muzzle=Visual->MuzzlePosition();
-    Visual->SetActorTransform(SavedTransform);Visual->Present(SavedState,SavedTime);return Muzzle;
+    return Visual->SampleMuzzle(AnimationSource.Get(),Shot.owner,State,Shot.time,FTransform(FRotator(0,Yaw,0),Position));
 }
 void ABattleGameMode::ShowMagicShowcase() {
     const FVector Origin(0,-Battle.map.halfHeight*100-10000,0);
@@ -903,7 +939,10 @@ void ABattleGameMode::SmokeTest(float Dt) {
         const FString Dir=FPaths::ProjectSavedDir()/TEXT("Screenshots");IFileManager::Get().MakeDirectory(*Dir,true);
         if(SmokeStage==0&&RealSeconds>2){Settings.maxSeconds=120;RunBattle();bPaused=true;++SmokeStage;}
         else if(SmokeStage==1&&RealSeconds>4) {
-            FString Report;bool Passed=true;int Count=0;float Worst=0;
+            FString Report;bool Passed=true;int Count=0,GaspBodies=0;float Worst=0;
+            for(auto Actor:Units)if(auto* V=Cast<ASoldierVisual>(Actor))GaspBodies+=V->UsesGasp();
+            if(!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacyAnimation")))Passed&=GaspBodies==Units.Num();
+            Report+=FString::Printf(TEXT("gasp_bodies=%d total_bodies=%d\n"),GaspBodies,Units.Num());
             for(float Time:{0.f,.15f,1.f,5.f,10.f,20.f,40.f,60.f,90.f,119.f}) {
                 Seek(FMath::Min(Time,Battle.duration));
                 for(auto Actor:Units)if(auto* V=Cast<ASoldierVisual>(Actor)) {
@@ -936,6 +975,23 @@ void ABattleGameMode::SmokeTest(float Dt) {
                 for(int I=0;I<Before.Num();++I)Same=Same&&Before[I].Equals(Probe->Body->GetComponentSpaceTransforms()[I],.00001f);
                 Passed=Passed&&Changed&&Same;Report+=FString::Printf(TEXT("pose_advances=%d seek_pause_rate_equal=%d\n"),Changed,Same);
                 CameraPan=UnitPosition(Selected);CameraPitch=25;CameraYaw=-35;Zoom=.02f;bAnimationDebug=true;
+                if(FParse::Param(FCommandLine::Get(),TEXT("ArmyAnimationBenchmark"))) {
+                    const int Budget=CoatBudget.GetValueOnGameThread();
+                    Camera->SetActorLocation(CameraPan+FVector(800,-600,500));
+                    Camera->SetActorRotation((CameraPan+FVector(0,0,80)-Camera->GetActorLocation()).Rotation());
+                    Camera->GetCameraComponent()->OrthoWidth=1800;
+                    for(int Coats:{0,4}) {
+                        CoatBudget->Set(Coats,ECVF_SetByCode);Seek(10);
+                        TArray<double> Milliseconds;
+                        for(int Step=0;Step<120;++Step) {
+                            const double Started=FPlatformTime::Seconds();Seek(10+(Step+1)/60.f);
+                            Milliseconds.Add((FPlatformTime::Seconds()-Started)*1000);
+                        }
+                        Milliseconds.Sort();double Sum=0;for(double Value:Milliseconds)Sum+=Value;
+                        Report+=FString::Printf(TEXT("cached_pose_cpu coats=%d samples=120 mean_ms=%.3f p95_ms=%.3f max_ms=%.3f (excludes_render_and_search)\n"),Coats,Sum/Milliseconds.Num(),Milliseconds[113],Milliseconds.Last());
+                    }
+                    CoatBudget->Set(Budget,ECVF_SetByCode);Seek(10.25f);
+                }
             }
             Report+=FString::Printf(TEXT("%s battle_states=%d worst_wrist_cm=%.3f frames=%d shots=%d duration=%.2f\n"),Passed&&Worst<2?TEXT("PASS"):TEXT("FAIL"),Count,Worst,int(Battle.frames.size()),int(Battle.shots.size()),Battle.duration);
             FFileHelper::SaveStringToFile(Report,*(FPaths::ProjectSavedDir()/TEXT("character-battle-validation.txt")));UE_LOG(LogTemp,Display,TEXT("ARMY_CHARACTER_BATTLE %s"),*Report);++SmokeStage;

@@ -889,13 +889,19 @@ class City2Maps(MapCacheCase):
 
     def test_config_digest_covers_the_city2_sets(self):
         # G-5 made it d9306866bf9b2084; G-6 (score v8, the family flags) makes it c1e8c1d041bc6932.
-        self.assertEqual(config.config_digest(), 'c1e8c1d041bc6932')
-        with mock.patch.object(config, 'CITY2_DEV_SEEDS', config.CITY2_DEV_SEEDS[:-1]):
-            self.assertNotEqual(config.config_digest(), 'c1e8c1d041bc6932')
-        with mock.patch.object(config, 'CITY2_SALT', '|other'):
-            self.assertNotEqual(config.config_digest(), 'c1e8c1d041bc6932')
-        with mock.patch.object(config, 'FAMILY_FLAGS', dict(config.FAMILY_FLAGS, city2=('--concealment',))):
-            self.assertNotEqual(config.config_digest(), 'c1e8c1d041bc6932')
+        # The historical digest includes this absolute baseline path. Fix its fixture
+        # explicitly so an isolated checkout tests the same payload; production hashing
+        # must continue recording the actual configured binary location.
+        historical_baseline = dict(config.BASELINES['squad-only'],
+            binary='/home/jchan/ww1-autobattler/.local/phase3h/final/battle-lab')
+        with mock.patch.dict(config.BASELINES, {'squad-only': historical_baseline}):
+            self.assertEqual(config.config_digest(), 'c1e8c1d041bc6932')
+            with mock.patch.object(config, 'CITY2_DEV_SEEDS', config.CITY2_DEV_SEEDS[:-1]):
+                self.assertNotEqual(config.config_digest(), 'c1e8c1d041bc6932')
+            with mock.patch.object(config, 'CITY2_SALT', '|other'):
+                self.assertNotEqual(config.config_digest(), 'c1e8c1d041bc6932')
+            with mock.patch.object(config, 'FAMILY_FLAGS', dict(config.FAMILY_FLAGS, city2=('--concealment',))):
+                self.assertNotEqual(config.config_digest(), 'c1e8c1d041bc6932')
 
     def test_replay_writes_the_city2_slot(self):
         from tools.loop.replay import launch_arguments, map_slot
