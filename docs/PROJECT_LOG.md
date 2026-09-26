@@ -18,6 +18,8 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 
 | Date | Entry | Related |
 |---|---|---|
+| 25 Sep 2026 | Soldier actions authored in Blender — 25 September 2026 | [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md), [critic pass 17](reviews/animation-critic-pass17-ammunition-verification.md) |
+| 25 Sep 2026 | Soldier animation rejected and reference study started — 25 September 2026 | [study](SOLDIER_MOTION_STUDY_2026-09-25.md), [reference page](../art/reviews/gasp/research.html) |
 | 25 Sep 2026 | GASP brought onto main with destruction-aware contacts — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md), [review](../art/reviews/gasp/armed-soldiers-2026-09-25.mp4) |
 | 25 Sep 2026 | Grenades and building destruction merged, off by default — 25 September 2026 | [plan 032](../plans/032-grenades-and-using-the-pin.md), [plan 033](../plans/033-building-destruction.md) |
 | 25 Sep 2026 | Armed GASP integration and replay cache underway — 25 September 2026 | [plan 034](../plans/034-contextual-soldier-animation.md) |
@@ -71,6 +73,54 @@ the old `CLAUDE.md`, so its relative links are written from the repository root 
 | 16 Sep 2026 | Current playable default — user replay decision, 16 September 2026 | [AI_MAIN_BUILD](AI_MAIN_BUILD.md), plan 014 phase reviews |
 | by 16 Sep 2026 | Previous main-build decisions (history, superseded by the replay decision above) | [AI_MAIN_BUILD](AI_MAIN_BUILD.md) |
 | undated | Early project instructions — undated, before 16 September 2026 | [plans/README](../plans/README.md), [AI_RELIABILITY_RESULTS](AI_RELIABILITY_RESULTS.md) |
+
+## Soldier actions authored in Blender — 25 September 2026
+
+Jordan directed: "Make the aninations ourself." Rifle shot/bolt and reload are now
+editable keyed performances on the approved female rig, retargeted to the actual
+male proportions, with body/head response, supporting hand, elbow, finger and
+weapon controls. MG shot/reload blocking is authored separately on both fitted
+bodies. No animation-pack purchase follows this direction. GASP locomotion remains
+in place; these changes do not alter simulation timing or rules.
+
+Independent rendered-frame critique remains **4.0/10 overall**, below Jordan's 8.5
+bar. Focused reviews: female rifle reload 5.5 (pass 17), male bolt 5.5/reload 5.5
+(pass 15), female MG reload/exit 4.0 (pass 12), held crouch stop 5.5 (pass 11).
+The shared authored spine/gun frame, body-specific male arm fit, cached MG carry
+transition and rigid belt-pouch weights address measured defects. Explicit finger
+poses and ammunition seating have a subsequent correction pass. Closed-pouch
+retrieval, complete MG mechanics, residual arm clearance and broad action coverage
+remain open. Numerical checks and the 732-clip inventory are not visual acceptance.
+
+Editable Blender/FBX sources, reproduction, graded captures and exact outstanding
+work are in the [authoring handoff](AUTHORED_SOLDIER_ACTIONS.md). This is an
+unaccepted work-in-progress checkpoint, not completion of plan 034 or the requested
+animation quality. Simulation source stays `090b6da63e131f07`; its full Linux suite
+and 230 Python tests passed (8 skipped). Later action revisions use native builds,
+focused handling checks and completed Unreal captures; no fresh packaged or
+64-body gameplay approval is claimed.
+
+## Soldier animation rejected and reference study started — 25 September 2026
+
+Jordan rejected the armed GASP v4 review's carry, crouch sidestep, weapon-action
+continuity and vault. He directed a deep study of real soldiers and successful
+games before further visual tweaks; prone waits. The reference brief records
+primary sources, proposed performance requirements and code/frame evidence.
+Our own current render frames were inspected. External video playback remains
+unverified because the Windows browser tool rejects the WSL cwd before execution;
+the study distinguishes creator breakdowns and museum transcripts/catalogues from
+watched footage. No measured real-footage timings or visual approval are claimed.
+
+Concrete findings: standing aim overwrites locomotion's upper body; carry is only a
+small gun offset; procedural actions bypass the motion blend stack; both leg solves
+use fixed knee poles. The neutral standing vault uses two hands, while our gun layer
+occupies one. Its root-height crossing is used as a landing marker, without a
+landing recovery performance, and about 0.9 seconds is stretched across the 2.2-second
+review event. The brief separates confirmed code behavior from hypotheses requiring
+layer-isolation renders. Existing numerical contact/replay checks are not quality
+acceptance. No runtime animation changes, asset purchases or new repair render in
+this research pass. The local reference page is
+`C:/Users/Jordan/Documents/Codex/AnimationReviews/soldier-motion-study.html`.
 
 ## GASP brought onto main with destruction-aware contacts — 25 September 2026
 

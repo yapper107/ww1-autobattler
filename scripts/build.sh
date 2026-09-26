@@ -34,6 +34,14 @@ if [[ -d "$repo_root/art/characters/male_runtime" ]]; then
   rsync -a "$repo_root/art/characters/male_runtime/" "$build_dir/Art/male_runtime/"
 fi
 rsync -a "$repo_root/art/characters/female_rifle/" "$build_dir/Art/female_rifle/"
+if [[ -d "$repo_root/art/characters/authored_rifle" ]]; then
+  mkdir -p "$build_dir/Art/authored_rifle"
+  rsync -a "$repo_root/art/characters/authored_rifle/" "$build_dir/Art/authored_rifle/"
+fi
+if [[ -d "$repo_root/art/characters/authored_mg" ]]; then
+  mkdir -p "$build_dir/Art/authored_mg"
+  rsync -a "$repo_root/art/characters/authored_mg/" "$build_dir/Art/authored_mg/"
+fi
 rsync -a --exclude=__pycache__ "$repo_root/tools/character/" "$build_dir/Tools/character/"
 if [[ -d "$repo_root/art/characters/gunner_runtime" ]]; then
   mkdir -p "$build_dir/Art/gunner_runtime"
@@ -53,15 +61,19 @@ fi
 project_win="$(wslpath -w "$build_dir/ArmyPrototype.uproject")"
 # Let the selected engine locate its bundled .NET runtime (versions differ by engine).
 python3 - "$build_dir" "$ARMY_ENGINE_DIR" <<'PY'
-import subprocess, sys
+import os, subprocess, sys
 from pathlib import Path
 root, engine = map(Path, sys.argv[1:])
 def windows(path):
     return subprocess.check_output(['wslpath', '-w', str(path)], text=True).strip()
+jobs = os.environ.get('ARMY_BUILD_JOBS', '')
+if jobs and (not jobs.isdecimal() or int(jobs) < 1):
+    raise SystemExit('ARMY_BUILD_JOBS must be a positive integer')
+parallel = ' -MaxParallelActions=' + jobs if jobs else ''
 command = ('@echo off\ncall "' + windows(engine / 'Engine/Build/BatchFiles/Build.bat') +
            '" ArmyPrototypeEditor Win64 Development "-Project=' +
            windows(root / 'ArmyPrototype.uproject') +
-           '" -WaitMutex -NoHotReloadFromIDE -NoUBTMakefiles\nexit /b %errorlevel%\n')
+           '" -WaitMutex -NoHotReloadFromIDE -NoUBTMakefiles' + parallel + '\nexit /b %errorlevel%\n')
 (root / 'build-editor.cmd').write_bytes(command.replace('\n', '\r\n').encode())
 PY
 (cd "$build_dir" && /mnt/c/Windows/System32/cmd.exe /d /c "$(wslpath -w "$build_dir/build-editor.cmd")")

@@ -1,0 +1,19 @@
+{
+  "mesh": "/Game/Characters/FemaleRifle/SM_MachineGun.SM_MachineGun",
+  "material_slots": [
+    "MG | warm wood",
+    "MG | charcoal steel",
+    "MG | brass cases",
+    "MG | arcane blue tips",
+    "MG | crystal lit facets",
+    "MG | crystal dark facets"
+  ],
+  "sections": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}

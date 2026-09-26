@@ -35,8 +35,11 @@ UAnimBlueprint* UGaspAuthoringLibrary::CreateMotionNodeTemplate(UPoseSearchDatab
     auto* NodeProperty=FindFProperty<FStructProperty>(Node->GetClass(),TEXT("Node"));
     auto* Motion=NodeProperty->ContainerPtrToValuePtr<FAnimNode_MotionMatching>(Node);
     Motion->SetMaxActiveBlends(16);
+    FindFProperty<FFloatProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("BlendTime"))->SetPropertyValue_InContainer(Motion,.3f);
+    auto* Blend=FindFProperty<FEnumProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("BlendOption"));
+    check(Blend);Blend->GetUnderlyingProperty()->SetIntPropertyValue(Blend->ContainerPtrToValuePtr<void>(Motion),int64(EAlphaBlendOption::HermiteCubic));
     FindFProperty<FObjectProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("Database"))->SetObjectPropertyValue_InContainer(Motion,Database);
-    *FindFProperty<FStructProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("PlayRate"))->ContainerPtrToValuePtr<FFloatInterval>(Motion)=FFloatInterval(.8f,1.2f);
+    *FindFProperty<FStructProperty>(FAnimNode_MotionMatching::StaticStruct(),TEXT("PlayRate"))->ContainerPtrToValuePtr<FFloatInterval>(Motion)=FFloatInterval(.65f,1.2f);
     // No graph inputs/functions: all folded settings must be class constants.
     // Runtime instances copy the compiled node, then supply database/trajectory.
     auto* Output=Node->FindPin(TEXT("Pose"));auto* Input=Root->FindPin(TEXT("Result"));

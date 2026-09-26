@@ -1,0 +1,7 @@
+{
+  "purpose": "Exact local rig inputs used for the 25 September authored action pass. Earlier repo blends differ in bytes and are preserved.",
+  "sha256": {
+    "female_grip_C_2026-09-25.blend": "e516d6e25ee3b1a2a58b9a3538fb0f24b16c73575d65b4530679ab650e831326",
+    "gunners_2026-09-25.blend": "cba97b735ebf731b091a3101818e133d6a6e33b5b4b1c943b4deb8fdaf0a8bc4"
+  }
+}

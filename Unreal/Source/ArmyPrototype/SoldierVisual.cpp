@@ -46,14 +46,29 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
     const FString GaspBody=Male?TEXT("Male"):TEXT("Female");
     StandingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing")));
     CrouchingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch")));
+    StandingMovingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_moving")));
+    CrouchingMovingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_moving")));
+    StandingStartingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_starting")));
+    CrouchingStartingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_starting")));
+    StandingStoppingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_stopping")));
+    CrouchingStoppingDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_stopping")));
+    StandingIdleDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_standing_idle")));
+    CrouchingIdleDatabase=LoadObject<UPoseSearchDatabase>(nullptr,*(TEXT("/Game/Characters/GASP/Motion/")+GaspBody+TEXT("/PSD_crouch_idle")));
     bGasp=StandingDatabase&&CrouchingDatabase&&!FParse::Param(FCommandLine::Get(),TEXT("ArmyLegacyAnimation"));
     if(bGasp) {
+        if(!MachineGun) {
+            AuthoredWeaponShot=LoadObject<UAnimSequence>(nullptr,*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+TEXT("/A_Rifle_ShotBolt")),nullptr,LOAD_NoWarn);
+            AuthoredWeaponCarry=LoadObject<UAnimSequence>(nullptr,*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+TEXT("/A_Rifle_LowReady")),nullptr,LOAD_NoWarn);
+        }
+        AuthoredWeaponReload=LoadObject<UAnimSequence>(nullptr,*(TEXT("/Game/Characters/GASP/Legacy/")+GaspBody+(MachineGun?TEXT("/A_MG_Reload"):TEXT("/A_Rifle_Reload"))),nullptr,LOAD_NoWarn);
         VaultProfile=LoadObject<UTraversalAnimationProfile>(nullptr,*(TEXT("/Game/Characters/GASP/Actions/")+GaspBody+TEXT("/DA_Vault")));
         // In an uncooked editor game, loading a database starts its DDC build
         // asynchronously. A replay must not cache an empty first decision.
 #if WITH_EDITOR
         using namespace UE::PoseSearch;
-        for(const UPoseSearchDatabase* Database:{StandingDatabase.Get(),CrouchingDatabase.Get()})
+        for(const UPoseSearchDatabase* Database:{StandingDatabase.Get(),CrouchingDatabase.Get(),StandingMovingDatabase.Get(),CrouchingMovingDatabase.Get(),
+            StandingStartingDatabase.Get(),CrouchingStartingDatabase.Get(),StandingStoppingDatabase.Get(),CrouchingStoppingDatabase.Get(),StandingIdleDatabase.Get(),CrouchingIdleDatabase.Get()})
+            if(Database)
             if(FAsyncPoseSearchDatabasesManagement::RequestAsyncBuildIndex(Database,ERequestAsyncBuildFlag::NewRequest|ERequestAsyncBuildFlag::WaitForCompletion)!=EAsyncBuildIndexResult::Success)return false;
 #endif
         const FString ProfilePath=TEXT("/Game/Characters/GASP/Equipment/DA_")+FString(MachineGun?TEXT("MachineGun"):TEXT("Rifle"));
@@ -121,6 +136,7 @@ bool ASoldierVisual::Initialize(int Team,bool Male,bool MachineGun) {
     if(Team==1)for(int I=0;I<ReloadProp->GetNumMaterials();++I)if(ReloadProp->GetMaterial(I)->GetName().Contains(TEXT("cyan"))) {
         auto* M=ReloadProp->CreateDynamicMaterialInstance(I);M->SetVectorParameterValue(TEXT("Tint"),FLinearColor::FromSRGBColor(FColor(245,98,23)));
     }
+    if(!MachineGun)for(int I=0;I<ReloadProp->GetNumMaterials();++I)ReloadProp->CreateDynamicMaterialInstance(I);
     return true;
 }
 void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
@@ -146,6 +162,11 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
     }
     Anim->GripAlpha=armyvisual::Grip(State,Time);
     auto Input=State.handling;Input.machineGun=IsMachineGun;
+    if(bGasp&&!MotionFrames.IsEmpty()) {
+        const double F=FMath::Max(Time,0.)*30;
+        const int A=FMath::Clamp(FMath::FloorToInt(F),0,MotionFrames.Num()-1),B=FMath::Min(A+1,MotionFrames.Num()-1);
+        Input.movingFireWeight=FMath::Lerp(MotionFrames[A].MovingFireCarry,MotionFrames[B].MovingFireCarry,float(F-FMath::FloorToDouble(F)));
+    }
     armyvisual::HandlingSettings Settings;
     if(EquipmentProfile) {
         Settings.kickCentimetres=EquipmentProfile->KickCentimetres;Settings.kickDegrees=EquipmentProfile->KickDegrees;
@@ -153,19 +174,73 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
         Settings.boltStartSeconds=EquipmentProfile->BoltStartSeconds;
     }
     Anim->Handling=armyvisual::Handling(Input,Time,State.aim,State.outAt>=0,Settings);
+    Anim->ArmedReference.Reset();
+    Anim->AuthoredHandling=false;
+    Anim->AuthoredHandlingAlpha=0;
+    Anim->AuthoredPelvisOffset=FVector::ZeroVector;
+    Anim->WeaponReady=FMath::Clamp(State.aim,0.f,1.f);
     if(bGasp&&State.outAt<0) {
-        const float Ready=1-FMath::Clamp(State.aim,0.f,1.f);
-        const bool Handling=Time-Input.lastShot<Input.cycleSeconds||(Input.reloadStart>=0&&Time>=Input.reloadStart&&Time<Input.reloadEnd);
+        const double ShotAge=Time-Input.lastShot;
+        // Keep a completed shot in the shoulder through its bolt cycle, then
+        // release smoothly. Negative ages are future events, not handling.
+        const float ShotReady=ShotAge>=0?1-FMath::SmoothStep(Input.cycleSeconds,Input.cycleSeconds+.35f,float(ShotAge)):0;
+        const float ReloadReady=Input.reloadStart>=0&&Time>=Input.reloadStart?
+            1-FMath::SmoothStep(float(Input.reloadEnd),float(Input.reloadEnd+.35),float(Time)):0;
+        Anim->WeaponReady=FMath::Max(Anim->WeaponReady,FMath::Max(ShotReady,ReloadReady));
+        const float Ready=1-Anim->WeaponReady;
         float Sprint=Input.sprinting?1.f:0.f;
         if(!MotionFrames.IsEmpty()) {
             const double F=FMath::Max(Time,0.)*30;const int A=FMath::Clamp(FMath::FloorToInt(F),0,MotionFrames.Num()-1),B=FMath::Min(A+1,MotionFrames.Num()-1);
             Sprint=FMath::Lerp(MotionFrames[A].SprintCarry,MotionFrames[B].SprintCarry,float(F-FMath::FloorToDouble(F)));
         }
         const float CarryWeight=1-Anim->Handling.traversal;
-        const FVector Carry=FMath::Lerp(EquipmentProfile->ReadyOffset*(Handling?0:Ready),EquipmentProfile->SprintOffset,Sprint)*CarryWeight;
+        // Rifle carry comes from the authored relaxed pose. MG keeps its own
+        // calibrated grip reference and equipment-specific support height.
+        const FVector Carry=FMath::Lerp(IsMachineGun?EquipmentProfile->ReadyOffset*Ready:FVector::ZeroVector,EquipmentProfile->SprintOffset,Sprint)*CarryWeight;
         Anim->Handling.gun.x+=float(Carry.X);Anim->Handling.gun.y+=float(Carry.Y);Anim->Handling.gun.z+=float(Carry.Z);
-        Anim->Handling.pitch+=FMath::Lerp(EquipmentProfile->ReadyPitch*(Handling?0:Ready),EquipmentProfile->SprintPitch,Sprint)*CarryWeight;
+        Anim->Handling.pitch+=FMath::Lerp(IsMachineGun?EquipmentProfile->ReadyPitch*Ready:0.f,EquipmentProfile->SprintPitch,Sprint)*CarryWeight;
         if(!Input.vaulting)Anim->Handling.upper=1;
+        const float Crouch=FMath::Clamp(State.crouch,0.f,1.f);
+        for(int Stance=0;Stance<2;++Stance)for(int Aimed=0;Aimed<2;++Aimed) {
+            const float Weight=(Stance?Crouch:1-Crouch)*(Aimed?Anim->WeaponReady:1-Anim->WeaponReady);
+            if(Weight<.00001f)continue;
+            const char* Names[2][2]={{"A_idle","A_idle_aiming"},{"A_idle_crouching","A_idle_crouching_aiming"}};
+            FArmyPoseSample Sample;Sample.Sequence=IsMachineGun?MachineGunAim.Get():Clips[armyvisual::Find(Names[Stance][Aimed])].Get();Sample.Weight=Weight;
+            if(!IsMachineGun&&!Aimed&&AuthoredWeaponCarry)Sample.Sequence=AuthoredWeaponCarry;
+            Sample.Time=FMath::Fmod(FMath::Max(0.,Time),double(Sample.Sequence->GetPlayLength()));Anim->ArmedReference.Add(Sample);
+        }
+        const auto ActionLayers=armyvisual::AuthoredLayers(Input,Time,AuthoredWeaponShot!=nullptr,AuthoredWeaponReload!=nullptr);
+        if(ActionLayers.shotActive||ActionLayers.reloadActive) {
+            for(auto& S:Anim->ArmedReference)S.Weight*=ActionLayers.ReferenceWeight();
+            auto AddAction=[&](UAnimSequence* Clip,float Phase,float Weight) {
+                if(Weight<=0)return;
+                FArmyPoseSample Sample;Sample.Sequence=Clip;Sample.Time=Phase*Clip->GetPlayLength();Sample.Weight=Weight;
+                Anim->ArmedReference.Add(Sample);
+            };
+            AddAction(AuthoredWeaponShot,ActionLayers.shotPhase,ActionLayers.shotWeight);
+            AddAction(AuthoredWeaponReload,ActionLayers.reloadPhase,ActionLayers.reloadWeight);
+            Anim->AuthoredHandling=true;
+            Anim->AuthoredHandlingAlpha=ActionLayers.shotWeight+ActionLayers.reloadWeight;
+            // Both the pose and the visible mechanism use the same interrupted
+            // action mixture. Never insert a reference-pose detour at reload.
+            auto& H=Anim->Handling;H.gun={};H.right={};H.left={};H.pitch=H.gunYaw=H.gunRoll=0;
+            H.torsoPitch=H.torsoYaw=H.torsoRoll=H.headPitch=H.headYaw=0;
+            auto Envelope=[](float U,float A,float B,float C,float D){return armyvisual::Smooth((U-A)/(B-A))*(1-armyvisual::Smooth((U-C)/(D-C)));};
+            const auto Shot=armyvisual::AuthoredRifleMechanism(ActionLayers.shotPhase,false);
+            const auto Reload=armyvisual::AuthoredRifleMechanism(ActionLayers.reloadPhase,true);
+            auto Mechanism=[&](float S,float R){return IsMachineGun?0.f:S*ActionLayers.shotWeight+R*ActionLayers.reloadWeight;};
+            H.boltOpen=Mechanism(Shot.boltOpen,Reload.boltOpen);
+            H.boltBack=Mechanism(Shot.boltBack,Reload.boltBack);
+            H.boltContact=Mechanism(Shot.boltContact,Reload.boltContact);
+            H.reloadContact=Mechanism(0,Reload.reloadContact);
+            if(ActionLayers.reloadActive&&!IsMachineGun)H.clip=ActionLayers.reloadPhase>=.295f&&ActionLayers.reloadPhase<.70f?1.f:0.f;
+            H.rightSupport=1-Mechanism(1-Shot.rightSupport,1-Reload.rightSupport);
+            H.leftSupport=IsMachineGun?1-Envelope(ActionLayers.reloadPhase,.02f,.10f,.90f,.98f)*ActionLayers.reloadWeight:1;
+            const float Stationary=(1-armyvisual::Smooth(float(std::hypot(State.forward,State.right))/.35f))*(1-FMath::Clamp(State.crouch,0.f,1.f));
+            const float ShotLoad=Envelope(ActionLayers.shotPhase,.10f,.22f,.72f,.94f)*ActionLayers.shotWeight;
+            const float ReloadLoad=Envelope(ActionLayers.reloadPhase,0,.16f,.90f,1.f)*ActionLayers.reloadWeight;
+            Anim->AuthoredPelvisOffset=(FVector(.8,0,0)*ShotLoad+FVector(1.8,1.4,-1.2)*ReloadLoad)*Stationary;
+        }
     }
     if(IsMachineGun&&State.outAt<0&&!Input.vaulting)Anim->Handling.upper=1.f;
     Anim->StandingAim=IsMachineGun?MachineGunAim.Get():Clips[armyvisual::Find("A_idle_aiming")].Get();Anim->MachineGun=IsMachineGun;Anim->ModelScale=1.f;
@@ -180,6 +255,9 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
         Anim->ContactPelvis.Blend(FTransform(MotionFrames[A].Pelvis),FTransform(MotionFrames[B].Pelvis),Alpha);
         Anim->ContactLeftFoot.Blend(FTransform(MotionFrames[A].LeftFoot),FTransform(MotionFrames[B].LeftFoot),Alpha);
         Anim->ContactRightFoot.Blend(FTransform(MotionFrames[A].RightFoot),FTransform(MotionFrames[B].RightFoot),Alpha);
+        Anim->ContactLeftKnee=FVector(FMath::Lerp(MotionFrames[A].LeftKnee,MotionFrames[B].LeftKnee,Alpha));
+        Anim->ContactRightKnee=FVector(FMath::Lerp(MotionFrames[A].RightKnee,MotionFrames[B].RightKnee,Alpha));
+        for(int I=0;I<3;++I)Anim->ContactSpine[I].Blend(FTransform(MotionFrames[A].Spine[I]),FTransform(MotionFrames[B].Spine[I]),Alpha);
     }
     if(HasVaultAnimation()&&Input.vaulting&&State.outAt<0&&VaultProfile->Animation) {
         const float P=FMath::Clamp(Input.vaultProgress,0.f,1.f);
@@ -192,7 +270,7 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
         const FVector Ground=FMath::Lerp(VaultTakeoff,VaultLanding,FMath::Clamp(Across,0.f,1.f));
         const FVector Direction=VaultLanding-VaultTakeoff;
         if(!Direction.IsNearlyZero()){SetActorLocation(Ground);SetActorRotation(FRotator(0,Direction.Rotation().Yaw,0));}
-        FArmyPoseSample Sample;Sample.Sequence=VaultProfile->Animation;Sample.Time=T;Sample.ExtractRoot=true;Sample.Weight=Anim->Handling.traversal;
+        FArmyPoseSample Sample;Sample.Sequence=VaultProfile->Animation;Sample.Time=T;Sample.ExtractRoot=true;Sample.Weight=FMath::SmoothStep(0.f,.14f,P);
         Anim->Samples.Reset();if(!MotionFrames.IsEmpty())ReadMotion(Time,Anim->Samples);
         for(auto& S:Anim->Samples)S.Weight*=1-Sample.Weight;
         Anim->Samples.Add(Sample);
@@ -202,6 +280,21 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
         Anim->VaultPlant=FMath::SmoothStep(VaultProfile->PlantBegin,VaultProfile->PlantFull,T)*(1-FMath::SmoothStep(VaultProfile->PlantRelease,VaultProfile->PlantEnd,T));
         const float MidDistance=float(Direction.Size2D())*(.5f-FMath::Clamp(Across,0.f,1.f));
         Anim->VaultHandTarget=FVector(IsMale?28:26,MidDistance,Height+3+VaultTakeoff.Z-Ground.Z);
+    }
+    if(HasVaultAnimation()&&State.outAt<0&&Input.vaultLandsAt>=0) {
+        const double LandingAge=Time-Input.vaultLandsAt;
+        UAnimSequence* Landing=Anim->MoveSpeed>3?VaultProfile->LandingRunning.Get():Anim->MoveSpeed>.25f?VaultProfile->LandingWalking.Get():VaultProfile->LandingStanding.Get();
+        const float Contact=Anim->MoveSpeed>3?VaultProfile->RunningContactSeconds:Anim->MoveSpeed>.25f?VaultProfile->WalkingContactSeconds:VaultProfile->StandingContactSeconds;
+        if(Landing&&LandingAge>=-.15&&LandingAge<.65) {
+            const float Weight=LandingAge<0?FMath::SmoothStep(-.15f,0.f,float(LandingAge)):
+                1-FMath::SmoothStep(.25f,.65f,float(LandingAge));
+            for(auto& S:Anim->Samples)S.Weight*=1-Weight;
+            FArmyPoseSample Land;Land.Sequence=Landing;Land.Time=FMath::Clamp(Contact+LandingAge,0.,double(Landing->GetPlayLength()));Land.Weight=Weight;Land.ExtractRoot=true;Anim->Samples.Add(Land);
+            // The authored compression must survive the locomotion contact cache.
+            // Release the landing pose before restoring the planner's foot plants.
+            Anim->ContactsEnabled=false;
+            Anim->Handling.upper*=1-.65f*Weight;
+        }
     }
     Body->TickAnimation(0.f,false);Body->RefreshBoneTransforms();Body->UpdateComponentToWorld();
     if(bGasp&&!bPoseQuery)CastChecked<USoldierClothComponent>(Body)->AdvanceCoat(Time);
@@ -214,14 +307,44 @@ void ASoldierVisual::Present(const armyvisual::State& State,double Time) {
     Bolt->SetRelativeLocation((EquipmentProfile?EquipmentProfile->BoltRest:FVector(2.5,-24,13))-FVector(0,(EquipmentProfile?EquipmentProfile->BoltTravel:8)*Anim->Handling.boltBack,0));
     Bolt->SetRelativeRotation(FRotator((EquipmentProfile?EquipmentProfile->BoltOpenDegrees:60)*Anim->Handling.boltOpen,0,0));
     ReloadProp->SetVisibility(IsMachineGun||Anim->Handling.clip>0);
-    if(IsMachineGun)ReloadProp->SetRelativeLocation(FVector(Anim->Handling.left.x,Anim->Handling.left.y,Anim->Handling.left.z));
+    if(IsMachineGun) {
+        if(Anim->AuthoredHandling&&Anim->Handling.reloadPhase>=0) {
+            auto Prop=Body->GetSocketTransform(TEXT("Weapon_Free"));Prop.SetScale3D(FVector::OneVector);
+            // Once undocked, the portable box belongs to the grasping hand.
+            // The final reach solve can shorten the authored excursion for a
+            // body's arm length; the box must follow that hand, not float below it.
+            const float U=Anim->Handling.reloadPhase;
+            const float Grasp=FMath::SmoothStep(.18f,.20f,U)*(1-FMath::SmoothStep(.60f,.62f,U));
+            const FVector Palm=FMath::Lerp(Body->GetSocketLocation(TEXT("LeftHand")),Body->GetSocketLocation(TEXT("LeftHandMiddle1")),.65);
+            const FVector Contact=EquipmentProfile?EquipmentProfile->AmmunitionBoxGrip:FVector(-3.5,-12,7.5);
+            Prop.AddToTranslation((Palm-Prop.TransformPosition(Contact))*Grasp);
+            ReloadProp->SetWorldTransform(Prop);
+        } else ReloadProp->SetRelativeTransform(FTransform(FVector(Anim->Handling.left.x,Anim->Handling.left.y,Anim->Handling.left.z)));
+    }
     else {
         FTransform Prop=Body->GetSocketTransform(TEXT("RightHand"));Prop.SetScale3D(FVector::OneVector);ReloadProp->SetWorldTransform(Prop);
         if(EquipmentProfile&&Anim->Handling.clip>0) {
-            const FVector Palm=FMath::Lerp(Body->GetSocketLocation(TEXT("RightHand")),Body->GetSocketLocation(TEXT("RightHandMiddle1")),.65);
-            Prop.SetLocation(Palm);
-            const FTransform Insert(Gun.GetRotation(),Gun.TransformPosition(EquipmentProfile->ReloadClipPosition(Anim->Handling.reloadPhase)));
-            Prop.Blend(Prop,Insert,Anim->Handling.reloadContact);ReloadProp->SetWorldTransform(Prop);
+            const FVector Wrist=Body->GetSocketLocation(TEXT("RightHand"));
+            const FVector Knuckle=Body->GetSocketLocation(TEXT("RightHandMiddle1"));
+            const FVector Row=(Knuckle-Wrist).GetSafeNormal();
+            // Hold the end of the strip at the fingers. Centering the whole
+            // stack inside the palm hid the ammunition inside the bulky glove.
+            Prop.SetLocation(Knuckle+Row*EquipmentProfile->ReloadStackHalfHeight);
+            Prop.SetRotation(FRotationMatrix::MakeFromXY(Row,Gun.TransformVectorNoScale(FVector::RightVector)).ToQuat());
+            const FTransform Insert(Gun.GetRotation()*FQuat(FVector::RightVector,PI*.5),Gun.TransformPosition(EquipmentProfile->ReloadClipPosition(Anim->Handling.reloadPhase)));
+            // Once aligned, the rounds belong to the receiver while the thumb
+            // presses them in. They must not return to the withdrawing hand.
+            const float Phase=Anim->Handling.reloadPhase;
+            const float Feeding=FMath::SmoothStep(.455f,.49f,Phase);
+            Prop.Blend(Prop,Insert,FMath::Max(Anim->Handling.reloadContact,Feeding));ReloadProp->SetWorldTransform(Prop);
+            const float Limit=Phase<.5f?100.f:EquipmentProfile->ReloadStackHalfHeight*(1-2*FMath::SmoothStep(.50f,.70f,Phase));
+            // Once the feed plane has passed every vertex, remove the draw as
+            // well as masking it. Keeping an entirely masked moving primitive
+            // alive left a one-frame fragment during the hand's withdrawal.
+            if(ReloadProp->GetStaticMesh()&&Limit<ReloadProp->GetStaticMesh()->GetBoundingBox().Min.X)
+                ReloadProp->SetVisibility(false);
+            for(int I=0;I<ReloadProp->GetNumMaterials();++I)if(auto* Material=Cast<UMaterialInstanceDynamic>(ReloadProp->GetMaterial(I)))
+                Material->SetScalarParameterValue(TEXT("FeedLimit"),Limit);
         }
     }
 }
@@ -310,11 +433,49 @@ void ASoldierVisual::ResetMotion() {
     MotionFrames.Reset();
     if(bGasp)MotionDriver->InitAnim(true);
 }
-bool ASoldierVisual::AdvanceMotion(bool Crouch,const FTransform& Transform,const FTransformTrajectory& Trajectory,bool Sprint,bool Grounded) {
+bool ASoldierVisual::AdvanceMotion(bool Crouch,const FTransform& Transform,const FTransformTrajectory& Trajectory,bool Sprint,bool Grounded,bool MovingFire) {
     if(!bGasp)return false;
     auto* Planner=Cast<USoldierMotionInstance>(MotionDriver->GetAnimInstance());
     if(!Planner)return false;
-    Planner->Database=Crouch?CrouchingDatabase:StandingDatabase;Planner->Trajectory=Trajectory;
+    const float Speed=MotionFrames.IsEmpty()?0:float(FVector::Dist2D(Transform.GetLocation(),MotionDriver->GetComponentLocation())*30);
+    float FutureSpeed=0;
+    const FTransformTrajectorySample* FutureA=nullptr;
+    for(const auto& P:Trajectory.Samples) {
+        if(P.TimeInSeconds>=.39f&&!FutureA)FutureA=&P;
+        else if(FutureA&&P.TimeInSeconds>=.69f){FutureSpeed=float(FVector::Dist2D(P.Position,FutureA->Position)/(P.TimeInSeconds-FutureA->TimeInSeconds));break;}
+    }
+    // Context selection precedes pose similarity: a steady moving soldier must
+    // not select a kneeling stop tail merely because its pose is inexpensive.
+    // Starts and braking retain the complete database and authored transitions.
+    const bool Cruising=Speed>25&&FutureSpeed>25&&FMath::Abs(Speed-FutureSpeed)<FMath::Max(20.f,Speed*.2f);
+    auto* Moving=Crouch?CrouchingMovingDatabase.Get():StandingMovingDatabase.Get();
+    auto* Starting=Crouch?CrouchingStartingDatabase.Get():StandingStartingDatabase.Get();
+    auto* Stopping=Crouch?CrouchingStoppingDatabase.Get():StandingStoppingDatabase.Get();
+    auto* Idle=Crouch?CrouchingIdleDatabase.Get():StandingIdleDatabase.Get();
+    Planner->Database=Crouch?CrouchingDatabase.Get():StandingDatabase.Get();
+    if(FutureSpeed>Speed+25&&Starting)Planner->Database=Starting;
+    else if(Speed>FutureSpeed+25&&Stopping)Planner->Database=Stopping;
+    else if(Cruising&&Moving)Planner->Database=Moving;
+    else if(Speed<10&&FutureSpeed<10&&Idle)Planner->Database=Idle;
+    Planner->Trajectory=Trajectory;
+    Planner->Crouching=Crouch;
+    Planner->CanFinishStop=Grounded&&FutureSpeed<25;
+    Planner->StopSeconds=-1;
+    if(Grounded&&Speed>5&&Stopping) {
+        const FTransformTrajectorySample* Previous=nullptr;
+        for(const auto& P:Trajectory.Samples)if(P.TimeInSeconds>=0) {
+            if(Previous) {
+                const float Span=P.TimeInSeconds-Previous->TimeInSeconds;
+                if(Span>0&&FVector::Dist2D(P.Position,Previous->Position)/Span<5) {
+                    Planner->StopSeconds=(P.TimeInSeconds+Previous->TimeInSeconds)*.5f;
+                    Planner->Database=Stopping;break;
+                }
+            }
+            Previous=&P;
+        }
+    }
+    Planner->LocomotionSpeed=Speed;
+    Planner->LocomotionVelocity=MotionFrames.IsEmpty()?FVector::ZeroVector:(Transform.GetLocation()-MotionDriver->GetComponentLocation())*30;
     Planner->ContactsEnabled=Grounded&&MotionDriver->GetBoneIndex(TEXT("VB FootTarget_Left"))!=INDEX_NONE&&MotionDriver->GetBoneIndex(TEXT("VB FootTarget_Right"))!=INDEX_NONE;
     MotionDriver->SetWorldTransform(FTransform(FRotator(0,-90,0))*Transform);
     MotionDriver->TickAnimation(MotionFrames.IsEmpty()?0.f:1.f/30,false);
@@ -322,6 +483,11 @@ bool ASoldierVisual::AdvanceMotion(bool Crouch,const FTransform& Transform,const
     FArmyMotionFrame Frame;
     const float CarryTarget=Sprint?1.f:0.f;
     Frame.SprintCarry=MotionFrames.IsEmpty()?CarryTarget:FMath::Lerp(MotionFrames.Last().SprintCarry,CarryTarget,1.f-FMath::Exp(-1.f/(30*.12f)));
+    // Two fixed-step response stages ease both ends of a flag change. Cache
+    // them with locomotion so random seeks reproduce the same carry blend.
+    const float FireTarget=MovingFire?1.f:0.f,Response=1.f-FMath::Exp(-1.f/(30*.12f));
+    Frame.MovingFireIntent=MotionFrames.IsEmpty()?FireTarget:FMath::Lerp(MotionFrames.Last().MovingFireIntent,FireTarget,Response);
+    Frame.MovingFireCarry=MotionFrames.IsEmpty()?FireTarget:FMath::Lerp(MotionFrames.Last().MovingFireCarry,Frame.MovingFireIntent,Response);
     if(!Planner->ReadDecision(Frame.Samples)) {
         UE_LOG(LogTemp,Error,TEXT("Motion decision unavailable for %s at frame %d"),*GetName(),MotionFrames.Num());return false;
     }
@@ -330,6 +496,10 @@ bool ASoldierVisual::AdvanceMotion(bool Crouch,const FTransform& Transform,const
     Frame.Pelvis=FTransform3f(MotionDriver->GetSocketTransform(TEXT("Hips"),RTS_Component));
     Frame.LeftFoot=FTransform3f(MotionDriver->GetSocketTransform(TEXT("LeftFoot"),RTS_Component));
     Frame.RightFoot=FTransform3f(MotionDriver->GetSocketTransform(TEXT("RightFoot"),RTS_Component));
+    Frame.LeftKnee=FVector3f(MotionDriver->GetSocketTransform(TEXT("LeftLeg"),RTS_Component).GetLocation());
+    Frame.RightKnee=FVector3f(MotionDriver->GetSocketTransform(TEXT("RightLeg"),RTS_Component).GetLocation());
+    const FName SpineNames[]={TEXT("Spine"),TEXT("Spine1"),TEXT("Spine2")};
+    for(int I=0;I<3;++I)Frame.Spine[I]=FTransform3f(MotionDriver->GetSocketTransform(SpineNames[I],RTS_Component));
     MotionFrames.Add(MoveTemp(Frame));return true;
 }
 void ASoldierVisual::ReadMotion(double Time,TArray<FArmyPoseSample>& Out) const {
@@ -379,7 +549,7 @@ void ASoldierVisual::PresentReplay(const armyvisual::context::ReplaySource& Sour
         const int Last=FMath::CeilToInt(FMath::Max(0.,End)*30);
         while(MotionFrames.Num()<=Last) {
             const double At=MotionFrames.Num()/30.;const auto S=Source.At(Slot,At);
-            const auto Future=Source.Trajectory(Slot,At-1./30,{-1.,-.6,-.4,-.2,0.,.2,.4,.7,1.,1.3});
+            const auto Future=Source.Trajectory(Slot,At-1./30,{-1.,-.6,-.4,-.2,0.,.1,.2,.3,.4,.5,.6,.7,.8,.9,1.,1.1,1.2,1.3});
             if(!S||!Future)break;
             FTransformTrajectory Trajectory;
             for(const auto& P:*Future) {
@@ -391,7 +561,7 @@ void ASoldierVisual::PresentReplay(const armyvisual::context::ReplaySource& Sour
             const FVector Location=FVector(S->position.x,S->position.y,S->position.z)*100;
             const FRotator Rotation(0,FMath::RadiansToDegrees(std::atan2(S->facing.y,S->facing.x)),0);
             if(MotionGeometry)MotionGeometry(At);
-            if(!AdvanceMotion(S->stance!=army::Stance::Standing,FTransform(Rotation,Location),Trajectory,S->sprinting,S->knockHeight<=0&&!S->traversal.active))break;
+            if(!AdvanceMotion(S->stance!=army::Stance::Standing,FTransform(Rotation,Location),Trajectory,S->sprinting,S->knockHeight<=0&&!S->traversal.active,S->movingFire))break;
             auto& Frame=MotionFrames.Last();Frame.WorldAim=AimAngles(*S);
             Frame.WorldLook=FMath::RadiansToDegrees(std::atan2(S->attention.y,S->attention.x));Frame.AttentionCached=true;
             if(MotionFrames.Num()>1&&MotionFrames[MotionFrames.Num()-2].AttentionCached) {
@@ -416,5 +586,7 @@ void ASoldierVisual::PresentReplay(const armyvisual::context::ReplaySource& Sour
         }
     }
     if(RestoreGeometry)RestoreGeometry();
-    Present(State,Time);
+    auto Presentation=State;
+    if(const auto S=Source.At(Slot,Time))Presentation.handling.vaultLandsAt=S->traversal.landsAt;
+    Present(Presentation,Time);
 }

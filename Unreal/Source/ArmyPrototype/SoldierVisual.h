@@ -17,7 +17,9 @@ struct FArmyMotionFrame {
     GENERATED_BODY()
     UPROPERTY() TArray<FArmyPoseSample> Samples;
     FTransform3f Root, Pelvis,LeftFoot,RightFoot;
-    float SprintCarry=0;
+    FVector3f LeftKnee,RightKnee;
+    FTransform3f Spine[3];
+    float SprintCarry=0,MovingFireIntent=0,MovingFireCarry=0;
     FVector2f WorldAim=FVector2f::ZeroVector; // yaw/pitch, independent of actor turning
     float WorldLook=0;
     bool AttentionCached=false;
@@ -32,7 +34,7 @@ public:
     bool Initialize(int Team,bool Male=false,bool MachineGun=false);
     void Present(const armyvisual::State& State,double ReplayTime);
     void PresentReplay(const armyvisual::context::ReplaySource& Source,int Slot,const armyvisual::State& State,double ReplayTime);
-    bool AdvanceMotion(bool Crouch,const FTransform& Transform,const FTransformTrajectory& Trajectory,bool Sprint=false,bool Grounded=true);
+    bool AdvanceMotion(bool Crouch,const FTransform& Transform,const FTransformTrajectory& Trajectory,bool Sprint=false,bool Grounded=true,bool MovingFire=false);
     // Fixed-step contacts must query the matching destruction revision, then restore the displayed world.
     TFunction<void(double)> MotionGeometry;
     TFunction<void()> RestoreGeometry;
@@ -52,6 +54,17 @@ public:
     UPROPERTY() TObjectPtr<USkeletalMeshComponent> MotionDriver;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingDatabase;
     UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingMovingDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingMovingDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingStartingDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingStartingDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingStoppingDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingStoppingDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> StandingIdleDatabase;
+    UPROPERTY() TObjectPtr<UPoseSearchDatabase> CrouchingIdleDatabase;
+    UPROPERTY() TObjectPtr<UAnimSequence> AuthoredWeaponShot;
+    UPROPERTY() TObjectPtr<UAnimSequence> AuthoredWeaponReload;
+    UPROPERTY() TObjectPtr<UAnimSequence> AuthoredWeaponCarry;
     UPROPERTY() TArray<FArmyMotionFrame> MotionFrames;
     UPROPERTY(VisibleAnywhere) TObjectPtr<UStaticMeshComponent> Rifle;
     UPROPERTY() TArray<TObjectPtr<UAnimSequence>> Clips;

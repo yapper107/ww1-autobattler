@@ -1,0 +1,30 @@
+{
+  "fps": 60,
+  "status": "WIP \u2014 visual review required",
+  "clips": [
+    {
+      "name": "A_Rifle_ShotBolt",
+      "frames": 76,
+      "duration": 1.25,
+      "editable_action": "Authored_Male_A_Rifle_ShotBolt",
+      "max_elbow_step_cm": 3.4978954929327797,
+      "diagnostic_fps": 60
+    },
+    {
+      "name": "A_Rifle_Reload",
+      "frames": 241,
+      "duration": 4.0,
+      "editable_action": "Authored_Male_A_Rifle_Reload",
+      "max_elbow_step_cm": 2.619775452328577,
+      "diagnostic_fps": 60
+    },
+    {
+      "name": "A_Rifle_LowReady",
+      "frames": 121,
+      "duration": 2.0,
+      "editable_action": "Authored_Male_A_Rifle_LowReady",
+      "max_elbow_step_cm": 0.008718369017623705,
+      "diagnostic_fps": 60
+    }
+  ]
+}

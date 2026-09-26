@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Lowered rifle carry and walking",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-220522",
+    "start": 0,
+    "end": 7,
+    "note": "Historical pass9: carry5.5, walk5.0, stop4.5. Before later timed-stop correction.",
+    "frames": 210,
+    "video": "authored-actions-media/action-0.mp4",
+    "poster": "authored-actions-media/action-0.png"
+  },
+  {
+    "name": "Female rifle reload \u2014 close review",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-235955",
+    "start": 28.25,
+    "end": 33.5,
+    "note": "Pass17:5.5. Adjacent-frame review confirms seated rounds no longer return with the hand and the withdrawal fragment is gone. Closed-pouch retrieval and thumb pressure remain unfinished.",
+    "frames": 158,
+    "video": "authored-actions-media/action-1.mp4",
+    "poster": "authored-actions-media/action-1.png"
+  },
+  {
+    "name": "Male rifle and interrupted reload",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-234531",
+    "start": 26,
+    "end": 33.5,
+    "note": "Pass15: bolt5.5, reload5.5. Feed/withdrawal arm clearance repaired; interruption clearance29.23\u201329.30 remains. This capture precedes the seated-ammunition repair.",
+    "frames": 225,
+    "video": "authored-actions-media/action-2.mp4",
+    "poster": "authored-actions-media/action-2.png"
+  },
+  {
+    "name": "Female machine gun reload and exit",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-231250",
+    "start": 30,
+    "end": 35.5,
+    "note": "Pass12:4.0. Box contact and exit continuity repaired. No complete empty-box exchange or feed-cover/belt operation.",
+    "frames": 165,
+    "video": "authored-actions-media/action-3.mp4",
+    "poster": "authored-actions-media/action-3.png"
+  },
+  {
+    "name": "Female held crouch stop",
+    "folder": "/mnt/c/Users/Jordan/Documents/Codex/ArmyPrototype-GASP/Saved/Screenshots/GaspCombat-20260925-224507",
+    "start": 21,
+    "end": 26,
+    "note": "Pass11:5.5. Timed stop reduces early planting; narrow support and weak weight acceptance remain.",
+    "frames": 150,
+    "video": "authored-actions-media/action-4.mp4",
+    "poster": "authored-actions-media/action-4.png"
+  }
+]

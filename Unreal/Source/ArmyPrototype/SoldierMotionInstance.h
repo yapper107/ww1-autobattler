@@ -17,6 +17,11 @@ public:
     UPROPERTY(Transient) TObjectPtr<UClass> MotionTemplateClass;
     FTransformTrajectory Trajectory;
     bool ContactsEnabled=false;
+    bool Crouching=false;
+    bool CanFinishStop=false;
+    float LocomotionSpeed=0;
+    float StopSeconds=-1;
+    FVector LocomotionVelocity=FVector::ZeroVector;
     bool ReadDecision(TArray<FArmyPoseSample>& Out) const;
     FString DescribeQuery() const;
 protected:

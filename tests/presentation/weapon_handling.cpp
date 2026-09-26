@@ -30,6 +30,15 @@ int main(){
  assert(Handling(rifle,10,1,false,automatic).gun.y==-1);
  auto mg=rifle;mg.machineGun=true;
  assert(Handling(mg,10.55,1,false).boltBack==0);
+ // Cached carry blending controls both activation and release independently
+ // of a newly changed movement flag; replay seeking supplies the same weight.
+ {auto carry=mg;carry.lastShot=-1000;carry.movingFire=true;carry.movingFireWeight=0;
+  assert(Handling(carry,10,1,false).gun.z==0);
+  carry.movingFireWeight=.5f;const auto entering=Handling(carry,10,1,false);
+  carry.movingFire=false;const auto leaving=Handling(carry,10,1,false);
+  assert(entering.gun.z==leaving.gun.z&&entering.pitch==leaving.pitch);
+  assert(entering.gun.z<0&&entering.gun.z>-14);
+ }
  rifle.reloadStart=11;rifle.reloadEnd=13.5;
  assert(std::strcmp(Handling(rifle,12,1,false).name,"rifle reload")==0);
  assert(Handling(rifle,13.5,1,false).clip==0);
@@ -39,6 +48,27 @@ int main(){
  assert(Handling(mgReload,12,1,false).leftSupport<.01f);
  assert(Handling(rifle,12,1,true).upper==0);
  rifle.sprinting=true;assert(Handling(rifle,12,1,false).upper==0);
+ // A reload may begin with the bolt still moving. At its start the existing
+ // shot must survive; during the handoff the two action weights exhaust the
+ // pose, rather than falling back to an unrelated aiming reference.
+ {HandlingInput interrupted;interrupted.lastShot=10;interrupted.reloadStart=10.5;interrupted.reloadEnd=14.5;
+  auto a=AuthoredLayers(interrupted,10.5,true,true);
+  assert(a.shotWeight==1&&a.reloadWeight==0&&a.ReferenceWeight()==0);
+  a=AuthoredLayers(interrupted,10.6,true,true);
+  assert(a.shotWeight>0&&a.reloadWeight>0&&std::abs(a.ReferenceWeight())<1e-6);
+  a=AuthoredLayers(interrupted,10.71,true,true);assert(a.shotWeight==0&&a.reloadWeight==1);
+  const auto old=AuthoredLayers(interrupted,10.49999,true,true),now=AuthoredLayers(interrupted,10.50001,true,true);
+  auto bolt=[](const AuthoredActionLayers& l){return AuthoredRifleMechanism(l.shotPhase,false).boltBack*l.shotWeight+AuthoredRifleMechanism(l.reloadPhase,true).boltBack*l.reloadWeight;};
+  assert(std::abs(bolt(old)-bolt(now))<.001);
+  for(int i=0;i<600;++i){const double t=9+i*.01;const auto first=AuthoredLayers(interrupted,t,true,true);
+   AuthoredLayers(interrupted,25-t,true,true);const auto seek=AuthoredLayers(interrupted,t,true,true);
+   assert(first.shotPhase==seek.shotPhase&&first.shotWeight==seek.shotWeight&&first.reloadWeight==seek.reloadWeight);
+   assert(first.shotWeight>=0&&first.reloadWeight>=0&&first.ReferenceWeight()>-1e-6);
+  }
+  assert(AuthoredLayers(interrupted,9,true,true).ReferenceWeight()==1);
+  assert(AuthoredLayers(interrupted,10.6,false,false).ReferenceWeight()==1);
+  interrupted.vaulting=true;assert(AuthoredLayers(interrupted,10.6,true,true).ReferenceWeight()==1);
+ }
  for(int i=0;i<2000;++i){
   const double t=i*.01;auto a=Handling(mg,t,1,false);Handling(mg,50-t,1,false);auto b=Handling(mg,t,1,false);
   assert(a.pitch==b.pitch&&a.left.z==b.left.z&&std::isfinite(a.gun.y));

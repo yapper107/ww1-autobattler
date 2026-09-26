@@ -25,13 +25,17 @@ public:
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Recoil") float RecoverySeconds=.055f;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") bool ManualBolt=true;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float BoltStartSeconds=.16f;
-    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector BoltRest=FVector(2.5,-24,13);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector BoltRest=FVector(2.5,-16,13);
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector BoltKnob=FVector(6.2,-3,-.2);
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float BoltTravel=8;
     UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float BoltOpenDegrees=60;
-    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadFeed=FVector(0,-22,14);
-    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float ReloadInsertLift=8;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadFeed=FVector(0,-10,14);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector ReloadPalmOffset=FVector(3,0,1);
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") FVector AmmunitionBoxGrip=FVector(-3.5,-12,7.5);
+    // Eight rounds at 9 mm centres. The row stands above the receiver and is
+    // pressed into it, instead of hovering as a horizontal tray over the gun.
+    UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Handling") float ReloadStackHalfHeight=3.6f;
     FVector ReloadClipPosition(float Phase) const {
-        return ReloadFeed+FVector(0,0,ReloadInsertLift*(1-FMath::SmoothStep(.52f,.70f,Phase)));
+        return ReloadFeed+FVector(0,0,ReloadStackHalfHeight*(1-2*FMath::SmoothStep(.50f,.70f,Phase)));
     }
 };

@@ -5,6 +5,7 @@
 #include "GaspCombatReview.generated.h"
 class ASoldierVisual;
 class ACameraActor;
+class UAnimSequence;
 UCLASS()
 class ARMYPROTOTYPE_API AGaspCombatReview : public AGameModeBase {
     GENERATED_BODY()
@@ -14,6 +15,9 @@ public:
     virtual void Tick(float DeltaSeconds) override;
     UPROPERTY() TArray<TObjectPtr<ASoldierVisual>> Soldiers;
     UPROPERTY() TObjectPtr<ACameraActor> Camera;
+    UPROPERTY() TArray<TObjectPtr<UAnimSequence>> SourceClips;
+    UPROPERTY() TArray<TObjectPtr<AActor>> ReviewObstacles;
+    FString SourceClipName;
     FString Label;
     int Frame=0;
     float Elapsed=0;

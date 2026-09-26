@@ -1,7 +1,7 @@
 """Run with UnrealEditor-Cmd project -run=pythonscript -script=.../Tools/character/import_unreal.py.
 Source FBXs live in project/Art/female_rifle (synced by build.sh).
 """
-import unreal,json,re
+import unreal,json,re,runpy
 from pathlib import Path
 base=Path(unreal.Paths.project_dir())/'Art/female_rifle';manifest=json.loads((base/'manifest.json').read_text())
 dest='/Game/Characters/FemaleRifle';assets=unreal.AssetToolsHelpers.get_asset_tools()
@@ -45,6 +45,8 @@ for obj in objects:
    n=unreal.MaterialEditingLibrary.create_material_expression(mat,unreal.MaterialExpressionConstant,-200,y);n.set_editor_property('r',val);unreal.MaterialEditingLibrary.connect_material_property(n,'',prop)
   mat.set_editor_property('two_sided','cloth' in key);unreal.MaterialEditingLibrary.set_material_usage(mat,unreal.MaterialUsage.MATUSAGE_SKELETAL_MESH);unreal.MaterialEditingLibrary.recompile_material(mat);slot.set_editor_property('material_interface',mat);slots[i]=slot;unreal.EditorAssetLibrary.save_loaded_asset(mat)
  obj.set_editor_property('materials' if isinstance(obj,unreal.SkeletalMesh) else 'static_materials',slots);unreal.EditorAssetLibrary.save_loaded_asset(obj)
+if (base/'variants.json').exists():
+ runpy.run_path(str(Path(__file__).with_name('repair_handling_materials.py')))
 results=[]
 for c in ([] if variants_only else manifest['clips']):
  a=imp(c['name'],'anim',mesh.skeleton);results.append({'asset':a.get_path_name(),'duration':a.get_play_length(),'expected':c['duration']})

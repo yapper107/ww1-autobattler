@@ -1,0 +1,18 @@
+{
+  "fps": 60,
+  "status": "WIP blocking; cover and belt articulation outstanding",
+  "clips": [
+    {
+      "name": "A_MG_Shot",
+      "duration": 0.4,
+      "frames": 25,
+      "editable_action": "Female_MG_Shot"
+    },
+    {
+      "name": "A_MG_Reload",
+      "duration": 6.0,
+      "frames": 361,
+      "editable_action": "Female_MG_Reload"
+    }
+  ]
+}

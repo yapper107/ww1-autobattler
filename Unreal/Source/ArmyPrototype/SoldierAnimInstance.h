@@ -22,6 +22,12 @@ public:
     UPROPERTY(Transient) TArray<FArmyPoseSample> Samples;
     float GripAlpha=1;
     UPROPERTY(Transient) TObjectPtr<UAnimSequence> StandingAim;
+    // Authored carry/aim references, blended independently of the locomotion legs.
+    UPROPERTY(Transient) TArray<FArmyPoseSample> ArmedReference;
+    float WeaponReady=1;
+    bool AuthoredHandling=false;
+    float AuthoredHandlingAlpha=0;
+    FVector AuthoredPelvisOffset=FVector::ZeroVector;
     UPROPERTY(Transient) TObjectPtr<UWeaponAnimationProfile> EquipmentProfile;
     float AimYaw=0,AimPitch=0,LookYaw=0,LookPitch=0,MoveSpeed=0;
     double PoseTime=0;
@@ -31,6 +37,8 @@ public:
     float VaultPlant=0;
     FVector VaultHandTarget=FVector::ZeroVector;
     FTransform ContactPelvis,ContactLeftFoot,ContactRightFoot;
+    FVector ContactLeftKnee,ContactRightKnee;
+    FTransform ContactSpine[3];
     armyvisual::HandlingPose Handling;
     bool MachineGun=false;
     float ModelScale=1;

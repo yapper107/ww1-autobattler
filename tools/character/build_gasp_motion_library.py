@@ -3,7 +3,6 @@
 Owned, versioned outputs are resumable. Original GASP and production assets are
 read-only inputs. Build indices and save the databases for runtime Pose Search.
 """
-import hashlib
 import json
 import math
 from pathlib import Path
@@ -12,7 +11,7 @@ import unreal
 BASE='/Game/Characters/UEFN_Mannequin'
 DEST='/Game/Characters/GASP'
 catalog=json.loads(Path(__file__).with_name('gasp_motion_catalog.json').read_text())['clips']
-OWNER='army-motion-v3-unit-root-'+hashlib.sha256(json.dumps(catalog,sort_keys=True).encode()).hexdigest()[:12]
+OWNER='army-motion-v3-unit-root'
 report={'owner':OWNER,'bodies':[],'complete':False}
 output=Path(unreal.Paths.project_saved_dir())/'gasp-motion-library.json'
 source_mesh=unreal.load_asset(BASE+'/Meshes/SKM_UEFN_Mannequin')
@@ -42,7 +41,7 @@ for body,old_folder in [('Female','FemaleRifle'),('Male','Male')]:
         path=folder+'/Animations/GASP_'+row['source'].split('/')[-1]
         if unreal.EditorAssetLibrary.does_asset_exist(path):
             existing=unreal.load_asset(path)
-            if str(unreal.EditorAssetLibrary.get_metadata_tag(existing,'ArmyMotionLibrary'))==OWNER:
+            if str(unreal.EditorAssetLibrary.get_metadata_tag(existing,'ArmyMotionLibrary')).startswith(OWNER):
                 assert existing.get_editor_property("skeleton")==mesh.skeleton
                 continue
         pending.append(row)

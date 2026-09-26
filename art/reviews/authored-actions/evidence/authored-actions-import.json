@@ -1,0 +1,52 @@
+[
+  {
+    "body": "Female",
+    "asset": "/Game/Characters/GASP/Legacy/Female/A_Rifle_ShotBolt.A_Rifle_ShotBolt",
+    "duration": 1.25
+  },
+  {
+    "body": "Female",
+    "asset": "/Game/Characters/GASP/Legacy/Female/A_Rifle_Reload.A_Rifle_Reload",
+    "duration": 4.0
+  },
+  {
+    "body": "Female",
+    "asset": "/Game/Characters/GASP/Legacy/Female/A_Rifle_LowReady.A_Rifle_LowReady",
+    "duration": 2.0
+  },
+  {
+    "body": "Male",
+    "asset": "/Game/Characters/GASP/Legacy/Male/A_Rifle_ShotBolt.A_Rifle_ShotBolt",
+    "duration": 1.25
+  },
+  {
+    "body": "Male",
+    "asset": "/Game/Characters/GASP/Legacy/Male/A_Rifle_Reload.A_Rifle_Reload",
+    "duration": 4.0
+  },
+  {
+    "body": "Male",
+    "asset": "/Game/Characters/GASP/Legacy/Male/A_Rifle_LowReady.A_Rifle_LowReady",
+    "duration": 2.0
+  },
+  {
+    "body": "Female",
+    "asset": "/Game/Characters/GASP/Legacy/Female/A_MG_Shot.A_MG_Shot",
+    "duration": 0.4000000059604645
+  },
+  {
+    "body": "Female",
+    "asset": "/Game/Characters/GASP/Legacy/Female/A_MG_Reload.A_MG_Reload",
+    "duration": 6.0
+  },
+  {
+    "body": "Male",
+    "asset": "/Game/Characters/GASP/Legacy/Male/A_MG_Shot.A_MG_Shot",
+    "duration": 0.4000000059604645
+  },
+  {
+    "body": "Male",
+    "asset": "/Game/Characters/GASP/Legacy/Male/A_MG_Reload.A_MG_Reload",
+    "duration": 6.0
+  }
+]

@@ -8,6 +8,12 @@ class ARMYPROTOTYPE_API UTraversalAnimationProfile:public UDataAsset {
     GENERATED_BODY()
 public:
     UPROPERTY(EditAnywhere,BlueprintReadOnly) TObjectPtr<UAnimSequence> Animation;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly) TObjectPtr<UAnimSequence> LandingStanding;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly) TObjectPtr<UAnimSequence> LandingWalking;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly) TObjectPtr<UAnimSequence> LandingRunning;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly) float StandingContactSeconds=.5f;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly) float WalkingContactSeconds=.5f;
+    UPROPERTY(EditAnywhere,BlueprintReadOnly) float RunningContactSeconds=.5f;
     UPROPERTY(EditAnywhere,BlueprintReadOnly) float StartSeconds=0;
     UPROPERTY(EditAnywhere,BlueprintReadOnly) float LandSeconds=.9f;
     UPROPERTY(EditAnywhere,BlueprintReadOnly) float SourceObstacleForward=0;

@@ -28,8 +28,13 @@ public:
     static bool CreateFootTargets(USkeleton* Skeleton);
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
     static bool SynchronizeNormalizedSkeleton(USkeletalMesh* Mesh);
+    // Read-only selection in bind-pose centimetres for the four female belt pouches.
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static TArray<int32> FemaleBeltPouchVertices(USkeletalMesh* Mesh);
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
     static FVector RootMotionTranslation(UAnimSequence* Clip,float Start,float Duration);
+    UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
+    static UAnimSequence* CreateCombatCrouch(UAnimSequence* Source,float MinimumHipHeight,const FString& PackagePath);
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")
     static FString CreateCoatCloth(USkeletalMesh* Mesh);
     UFUNCTION(BlueprintCallable, Category="Army|GASP Authoring")

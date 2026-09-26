@@ -1,0 +1,22 @@
+[
+  {
+    "mesh": "/Game/Characters/FemaleRifle/SM_Bolt.SM_Bolt",
+    "slots": [
+      "Handling charcoal steel"
+    ],
+    "sections": [
+      0
+    ]
+  },
+  {
+    "mesh": "/Game/Characters/FemaleRifle/SM_ReloadClip.SM_ReloadClip",
+    "slots": [
+      "Handling brass",
+      "Handling cyan"
+    ],
+    "sections": [
+      0,
+      1
+    ]
+  }
+]

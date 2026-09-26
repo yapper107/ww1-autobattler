@@ -1,16 +1,23 @@
 # Armed GASP integration — 25 September 2026
 
-**In progress, not visually accepted.** The battle renderer now reads a fixed-step
+**V4 visually rejected by Jordan; correction work remains open.** See the
+[reference study and diagnosis](SOLDIER_MOTION_STUDY_2026-09-25.md) for the
+carry, crouch, action-transition and vault problems. Jordan has now directed us to
+[author the weapon performances ourselves](AUTHORED_SOLDIER_ACTIONS.md). These edits
+remain below the requested 8.5/10 visual bar; prone work waits behind these defects.
+
+The battle renderer now reads a fixed-step
 GASP motion cache for both actual soldier bodies with their rifle/MG overlays.
 The earlier ten-clip comparison is retained below as authoring history; it is not
 the acceptance scene. Plan 034 remains open for prone/crawl, traversal polish,
 weapon-action polish, cloth tuning and complete rendered acceptance. Functional
-64-body battle checks and a Development packaged executable now pass.
+64-body battle checks and a Development packaged executable passed at `041077d`.
+The subsequent authored-action repairs have not yet repeated those packaged checks.
 
 ## Continuous motion and replay
 
 `SoldierMotionInstance` evaluates native UE 5.8 Motion Matching and Pose History at
-30 Hz. The catalogue contains 360 retargeted motions per body, with separate standing
+30 Hz. The catalogue contains 366 retargeted motions per body, with separate standing
 and crouching Pose Search databases. `SoldierVisual` stores the native blend stack,
 root offset, pelvis/foot corrections and sprint carry transition at each step.
 The visible `SoldierAnimInstance` reconstructs that pose at replay time and applies

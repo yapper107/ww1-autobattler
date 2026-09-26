@@ -1,0 +1,68 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Authored soldier actions — work in progress</title>
+<style>body{background:#141c25;color:#e6edf4;font:17px/1.5 system-ui;margin:0 auto;padding:28px;max-width:1250px}
+h1{font-size:30px}h2{font-size:22px}section{margin:36px 0;padding:20px;background:#202d3a;border-radius:12px}
+video{width:100%;max-height:75vh;background:#10151c}button,select{font:inherit;padding:7px;background:#dce7ed;color:#15212b;border:0;border-radius:5px}
+.controls{display:flex;gap:15px;flex-wrap:wrap;align-items:center;margin-top:12px}a{color:#95d8fc}output{font-variant-numeric:tabular-nums}
+.status{padding:14px;border-left:4px solid #e0b767;background:#2a2b27}</style>
+<h1>Authored soldier actions</h1>
+<p class="status">Work in progress. These are actual Unreal captures of our authored actions.
+The last full-course critic grade was 4.0/10; the requested 8.5 has not been reached.
+Technical contact checks do not certify animation quality.</p>
+<p>Use normal speed to judge rhythm and transitions. Pause and step frames to inspect contacts.
+All videos are local MP4 files; no account or network connection is needed.</p><section><h2>Lowered rifle carry and walking</h2>
+<p>Historical pass9: carry5.5, walk5.0, stop4.5. Before later timed-stop correction.</p>
+<video id="v0" controls preload="metadata" playsinline poster="authored-actions-media/action-0.png"
+src="authored-actions-media/action-0.mp4" data-start="0"></video>
+<div class="controls"><button data-video="v0" data-step="-1">Previous frame</button>
+<button data-video="v0" data-step="1">Next frame</button>
+<label>Speed <select data-video="v0"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t0"></output><a href="authored-actions-media/action-0.mp4">Open MP4</a></div></section>
+<section><h2>Female rifle reload — close review</h2>
+<p>Pass17:5.5. Adjacent-frame review confirms seated rounds no longer return with the hand and the withdrawal fragment is gone. Closed-pouch retrieval and thumb pressure remain unfinished.</p>
+<video id="v1" controls preload="metadata" playsinline poster="authored-actions-media/action-1.png"
+src="authored-actions-media/action-1.mp4" data-start="28.25"></video>
+<div class="controls"><button data-video="v1" data-step="-1">Previous frame</button>
+<button data-video="v1" data-step="1">Next frame</button>
+<label>Speed <select data-video="v1"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t1"></output><a href="authored-actions-media/action-1.mp4">Open MP4</a></div></section>
+<section><h2>Male rifle and interrupted reload</h2>
+<p>Pass15: bolt5.5, reload5.5. Feed/withdrawal arm clearance repaired; interruption clearance29.23–29.30 remains. This capture precedes the seated-ammunition repair.</p>
+<video id="v2" controls preload="metadata" playsinline poster="authored-actions-media/action-2.png"
+src="authored-actions-media/action-2.mp4" data-start="26"></video>
+<div class="controls"><button data-video="v2" data-step="-1">Previous frame</button>
+<button data-video="v2" data-step="1">Next frame</button>
+<label>Speed <select data-video="v2"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t2"></output><a href="authored-actions-media/action-2.mp4">Open MP4</a></div></section>
+<section><h2>Female machine gun reload and exit</h2>
+<p>Pass12:4.0. Box contact and exit continuity repaired. No complete empty-box exchange or feed-cover/belt operation.</p>
+<video id="v3" controls preload="metadata" playsinline poster="authored-actions-media/action-3.png"
+src="authored-actions-media/action-3.mp4" data-start="30"></video>
+<div class="controls"><button data-video="v3" data-step="-1">Previous frame</button>
+<button data-video="v3" data-step="1">Next frame</button>
+<label>Speed <select data-video="v3"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t3"></output><a href="authored-actions-media/action-3.mp4">Open MP4</a></div></section>
+<section><h2>Female held crouch stop</h2>
+<p>Pass11:5.5. Timed stop reduces early planting; narrow support and weak weight acceptance remain.</p>
+<video id="v4" controls preload="metadata" playsinline poster="authored-actions-media/action-4.png"
+src="authored-actions-media/action-4.mp4" data-start="21"></video>
+<div class="controls"><button data-video="v4" data-step="-1">Previous frame</button>
+<button data-video="v4" data-step="1">Next frame</button>
+<label>Speed <select data-video="v4"><option value="1">Normal</option>
+<option value="0.5">Half speed</option><option value="0.25">Quarter speed</option></select></label>
+<output id="t4"></output><a href="authored-actions-media/action-4.mp4">Open MP4</a></div></section><script>
+for(const button of document.querySelectorAll('button[data-step]'))button.onclick=()=>{
+ const video=document.getElementById(button.dataset.video);video.pause();
+ video.currentTime=Math.max(0,Math.min(video.duration-1/30,(Math.round(video.currentTime*30)+Number(button.dataset.step))/30));
+};
+for(const select of document.querySelectorAll('select'))select.onchange=()=>document.getElementById(select.dataset.video).playbackRate=Number(select.value);
+for(const video of document.querySelectorAll('video')){
+ const update=()=>{document.getElementById('t'+video.id.slice(1)).textContent='Course '+(Number(video.dataset.start)+video.currentTime).toFixed(2)+' s';};
+ video.addEventListener('timeupdate',update);video.addEventListener('loadedmetadata',update);
+ video.addEventListener('error',()=>{document.getElementById('t'+video.id.slice(1)).textContent='Video unavailable. Use Open MP4.';});
+} </script></html>

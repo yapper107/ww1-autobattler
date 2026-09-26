@@ -15,6 +15,10 @@ template<class T>struct SprintBridge<T,std::void_t<decltype(T::sprinting),declty
 template<class T,class=void>struct VaultBridge {
     static void Read(const T&,HandlingInput& h){h.vaulting=false;h.vaultProgress=0;h.vaultHeight=0;}
 };
+template<class T,class=void>struct LandingBridge {static void Read(const T&,HandlingInput&) {}};
+template<class T>struct LandingBridge<T,std::void_t<decltype(T::vaultLandsAt)>> {
+    static void Read(const T& s,HandlingInput& h){h.vaultLandsAt=s.vaultLandsAt;}
+};
 template<class T>struct VaultBridge<T,std::void_t<decltype(T::vaulting),decltype(T::vaultProgress),decltype(T::vaultHeight)>> {
     static void Read(const T& s,HandlingInput& h){h.vaulting=s.vaulting;h.vaultProgress=s.vaultProgress;h.vaultHeight=s.vaultHeight;}
 };
@@ -25,5 +29,6 @@ template<class T>inline void ReadHandling(const T& s,HandlingInput& h) {
     h.reloadStart=s.reloadUntil>0?s.reloadUntil-s.gun.reloadSeconds/army::StatScale(s.stats.Get(army::Stat::Dexterity)):-1;
     SprintBridge<T>::Read(s,h);
     VaultBridge<T>::Read(s,h);
+    LandingBridge<T>::Read(s,h);
 }
 }

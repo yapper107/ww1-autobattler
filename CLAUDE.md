@@ -1,7 +1,6 @@
 # Project working instructions
 
 `CLAUDE.md` and `AGENTS.md` stay identical. History: [docs/PROJECT_LOG.md](docs/PROJECT_LOG.md).
-See "Keeping these files".
 
 ## Standing Astra / Fable collaboration
 
@@ -18,16 +17,16 @@ work. Avoid recursive consultation loops and idle polling.
 
 Current accepted first-slice boundaries: [AI foundations plan](docs/AI_FOUNDATIONS_PLAN.md).
 Actual architect response: [Fable review](docs/AI_FOUNDATIONS_FABLE_REVIEW.md).
-The prior recovery experiment remains unaccepted; its 2/9 result is not replaced
-by foundations checks. Preserve knowledge boundaries and strict tactical gates.
+The recovery experiment remains unaccepted (2/9); foundations checks do not replace it.
+Preserve knowledge boundaries and tactical gates.
 
 ## Roles and scope
 
-- The user is the game designer. The assistant is the programmer.
-- Read `docs/DESIGN_VISION.md` before implementing gameplay. Preserve the core vision while explaining concrete technical or design tradeoffs.
+- The user designs the game; the assistant programs it.
+- Read `docs/DESIGN_VISION.md` before gameplay edits; preserve it and explain technical/design tradeoffs.
 - Distinguish the user's decisions from implementation assumptions and proposed features. The full vision is not the first prototype's feature list.
-- Continue routine implementation and verification within the user's requested scope. Ask concise questions when a missing design decision materially changes the intended player experience.
-- Keep the existing repository name unless the user requests a rename. Follow the original fantasy/retrofuturistic setting in the design document.
+- Implement and verify within the user's scope. Ask when a missing design decision materially changes the player experience.
+- Keep the repository name unless asked to rename it; preserve the documented fantasy/retrofuturistic setting.
 
 ## Simulation principles
 
@@ -43,7 +42,7 @@ by foundations checks. Preserve knowledge boundaries and strict tactical gates.
 - This WSL checkout is the authoritative source repository.
 - Read `docs/DEVELOPMENT.md` for the verified Windows toolchain and build workflow.
 - Keep build output, caches, installers, local machine settings, credentials, and temporary experiments out of Git.
-- Track source assets, configuration, and scripts needed to reproduce the project. Do not ignore Unreal's `Build/` directory wholesale.
+- Track reproducible source assets, configuration and scripts. Do not ignore Unreal's `Build/` directory wholesale.
 - Before introducing large binary assets, configure Git LFS and confirm it works in the active checkout.
 - Validate changes with appropriate builds or behavior checks. Report what was actually tested and any limitations.
 
@@ -73,7 +72,7 @@ As of 25 September 2026:
   finished with no reliable gain; neural training is paused. [Plan 028](plans/028-covering-fire.md)
   (covering-fire repair) stopped by the stop rule; all off. Capacity file `.local/neural/max_jobs`.
 - **Plan 031:** Stage G default; D, D2, D3 no gain (D merged off); [tools/covering](tools/covering/README.md).
-- **Art:** [GASP in progress](docs/GASP_PROTOTYPE.md).
+- **Art:** [Authored actions](docs/AUTHORED_SOLDIER_ACTIONS.md), WIP; critic 4.0/10, target 8.5.
 - **Models:** `models/squad/` (the three plan 024 squad models); none promoted.
 - **Maps:** four generated families in `Unreal/Config/GeneratedMaps/` (`city`, `trenches`, `village`,
   `city2`; village and city2 seed 17 accepted 23 Sep 2026, golden-byte tested). Training
@@ -141,6 +140,9 @@ Jordan's rulings in force, dated and linked to their source (`L:` = [docs/PROJEC
 - (23 Sep 2026) **Curve village roads and add more curved sunken lanes**, retaining the existing
   physical contract and objective coverage gates. [L](docs/PROJECT_LOG.md#curved-village-roads-and-sunken-lanes--23-september-2026)
 
+- (25 Sep 2026) **Author weapon animations ourselves**; retain editable actions. Independent rendered
+  review must reach 8.5/10. [L](docs/AUTHORED_SOLDIER_ACTIONS.md)
+
 ## Verification gates
 
 A feature test takes **5–10 minutes end to end** (Jordan, 24–25 Sep 2026): only the checks the change
@@ -168,7 +170,7 @@ overseer measures. Full suite only before a commit. Code tests are not acceptanc
 
 ## Where things are
 
-Plans, current first:
+Plans:
 
 - [033](plans/033-building-destruction.md) building destruction, [032](plans/032-grenades-and-using-the-pin.md)
   grenades and the pin — merged, off; tactics unmeasured.
@@ -208,4 +210,4 @@ Docs:
 - Update **Current state** here when it changes; add or retire a **Standing ruling** (dated, linked).
 - No narrative in these files. Edit `AGENTS.md`, then copy it to `CLAUDE.md` (byte-identical, at
   most 16 KB); `python3 -m unittest tests.test_project_docs` checks both.
-- Older plans that say "prepend to AGENTS.md/CLAUDE.md" now mean the log.
+- Older "prepend to AGENTS.md/CLAUDE.md" instructions mean the log.

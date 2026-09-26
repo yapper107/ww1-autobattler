@@ -1,6 +1,7 @@
 """Import the refined MG and the baked, body-specific reviewed grip poses."""
 import json
 import re
+import runpy
 from pathlib import Path
 import unreal
 
@@ -64,4 +65,7 @@ for name, gender in [('SM_MachineGun', None), ('SM_MGBox', None), ('A_mg_aiming'
         unreal.EditorAssetLibrary.save_loaded_asset(mat)
     obj.set_editor_property('static_materials', slots)
     unreal.EditorAssetLibrary.save_loaded_asset(obj)
+# Reimports can collapse distinct FBX sections onto a pre-existing first slot.
+# Recover the source section map before considering the import complete.
+runpy.run_path(str(Path(__file__).with_name('repair_gunner_materials.py')))
 print('RUNTIME_GUNNERS_IMPORT_OK')

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soldier motion — reference study</title>
+<style>
+  :root{color-scheme:dark;font:16px/1.6 system-ui,sans-serif;background:#111820;color:#edf0f3}
+  body{max-width:1280px;margin:auto;padding:28px}h1{font-size:32px;line-height:1.2;margin:8px 0 12px}h2{font-size:20px}
+  p{max-width:85ch}.muted{color:#b3c2d0}.tag{color:#eab486;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:24px;margin-top:24px}.panel{background:#192430;border:1px solid #304354;border-radius:12px;padding:20px}
+  video,iframe,img{width:100%;border:0;border-radius:6px;background:#0a1016}video,iframe{aspect-ratio:16/9}iframe{display:none}
+  nav,.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}button,a.button{font:inherit;cursor:pointer;border:1px solid #5f7991;border-radius:6px;background:#243546;color:#fff;padding:7px 12px;text-decoration:none}
+  button[aria-pressed=true]{background:#476b89}a{color:#91c9f6}button:focus-visible,a:focus-visible{outline:3px solid #e7b06c;outline-offset:3px}
+  li{margin:9px 0}.small{font-size:13px}details{margin:22px 0}summary{cursor:pointer}#time{font-variant-numeric:tabular-nums}
+  @media(max-width:850px){.grid{grid-template-columns:1fr}body{padding:16px}}
+</style>
+<header>
+  <div class="tag">Research • 25 September 2026 • Existing animation rejected</div>
+  <h1>Movement has to belong to the whole soldier.</h1>
+  <p>Carry, aim and traversal need coherent body performances. This page puts the rejected review beside source references and the specific defects to investigate. It does not show a repaired animation.</p>
+</header>
+<main>
+  <nav aria-label="Review segments">
+    <button data-key="carry" aria-pressed="true">Carry / walk</button>
+    <button data-key="crouch" aria-pressed="false">Crouch sidestep</button>
+    <button data-key="bolt" aria-pressed="false">Aim / bolt / reload</button>
+    <button data-key="vault" aria-pressed="false">Vault / landing</button>
+  </nav>
+  <div class="grid">
+    <section class="panel">
+      <h2>Our v4 — rejected baseline</h2>
+      <video id="review" controls preload="metadata" playsinline src="armed-soldiers-2026-09-25.mp4"></video>
+      <div class="controls">
+        <button id="play">Play segment</button><button id="back">−1 frame</button><button id="next">+1 frame</button>
+        <button data-rate="1" aria-pressed="true">1×</button><button data-rate="0.5" aria-pressed="false">½×</button><button data-rate="0.25" aria-pressed="false">¼×</button>
+        <output id="time" aria-label="Current time">0.00 s</output>
+      </div>
+      <p id="error" hidden>Video could not load. Open this page beside the existing review MP4.</p>
+      <h2 id="finding-title"></h2><p id="finding"></p><p id="direction" class="muted"></p>
+    </section>
+    <section class="panel">
+      <h2 id="reference-title"></h2>
+      <p id="reference-detail"></p>
+      <a id="reference-link" target="_blank" rel="noopener noreferrer">Open primary reference ↗</a>
+      <div class="controls"><button id="load-reel">Load animator’s reel at 0:48</button></div>
+      <iframe id="reel" title="Michal Mach — The Last of Us Part II NPC animation reel" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>
+      <p class="small muted">External video needs internet access. The assistant read the creator’s timestamped breakdown; external frame-by-frame playback remains unverified because browser control is failing.</p>
+      <h2>What the next pass must demonstrate</h2>
+      <ul id="checks"></ul>
+    </section>
+  </div>
+  <details>
+    <summary>Inspected frames from our current movement and vault</summary>
+    <div class="grid"><img src="research/movement.jpg" alt="Six frames from the rejected walk and crouch sidestep"><img src="research/vault.jpg" alt="Eight frames from the rejected vault, from approach through the current exit"></div>
+    <p class="small muted">Still frames establish pose problems, not transition quality. Use normal-speed playback above to judge continuity.</p>
+  </details>
+  <section class="panel">
+    <h2>Reference shelf</h2>
+    <ul>
+      <li><a href="https://vimeo.com/433024043#t=48s" target="_blank" rel="noopener noreferrer">The Last of Us Part II: NPC animation reel — Michal Mach</a>. Creator-indexed crouch run and vault at 0:48; traversal foot matching at 0:27.</li>
+      <li><a href="https://film.iwmcollections.org.uk/record/1226" target="_blank" rel="noopener noreferrer">IWM: Section Leadership in Detail (1942)</a>. Period rifle/Bren movement; catalogue inspected, footage still to study.</li>
+      <li><a href="https://ww1.nam.ac.uk/videos/outbreak-weaponry-1914/" target="_blank" rel="noopener noreferrer">National Army Museum: SMLE demonstration</a>. Transcript inspected for weapon and carrying context.</li>
+      <li><a href="https://www.forgottenweapons.com/2-gun-action-match-england-versus-germany/" target="_blank" rel="noopener noreferrer">Forgotten Weapons: Enfield and Mauser comparison</a>. Creator’s analysis inspected; candidate footage for bolt-action body performance.</li>
+      <li><a href="https://media.gdcvault.com/GDC2014/Presentations/Duffin_Ryan_Animation_Bootcamp_Using.pdf" target="_blank" rel="noopener noreferrer">DICE: Battlefield 4 animation layers</a>. Weapon/posture families, additive correction and the limits of partial-body reuse.</li>
+      <li><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/game-animation-sample-project-in-unreal-engine" target="_blank" rel="noopener noreferrer">Epic: Game Animation Sample</a>. Contextual selection and connected traversal.</li>
+    </ul>
+    <p>Full diagnosis and source-coverage audit: <a href="../../../docs/SOLDIER_MOTION_STUDY_2026-09-25.md">research brief</a>. Proposed authoring direction; no new art acceptance is implied.</p>
+  </section>
+</main>
+<script>
+  const video=document.querySelector('#review');let active='carry';
+  const segments={
+    carry:{start:1.5,end:7,title:'Walking is being overwritten by standing aim.',finding:'The current layer replaces the arms and much of the spine with a standing aiming pose. The gun is only slightly lowered. GASP’s leg motion cannot restore the missing coordinated armed body performance.',direction:'Establish distinct carry, alert-ready and aimed movement, with authored raises and lowers. Keep the mass and stride visible in the torso.',reference:'Period equipment and movement',detail:'The National Army Museum’s SMLE transcript describes the weight of the rifle and sling use. IWM’s period catalogues also describe alert forward-ready movement. The animation should select context, rather than always aim or always point down.',url:'https://ww1.nam.ac.uk/videos/outbreak-weaponry-1914/',checks:['Carry → walk → stop → raise → aim in one continuous clip.','The head is free to look during travel.','Stock, hands and shoulders move together without rigidly freezing the torso.']},
+    crouch:{start:20.5,end:26,title:'Separate the captured pose from the corrections.',finding:'Standing upper-body replacement and fixed forward-facing knee targets can both damage a lateral crouch. Compare raw retarget, ground contacts and equipment layers to identify the first damaging step.',direction:'Retain the authored knee bend and weight transfer, then use stance-specific armed posture and compatible starts, stops and reversals.',reference:'Crouch movement connected to traversal',detail:'Michal Mach identifies 0:48 in his NPC reel as a systemic crouch run with a vault. Use that continuous sequence as a transition benchmark, while checking sideways crouch separately.',url:'https://vimeo.com/433024043#t=48s',checks:['Low silhouette remains coherent through a lateral reversal.','Support alternates without sliding planted feet.','Torso, pelvis and knees agree on the direction of movement.']},
+    bolt:{start:25.5,end:34.3,title:'Wrist contact is not a complete weapon performance.',finding:'The current bolt and reload are procedural targets over a standing pose. The demonstration also switches aim on and fires at the same instant. It lacks a connected raise, settle and action performance.',direction:'Author a connected standing action, preserve support and mechanism contact, and blend its entry and recovery. Keep shot timing authoritative.',reference:'Real bolt-action performance candidates',detail:'Forgotten Weapons’ creator compares Enfield and Mauser handling in a moving match. The written comparison reinforces that action speed alone does not describe the whole movement. Footage still needs direct motion inspection.',url:'https://www.forgottenweapons.com/2-gun-action-match-england-versus-germany/',checks:['Carry → aim → fire → bolt → aim → lower without a pose reset.','Released hand, elbow and shoulder participate as a connected chain.','Reload prop appears in a hand and travels visibly to the receiver.']},
+    vault:{start:39,end:43.5,title:'The current vault has no demonstrated landing recovery.',finding:'A standing neutral source uses two-handed support; our adaptation assigns one arm to the gun. We stretch roughly 0.9 seconds over 2.2 seconds, then blend to locomotion using a root-height crossing as the landing marker.',direction:'Choose an armed full-body traversal, align the support and clearance phases to the obstacle, and finish with an actual planted landing and compatible exit step.',reference:'Traversal foot matching and a continuous armed sequence',detail:'The creator’s reel calls out traversal foot matching at 0:27 and a crouch-run vault at 0:48. Epic describes traversal matching and bounded motion-warping windows. Neither substitutes for an appropriate source performance.',url:'https://vimeo.com/433024043#t=48s',checks:['Approach, transfer, clearance, landing and exit form one motion.','Hand support agrees with the body’s weight and weapon occupancy.','Feet, coat and the long weapon clear the wall; no return to idle before landing.']}
+  };
+  function select(key){active=key;const s=segments[key];video.pause();if(video.readyState)video.currentTime=s.start;
+    document.querySelector('#finding-title').textContent=s.title;document.querySelector('#finding').textContent=s.finding;document.querySelector('#direction').textContent=s.direction;
+    document.querySelector('#reference-title').textContent=s.reference;document.querySelector('#reference-detail').textContent=s.detail;document.querySelector('#reference-link').href=s.url;
+    const list=document.querySelector('#checks');list.replaceChildren(...s.checks.map(t=>{const li=document.createElement('li');li.textContent=t;return li}));
+    document.querySelectorAll('[data-key]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.key===key)));
+  }
+  document.querySelectorAll('[data-key]').forEach(b=>b.onclick=()=>select(b.dataset.key));
+  video.addEventListener('loadedmetadata',()=>{video.currentTime=segments[active].start});
+  video.addEventListener('error',()=>{document.querySelector('#error').hidden=false});
+  video.addEventListener('timeupdate',()=>{document.querySelector('#time').textContent=video.currentTime.toFixed(2)+' s';if(!video.paused&&video.currentTime>=segments[active].end)video.pause()});
+  document.querySelector('#play').onclick=()=>{const s=segments[active];if(video.currentTime<s.start||video.currentTime>=s.end)video.currentTime=s.start;video.play().catch(()=>{document.querySelector('#error').hidden=false})};
+  for(const [id,d] of [['back',-1],['next',1]])document.getElementById(id).onclick=()=>{video.pause();video.currentTime=Math.min(video.duration||46,Math.max(0,video.currentTime+d/30))};
+  document.querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>{video.playbackRate=Number(b.dataset.rate);document.querySelectorAll('[data-rate]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
+  document.querySelector('#load-reel').onclick=()=>{const f=document.querySelector('#reel');f.src='https://player.vimeo.com/video/433024043#t=48s';f.style.display='block'};
+  select(active);
+</script>
+</html>

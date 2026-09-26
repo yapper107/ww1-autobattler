@@ -1440,6 +1440,30 @@
     {
       "source": "Traversal/Vault/M_Neutral_Traversal_Vault_1_0_walk_F_Rfoot",
       "group": "actions"
+    },
+    {
+      "source": "Jump/M_Neutral_Jump_F_Land_Stand_Light_Lfoot",
+      "group": "actions"
+    },
+    {
+      "source": "Jump/M_Neutral_Jump_F_Land_Stand_Light_Rfoot",
+      "group": "actions"
+    },
+    {
+      "source": "Jump/M_Neutral_Jump_F_Land_Walk_Light_Lfoot",
+      "group": "actions"
+    },
+    {
+      "source": "Jump/M_Neutral_Jump_F_Land_Walk_Light_Rfoot",
+      "group": "actions"
+    },
+    {
+      "source": "Jump/M_Neutral_Jump_F_Land_Run_Light_Lfoot",
+      "group": "actions"
+    },
+    {
+      "source": "Jump/M_Neutral_Jump_F_Land_Run_Light_Rfoot",
+      "group": "actions"
     }
   ]
 }

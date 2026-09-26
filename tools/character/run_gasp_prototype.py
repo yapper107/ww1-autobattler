@@ -30,16 +30,36 @@ def main():
     parser.add_argument('--actions', action='store_true')
     parser.add_argument('--cloth', action='store_true')
     parser.add_argument('--runtime', action='store_true', help='Compile runtime Motion Matching node constants')
+    parser.add_argument('--combat-crouch', action='store_true', help='Bake the combat crouch duplicate poses')
+    parser.add_argument('--contexts', action='store_true', help='Index separate moving-only contexts')
+    parser.add_argument('--audit-library', action='store_true', help='Read-only geometry/root-speed inventory; not visual acceptance')
     parser.add_argument('--combat-review', action='store_true')
     parser.add_argument('--motion-validate', action='store_true')
+    parser.add_argument('--warp-mask', type=int, choices=range(8), default=7, help='Diagnostic layer mask: orientation=1, stride=2, foot placement=4')
     parser.add_argument('--time', type=float, default=27, help='Combat still time')
+    parser.add_argument('--start', type=float, default=0, help='First combat capture second')
+    parser.add_argument('--end', type=float, default=46, help='Last combat capture second')
+    parser.add_argument('--camera-yaw', type=float, default=43, help='Close camera angle: 0 front, 90 side')
+    parser.add_argument('--camera-height', type=float, default=130, help='Close camera height above the focus, centimetres')
+    parser.add_argument('--camera-width', type=float, default=390, help='Close view orthographic width in centimetres')
+    parser.add_argument('--focus-height', type=float, default=95, help='Close view focus height in centimetres')
+    parser.add_argument('--source-clip', help='Raw normalized source clip; bypasses runtime layers for diagnosis')
+    parser.add_argument('--hold-crouch', action='store_true', help='Keep crouch after the stop to inspect settling before any rise')
+    parser.add_argument('--reload-start', type=float, default=30, help='Course reload start; use 29.025 to interrupt a rifle rearward stroke')
+    parser.add_argument('--reload-end', type=float, default=34, help='Course reload end')
     parser.add_argument('--body', type=int, choices=range(4), help='Close view: female rifle/MG, male rifle/MG')
     parser.add_argument('--validate', action='store_true')
     parser.add_argument('--capture', action='store_true')
     parser.add_argument('--still', action='store_true')
     parser.add_argument('--clip', type=int, choices=range(10))
     args = parser.parse_args()
-    assert any([args.stage, args.retarget, args.review, args.validate, args.motion_library,args.contacts,args.actions,args.cloth,args.runtime,args.combat_review,args.motion_validate]), 'Choose a preparation or review action'
+    if args.still:
+        args.capture = True
+    if not 0 <= args.start < args.end <= 46:
+        parser.error('Capture range must satisfy 0 <= start < end <= 46')
+    if args.source_clip and (not args.combat_review or args.motion_validate):
+        parser.error('--source-clip requires --combat-review and cannot validate runtime motion')
+    assert any([args.stage, args.retarget, args.review, args.validate, args.motion_library,args.contacts,args.actions,args.cloth,args.runtime,args.contexts,args.combat_crouch,args.audit_library,args.combat_review,args.motion_validate]), 'Choose a preparation or review action'
     assert (args.mirror/'.army-build-mirror').is_file(), 'Requires a marked, separate build mirror'
     assert args.sample.parent.resolve() != args.mirror.resolve()
     if args.stage:
@@ -56,7 +76,7 @@ def main():
     source = Path(__file__).parent
     dest = args.mirror/'Tools/character'
     dest.mkdir(parents=True, exist_ok=True)
-    for name in ['stage_gasp_prototype.py', 'create_soldier_ik_rigs.py', 'retarget_gasp_prototype.py', 'validate_gasp_prototype.py', 'build_gasp_motion_library.py', 'gasp_motion_catalog.json', 'create_gasp_contacts.py', 'create_gasp_actions.py', 'create_gasp_cloth.py', 'create_gasp_runtime.py']:
+    for name in ['stage_gasp_prototype.py', 'create_soldier_ik_rigs.py', 'retarget_gasp_prototype.py', 'validate_gasp_prototype.py', 'build_gasp_motion_library.py', 'gasp_motion_catalog.json', 'create_gasp_contacts.py', 'create_gasp_actions.py', 'create_gasp_cloth.py', 'create_gasp_runtime.py', 'create_gasp_contexts.py', 'audit_gasp_library.py', 'create_combat_crouch.py']:
         shutil.copy2(source/name, dest/name)
     project = args.mirror/'ArmyPrototype.uproject'
     logs = args.mirror/'Saved/GaspPreparation'
@@ -90,6 +110,12 @@ def main():
         run_script(project, 'create_gasp_cloth.py')
     if args.runtime:
         run_script(project, 'create_gasp_runtime.py')
+    if args.combat_crouch:
+        run_script(project, 'create_combat_crouch.py')
+    if args.contexts or args.motion_library:
+        run_script(project, 'create_gasp_contexts.py')
+    if args.audit_library:
+        run_script(project, 'audit_gasp_library.py')
     if args.review or args.combat_review or args.motion_validate:
         report_path = args.mirror/'Saved/AnimationReview/gasp-combat-check.txt'
         if args.motion_validate:
@@ -103,7 +129,12 @@ def main():
         if args.motion_validate:
             command.extend(['-nullrhi','-ArmyMotionValidate'])
         if combat:
+            command.append('-ArmyMotionWarpMask='+str(args.warp_mask))
             command.append('-ArmyGaspTime='+str(args.time))
+            command.extend(['-ArmyGaspStart='+str(args.start), '-ArmyGaspEnd='+str(args.end), '-ArmyGaspCameraYaw='+str(args.camera_yaw), '-ArmyGaspCameraHeight='+str(args.camera_height), '-ArmyGaspCameraWidth='+str(args.camera_width), '-ArmyGaspFocusHeight='+str(args.focus_height)])
+            if args.source_clip:command.append('-ArmySourceClip='+args.source_clip)
+            if args.hold_crouch:command.append('-ArmyHoldCrouch')
+            command.extend(['-ArmyReloadBegin='+str(args.reload_start), '-ArmyReloadFinish='+str(args.reload_end)])
             if args.body is not None:command.append('-ArmyGaspReviewBody='+str(args.body))
         if args.capture:
             command.append('-ArmyGaspReviewCapture')
